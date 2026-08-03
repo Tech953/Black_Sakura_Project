@@ -19,6 +19,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import http from "node:http";
+import os from "node:os";
 
 // ---------------------------------------------------------------------------
 // Paths. In a packaged app, bundled resources live under process.resourcesPath
@@ -48,7 +49,24 @@ const ffprobeBin = path.join(
   process.platform === "win32" ? "ffprobe.exe" : "ffprobe",
 );
 
+// Bundled local LLM (llama.cpp server + GGUF model), staged by
+// prepare-resources.mjs into resources/llama/. When present, the app can run
+// chat/analysis/simulation fully offline with zero external setup.
+const llamaBin = path.join(
+  resourcesDir,
+  "llama",
+  "bin",
+  process.platform === "win32" ? "llama-server.exe" : "llama-server",
+);
+const llamaModel = path.join(resourcesDir, "llama", "model.gguf");
+
+function bundledModelAvailable(): boolean {
+  return existsSync(llamaBin) && existsSync(llamaModel);
+}
+
 let serverProcess: ChildProcess | null = null;
+let llamaProcess: ChildProcess | null = null;
+let llamaPort = 0;
 let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let currentPort = 0;
@@ -100,7 +118,9 @@ function userDataPath(...segments: string[]): string {
 // re-entered on the next launch.
 // ---------------------------------------------------------------------------
 interface Settings {
-  mode: "offline" | "online";
+  mode: "bundled" | "offline" | "online";
+  /** Listen on all interfaces so the mobile app can connect over LAN. */
+  allowLan?: boolean;
   offline: { baseUrl: string; model: string };
   online: {
     baseUrl: string;
@@ -115,10 +135,26 @@ interface Settings {
 let sessionApiKey: string | null = null;
 
 const DEFAULT_SETTINGS: Settings = {
-  mode: "offline",
+  // "bundled" uses the built-in llama.cpp server + model shipped with the app
+  // (fully offline, zero setup). Falls back to "offline" (external local
+  // server) at runtime if the bundled files are missing from this build.
+  mode: "bundled",
   offline: { baseUrl: "http://localhost:11434/v1", model: "llama3.1" },
   online: { baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini" },
 };
+
+function normalizeMode(mode: unknown): Settings["mode"] {
+  if (mode === "online") return "online";
+  if (mode === "offline") return "offline";
+  return "bundled";
+}
+
+/** The mode actually used at runtime: bundled degrades to offline when this
+ * build ships no model (e.g. a dev run without staged resources). */
+function effectiveMode(settings: Settings): Settings["mode"] {
+  if (settings.mode === "bundled" && !bundledModelAvailable()) return "offline";
+  return settings.mode;
+}
 
 function settingsFile(): string {
   return userDataPath("settings.json");
@@ -129,7 +165,8 @@ function loadSettings(): Settings {
     const raw = readFileSync(settingsFile(), "utf8");
     const parsed = JSON.parse(raw) as Partial<Settings>;
     return {
-      mode: parsed.mode === "online" ? "online" : "offline",
+      mode: normalizeMode(parsed.mode),
+      allowLan: parsed.allowLan === true,
       offline: { ...DEFAULT_SETTINGS.offline, ...(parsed.offline ?? {}) },
       online: { ...DEFAULT_SETTINGS.online, ...(parsed.online ?? {}) },
     };
@@ -144,7 +181,7 @@ function saveSettings(settings: Settings): void {
 }
 
 function resolveApiKey(settings: Settings): string {
-  if (settings.mode === "offline") return "local-placeholder";
+  if (settings.mode !== "online") return "local-placeholder";
   const online = settings.online;
   if (online.apiKeyEnc && safeStorage.isEncryptionAvailable()) {
     try {
@@ -160,8 +197,13 @@ function buildServerEnv(
   settings: Settings,
   port: number,
 ): NodeJS.ProcessEnv {
+  const mode = effectiveMode(settings);
   const active =
-    settings.mode === "offline" ? settings.offline : settings.online;
+    mode === "bundled" && llamaProcess && llamaPort > 0
+      ? { baseUrl: `http://127.0.0.1:${llamaPort}/v1`, model: "bundled" }
+      : mode === "online"
+        ? settings.online
+        : settings.offline;
   const apiKey = resolveApiKey(settings) || "local-placeholder";
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -171,7 +213,10 @@ function buildServerEnv(
     PGLITE_DATA_DIR: userDataPath("db"),
     DRIZZLE_MIGRATIONS_DIR: migrationsDir,
     WEB_DIST: webDist,
-    HOST: "127.0.0.1",
+    // LAN access is opt-in: when enabled the embedded api-server listens on
+    // all interfaces so the ENGRAM mobile app can connect from the same
+    // network. The bundled llama-server always stays loopback-only.
+    HOST: settings.allowLan ? "0.0.0.0" : "127.0.0.1",
     PORT: String(port),
     LLM_BASE_URL: active.baseUrl,
     LLM_MODEL: active.model,
@@ -234,6 +279,117 @@ function waitForHealth(port: number, timeoutMs = 60000): Promise<void> {
   });
 }
 
+// Wait for llama-server's /health to report {"status":"ok"}. First launch can
+// take a while (the model is memory-mapped and warmed), so the timeout is
+// generous.
+function waitForLlamaHealth(port: number, timeoutMs = 300000): Promise<void> {
+  const start = Date.now();
+  return new Promise((resolve, reject) => {
+    const attempt = (): void => {
+      const req = http.get(
+        { host: "127.0.0.1", port, path: "/health", timeout: 2000 },
+        (res) => {
+          res.resume();
+          if (res.statusCode === 200) {
+            resolve();
+          } else {
+            retry();
+          }
+        },
+      );
+      req.on("error", retry);
+      req.on("timeout", () => {
+        req.destroy();
+        retry();
+      });
+    };
+    const retry = (): void => {
+      if (Date.now() - start > timeoutMs) {
+        reject(new Error("Bundled model server did not become ready in time."));
+      } else {
+        setTimeout(attempt, 1000);
+      }
+    };
+    attempt();
+  });
+}
+
+async function startLlama(): Promise<void> {
+  llamaPort = await findFreePort();
+  const proc = spawn(
+    llamaBin,
+    [
+      "-m",
+      llamaModel,
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(llamaPort),
+      "-c",
+      "8192",
+      "--no-webui",
+    ],
+    {
+      // cwd = bin dir so the llama.cpp shared libraries/DLLs next to the
+      // executable resolve on every platform.
+      cwd: path.dirname(llamaBin),
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  llamaProcess = proc;
+  proc.stdout?.on("data", (chunk: Buffer) => {
+    process.stdout.write(`[llama] ${chunk.toString()}`);
+  });
+  proc.stderr?.on("data", (chunk: Buffer) => {
+    process.stderr.write(`[llama] ${chunk.toString()}`);
+  });
+  // Startup is transactional: any spawn error or early exit before health
+  // rejects the promise, and the caller cleans up + falls back. `settled`
+  // guards double-settlement between the racing handlers.
+  let settled = false;
+  const spawnFailure = new Promise<never>((_, reject) => {
+    proc.on("error", (err) => {
+      if (llamaProcess === proc) llamaProcess = null;
+      if (!settled) {
+        settled = true;
+        reject(new Error(`Bundled model server failed to start: ${err.message}`));
+      }
+    });
+    proc.on("exit", (code, signal) => {
+      if (llamaProcess === proc) llamaProcess = null;
+      if (!settled) {
+        settled = true;
+        reject(
+          new Error(
+            `Bundled model server exited before becoming ready (code=${code}, signal=${signal}).`,
+          ),
+        );
+      } else if (!quitting) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[desktop] bundled model server exited unexpectedly (code=${code}, signal=${signal}).`,
+        );
+      }
+    });
+  });
+  try {
+    await Promise.race([waitForLlamaHealth(llamaPort), spawnFailure]);
+    settled = true;
+  } catch (err) {
+    settled = true;
+    await stopLlama();
+    throw err;
+  }
+}
+
+function stopLlama(): Promise<void> {
+  const proc = llamaProcess;
+  if (!proc) return Promise.resolve();
+  llamaProcess = null;
+  return stopProcess(proc);
+}
+
 async function startServer(): Promise<void> {
   if (!existsSync(serverEntry)) {
     throw new Error(
@@ -242,6 +398,19 @@ async function startServer(): Promise<void> {
   }
   const settings = loadSettings();
   mkdirSync(userDataPath("db"), { recursive: true });
+  // Bundled mode: bring up the built-in model server first so its port is
+  // known when the api-server env is built. A llama startup failure never
+  // blocks the app — buildServerEnv degrades to the external local-server
+  // settings when no llama process is live, so the UI still opens and the
+  // user can pick another mode.
+  if (effectiveMode(settings) === "bundled" && !llamaProcess) {
+    try {
+      await startLlama();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[desktop] bundled model unavailable, falling back:", err);
+    }
+  }
   currentPort = await findFreePort();
   const env = buildServerEnv(settings, currentPort);
 
@@ -280,6 +449,9 @@ function stopServer(): Promise<void> {
 
 async function restartServer(): Promise<void> {
   await stopServer();
+  // Stop the bundled model server too so a mode switch away from "bundled"
+  // releases its memory; startServer re-spawns it when still needed.
+  await stopLlama();
   await startServer();
   if (mainWindow && !mainWindow.isDestroyed()) {
     await mainWindow.loadURL(`http://127.0.0.1:${currentPort}/`);
@@ -408,6 +580,13 @@ ipcMain.handle("settings:get", () => {
   const settings = loadSettings();
   return {
     mode: settings.mode,
+    bundledAvailable: bundledModelAvailable(),
+    allowLan: settings.allowLan === true,
+    // LAN addresses the mobile app can use when LAN access is on.
+    lanAddresses: Object.values(os.networkInterfaces())
+      .flat()
+      .filter((i) => i && i.family === "IPv4" && !i.internal)
+      .map((i) => `http://${(i as os.NetworkInterfaceInfo).address}:${currentPort}`),
     offline: settings.offline,
     online: {
       baseUrl: settings.online.baseUrl,
@@ -421,14 +600,16 @@ ipcMain.handle("settings:get", () => {
 ipcMain.handle(
   "settings:save",
   async (_event, payload: {
-    mode: "offline" | "online";
+    mode: "bundled" | "offline" | "online";
+    allowLan?: boolean;
     offline: { baseUrl: string; model: string };
     online: { baseUrl: string; model: string; apiKey: string };
   }) => {
     try {
       const previous = loadSettings();
       const next: Settings = {
-        mode: payload.mode === "online" ? "online" : "offline",
+        mode: normalizeMode(payload.mode),
+        allowLan: payload.allowLan === true,
         offline: {
           baseUrl: payload.offline.baseUrl.trim() || DEFAULT_SETTINGS.offline.baseUrl,
           model: payload.offline.model.trim() || DEFAULT_SETTINGS.offline.model,
@@ -593,7 +774,13 @@ function setupAutoUpdates(): void {
           // cleanly BEFORE the installer swaps app files. installDownloadedUpdate
           // awaits stopServer() (shared SIGTERM→SIGKILL path) before quitAndInstall.
           void installDownloadedUpdate({
-            stopServer,
+            // Stop BOTH children: the api-server (holds the PGlite DB open)
+            // and the bundled llama-server (multi-GB resident process that
+            // would otherwise survive the update swap as an orphan).
+            stopServer: async () => {
+              await stopServer();
+              await stopLlama();
+            },
             quitAndInstall: () => autoUpdater.quitAndInstall(),
             setAutoInstallOnAppQuit: (value) => {
               autoUpdater.autoInstallOnAppQuit = value;
@@ -678,10 +865,12 @@ if (!gotLock) {
   });
 
   app.on("before-quit", (event) => {
-    if (serverProcess && !quitting) {
+    if ((serverProcess || llamaProcess) && !quitting) {
       event.preventDefault();
       quitting = true;
-      void stopServer().finally(() => app.quit());
+      void stopServer()
+        .then(() => stopLlama())
+        .finally(() => app.quit());
     }
   });
 }

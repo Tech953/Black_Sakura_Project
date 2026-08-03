@@ -83,9 +83,15 @@
     <fieldset>
       <legend>Mode</legend>
       <div class="mode-row">
-        <label><input type="radio" name="mode" value="offline" /> Offline (local model)</label>
+        <label><input type="radio" name="mode" value="bundled" /> Built-in (no setup)</label>
+        <label><input type="radio" name="mode" value="offline" /> Local server</label>
         <label><input type="radio" name="mode" value="online" /> Online (cloud)</label>
       </div>
+    </fieldset>
+
+    <fieldset id="bundled-panel">
+      <legend>Built-in — bundled model</legend>
+      <p class="hint" id="bundled-hint">Runs the AI model that ships inside this app. Chat, analysis, simulation and emulation all work fully offline with no setup, no account, and no internet connection.</p>
     </fieldset>
 
     <fieldset id="offline-panel">
@@ -106,6 +112,15 @@
       <label for="online-key">API Key</label>
       <input id="online-key" type="password" placeholder="Leave blank to keep existing key" autocomplete="off" />
       <p class="hint" id="key-hint"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Mobile / LAN access</legend>
+      <div class="mode-row">
+        <label><input type="checkbox" id="allow-lan" /> Allow devices on my network to connect (ENGRAM mobile app)</label>
+      </div>
+      <p class="hint" id="lan-hint">When enabled, the engine listens on your local network. Enter one of the addresses below in the mobile app's Server setting.</p>
+      <p class="hint" id="lan-addresses" style="font-family: 'JetBrains Mono', monospace;"></p>
     </fieldset>
 
     <fieldset>
@@ -133,12 +148,21 @@
     <script>
       const $ = (id) => document.getElementById(id);
       function applyMode(mode) {
+        $("bundled-panel").classList.toggle("hidden", mode !== "bundled");
         $("offline-panel").classList.toggle("hidden", mode !== "offline");
         $("online-panel").classList.toggle("hidden", mode !== "online");
       }
       async function init() {
         const s = await window.engram.getSettings();
+        if (!s.bundledAvailable) {
+          const radio = document.querySelector('input[name="mode"][value="bundled"]');
+          radio.disabled = true;
+          $("bundled-hint").textContent = "This build does not include a bundled model.";
+          if (s.mode === "bundled") s.mode = "offline";
+        }
         document.querySelector(`input[name="mode"][value="${s.mode}"]`).checked = true;
+        $("allow-lan").checked = s.allowLan === true;
+        $("lan-addresses").textContent = (s.lanAddresses || []).join("   ");
         $("offline-base").value = s.offline.baseUrl;
         $("offline-model").value = s.offline.model;
         $("online-base").value = s.online.baseUrl;
@@ -210,6 +234,7 @@
         const mode = document.querySelector('input[name="mode"]:checked').value;
         const res = await window.engram.saveSettings({
           mode,
+          allowLan: $("allow-lan").checked,
           offline: { baseUrl: $("offline-base").value, model: $("offline-model").value },
           online: {
             baseUrl: $("online-base").value,

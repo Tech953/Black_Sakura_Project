@@ -1,5 +1,6 @@
 - [Local Android APK build](local-android-apk-build.md) — building the release APK inside the workspace (no CI): SDK setup, foreground Gradle windows, hermesc `-Xes6-class`, Babel 7 pins, worklets packageExtensions.
 - [Android APK CI release](android-apk-release.md) — building the Expo APK without an Expo account, attaching it to electron-builder's DRAFT release, plus signing + OS-detection gotchas.
+- [Bundled offline LLM (desktop)](bundled-offline-llm.md) — zero-setup offline mode via shipped llama.cpp server + model; staging, lifecycle, LAN, and workspace quota gotchas.
 - [Desktop auto-update](desktop-auto-update.md) — how the Electron app self-updates and the non-obvious constraints that make it actually fire.
 - [Desktop embedded DB seam (pglite)](desktop-embedded-db.md) — running with an embedded DB for desktop, and the non-obvious bundling constraints.
 - [Desktop online key storage](desktop-online-key-storage.md) — security rule for how the desktop build persists the cloud LLM API key (no plaintext).
