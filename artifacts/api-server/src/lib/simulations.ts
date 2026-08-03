@@ -12,9 +12,11 @@ import {
 } from "./engram-generation";
 import { summarizeWorldModel } from "./world-model";
 import { loadRecentWorldModel } from "./world-model-store";
-import { appendActivity } from "./hub-store";
+import { appendActivity, loadPresenceForEngram, loadSpaceById } from "./hub-store";
+import { loadControls } from "./controls-store";
 import {
   appendSimulationStep,
+  claimSimulationStep,
   createSimulation,
   loadActiveSimulationForEngram,
   loadRunningSimulations,
@@ -138,9 +140,15 @@ async function advanceSimulation(
   sim: EngramSimulation,
   engram: Engram,
   now: number,
-): Promise<SimulationTickOutcome> {
+): Promise<SimulationTickOutcome | null> {
+  // Atomically claim the step first (CAS on currentStep + running status). The
+  // engine tick, an immediate kick, and concurrent control requests can all race
+  // here; only one wins, so a step number can never be generated twice.
+  const claimed = await claimSimulationStep(sim.id, sim.currentStep, new Date(now));
+  if (!claimed) return null;
+
   const maxSteps = Math.min(sim.maxSteps, SIMULATION_MAX_STEPS_CAP);
-  const nextStep = sim.currentStep + 1;
+  const nextStep = claimed.currentStep;
   const priorSteps = (await loadSimulationSteps(sim.id)).map((s) => s.narrative);
   const worldModelSummary = summarizeWorldModel(await loadRecentWorldModel(engram.id));
 
@@ -161,11 +169,6 @@ async function advanceSimulation(
     stepNumber: nextStep,
     narrative,
     confidence: SIMULATION_STEP_CONFIDENCE,
-  });
-
-  const updated = await updateSimulation(sim.id, {
-    currentStep: nextStep,
-    lastSteppedAt: new Date(now),
   });
 
   publishEvent({
@@ -192,7 +195,7 @@ async function advanceSimulation(
   }
 
   if (nextStep >= maxSteps) {
-    await endSimulation(updated);
+    await endSimulation(claimed);
     return { kind: "ended", simulationId: sim.id };
   }
   return { kind: "stepped", simulationId: sim.id };
@@ -231,6 +234,92 @@ async function proposeSimulation(
 }
 
 /**
+ * Operator-directed simulation: open a new running simulation for an engram with a
+ * specific, operator-supplied premise ("scenario stipulations"). Same quarantine as
+ * autonomous simulations — every step it produces goes through appendSimulationStep,
+ * which hardcodes provenance "simulated". The engram must be present in the chamber
+ * and capable (canSimulate), so a paused system or simulationEnabled=false blocks it.
+ */
+export async function openOperatorSimulation(opts: {
+  engram: Engram;
+  chamber: HubSpace;
+  premise: string;
+  maxSteps?: number;
+  controls: GlobalControls;
+  now?: number;
+}): Promise<EngramSimulation> {
+  const { engram, chamber, premise, controls } = opts;
+  const now = opts.now ?? Date.now();
+  // Re-check DB-backed presence here (not only in the route) so the safety
+  // assertion is local to the write: the engram must actually be active in the
+  // chamber at creation time.
+  const presence = await loadPresenceForEngram(engram.id);
+  if (!presence || presence.spaceId !== chamber.id || presence.status !== "active") {
+    throw new SimulationTransitionError(
+      `${engram.name} must be present in the simulation chamber to run a simulation`,
+    );
+  }
+  if (!canEngramSimulate(engram, chamber, controls)) {
+    throw new SimulationTransitionError(
+      "this engram cannot simulate right now (simulation disabled, paused, or mode disallows it)",
+    );
+  }
+  const active = await loadActiveSimulationForEngram(engram.id);
+  if (active) {
+    throw new SimulationTransitionError(
+      `engram already has an active simulation (#${active.id}) — end or pause it first`,
+    );
+  }
+  const sim = await createSimulation({
+    engramId: engram.id,
+    spaceId: chamber.id,
+    premise,
+    status: "running",
+    currentStep: 0,
+    ...(opts.maxSteps ? { maxSteps: Math.min(opts.maxSteps, SIMULATION_MAX_STEPS_CAP) } : {}),
+    startedAt: new Date(now),
+  });
+  try {
+    await appendActivity({
+      spaceId: chamber.id,
+      engramId: engram.id,
+      kind: "system",
+      summary: `Operator opened a simulation for ${engram.name}: "${premise.slice(0, 80)}".`,
+    });
+  } catch (err) {
+    logger.error({ err, engramId: engram.id }, "operator simulation activity append failed");
+  }
+  return sim;
+}
+
+/**
+ * Best-effort immediate step for a just-started/resumed/created simulation, so the
+ * operator sees a beat without waiting for the next engine tick. Re-checks presence
+ * and capability; never throws.
+ */
+export async function kickSimulation(sim: EngramSimulation): Promise<void> {
+  try {
+    if (sim.status !== "running") return;
+    // Honor the per-step cooldown so a rapid pause/resume can't fan out steps
+    // faster than the engine would allow.
+    const now = Date.now();
+    const last = sim.lastSteppedAt ? sim.lastSteppedAt.getTime() : null;
+    if (last !== null && now - last < sim.stepCooldownSeconds * 1000) return;
+    const engram = await loadEngramRow(sim.engramId);
+    if (!engram) return;
+    const presence = await loadPresenceForEngram(engram.id);
+    if (!presence || presence.spaceId !== sim.spaceId || presence.status !== "active") return;
+    const space = await loadSpaceById(sim.spaceId);
+    if (!space) return;
+    const controls = await loadControls();
+    if (!canEngramSimulate(engram, space, controls)) return;
+    await advanceSimulation(sim, engram, now);
+  } catch (err) {
+    logger.warn({ err, simulationId: sim.id }, "immediate simulation step failed (will retry on tick)");
+  }
+}
+
+/**
  * Run at most ONE simulation action this tick (cost guard), inside the simulation
  * chamber, mirroring the commons phase.
  *
@@ -261,14 +350,31 @@ export async function maybeRunSimulationStep(opts: {
     const engram = engramById.get(sim.engramId);
     if (!engram) continue;
     const presence = presenceByEngram.get(engram.id);
-    if (!presence || presence.spaceId !== sim.spaceId || presence.status !== "active") continue;
+    if (!presence || presence.spaceId !== sim.spaceId || presence.status !== "active") {
+      // The engram left the chamber mid-run. Auto-pause instead of silently
+      // freezing so the operator sees an honest state and can resume later.
+      try {
+        await updateSimulation(sim.id, { status: "paused", pausedAt: new Date(now) });
+        await appendActivity({
+          spaceId: sim.spaceId,
+          engramId: engram.id,
+          kind: "system",
+          summary: `${engram.name}'s simulation paused — they left the chamber.`,
+        });
+      } catch (err) {
+        logger.error({ err, simulationId: sim.id }, "auto-pause of orphaned simulation failed");
+      }
+      continue;
+    }
     const space = spaceById.get(sim.spaceId);
     if (!space || !canEngramSimulate(engram, space, controls)) continue;
 
     const last = sim.lastSteppedAt ? sim.lastSteppedAt.getTime() : null;
     if (last !== null && now - last < sim.stepCooldownSeconds * 1000) continue;
 
-    return advanceSimulation(sim, engram, now);
+    const out = await advanceSimulation(sim, engram, now);
+    if (out) return out;
+    continue;
   }
 
   // 2) PROPOSE PHASE — a capable, present engram with no active sim opens one.

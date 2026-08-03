@@ -16,3 +16,7 @@ The desktop app's "bundled" LLM mode spawns a llama.cpp `llama-server` shipped i
 **Why:** the app must fully emulate online mode with no user setup (user requirement); a first attempt that spawned llama non-transactionally leaked processes across updates (code review finding).
 
 **Workspace quirks:** /tmp has a ~32 GB quota — stage multi-GB downloads under the workspace, not /tmp. `wget -c -O file` does NOT resume (use natural filename); electron-builder's final zip step of a ~2.7 GB app exceeds a 300 s shell window — zip `release/win-unpacked` manually instead.
+
+## Cross-platform packaging lessons
+- llama.cpp Linux releases ship soname symlink chains (`libX.so -> .so.0 -> .so.0.N`); naive recursive/dereferencing copies choke on them — resolve to the real file when staging.
+- When cross-packaging a Windows desktop build from Linux, EVERY platform-specific binary (llama server, ffmpeg, ffprobe) must be the Windows one, named `.exe`; a build that silently falls back to host-OS binaries ships a broken app. Fail the build if a target binary can't be sourced.

@@ -29,10 +29,24 @@ The repo already builds the APK in GitHub Actions:
 3. The deployed app's Download page picks it up automatically through the GitHub
    fallback (no further action needed).
 
-**Signing note:** with no release keystore configured, CI produces a
-**debug-signed** APK. It installs fine via sideload, but updating in place over
-an older debug-signed build may require uninstalling first. To get update-safe
-signing, add a release keystore via CI secrets.
+**Signing:** CI signs the APK with the private ENGRAM release keystore when
+these four repository secrets are set (GitHub → Settings → Secrets and
+variables → Actions):
+
+| Secret | Value |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 .keys/engram-release.keystore` |
+| `ANDROID_KEYSTORE_PASSWORD` | store password from `.keys/android-signing.env` |
+| `ANDROID_KEY_ALIAS` | key alias from `.keys/android-signing.env` |
+| `ANDROID_KEY_PASSWORD` | key password from `.keys/android-signing.env` |
+
+The keystore and its credentials live in the (gitignored) `.keys/` directory of
+the Replit workspace — see `.keys/README.md` for copy-paste setup commands. The
+workflow then verifies the built APK's signer certificate against the pinned
+release-key fingerprint and **fails the build** if it doesn't match, so a wrong
+or missing keystore can never silently ship. With **no** secrets set, CI falls
+back to a **debug-signed** APK: sideloadable, but in-place updates over an
+older build may require uninstalling first.
 
 ---
 
@@ -98,21 +112,36 @@ Play Store / in-place update accepts). In CI these are stamped from the git tag
 and the run number; for local builds, bump them by hand in `app.json` before
 prebuilding if you want an update-safe sequence.
 
-### Release signing (optional, for update-safe installs)
+### Release signing (update-safe installs)
 
-A debug-signed APK is fine for testing but its signature changes per machine.
-For a stable signature:
+Release signing is already wired in: an Expo config plugin
+(`artifacts/engram-mobile/plugins/withAndroidReleaseSigning.js`, registered in
+`app.json`) injects a `release` signing config into the generated
+`android/app/build.gradle` on every `expo prebuild`, so it survives `--clean`
+regeneration locally and in CI. Gradle reads these environment variables **at
+build time**:
 
-1. Generate a keystore:
-   ```bash
-   keytool -genkeypair -v -keystore engram-release.keystore \
-     -alias engram -keyalg RSA -keysize 2048 -validity 10000
-   ```
-2. Configure Gradle signing (`android/app/build.gradle` `signingConfigs`, or via
-   `~/.gradle/gradle.properties`), then rebuild with `assembleRelease`.
+| Variable | Meaning |
+| --- | --- |
+| `ANDROID_KEYSTORE_PATH` | Absolute path to the `.keystore` file |
+| `ANDROID_KEYSTORE_PASSWORD` | Store password |
+| `ANDROID_KEY_ALIAS` | Key alias |
+| `ANDROID_KEY_PASSWORD` | Key password |
 
-Keep the keystore safe — losing it means you can no longer ship updates that
-install over existing copies.
+In the Replit workspace, the private keystore and its credentials live in the
+gitignored `.keys/` directory. To build a release-signed APK locally:
+
+```bash
+source .keys/android-signing.env   # exports the four variables above
+cd artifacts/engram-mobile/android
+./gradlew :app:assembleRelease
+```
+
+If the variables are unset (or the keystore file is missing), the build falls
+back to the debug key — installable, but not update-safe.
+
+Keep the keystore safe and **never commit it** — losing it means you can no
+longer ship updates that install over existing copies.
 
 ---
 

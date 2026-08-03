@@ -12,9 +12,10 @@ name: Desktop & Android builds
 #
 # Code signing / notarization are opt-in: set the documented repository secrets
 # and electron-builder picks them up automatically. With no secrets set, each
-# OS still produces a working (unsigned) installer. The Android APK is
-# debug-signed when no release keystore is configured — installable via sideload
-# with no Expo account (see the android job for the in-place-update caveat).
+# OS still produces a working (unsigned) installer. The Android APK is signed
+# with the private release keystore when the ANDROID_KEYSTORE_* secrets are set
+# (update-safe in-place installs); with no secrets it falls back to the debug
+# signature — installable via sideload but NOT update-safe.
 
 on:
   workflow_dispatch: {}
@@ -163,11 +164,10 @@ jobs:
   # into that draft (resolved by name, like the publish job) before the release
   # is un-drafted.
   #
-  # Signing: with no release keystore, Gradle's assembleRelease falls back to the
-  # Android debug signing config, so the APK is installable via sideload with no
-  # secrets/Expo account. Caveat: a debug signature is NOT update-safe across
-  # builds — installing a newer APK over an older one can require uninstalling
-  # first. Wire a real keystore (via secrets) later if in-place updates matter.
+  # Signing: when the ANDROID_KEYSTORE_* repository secrets are set (see the
+  # "Prepare release keystore" step), the APK is signed with the private release
+  # keystore, making in-place updates work. Without them, Gradle falls back to
+  # the debug signing config — sideloadable, but NOT update-safe across builds.
   android:
     name: android
     needs: build
@@ -245,11 +245,58 @@ jobs:
       - name: Expo prebuild (android)
         run: pnpm --filter @workspace/engram-mobile exec expo prebuild --platform android --no-install --clean
 
+      # Release signing (optional but recommended): when the ANDROID_KEYSTORE_*
+      # repository secrets are set, decode the keystore and export the env vars
+      # the Gradle signing config (injected by the withAndroidReleaseSigning
+      # Expo config plugin) reads at build time. With no secrets set, the build
+      # falls back to the debug signing config (sideloadable, not update-safe).
+      # Required secrets: ANDROID_KEYSTORE_BASE64 (base64 of the .keystore
+      # file), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+      - name: Prepare release keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/engram-release.keystore"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          echo "ANDROID_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "Release keystore staged; APK will be release-signed."
+
       - name: Build release APK
         working-directory: artifacts/engram-mobile/android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
           ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      # Fail loudly if secrets were provided but the APK is not signed with
+      # the EXPECTED release certificate. The SHA-256 fingerprint below is the
+      # public fingerprint of the ENGRAM release key (.keys/engram-release.keystore
+      # in the workspace — see .keys/README.md); it is not a secret. Pinning it
+      # catches both a debug-signed fallback and a wrong/rotated keystore, either
+      # of which would strand existing installs without in-place updates.
+      - name: Verify APK signature
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        shell: bash
+        env:
+          EXPECTED_CERT_SHA256: "1ac898e0c11971c328bb2e5a3f40aec035e8096c8c3dfcb82aab8bff6748654b"
+        run: |
+          set -euo pipefail
+          APK="artifacts/engram-mobile/android/app/build/outputs/apk/release/app-release.apk"
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          SIGNER="$("$BT/apksigner" verify --print-certs "$APK")"
+          echo "$SIGNER"
+          ACTUAL="$(echo "$SIGNER" | grep -i 'SHA-256 digest' | head -n1 | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')"
+          if [ "$ACTUAL" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "APK signer cert SHA-256 '$ACTUAL' does not match the expected release key '$EXPECTED_CERT_SHA256'" >&2
+            exit 1
+          fi
+          echo "APK is signed with the expected ENGRAM release key."
 
       # Rename the Gradle output to a versioned asset name. The Download page
       # matches Android purely by the .apk extension.

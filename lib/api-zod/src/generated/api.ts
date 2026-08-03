@@ -576,6 +576,76 @@ export const TickEngramsResponse = zod.object({
 
 
 /**
+ * @summary Synthesize a new engram from the processed observation archive plus operator stipulations
+ */
+export const SynthesizeEngramBody = zod.object({
+  "stipulations": zod.string().describe('Operator instructions shaping the synthesized persona'),
+  "sourceEngramIds": zod.array(zod.number()).optional().describe('Restrict archive grounding to these engrams\' observed material')
+})
+
+export const SynthesizeEngramResponse = zod.object({
+  "id": zod.number(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "title": zod.string(),
+  "symbol": zod.string(),
+  "origin": zod.string(),
+  "voiceProfile": zod.object({
+  "speechStyle": zod.string(),
+  "formatting": zod.string(),
+  "vocabulary": zod.array(zod.string()),
+  "sampleLines": zod.array(zod.string()),
+  "narrationStyle": zod.string()
+}),
+  "emotionalBaseline": zod.object({
+  "valence": zod.number(),
+  "arousal": zod.number(),
+  "volatility": zod.number(),
+  "mood": zod.string()
+}),
+  "environmentAnchor": zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "locations": zod.array(zod.string()),
+  "items": zod.array(zod.string()),
+  "ambient": zod.string()
+}),
+  "memorySeed": zod.object({
+  "relationship": zod.string(),
+  "facts": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "guardrails": zod.object({
+  "framing": zod.string(),
+  "boundaries": zod.array(zod.string())
+}),
+  "drives": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "weight": zod.number(),
+  "baseRate": zod.number()
+})),
+  "focusThemes": zod.array(zod.string()),
+  "autonomyEnabled": zod.boolean(),
+  "tickCadenceSeconds": zod.number(),
+  "initiationThreshold": zod.number(),
+  "driveState": zod.record(zod.string(), zod.number()),
+  "currentMood": zod.string().optional(),
+  "lastTickAt": zod.string().optional(),
+  "lastTransmissionAt": zod.string().optional(),
+  "backoffUntil": zod.string().nullish(),
+  "isChatActive": zod.boolean(),
+  "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
+  "humanContactEnabled": zod.boolean(),
+  "simulationEnabled": zod.boolean(),
+  "artifactGenerationEnabled": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
  * @summary Live autonomy state (per-drive pressure, cooldown, backoff) for every engram
  */
 export const GetEngramStatesResponseItem = zod.object({
@@ -1169,6 +1239,34 @@ export const MarkEngramMessagesSeenBody = zod.object({
 
 export const MarkEngramMessagesSeenResponse = zod.object({
   "updated": zod.number()
+})
+
+
+/**
+ * @summary Open an operator-directed simulation with a specific scenario premise
+ */
+export const CreateSimulationBody = zod.object({
+  "engramId": zod.number(),
+  "premise": zod.string().describe('The specific scenario the simulation should explore'),
+  "maxSteps": zod.number().optional().describe('Optional step budget (capped server-side)')
+})
+
+export const CreateSimulationResponse = zod.object({
+  "id": zod.number(),
+  "engramId": zod.number(),
+  "spaceId": zod.number(),
+  "premise": zod.string(),
+  "status": zod.enum(['proposed', 'running', 'paused', 'ended']),
+  "currentStep": zod.number(),
+  "maxSteps": zod.number(),
+  "stepCooldownSeconds": zod.number(),
+  "lastSteppedAt": zod.string().nullable(),
+  "exitSummary": zod.string().nullable(),
+  "startedAt": zod.string().nullable(),
+  "pausedAt": zod.string().nullable(),
+  "endedAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
 })
 
 

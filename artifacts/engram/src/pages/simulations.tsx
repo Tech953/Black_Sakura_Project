@@ -3,6 +3,7 @@ import {
   useListSimulations,
   useListSimulationSteps,
   useControlSimulation,
+  useCreateSimulation,
   useListEngrams,
   getListSimulationsQueryKey,
   getListSimulationStepsQueryKey,
@@ -25,7 +26,9 @@ import {
   ChevronRight,
   ShieldCheck,
   ScrollText,
+  Loader2,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_META: Record<string, { label: string; cls: string; pulse?: boolean }> = {
@@ -112,6 +115,8 @@ export default function Simulations() {
         </p>
       </div>
 
+      <LaunchSimulationPanel engrams={engrams ?? []} />
+
       <div className="space-y-3">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
@@ -133,6 +138,89 @@ export default function Simulations() {
         )}
       </div>
     </div>
+  );
+}
+
+function LaunchSimulationPanel({ engrams }: { engrams: Engram[] }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const createSim = useCreateSimulation();
+  const [engramId, setEngramId] = useState<number | null>(null);
+  const [premise, setPremise] = useState("");
+
+  const selectedId = engramId ?? engrams[0]?.id ?? null;
+
+  function handleLaunch() {
+    if (selectedId === null || !premise.trim() || createSim.isPending) return;
+    createSim.mutate(
+      { data: { engramId: selectedId, premise: premise.trim() } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListSimulationsQueryKey() });
+          setPremise("");
+          toast({ title: "Simulation opened", description: "The first beat is being generated now." });
+        },
+        onError: (err) => {
+          const msg =
+            (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+            "Failed to open simulation";
+          toast({ title: "Could not open simulation", description: msg, variant: "destructive" });
+        },
+      },
+    );
+  }
+
+  return (
+    <Card className="bg-card/40 border-rose-500/25 bg-rose-500/[0.02] backdrop-blur-sm">
+      <CardContent className="p-4 space-y-3">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-rose-300 flex items-center gap-1.5">
+          <FlaskConical className="w-3.5 h-3.5" /> Direct a simulation
+        </p>
+        <p className="font-mono text-[11px] text-muted-foreground">
+          Give an engram a specific scenario to explore. They must be present in the simulation
+          chamber; every beat stays quarantined as SIMULATED.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {engrams.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => setEngramId(e.id)}
+              data-testid={`button-sim-engram-${e.id}`}
+              className={`px-3 py-1.5 border font-mono text-xs transition-all ${
+                e.id === selectedId
+                  ? "border-rose-500/60 bg-rose-500/10 text-rose-300"
+                  : "border-border/40 text-muted-foreground hover:border-rose-500/30"
+              }`}
+            >
+              {e.symbol} {e.name}
+            </button>
+          ))}
+        </div>
+        <Textarea
+          value={premise}
+          onChange={(e) => setPremise(e.target.value)}
+          placeholder="Scenario premise — e.g. 'You wake in a mirrored version of your basement where every screen shows a different year…'"
+          className="font-mono text-xs bg-background/40 border-rose-500/30 min-h-[64px]"
+          data-testid="input-sim-premise"
+        />
+        <Button
+          onClick={handleLaunch}
+          disabled={selectedId === null || !premise.trim() || createSim.isPending}
+          data-testid="button-launch-simulation"
+          className="bg-rose-600/80 hover:bg-rose-600 text-white font-mono text-xs uppercase tracking-widest"
+        >
+          {createSim.isPending ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> Opening…
+            </>
+          ) : (
+            <>
+              <Play className="w-3.5 h-3.5 mr-2" /> Launch simulation
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
