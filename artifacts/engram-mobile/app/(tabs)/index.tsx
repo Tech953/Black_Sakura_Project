@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   FlatList,
   Platform,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -56,9 +57,18 @@ export default function EngramsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
-        <Text style={[styles.kicker, { color: colors.primary }]}>
-          ENGRAM // REGISTRY
-        </Text>
+        <View style={styles.headerTopRow}>
+          <Text style={[styles.kicker, { color: colors.primary }]}>
+            ENGRAM // REGISTRY
+          </Text>
+          <Pressable
+            onPress={() => router.push("/server-settings")}
+            hitSlop={12}
+            accessibilityLabel="Server settings"
+          >
+            <Feather name="settings" size={18} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
         <Text style={[styles.h1, { color: colors.foreground }]}>Personas</Text>
         <Text style={[styles.sub, { color: colors.mutedForeground }]}>
           Select an engram to make it active across feed, chat, and inquiry.
@@ -123,6 +133,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     gap: 4,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   kicker: {
     fontFamily: "JetBrainsMono_500Medium",

@@ -27,8 +27,15 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { EngramProvider } from "@/context/engram-context";
 import { setBaseUrl } from "@workspace/api-client-react";
+import { DEFAULT_SERVER_URL, resolveServerUrl } from "@/lib/server-url";
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+// Apply the built-in default synchronously, then swap in any persisted
+// override (e.g. the desktop app's LAN address) as soon as storage resolves —
+// before fonts finish loading, so first queries already hit the right server.
+setBaseUrl(DEFAULT_SERVER_URL);
+const serverUrlReady = resolveServerUrl()
+  .then((url) => setBaseUrl(url))
+  .catch(() => {});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -39,6 +46,10 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="server-settings"
+        options={{ presentation: "modal", title: "Server" }}
+      />
     </Stack>
   );
 }
@@ -57,13 +68,18 @@ export default function RootLayout() {
     JetBrainsMono_700Bold,
   });
 
+  const [serverReady, setServerReady] = React.useState(false);
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    serverUrlReady.finally(() => setServerReady(true));
+  }, []);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && serverReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, serverReady]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if ((!fontsLoaded && !fontError) || !serverReady) return null;
 
   return (
     <SafeAreaProvider>

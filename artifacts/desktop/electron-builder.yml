@@ -59,6 +59,11 @@ extraResources:
   # executables that notarization would otherwise reject).
   - from: resources/bin
     to: bin
+  # Bundled local LLM (llama.cpp server + model) staged by prepare-resources.mjs
+  # when the .llama cache is present. Enables the zero-setup "Built-in" offline
+  # mode; harmless no-op when the directory was not staged.
+  - from: resources/llama
+    to: llama
 
 linux:
   target:
@@ -108,6 +113,11 @@ mac:
   binaries:
     - Contents/Resources/bin/ffmpeg
     - Contents/Resources/bin/ffprobe
+    # Bundled llama.cpp model server (staged by prepare-resources.mjs when the
+    # .llama cache is present). Must be signed like every other executable or
+    # notarization rejects the app. Harmless if the file is absent (unsigned
+    # local builds skip signing entirely).
+    - Contents/Resources/llama/bin/llama-server
   # notarize runs only after a successful sign, and only when Apple credentials
   # are present in the environment (APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD +
   # APPLE_TEAM_ID, or the APPLE_API_KEY trio); otherwise it is skipped gracefully.

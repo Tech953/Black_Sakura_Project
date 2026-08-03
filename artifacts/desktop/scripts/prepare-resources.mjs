@@ -111,4 +111,71 @@ cpSync(ffprobeSrc, ffprobeOut);
 chmodSync(ffmpegOut, 0o755);
 chmodSync(ffprobeOut, 0o755);
 
+// 6. Bundled local LLM (llama.cpp server + GGUF model) so chat/analysis/
+//    simulation run fully offline with zero setup. Staged from the repo-root
+//    `.llama/` cache (gitignored). The target platform defaults to the host,
+//    overridable via LLAMA_TARGET (win32|linux|darwin) for cross-packaging
+//    (e.g. building the Windows portable zip from a Linux workspace).
+//    If the cache is missing, the build still succeeds WITHOUT a bundled
+//    model — the app then falls back to the external-local-server mode.
+const llamaCache = path.join(repoRoot, ".llama");
+const llamaTarget = process.env.LLAMA_TARGET || process.platform;
+const LLAMA_MODEL_FILE = "Qwen3-4B-Instruct-2507-Q4_K_M.gguf";
+const modelSrc = path.join(llamaCache, LLAMA_MODEL_FILE);
+
+function stageLlama() {
+  const llamaOut = path.join(resources, "llama");
+  const binOutDir = path.join(llamaOut, "bin");
+  // Always create the dir so the electron-builder extraResources entry never
+  // fails, even when no bundled model is staged.
+  mkdirSync(llamaOut, { recursive: true });
+
+  let binSrcDir = null;
+  if (llamaTarget === "win32") {
+    // Unzipped contents of the llama.cpp win-cpu-x64 release.
+    const winDir = path.join(llamaCache, "win-x64");
+    if (existsSync(winDir)) binSrcDir = winDir;
+  } else {
+    // Linux/macOS release layout: a single dir with llama-server + shared libs.
+    const dirs = existsSync(llamaCache)
+      ? readdirSync(llamaCache).filter((d) => /^llama-b\d+$/.test(d))
+      : [];
+    if (dirs.length > 0) binSrcDir = path.join(llamaCache, dirs[0]);
+  }
+
+  if (!binSrcDir || !existsSync(modelSrc)) {
+    console.warn(
+      `[desktop] no bundled LLM staged (cache ${llamaCache} incomplete for target ${llamaTarget}); ` +
+        "the app will fall back to external local-server mode.",
+    );
+    return;
+  }
+
+  mkdirSync(binOutDir, { recursive: true });
+  // Copy ONLY the server executable and its shared libraries — the release
+  // archives also contain a dozen CLI tools (llama.exe, llama-tts, …) that
+  // would bloat the installer and (on macOS) widen the signing/notarization
+  // surface for no benefit.
+  const keep = (name) =>
+    /^llama-server(\.exe)?$/.test(name) ||
+    /\.(dll|dylib|metal)$/.test(name) ||
+    /\.so(\.\d+)*$/.test(name);
+  for (const entry of readdirSync(binSrcDir)) {
+    if (!keep(entry)) continue;
+    cpSync(path.join(binSrcDir, entry), path.join(binOutDir, entry), {
+      dereference: true,
+    });
+  }
+  cpSync(modelSrc, path.join(llamaOut, "model.gguf"));
+  if (llamaTarget !== "win32") {
+    const serverBin = path.join(binOutDir, "llama-server");
+    if (existsSync(serverBin)) chmodSync(serverBin, 0o755);
+  }
+  console.log(
+    `[desktop] bundled LLM staged (${llamaTarget}) -> ${llamaOut}`,
+  );
+}
+
+stageLlama();
+
 console.log("[desktop] resources prepared ->", resources);

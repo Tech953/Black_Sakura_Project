@@ -50,3 +50,4 @@ Thumbs.db
 .android-sdk/
 downloads/*.apk
 downloads/*.zip
+.llama/
