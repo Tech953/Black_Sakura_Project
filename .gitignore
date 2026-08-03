@@ -52,3 +52,4 @@ downloads/*.apk
 downloads/*.zip
 .llama/
 .keys/
+.ffmpeg/
