@@ -44,6 +44,14 @@ large (an APK is ~30–100 MB; desktop installers are bigger), which permanently
 increases repo size — if you'd rather not commit a large binary, rely on the
 GitHub release fallback above (no commit needed).
 
+## Refreshing after a rebuild
+
+Run **`pnpm run build:installers`** (or `./scripts/build-installers.sh`) from
+the repo root to rebuild both the Windows portable zip and the Android APK and
+refresh this folder in one step (`--desktop` / `--android` build just one).
+Filenames carry the current app versions, which is what the Download page
+displays — so rerun this after bumping a version or changing app code.
+
 ## Building the installers
 
 You cannot build desktop installers or an Android APK inside Replit/Deploy

@@ -9,6 +9,7 @@ A full-stack dashboard for "PYRI", an AI companion on a fictional ENGRAM cogniti
 - `pnpm run typecheck` / `pnpm run build` — typecheck / build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks + Zod from the OpenAPI spec (run after editing `openapi.yaml`)
 - `pnpm --filter @workspace/db run push` — push DB schema (dev only; run after schema changes)
+- `pnpm run build:installers` — rebuild the bundled installers served by the Download page (Windows portable zip + Android APK) and refresh `downloads/` in one step (`--desktop` / `--android` to build just one; APK needs the prebuilt `android/` project + `.android-sdk`, see `docs/building-the-android-apk.md`).
 - Desktop installer: `pnpm --filter @workspace/desktop run build` then `... exec electron-builder --linux|--mac|--win` **on the matching OS** → `artifacts/desktop/release/`. Cross-OS via `.github/workflows/desktop-build.yml` (a `v*` tag push builds + publishes; see Gotchas).
 
 ### Env
