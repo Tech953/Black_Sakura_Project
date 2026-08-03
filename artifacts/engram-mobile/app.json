@@ -7,6 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "engram-mobile",
     "userInterfaceStyle": "dark",
+    "jsEngine": "hermes",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/icon.png",

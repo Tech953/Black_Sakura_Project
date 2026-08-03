@@ -36,6 +36,14 @@ minimumReleaseAgeExclude:
   - '@replit/*'
   - stripe-replit-sync
 
+packageExtensions:
+  react-native-worklets:
+    dependencies:
+      '@babel/types': ^7.0.0
+      '@babel/generator': ^7.0.0
+      '@babel/parser': ^7.0.0
+      '@babel/traverse': ^7.0.0
+
 onlyBuiltDependencies:
   - '@swc/core'
   - electron
