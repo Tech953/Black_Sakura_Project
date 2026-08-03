@@ -30,6 +30,12 @@ const h = vi.hoisted(() => {
       id,
       ...patch,
     })),
+    claimSimulationStep: vi.fn(async (id: number, expectedCurrentStep: number, now: Date) => ({
+      id,
+      currentStep: expectedCurrentStep + 1,
+      lastSteppedAt: now,
+      status: "running",
+    })),
     generateSimulationPremise: vi.fn(async () => "What if the vault flooded?"),
     generateSimulationStep: vi.fn(async () => "The water rises another inch."),
     generateSimulationExitSummary: vi.fn(async () => "I learned the drains hold."),
@@ -51,6 +57,7 @@ vi.mock("./simulations-store", () => ({
   loadRunningSimulations: h.loadRunningSimulations,
   loadSimulationSteps: h.loadSimulationSteps,
   updateSimulation: h.updateSimulation,
+  claimSimulationStep: h.claimSimulationStep,
 }));
 vi.mock("./engram-generation", () => ({
   generateSimulationPremise: h.generateSimulationPremise,
@@ -160,7 +167,8 @@ describe("maybeRunSimulationStep — stepping", () => {
     expect(h.appendSimulationStep).toHaveBeenCalledWith(
       expect.objectContaining({ stepNumber: 2, confidence: SIMULATION_STEP_CONFIDENCE }),
     );
-    expect(h.updateSimulation).toHaveBeenCalledWith(7, expect.objectContaining({ currentStep: 2 }));
+    // The step counter is bumped atomically via the CAS claim, not a blind update.
+    expect(h.claimSimulationStep).toHaveBeenCalledWith(7, 1, expect.any(Date));
     expect(h.generateSimulationPremise).not.toHaveBeenCalled();
   });
 

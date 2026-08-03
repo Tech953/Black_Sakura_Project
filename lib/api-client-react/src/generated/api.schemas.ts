@@ -422,6 +422,21 @@ export interface SimulationStep {
   createdAt: string;
 }
 
+export interface EngramSynthesisInput {
+  /** Operator instructions shaping the synthesized persona */
+  stipulations: string;
+  /** Restrict archive grounding to these engrams' observed material */
+  sourceEngramIds?: number[];
+}
+
+export interface SimulationCreateInput {
+  engramId: number;
+  /** The specific scenario the simulation should explore */
+  premise: string;
+  /** Optional step budget (capped server-side) */
+  maxSteps?: number;
+}
+
 export type SimulationControlInputAction = typeof SimulationControlInputAction[keyof typeof SimulationControlInputAction];
 
 

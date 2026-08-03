@@ -506,6 +506,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/EngramTickResult"
 
+  /engrams/synthesize:
+    post:
+      operationId: synthesizeEngram
+      tags: [engrams]
+      summary: Synthesize a new engram from the processed observation archive plus operator stipulations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngramSynthesisInput"
+      responses:
+        "201":
+          description: The newly created engram
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Engram"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "502":
+          description: Synthesis generation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
   /engrams/state:
     get:
       operationId: getEngramStates
@@ -1007,6 +1038,41 @@ paths:
                 $ref: "#/components/schemas/MarkMessagesSeenResult"
 
   /simulations:
+    post:
+      operationId: createSimulation
+      tags: [simulations]
+      summary: Open an operator-directed simulation with a specific scenario premise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationCreateInput"
+      responses:
+        "201":
+          description: The newly opened simulation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Simulation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "404":
+          description: Engram not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "409":
+          description: Engram not in chamber, incapable, or already simulating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
     get:
       operationId: listSimulations
       tags: [simulations]
@@ -2228,6 +2294,32 @@ components:
         - narrative
         - worldModelEntryId
         - createdAt
+
+    EngramSynthesisInput:
+      type: object
+      required: [stipulations]
+      properties:
+        stipulations:
+          type: string
+          description: Operator instructions shaping the synthesized persona
+        sourceEngramIds:
+          type: array
+          items:
+            type: integer
+          description: Restrict archive grounding to these engrams' observed material
+
+    SimulationCreateInput:
+      type: object
+      required: [engramId, premise]
+      properties:
+        engramId:
+          type: integer
+        premise:
+          type: string
+          description: The specific scenario the simulation should explore
+        maxSteps:
+          type: integer
+          description: Optional step budget (capped server-side)
 
     SimulationControlInput:
       type: object

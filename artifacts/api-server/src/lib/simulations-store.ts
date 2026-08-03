@@ -117,6 +117,36 @@ export async function updateSimulation(
   return row;
 }
 
+/**
+ * Atomically claim the next step of a running simulation (compare-and-swap on
+ * currentStep + status). Returns the updated row when this caller won the claim,
+ * or null when another caller (engine tick vs. immediate kick vs. concurrent
+ * control) already advanced it — the loser must skip, so a step number can never
+ * be generated or appended twice.
+ */
+export async function claimSimulationStep(
+  id: number,
+  expectedCurrentStep: number,
+  now: Date,
+): Promise<EngramSimulation | null> {
+  const [row] = await db
+    .update(engramSimulationsTable)
+    .set({
+      currentStep: expectedCurrentStep + 1,
+      lastSteppedAt: now,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(engramSimulationsTable.id, id),
+        eq(engramSimulationsTable.currentStep, expectedCurrentStep),
+        eq(engramSimulationsTable.status, "running"),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
 export async function loadSimulationSteps(
   simulationId: number,
 ): Promise<EngramSimulationStep[]> {

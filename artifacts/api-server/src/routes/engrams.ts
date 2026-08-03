@@ -21,7 +21,12 @@ import {
   CreateEngramInquiryBody,
 } from "@workspace/api-zod";
 import { runTick, forceTransmission, COOLDOWN_MS } from "../services/engram-engine";
-import { generateProbeResponse, generateDevelopment } from "../lib/engram-generation";
+import {
+  generateProbeResponse,
+  generateDevelopment,
+  generateEngramSynthesis,
+} from "../lib/engram-generation";
+import { engramWorldModelTable } from "@workspace/db/schema";
 
 const router = Router();
 
@@ -42,6 +47,94 @@ router.get("/engrams", async (_req, res) => {
 router.post("/engrams/tick", async (_req, res) => {
   const result = await runTick({ force: true });
   res.json(result);
+});
+
+// Synthesize a brand-new engram from the processed local archive plus operator
+// stipulations ("neural plasticity emulation"). Only OBSERVED / designer-grade
+// provenance material (observed, remembered) feeds synthesis — simulated or
+// inferred content must never seed a real persona (quarantine invariant).
+// Must be registered before "/engrams/:id" so "synthesize" is not parsed as an id.
+router.post("/engrams/synthesize", async (req, res) => {
+  const body = req.body as { stipulations?: unknown; sourceEngramIds?: unknown };
+  const stipulations =
+    typeof body.stipulations === "string" ? body.stipulations.trim().slice(0, 2000) : "";
+  if (!stipulations) {
+    res.status(400).json({ error: "stipulations (a non-empty string) is required" });
+    return;
+  }
+  const sourceEngramIds = Array.isArray(body.sourceEngramIds)
+    ? body.sourceEngramIds.filter((x): x is number => typeof x === "number")
+    : [];
+
+  const existing = await db.select().from(engramsTable);
+
+  // Gather grounded archive material: observed/remembered world-model entries,
+  // optionally restricted to specific source engrams.
+  const conditions = [
+    inArray(engramWorldModelTable.provenance, ["observed", "remembered"]),
+    ...(sourceEngramIds.length
+      ? [inArray(engramWorldModelTable.engramId, sourceEngramIds)]
+      : []),
+  ];
+  const entries = await db
+    .select()
+    .from(engramWorldModelTable)
+    .where(and(...conditions))
+    .orderBy(desc(engramWorldModelTable.createdAt))
+    .limit(80);
+
+  const nameById = new Map(existing.map((e) => [e.id, e.name]));
+  const archiveDigest = entries
+    .map(
+      (e) =>
+        `- [${e.provenance}${nameById.has(e.engramId) ? ` via ${nameById.get(e.engramId)}` : ""}] ${e.content.replace(/\s+/g, " ").slice(0, 240)}`,
+    )
+    .join("\n");
+
+  const synthesized = await generateEngramSynthesis({
+    stipulations,
+    archiveDigest,
+    existingNames: existing.map((e) => e.name),
+  });
+  if (!synthesized) {
+    res.status(502).json({ error: "Synthesis failed — the model did not return a usable engram config. Try again or refine the stipulations." });
+    return;
+  }
+
+  // Unique slug from the name.
+  const baseSlug =
+    synthesized.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "synthesized";
+  const taken = new Set(existing.map((e) => e.slug));
+  let slug = baseSlug;
+  for (let i = 2; taken.has(slug); i++) slug = `${baseSlug}-${i}`;
+
+  const [row] = await db
+    .insert(engramsTable)
+    .values({
+      slug,
+      name: synthesized.name,
+      title: synthesized.title,
+      symbol: synthesized.symbol,
+      origin: synthesized.origin,
+      voiceProfile: synthesized.voiceProfile,
+      emotionalBaseline: synthesized.emotionalBaseline,
+      environmentAnchor: synthesized.environmentAnchor,
+      memorySeed: synthesized.memorySeed,
+      guardrails: synthesized.guardrails,
+      drives: synthesized.drives,
+      focusThemes: synthesized.focusThemes,
+      // New engrams wake up autonomous but in the default bounded mode; all
+      // rate caps, quiet hours and the human-contact bus apply as usual.
+      autonomyEnabled: true,
+      mode: "full_bounded",
+    })
+    .returning();
+
+  res.status(201).json(row);
 });
 
 // Must be registered before "/engrams/:id" so "state" is not parsed as an id.

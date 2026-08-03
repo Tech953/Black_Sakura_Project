@@ -6,6 +6,7 @@
 - [Desktop online key storage](desktop-online-key-storage.md) — security rule for how the desktop build persists the cloud LLM API key (no plaintext).
 - [Offline LLM seam](offline-llm-seam.md) — why model calls go through an app-level OpenAI-compatible client, not the Replit integration package.
 - [Media perception provenance & idempotency](media-perception.md) — invariants for uploads→OBSERVED world-model entries: provenance hardcoding, retry idempotency, deletion, worker test mock.
+- [Engram synthesis & directed sims](engram-synthesis.md) — new personas seed from observed/remembered only; simulation steps are CAS-claimed (never bypass); initiation is drive-based, not cadence-bound.
 - [Simulation quarantine](simulation-quarantine.md) — how simulated engram state is structurally prevented from becoming observed reality.
 - [Artifact generation subsystem](artifact-generation.md) — how engram artifact generation mirrors media perception; why there is no world-model "generated" write path.
 - [Engram initiative & human-contact policy](engram-initiative-policy.md) — safety semantics of the autonomy/human-contact layer (quiet mode, fail-closed modes, anti-coercion).

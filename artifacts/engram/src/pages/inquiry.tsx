@@ -3,6 +3,7 @@ import {
   useListEngrams,
   useCreateEngramInquiry,
   useListEngramInquiries,
+  useSynthesizeEngram,
   getListEngramInquiriesQueryKey,
   getListEngramsQueryKey,
 } from "@workspace/api-client-react";
@@ -14,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageCircleQuestion, Wrench, Search, Globe, SlidersHorizontal } from "lucide-react";
+import { MessageCircleQuestion, Wrench, Search, Globe, SlidersHorizontal, Sparkles, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Kind = (typeof EngramInquiryInputKind)[keyof typeof EngramInquiryInputKind];
@@ -62,6 +63,87 @@ function ConfigDelta({ delta }: { delta: Record<string, unknown> }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function SynthesizePanel() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const synthesize = useSynthesizeEngram();
+  const [open, setOpen] = useState(false);
+  const [stipulations, setStipulations] = useState("");
+
+  function handleSynthesize() {
+    if (!stipulations.trim() || synthesize.isPending) return;
+    synthesize.mutate(
+      { data: { stipulations: stipulations.trim() } },
+      {
+        onSuccess: (row) => {
+          queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
+          setStipulations("");
+          toast({
+            title: "Engram synthesized",
+            description: `${row.name} — "${row.title}" has been formed from the observation archive.`,
+          });
+        },
+        onError: () =>
+          toast({
+            title: "Synthesis failed",
+            description: "The generator did not return a usable persona. Refine the stipulations and try again.",
+            variant: "destructive",
+          }),
+      },
+    );
+  }
+
+  return (
+    <Card className="bg-card/40 border-violet-500/25 bg-violet-500/[0.02] backdrop-blur-sm">
+      <CardContent className="p-4 space-y-3">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          data-testid="button-toggle-synthesize"
+          className="flex items-center gap-2 text-violet-300 font-mono text-xs uppercase tracking-widest w-full"
+        >
+          {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          <Sparkles className="w-3.5 h-3.5" /> Synthesize a new engram
+          <span className="ml-auto normal-case tracking-normal text-[10px] text-muted-foreground">
+            neural plasticity — recombine the processed archive into a new persona
+          </span>
+        </button>
+        {open && (
+          <div className="space-y-3">
+            <p className="font-mono text-[11px] text-muted-foreground">
+              A new persona is grounded in OBSERVED archive material only (simulated content is
+              quarantined and never seeds a real engram), then shaped by your stipulations. It wakes
+              autonomous, in the default bounded mode, with all rate caps and contact policies applied.
+            </p>
+            <Textarea
+              value={stipulations}
+              onChange={(e) => setStipulations(e.target.value)}
+              placeholder="Describe who should emerge: role, temperament, purpose, how they should relate to you…"
+              className="font-mono text-xs bg-background/40 border-violet-500/30 min-h-[80px]"
+              data-testid="input-synthesize-stipulations"
+            />
+            <Button
+              onClick={handleSynthesize}
+              disabled={!stipulations.trim() || synthesize.isPending}
+              data-testid="button-synthesize"
+              className="bg-violet-600/80 hover:bg-violet-600 text-white font-mono text-xs uppercase tracking-widest"
+            >
+              {synthesize.isPending ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> Synthesizing…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 mr-2" /> Synthesize
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -140,6 +222,8 @@ export default function Inquiry() {
           Probe an engram in her own voice, or develop her — request a change and watch her reshape her own environment
         </p>
       </div>
+
+      <SynthesizePanel />
 
       {/* Engram selector */}
       <div className="flex flex-wrap gap-2">

@@ -246,8 +246,12 @@ export async function runTick(opts: { force?: boolean } = {}): Promise<TickResul
     for (const engram of engrams) {
       const last = engram.lastTickAt ? new Date(engram.lastTickAt).getTime() : 0;
       const cadenceMs = engram.tickCadenceSeconds * 1000;
-      if (!opts.force && now - last < cadenceMs) continue;
-      ticked++;
+      // Cadence gates the routine persist-state pass, NOT initiation: pressure is
+      // recomputed from lastTickAt every global tick, and a drive that crosses the
+      // initiation threshold may fire immediately — engrams self-initiate on drive
+      // pressure, not on a fixed timestamp schedule. Cooldown, backoff, rate caps
+      // and the human-contact policy still bound how often that can happen.
+      const cadenceDue = opts.force || now - last >= cadenceMs;
 
       const { state, charges } = accrue(engram, now);
 
@@ -283,9 +287,16 @@ export async function runTick(opts: { force?: boolean } = {}): Promise<TickResul
       const inBackoff = now < backoffUntil;
 
       if (!capabilities.canIdle || !crossed || onCooldown || inBackoff) {
-        await persistState();
+        // Nothing fires this tick. Only persist on the engram's own cadence so a
+        // 20s global tick doesn't multiply DB writes; unpersisted pressure is not
+        // lost — accrue() recomputes it from lastTickAt.
+        if (cadenceDue) {
+          ticked++;
+          await persistState();
+        }
         continue;
       }
+      ticked++;
 
       // Rate caps (rolling hour / day).
       const recent = await recentTransmissions(engram.id, now - 24 * 3600_000);

@@ -34,6 +34,7 @@ import type {
   EngramLiveState,
   EngramMessage,
   EngramPresence,
+  EngramSynthesisInput,
   EngramTickResult,
   EngramTransmission,
   EvolutionEntry,
@@ -75,6 +76,7 @@ import type {
   PersonalityProfile,
   Simulation,
   SimulationControlInput,
+  SimulationCreateInput,
   SimulationStep,
   SystemStats,
   WorldModelEntry,
@@ -2185,6 +2187,76 @@ export const useTickEngrams = <TError = ErrorType<unknown>,
       return useMutation(getTickEngramsMutationOptions(options));
     }
 
+export const getSynthesizeEngramUrl = () => {
+
+
+
+
+  return `/api/engrams/synthesize`
+}
+
+/**
+ * @summary Synthesize a new engram from the processed observation archive plus operator stipulations
+ */
+export const synthesizeEngram = async (engramSynthesisInput: EngramSynthesisInput, options?: RequestInit): Promise<Engram> => {
+
+  return customFetch<Engram>(getSynthesizeEngramUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(engramSynthesisInput)
+  }
+);}
+
+
+
+
+export const getSynthesizeEngramMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof synthesizeEngram>>, TError,{data: BodyType<EngramSynthesisInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof synthesizeEngram>>, TError,{data: BodyType<EngramSynthesisInput>}, TContext> => {
+
+const mutationKey = ['synthesizeEngram'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof synthesizeEngram>>, {data: BodyType<EngramSynthesisInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  synthesizeEngram(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SynthesizeEngramMutationResult = NonNullable<Awaited<ReturnType<typeof synthesizeEngram>>>
+    export type SynthesizeEngramMutationBody = BodyType<EngramSynthesisInput>
+    export type SynthesizeEngramMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Synthesize a new engram from the processed observation archive plus operator stipulations
+ */
+export const useSynthesizeEngram = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof synthesizeEngram>>, TError,{data: BodyType<EngramSynthesisInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof synthesizeEngram>>,
+        TError,
+        {data: BodyType<EngramSynthesisInput>},
+        TContext
+      > => {
+      return useMutation(getSynthesizeEngramMutationOptions(options));
+    }
+
 export const getGetEngramStatesUrl = () => {
 
 
@@ -3747,6 +3819,76 @@ export const useMarkEngramMessagesSeen = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getMarkEngramMessagesSeenMutationOptions(options));
+    }
+
+export const getCreateSimulationUrl = () => {
+
+
+
+
+  return `/api/simulations`
+}
+
+/**
+ * @summary Open an operator-directed simulation with a specific scenario premise
+ */
+export const createSimulation = async (simulationCreateInput: SimulationCreateInput, options?: RequestInit): Promise<Simulation> => {
+
+  return customFetch<Simulation>(getCreateSimulationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(simulationCreateInput)
+  }
+);}
+
+
+
+
+export const getCreateSimulationMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSimulation>>, TError,{data: BodyType<SimulationCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSimulation>>, TError,{data: BodyType<SimulationCreateInput>}, TContext> => {
+
+const mutationKey = ['createSimulation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSimulation>>, {data: BodyType<SimulationCreateInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSimulation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSimulationMutationResult = NonNullable<Awaited<ReturnType<typeof createSimulation>>>
+    export type CreateSimulationMutationBody = BodyType<SimulationCreateInput>
+    export type CreateSimulationMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Open an operator-directed simulation with a specific scenario premise
+ */
+export const useCreateSimulation = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSimulation>>, TError,{data: BodyType<SimulationCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSimulation>>,
+        TError,
+        {data: BodyType<SimulationCreateInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSimulationMutationOptions(options));
     }
 
 export const getListSimulationsUrl = (params?: ListSimulationsParams,) => {
