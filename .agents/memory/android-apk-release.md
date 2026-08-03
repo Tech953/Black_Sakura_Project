@@ -25,14 +25,21 @@ unchanged regardless of how the page fetches.
   idempotent by deleting any same-named asset first. Order the job `needs: build`
   (so the draft exists) and make the `publish` job `needs: [build, android]`.
 
-## No-Expo-account, no-secrets APK signing
-- `expo prebuild --platform android` + Gradle `:app:assembleRelease` yields an
-  **installable** APK because the RN/Expo template's `release` build type falls back to
-  the **debug** signing config when no release keystore exists.
-- **Why it matters:** a debug/ephemeral signature is **not update-safe** — installing a
-  newer build over an older install can require an uninstall first. Fine for sideload
-  distribution; add an optional release keystore (via secrets) for seamless in-place
-  updates. Never commit a keystore.
+## Release keystore signing (current setup)
+- A private release keystore lives at `.keys/engram-release.keystore` (gitignored;
+  creds in `.keys/android-signing.env`). Gradle reads `ANDROID_KEYSTORE_PATH/…PASSWORD/
+  …ALIAS/…KEY_PASSWORD` **at build time** via an Expo config plugin
+  (`plugins/withAndroidReleaseSigning.js`, registered in app.json) so the signing
+  config survives `expo prebuild --clean`. With the env unset, `signingConfigs.release`
+  falls back to the debug key (sideloadable, not update-safe).
+- **Groovy trap:** `signingConfig (cond) ? a : b` parses as a method call on the
+  boolean and crashes AGP ("Boolean cannot be cast to SigningConfig"). Put the
+  fallback inside the signingConfig block instead of a ternary at the buildType.
+- CI (android job) decodes `ANDROID_KEYSTORE_BASE64` and verifies the APK isn't
+  debug-signed when secrets are present. The repl's GitHub PAT could NOT set Actions
+  secrets (403 on actions/secrets public-key) — the user must add them; see
+  `.keys/README.md`. **Never lose or commit the keystore** — losing it permanently
+  breaks in-place updates for existing installs.
 
 ## OS/device detection ordering
 - An Android browser User-Agent string also contains the substring `linux`.
