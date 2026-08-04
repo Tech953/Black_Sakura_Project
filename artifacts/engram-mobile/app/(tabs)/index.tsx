@@ -115,7 +115,7 @@ export default function EngramsScreen() {
             accessibilityLabel="Open server settings"
           >
             <Text style={[styles.retryLink, { color: colors.mutedForeground }]}>
-              Check server address
+              Check server address or go offline
             </Text>
           </Pressable>
         </View>

@@ -67,7 +67,12 @@
   },
   "dependencies": {
     "expo": "~54.0.35",
+    "expo-file-system": "^57.0.1",
+    "expo-sqlite": "^57.0.1",
+    "llama.rn": "^0.12.8",
     "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native": "0.81.5",
+    "@workspace/engram-core": "workspace:*",
+    "@workspace/db": "workspace:*"
   }
 }

@@ -8,8 +8,17 @@ import React, {
   useState,
 } from "react";
 
+import { isOfflineMode } from "@/lib/offline/mode";
+
 const STORAGE_SELECTED = "engram.selectedId";
 const STORAGE_CONVO_MAP = "engram.conversationMap";
+
+// Conversation IDs are backend-specific: server conversations live in the
+// server DB, offline conversations in on-device SQLite. Scope map keys by
+// mode so an ID from one backend is never reused against the other.
+function convoKey(engramId: number): string {
+  return isOfflineMode() ? `off:${engramId}` : String(engramId);
+}
 
 type ConversationMap = Record<string, number>;
 
@@ -62,14 +71,14 @@ export function EngramProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getConversationId = useCallback(
-    (engramId: number): number | null => conversationMap[String(engramId)] ?? null,
+    (engramId: number): number | null => conversationMap[convoKey(engramId)] ?? null,
     [conversationMap],
   );
 
   const setConversationId = useCallback(
     (engramId: number, conversationId: number) => {
       setConversationMap((prev) => {
-        const next = { ...prev, [String(engramId)]: conversationId };
+        const next = { ...prev, [convoKey(engramId)]: conversationId };
         AsyncStorage.setItem(STORAGE_CONVO_MAP, JSON.stringify(next)).catch(
           () => {},
         );
