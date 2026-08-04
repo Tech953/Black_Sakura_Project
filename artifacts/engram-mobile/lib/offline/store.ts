@@ -119,6 +119,7 @@ function serializeEngram(row: EngramRow): Record<string, unknown> {
     driveState: seed.driveState ?? {},
     currentMood: row.currentMood ?? seed.currentMood ?? null,
     isChatActive: row.isChatActive === 1,
+    isArchival: seed.isArchival ?? false,
     lastTickAt: null,
     lastTransmissionAt: null,
     backoffUntil: null,
