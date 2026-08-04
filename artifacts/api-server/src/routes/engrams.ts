@@ -350,8 +350,11 @@ router.post("/engrams/:id/inquiries", async (req, res) => {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
-  if (rejectIfArchival(engram, res)) return;
   const { kind, question } = parsedBody.data;
+  // Archival branches stay interactive through PROBE inquiries (pure Q&A —
+  // nothing about the engram changes; the exchange is only appended to the
+  // inquiry log). DEVELOP would tune the preserved persona, so it stays locked.
+  if (kind !== "probe" && rejectIfArchival(engram, res)) return;
 
   try {
     if (kind === "probe") {

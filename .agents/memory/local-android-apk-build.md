@@ -21,6 +21,9 @@ Also:
 - Metro decides Hermes-targeting from the transform profile; keep `extraPackagerArgs = ["--unstable-transform-profile", "hermes-stable"]` in the react block (gradle passes it anyway, but the profile alone does NOT transpile classes/async-arrows — hence the flags/plugins above).
 - Clear caches between transform-config changes: root `node_modules/.cache` and `/tmp/metro-*`, or hermesc keeps compiling a stale bundle.
 
+## llama.rn native libs (boot-crash trap)
+llama.rn ships NO Android .so in the npm tarball — a postinstall script (`install/download-native-artifacts.js`) downloads prebuilt jniLibs, and **pnpm blocks that postinstall by default**. Result: the APK builds fine but has zero librnllama*.so, while RNLlamaPackage is still autolinked into PackageList → instant native crash at app launch (before any JS). **Fix:** run `node ./install/download-native-artifacts.js` inside node_modules/llama.rn before assembling, then verify with `unzip -l app-release.apk | grep librnllama`. The prebuilt libs are 64-bit only (arm64-v8a, x86_64) — set `reactNativeArchitectures=arm64-v8a,x86_64` in android/gradle.properties or the 32-bit ABI splits crash the same way. Re-download after any pnpm install that recreates node_modules.
+
 ## Windows
 NSIS `.exe` needs wine → CI-only. Local Windows deliverable is the electron-builder portable zip target (`--win --publish never`), ~200MB.
 
