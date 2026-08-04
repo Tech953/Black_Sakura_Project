@@ -24,7 +24,35 @@ function desktopDownloadPath(filename: string): string {
   return `/api/download/desktop/file/${encodeURIComponent(filename)}`;
 }
 
-/** Stream a local file as an attachment. */
+/** Parse a single-range `Range: bytes=a-b` header. Returns null when absent
+ * or unsupported (multi-range / non-bytes), and "invalid" when unsatisfiable. */
+function parseRange(
+  header: string | undefined,
+  sizeBytes: number,
+): { start: number; end: number } | "invalid" | null {
+  if (!header) return null;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!m) return null; // multi-range or malformed — serve the whole file
+  const [, a, b] = m;
+  if (a === "" && b === "") return null;
+  let start: number;
+  let end: number;
+  if (a === "") {
+    // suffix range: last N bytes
+    const n = Number(b);
+    if (n === 0) return "invalid";
+    start = Math.max(0, sizeBytes - n);
+    end = sizeBytes - 1;
+  } else {
+    start = Number(a);
+    end = b === "" ? sizeBytes - 1 : Math.min(Number(b), sizeBytes - 1);
+  }
+  if (start >= sizeBytes || start > end) return "invalid";
+  return { start, end };
+}
+
+/** Stream a local file as an attachment, honoring single-range requests so
+ * browsers can resume interrupted multi-GB downloads instead of erroring. */
 function streamLocalFile(
   req: Request,
   res: Response,
@@ -34,9 +62,25 @@ function streamLocalFile(
   sizeBytes: number,
 ): void {
   res.setHeader("Content-Type", mime);
-  res.setHeader("Content-Length", String(sizeBytes));
   res.setHeader("Content-Disposition", safeAttachment(filename));
-  const stream = fs.createReadStream(filePath);
+  res.setHeader("Accept-Ranges", "bytes");
+
+  const range = parseRange(req.headers.range, sizeBytes);
+  if (range === "invalid") {
+    res.setHeader("Content-Range", `bytes */${sizeBytes}`);
+    res.status(416).end();
+    return;
+  }
+  let readOpts: { start: number; end: number } | undefined;
+  if (range) {
+    res.status(206);
+    res.setHeader("Content-Range", `bytes ${range.start}-${range.end}/${sizeBytes}`);
+    res.setHeader("Content-Length", String(range.end - range.start + 1));
+    readOpts = range;
+  } else {
+    res.setHeader("Content-Length", String(sizeBytes));
+  }
+  const stream = fs.createReadStream(filePath, readOpts);
   res.on("close", () => stream.destroy());
   stream.on("error", (err) => {
     req.log.error(err, "Failed to stream bundled download");
