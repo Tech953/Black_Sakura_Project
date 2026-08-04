@@ -297,10 +297,10 @@ export default function Inquiry() {
 
               {selected.isArchival && (
                 <p className="font-mono text-[10px] text-amber-400/80 uppercase tracking-wider">
-                  Archival branch — preserved read-only for continuity fidelity. Probing and development are disabled.
+                  Archival branch — the preserved record is immutable. Probing is open; development is disabled to keep the persona intact.
                 </p>
               )}
-              <Button onClick={handleSubmit} disabled={create.isPending || !question.trim() || selected.isArchival}
+              <Button onClick={handleSubmit} disabled={create.isPending || !question.trim() || (selected.isArchival && kind === "develop")}
                 className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground" data-testid="button-submit-inquiry">
                 {create.isPending
                   ? kind === "develop" ? "Reflecting..." : "Asking..."
