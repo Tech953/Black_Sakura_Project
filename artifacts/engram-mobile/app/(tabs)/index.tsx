@@ -86,8 +86,38 @@ export default function EngramsScreen() {
               <Feather name="wifi-off" size={28} color={colors.mutedForeground} />
             }
             title="Connection lost"
-            subtitle="Could not reach the ENGRAM core. Pull to retry."
+            subtitle="Could not reach the ENGRAM core."
           />
+          <Pressable
+            onPress={() => refetch()}
+            style={({ pressed }) => [
+              styles.retryButton,
+              {
+                borderColor: colors.primary,
+                backgroundColor: colors.card,
+                opacity: pressed || isRefetching ? 0.6 : 1,
+              },
+            ]}
+            accessibilityLabel="Retry connection"
+          >
+            {isRefetching ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather name="refresh-cw" size={16} color={colors.primary} />
+            )}
+            <Text style={[styles.retryText, { color: colors.primary }]}>
+              RETRY
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/server-settings")}
+            hitSlop={8}
+            accessibilityLabel="Open server settings"
+          >
+            <Text style={[styles.retryLink, { color: colors.mutedForeground }]}>
+              Check server address
+            </Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
@@ -163,5 +193,26 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginTop: 20,
+  },
+  retryText: {
+    fontFamily: "JetBrainsMono_500Medium",
+    fontSize: 13,
+    letterSpacing: 2,
+  },
+  retryLink: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    marginTop: 14,
+    textDecorationLine: "underline",
   },
 });
