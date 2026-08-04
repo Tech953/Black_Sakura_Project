@@ -1,5 +1,21 @@
-# The format of this file is identical to `.dockerignore`.
-# It is used to reduce the size of deployed images to make the process of publishing faster.
+# Exclude build machinery and huge artifacts from the published image.
+# The production server (api-server + web) doesn't need any of these; without
+# this list the image exceeds the publish upload limit (HTTP 413).
 
-# No need to store the pnpm store twice.
-.local
+# Desktop build toolchains / caches (only used when building installers in dev)
+.llama/
+.android-sdk/
+.ffmpeg/
+
+# Desktop packaging outputs (gigabytes; rebuilt on demand)
+artifacts/desktop/release/
+artifacts/desktop/resources/
+artifacts/desktop/dist/
+
+# The Windows portable zip is far too large to ship inside the app image.
+# The Android APK (~94 MB) stays bundled so the published site can serve it.
+downloads/*.zip
+
+# Mobile native build outputs
+artifacts/engram-mobile/android/app/build/
+artifacts/engram-mobile/android/.gradle/
