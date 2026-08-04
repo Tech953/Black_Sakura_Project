@@ -19,6 +19,7 @@ import {
 } from "../lib/hub-store";
 import { loadControls, updateControls } from "../lib/controls-store";
 import { publishEvent } from "../lib/events";
+import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 
 const router = Router();
 
@@ -97,6 +98,10 @@ router.put("/hub/presence/:engramId", async (req, res) => {
     .where(eq(engramsTable.id, parsedParams.data.engramId));
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
+    return;
+  }
+  if (await isArchivalEngram(engram.id)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
 

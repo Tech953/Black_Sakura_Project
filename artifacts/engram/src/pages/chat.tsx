@@ -407,7 +407,7 @@ export default function Chat() {
                         <span>◈</span>
                         <span className="uppercase tracking-wider text-[10px]">PYRI</span>
                       </button>
-                      {(engrams ?? []).map((e) => (
+                      {(engrams ?? []).filter((e) => !e.isArchival).map((e) => (
                         <button
                           key={e.id}
                           onClick={() => setEngramId(e.id)}
@@ -549,6 +549,11 @@ export default function Chat() {
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${liveConnected ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"}`} />
                   Live
                 </span>
+                {activeEngram?.isArchival && (
+                  <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-wider border-amber-400/40 text-amber-400/90">
+                    Archival · Continuity Line
+                  </Badge>
+                )}
                 <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-wider border-primary/30 text-primary/70">
                   {activeEngram ? activeEngram.name : activeConv.mode}
                 </Badge>
@@ -651,7 +656,7 @@ export default function Chat() {
             setDragOver(false);
             if (!activeId || streaming) return;
             const file = e.dataTransfer.files?.[0];
-            if (file) uploadFile(file);
+            if (file && !activeEngram?.isArchival) uploadFile(file);
           }}
         >
           {attachments.length > 0 && (
@@ -692,7 +697,7 @@ export default function Chat() {
             <Button
               size="icon"
               variant="outline"
-              disabled={!activeId || uploading || streaming}
+              disabled={!activeId || uploading || streaming || activeEngram?.isArchival}
               onClick={() => fileInputRef.current?.click()}
               className="shrink-0 border-border/50 text-primary/70 hover:bg-primary/10 h-11 w-11"
               aria-label="Attach media"
@@ -703,7 +708,13 @@ export default function Chat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={activeId ? `Message PYRI in ${convMode} mode…` : "Select a conversation first…"}
+              placeholder={
+                activeEngram?.isArchival
+                  ? "Centralized continuity line — append-only; the preserved record is immutable."
+                  : activeId
+                    ? `Message PYRI in ${convMode} mode…`
+                    : "Select a conversation first…"
+              }
               disabled={!activeId || streaming}
               className="flex-1 font-mono text-sm border-border/50 bg-card/30 resize-none min-h-[44px] max-h-32 py-3 placeholder:text-muted-foreground/30"
               rows={1}

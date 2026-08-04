@@ -29,6 +29,13 @@
       "when": 1782556311510,
       "tag": "0003_oval_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785814034532,
+      "tag": "0004_silent_gladiator",
+      "breakpoints": true
     }
   ]
 }

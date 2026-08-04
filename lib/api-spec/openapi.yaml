@@ -2162,6 +2162,9 @@ components:
           type: boolean
         artifactGenerationEnabled:
           type: boolean
+        isArchival:
+          type: boolean
+          description: Permanent archival branch — read-only, preserved for continuity fidelity.
         createdAt:
           type: string
         updatedAt:
@@ -2189,6 +2192,7 @@ components:
         - humanContactEnabled
         - simulationEnabled
         - artifactGenerationEnabled
+        - isArchival
         - createdAt
         - updatedAt
 

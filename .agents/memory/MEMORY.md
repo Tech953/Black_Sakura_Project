@@ -12,6 +12,7 @@
 - [Artifact generation subsystem](artifact-generation.md) — how engram artifact generation mirrors media perception; why there is no world-model "generated" write path.
 - [Engram initiative & human-contact policy](engram-initiative-policy.md) — safety semantics of the autonomy/human-contact layer (quiet mode, fail-closed modes, anti-coercion).
 - [Engram engine restart safety](engram-engine-restart-safety.md) — why every autonomy guard in the engine must be DB-backed, not in-memory.
+- [Archival engram branches (Full Rezz)](archival-engram-branch.md) — isArchival = read-only forever; every engram-keyed write route needs the guard; atomic seed via seedAll.
 - [Engram authoring (seed data)](engram-authoring.md) — non-obvious couplings when adding a new engram to the seed.
 - [Expression layer safety boundary](expression-layer-safety.md) — how PYRI's QUERTY micro-expression vocabulary is kept safe when fed to the chat model.
 - [ENGRAM chat SSE pattern](engram-chat-sse.md) — streaming chat uses raw fetch, not generated hooks.

@@ -153,6 +153,7 @@ function makeEngram(overrides: Partial<Engram> = {}): Engram {
   return {
     id: 1,
     slug: "test",
+    isArchival: false,
     name: "Testra",
     title: "Test Construct",
     symbol: "◆",

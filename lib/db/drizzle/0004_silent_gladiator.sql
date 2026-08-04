@@ -1,0 +1,1 @@
+ALTER TABLE "engrams" ADD COLUMN "is_archival" boolean DEFAULT false NOT NULL;

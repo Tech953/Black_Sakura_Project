@@ -16,6 +16,7 @@ import {
   clampConfidence,
   ProvenanceImmutableError,
 } from "../lib/world-model";
+import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 
 const router = Router();
 
@@ -90,6 +91,10 @@ router.post("/engrams/:id/world-model", async (req, res) => {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
+  if (await isArchivalEngram(parsedParams.data.id)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+    return;
+  }
   const body = parsedBody.data;
   const [row] = await db
     .insert(engramWorldModelTable)
@@ -118,6 +123,10 @@ router.patch("/engrams/:id/world-model/:entryId", async (req, res) => {
   const existing = await loadEntry(parsedParams.data.id, parsedParams.data.entryId);
   if (!existing) {
     res.status(404).json({ error: "World-model entry not found" });
+    return;
+  }
+  if (await isArchivalEngram(parsedParams.data.id)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
 
@@ -162,6 +171,10 @@ router.delete("/engrams/:id/world-model/:entryId", async (req, res) => {
   const existing = await loadEntry(parsed.data.id, parsed.data.entryId);
   if (!existing) {
     res.status(404).json({ error: "World-model entry not found" });
+    return;
+  }
+  if (await isArchivalEngram(parsed.data.id)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
   await db.delete(engramWorldModelTable).where(eq(engramWorldModelTable.id, existing.id));

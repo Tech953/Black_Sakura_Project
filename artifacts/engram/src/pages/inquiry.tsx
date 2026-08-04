@@ -242,7 +242,10 @@ export default function Inquiry() {
             >
               <span className="text-xl">{e.symbol}</span>
               <div className="text-left">
-                <div className="font-mono text-sm uppercase tracking-wider">{e.name}</div>
+                <div className="font-mono text-sm uppercase tracking-wider">
+                  {e.name}
+                  {e.isArchival && <span className="ml-2 text-[9px] text-amber-400/90">ARCHIVAL</span>}
+                </div>
                 <div className="font-mono text-[9px] text-muted-foreground/60 uppercase">{e.title}</div>
               </div>
             </button>
@@ -292,7 +295,12 @@ export default function Inquiry() {
                 />
               </div>
 
-              <Button onClick={handleSubmit} disabled={create.isPending || !question.trim()}
+              {selected.isArchival && (
+                <p className="font-mono text-[10px] text-amber-400/80 uppercase tracking-wider">
+                  Archival branch — preserved read-only for continuity fidelity. Probing and development are disabled.
+                </p>
+              )}
+              <Button onClick={handleSubmit} disabled={create.isPending || !question.trim() || selected.isArchival}
                 className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground" data-testid="button-submit-inquiry">
                 {create.isPending
                   ? kind === "develop" ? "Reflecting..." : "Asking..."

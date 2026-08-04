@@ -350,6 +350,8 @@ export interface Engram {
   humanContactEnabled: boolean;
   simulationEnabled: boolean;
   artifactGenerationEnabled: boolean;
+  /** Permanent archival branch — read-only, preserved for continuity fidelity. */
+  isArchival: boolean;
   createdAt: string;
   updatedAt: string;
 }

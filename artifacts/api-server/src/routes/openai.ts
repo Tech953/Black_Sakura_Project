@@ -28,6 +28,7 @@ import { createMediaAsset } from "../lib/media-store";
 import { detectModality } from "../lib/media-extraction";
 import { publishEvent } from "../lib/events";
 
+import { isArchivalEngram } from "../lib/archival";
 const router = Router();
 
 /** Hard cap on a single inline upload's size. Defaults to 25 MiB; overridable via env. */
@@ -68,6 +69,16 @@ router.post("/openai/conversations", async (req, res) => {
     return;
   }
   const { title, mode, personaName, customEngram, engramId } = parsed.data;
+  if (engramId != null) {
+    const [engram] = await db.select().from(engramsTable).where(eq(engramsTable.id, engramId));
+    if (engram?.isArchival) {
+      res.status(403).json({
+        error:
+          "This engram is a permanent archival branch preserved for continuity fidelity. New conversations cannot be started with it.",
+      });
+      return;
+    }
+  }
   const [row] = await db
     .insert(conversations)
     .values({ title, mode: mode ?? "companion", personaName, customEngram, engramId })
@@ -107,6 +118,16 @@ router.delete("/openai/conversations/:id", async (req, res) => {
     res.status(404).json({ error: "Conversation not found" });
     return;
   }
+  if (conv.engramId != null) {
+    const [engram] = await db.select().from(engramsTable).where(eq(engramsTable.id, conv.engramId));
+    if (engram?.isArchival) {
+      res.status(403).json({
+        error:
+          "This conversation is a permanent archival continuity record and cannot be deleted.",
+      });
+      return;
+    }
+  }
   await db.delete(conversations).where(eq(conversations.id, id));
   res.status(204).send();
 });
@@ -134,6 +155,10 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
   }
   const { id } = parsedParams.data;
   const { content } = parsedBody.data;
+  if (!content.trim()) {
+    res.status(400).json({ error: "Message content must not be empty." });
+    return;
+  }
 
   const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
   if (!conv) {
@@ -149,6 +174,10 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       res.status(404).json({ error: "Engram not found" });
       return;
     }
+    // Archival branches remain a single centralized continuity line: the
+    // preserved record is immutable (no edits/deletes anywhere), but the
+    // dialogue CONTINUES here append-only — new turns extend the permanence
+    // of continuity rather than violating it.
     const worldModelSummary = summarizeWorldModel(await loadRecentWorldModel(engram.id));
     const perceptualContext = await buildPerceptualContext({
       engramId: engram.id,
@@ -345,6 +374,13 @@ router.post("/openai/conversations/:id/media", (req, res) => {
       .where(eq(conversations.id, convId));
     if (!conv) {
       res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+    if (await isArchivalEngram(conv.engramId)) {
+      res.status(403).json({
+        error:
+          "This conversation is a permanent archival continuity record. It is read-only — media cannot be attached.",
+      });
       return;
     }
 
