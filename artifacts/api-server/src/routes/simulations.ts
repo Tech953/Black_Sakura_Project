@@ -22,6 +22,7 @@ import { engramsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { loadSpaces, loadPresenceForEngram } from "../lib/hub-store";
 import { loadControls } from "../lib/controls-store";
+import { ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 
 const router = Router();
 
@@ -102,6 +103,10 @@ router.post("/simulations", async (req, res) => {
   const [engram] = await db.select().from(engramsTable).where(eq(engramsTable.id, engramId));
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
+    return;
+  }
+  if (engram.isArchival) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
   const spaces = await loadSpaces();

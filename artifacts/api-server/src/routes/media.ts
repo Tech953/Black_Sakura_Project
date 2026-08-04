@@ -20,6 +20,7 @@ import {
   requeueMediaAsset,
   deleteMediaAsset,
 } from "../lib/media-store";
+import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 
 const router = Router();
 
@@ -105,11 +106,15 @@ router.post("/media", (req, res) => {
 
     try {
       const [engram] = await db
-        .select({ id: engramsTable.id })
+        .select({ id: engramsTable.id, isArchival: engramsTable.isArchival })
         .from(engramsTable)
         .where(eq(engramsTable.id, engramId));
       if (!engram) {
         res.status(404).json({ error: "Engram not found" });
+        return;
+      }
+      if (engram.isArchival) {
+        res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
         return;
       }
       const asset = await createMediaAsset({
@@ -190,6 +195,10 @@ router.post("/media/:id/retry", async (req, res) => {
     res.status(404).json({ error: "Media asset not found" });
     return;
   }
+  if (await isArchivalEngram(asset.engramId)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+    return;
+  }
   if (asset.status !== "failed") {
     res
       .status(400)
@@ -210,6 +219,11 @@ router.delete("/media/:id", async (req, res) => {
   const parsed = DeleteMediaAssetParams.safeParse({ id: req.params.id });
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const existing = await loadMediaAssetById(parsed.data.id);
+  if (existing && (await isArchivalEngram(existing.engramId))) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
   const deleted = await deleteMediaAsset(parsed.data.id);

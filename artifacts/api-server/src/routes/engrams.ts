@@ -38,6 +38,20 @@ async function loadEngram(id: number): Promise<Engram | undefined> {
   return row;
 }
 
+/**
+ * Archival branches (e.g. "Full Rezz") are preserved read-only for continuity
+ * fidelity: no config changes, tuning, transmissions, or activation. Returns
+ * true (and sends a 403) when the engram is archival.
+ */
+function rejectIfArchival(engram: Engram, res: Parameters<Parameters<typeof router.post>[1]>[1]): boolean {
+  if (!engram.isArchival) return false;
+  res.status(403).json({
+    error:
+      "This engram is a permanent archival branch preserved for continuity fidelity. It is read-only and cannot be altered.",
+  });
+  return true;
+}
+
 router.get("/engrams", async (_req, res) => {
   const rows = await db.select().from(engramsTable).orderBy(engramsTable.id);
   res.json(rows);
@@ -202,6 +216,7 @@ router.patch("/engrams/:id", async (req, res) => {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
+  if (rejectIfArchival(engram, res)) return;
 
   const body = parsedBody.data;
   const patch: Partial<typeof engramsTable.$inferInsert> = { updatedAt: new Date() };
@@ -241,6 +256,7 @@ router.post("/engrams/:id/activate", async (req, res) => {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
+  if (rejectIfArchival(engram, res)) return;
   await db.update(engramsTable).set({ isChatActive: false }).where(eq(engramsTable.isChatActive, true));
   const [updated] = await db
     .update(engramsTable)
@@ -261,6 +277,7 @@ router.post("/engrams/:id/transmit", async (req, res) => {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
+  if (rejectIfArchival(engram, res)) return;
   try {
     const tx = await forceTransmission(engram);
     res.status(201).json(tx);
@@ -333,6 +350,7 @@ router.post("/engrams/:id/inquiries", async (req, res) => {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
+  if (rejectIfArchival(engram, res)) return;
   const { kind, question } = parsedBody.data;
 
   try {

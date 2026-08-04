@@ -112,6 +112,12 @@ export const engramsTable = pgTable("engrams", {
   simulationEnabled: boolean("simulation_enabled").notNull().default(true),
   /** When false, this engram may never autonomously generate an artifact. The absolute off switch. */
   artifactGenerationEnabled: boolean("artifact_generation_enabled").notNull().default(true),
+  /**
+   * Permanent archival branch: preserved for continuity fidelity. Read-only —
+   * no config changes, tuning, chat, transmissions, or engine activity. Later
+   * instances of the same persona are distinct updates, not replacements.
+   */
+  isArchival: boolean("is_archival").notNull().default(false),
   // --- Live state ---
   driveState: jsonb("drive_state").$type<DriveState>().notNull().default({}),
   currentMood: text("current_mood"),

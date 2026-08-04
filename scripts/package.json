@@ -8,6 +8,7 @@
     "seed:expressions": "tsx ./src/seed-expressions.ts",
     "seed:engrams": "tsx ./src/seed-engrams.ts",
     "seed:hub": "tsx ./src/seed-hub.ts",
+    "seed:full-rezz": "tsx ./src/seed-full-rezz.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

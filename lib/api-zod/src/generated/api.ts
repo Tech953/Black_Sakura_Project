@@ -545,6 +545,7 @@ export const ListEngramsResponseItem = zod.object({
   "humanContactEnabled": zod.boolean(),
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -640,6 +641,7 @@ export const SynthesizeEngramResponse = zod.object({
   "humanContactEnabled": zod.boolean(),
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -737,6 +739,7 @@ export const GetEngramResponse = zod.object({
   "humanContactEnabled": zod.boolean(),
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -830,6 +833,7 @@ export const UpdateEngramConfigResponse = zod.object({
   "humanContactEnabled": zod.boolean(),
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -899,6 +903,7 @@ export const ActivateEngramResponse = zod.object({
   "humanContactEnabled": zod.boolean(),
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
