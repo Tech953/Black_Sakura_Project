@@ -19,3 +19,19 @@ downloads/*.zip
 # Mobile native build outputs
 artifacts/engram-mobile/android/app/build/
 artifacts/engram-mobile/android/.gradle/
+
+# Stray downloaded archives and caches
+llama-*.tar.gz
+.cache/
+.local/
+
+# Native mobile/desktop packages — only needed to BUILD the mobile/desktop
+# apps, never at production runtime (api-server is esbuild-bundled into one
+# file; web + mobile ship as static assets). These alone are ~6 GB.
+node_modules/.pnpm/react-native-reanimated@*
+node_modules/.pnpm/react-native-worklets@*
+node_modules/.pnpm/expo-modules-core@*
+node_modules/.pnpm/react-native-screens@*
+node_modules/.pnpm/react-native-gesture-handler@*
+node_modules/.pnpm/react-native@*
+node_modules/.pnpm/electron@*
