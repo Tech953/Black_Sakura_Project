@@ -26,16 +26,26 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { EngramProvider } from "@/context/engram-context";
-import { setBaseUrl } from "@workspace/api-client-react";
+import { setBaseUrl, setLocalHandler } from "@workspace/api-client-react";
 import { DEFAULT_SERVER_URL, resolveServerUrl } from "@/lib/server-url";
+import { loadOfflineMode, subscribeOfflineMode } from "@/lib/offline/mode";
+import { offlineHandler } from "@/lib/offline/handlers";
 
 // Apply the built-in default synchronously, then swap in any persisted
 // override (e.g. the desktop app's LAN address) as soon as storage resolves —
 // before fonts finish loading, so first queries already hit the right server.
 setBaseUrl(DEFAULT_SERVER_URL);
-const serverUrlReady = resolveServerUrl()
-  .then((url) => setBaseUrl(url))
-  .catch(() => {});
+const serverUrlReady = Promise.all([
+  resolveServerUrl().then((url) => setBaseUrl(url)),
+  // On-device offline mode: when active, all API calls are served locally.
+  loadOfflineMode().then((on) => setLocalHandler(on ? offlineHandler : null)),
+]).catch(() => {});
+
+subscribeOfflineMode((on) => {
+  setLocalHandler(on ? offlineHandler : null);
+  // Cached query data belongs to the previous backend — drop it all.
+  queryClient.clear();
+});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();

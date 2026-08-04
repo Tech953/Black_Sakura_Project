@@ -40,12 +40,17 @@ function uid(): string {
     .slice(2, 9)}`;
 }
 
+import { isOfflineMode, useOfflineMode } from "@/lib/offline/mode";
+import { sendOfflineMessage } from "@/lib/offline/chat";
+
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
 export default function ChatScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { selectedEngramId, getConversationId, setConversationId } = useEngram();
+  // Conversation IDs are backend-specific; re-resolve when the mode flips.
+  const offlineActive = useOfflineMode();
 
   const enabled = selectedEngramId != null;
   const engramId = selectedEngramId ?? 0;
@@ -90,7 +95,7 @@ export default function ChatScreen() {
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engramId, enabled]);
+  }, [engramId, enabled, offlineActive]);
 
   const { data: conversation } = useGetOpenaiConversation(conversationId ?? 0, {
     query: {
@@ -129,6 +134,53 @@ export default function ChatScreen() {
     let full = "";
     let assistantAdded = false;
 
+    const pushToken = (delta: string) => {
+      full += delta;
+      if (!assistantAdded) {
+        setShowTyping(false);
+        setMessages((prev) => [
+          ...prev,
+          { id: uid(), role: "assistant", content: full },
+        ]);
+        assistantAdded = true;
+      } else {
+        setMessages((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = { ...next[next.length - 1], content: full };
+          return next;
+        });
+      }
+    };
+
+    // On-device offline mode: stream from the local model, no network.
+    if (isOfflineMode()) {
+      try {
+        await sendOfflineMessage({
+          conversationId,
+          engramId,
+          content: text,
+          onToken: pushToken,
+        });
+      } catch {
+        setShowTyping(false);
+        if (!assistantAdded) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: uid(),
+              role: "assistant",
+              content:
+                "[ on-device model unavailable — check that the model is downloaded in Settings ]",
+            },
+          ]);
+        }
+      } finally {
+        setIsStreaming(false);
+        setShowTyping(false);
+      }
+      return;
+    }
+
     try {
       const response = await expoFetch(
         `${BASE_URL}/api/openai/conversations/${conversationId}/messages`,
@@ -164,26 +216,7 @@ export default function ChatScreen() {
             const parsed = JSON.parse(data);
             if (parsed.done) continue;
             if (parsed.error) throw new Error(parsed.error);
-            if (parsed.content) {
-              full += parsed.content;
-              if (!assistantAdded) {
-                setShowTyping(false);
-                setMessages((prev) => [
-                  ...prev,
-                  { id: uid(), role: "assistant", content: full },
-                ]);
-                assistantAdded = true;
-              } else {
-                setMessages((prev) => {
-                  const next = [...prev];
-                  next[next.length - 1] = {
-                    ...next[next.length - 1],
-                    content: full,
-                  };
-                  return next;
-                });
-              }
-            }
+            if (parsed.content) pushToken(parsed.content);
           } catch {
             // skip malformed line
           }
@@ -205,7 +238,7 @@ export default function ChatScreen() {
       setIsStreaming(false);
       setShowTyping(false);
     }
-  }, [input, isStreaming, conversationId]);
+  }, [input, isStreaming, conversationId, engramId]);
 
   if (!enabled) {
     return (

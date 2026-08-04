@@ -1,10 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -18,6 +21,21 @@ import {
   normalizeServerUrl,
   setServerUrlOverride,
 } from "@/lib/server-url";
+import { isOfflineMode, setOfflineMode } from "@/lib/offline/mode";
+import {
+  MODEL_BYTES,
+  MODEL_NAME,
+  cancelDownload,
+  deleteModel,
+  downloadModel,
+  getModelStatus,
+  type ModelStatus,
+} from "@/lib/offline/model";
+import { releaseLlm } from "@/lib/offline/llm";
+
+function gb(bytes: number): string {
+  return `${(bytes / 1e9).toFixed(2)} GB`;
+}
 
 export default function ServerSettingsScreen() {
   const colors = useColors();
@@ -27,12 +45,76 @@ export default function ServerSettingsScreen() {
   const [status, setStatus] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
 
+  // On-device offline mode state
+  const [offline, setOffline] = useState(isOfflineMode());
+  const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [offlineMsg, setOfflineMsg] = useState<string | null>(null);
+
   useEffect(() => {
     getServerUrlOverride().then((override) => {
       setValue(override ?? "");
       setLoaded(true);
     });
+    if (Platform.OS !== "web") {
+      getModelStatus().then(setModelStatus).catch(() => {});
+    }
   }, []);
+
+  const refreshModel = useCallback(() => {
+    getModelStatus().then(setModelStatus).catch(() => {});
+  }, []);
+
+  const onDownload = useCallback(async () => {
+    setOfflineMsg(null);
+    setDownloading(true);
+    setProgress(0);
+    try {
+      await downloadModel((written, total) => {
+        setProgress(total > 0 ? written / total : 0);
+      });
+      setOfflineMsg("Model ready. You can now go fully offline.");
+    } catch (err) {
+      setOfflineMsg(err instanceof Error ? err.message : "Download failed — please retry.");
+    } finally {
+      setDownloading(false);
+      refreshModel();
+    }
+  }, [refreshModel]);
+
+  const onCancelDownload = useCallback(async () => {
+    await cancelDownload();
+    setDownloading(false);
+    refreshModel();
+  }, [refreshModel]);
+
+  const onToggleOffline = useCallback(
+    async (on: boolean) => {
+      if (on && modelStatus?.state !== "ready") {
+        setOfflineMsg("Download the on-device model first.");
+        return;
+      }
+      setOffline(on);
+      await setOfflineMode(on);
+      if (!on) await releaseLlm().catch(() => {});
+      setOfflineMsg(
+        on
+          ? "Offline mode active — everything now runs on this device."
+          : "Back online — using the server.",
+      );
+    },
+    [modelStatus],
+  );
+
+  const onDeleteModel = useCallback(async () => {
+    await setOfflineMode(false);
+    setOffline(false);
+    await releaseLlm().catch(() => {});
+    await deleteModel();
+    refreshModel();
+    setOfflineMsg("Model deleted.");
+  }, [refreshModel]);
 
   const applyUrl = async (url: string | null) => {
     await setServerUrlOverride(url);
@@ -82,7 +164,10 @@ export default function ServerSettingsScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
       <Stack.Screen
         options={{
           title: "Server",
@@ -167,7 +252,101 @@ export default function ServerSettingsScreen() {
           ) : null}
         </>
       )}
-    </View>
+
+      {Platform.OS !== "web" ? (
+        <>
+          <Text style={[styles.kicker, { color: colors.primary, marginTop: 36 }]}>
+            ENGRAM // ON-DEVICE
+          </Text>
+          <Text style={[styles.h1, { color: colors.foreground }]}>
+            Offline mode
+          </Text>
+          <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+            Run the engrams entirely on this phone — no server, no network. Uses
+            a local model ({MODEL_NAME}, ~{gb(MODEL_BYTES)} one-time download)
+            and keeps conversations in on-device storage. Chat, inquiries and
+            transmissions work; media, simulations and the hub need the server.
+          </Text>
+
+          <View style={[styles.offlineRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
+            <Text style={[styles.buttonText, { color: colors.foreground }]}>
+              Use offline mode
+            </Text>
+            <Switch
+              value={offline}
+              onValueChange={onToggleOffline}
+              trackColor={{ true: colors.primary }}
+            />
+          </View>
+
+          {modelStatus?.state === "ready" ? (
+            <>
+              <Text style={[styles.status, { color: colors.mutedForeground, marginTop: 12 }]}>
+                Model installed ({gb(modelStatus.bytes)}).
+              </Text>
+              <Pressable
+                onPress={onDeleteModel}
+                style={[styles.button, { borderColor: colors.border, marginTop: 12 }]}
+              >
+                <Text style={[styles.buttonText, { color: colors.foreground }]}>
+                  Delete model
+                </Text>
+              </Pressable>
+            </>
+          ) : downloading ? (
+            <>
+              <View style={[styles.progressTrack, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { backgroundColor: colors.primary, width: `${Math.round(progress * 100)}%` },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.status, { color: colors.mutedForeground, marginTop: 8 }]}>
+                Downloading… {Math.round(progress * 100)}%
+              </Text>
+              <Pressable
+                onPress={onCancelDownload}
+                style={[styles.button, { borderColor: colors.border, marginTop: 12 }]}
+              >
+                <Text style={[styles.buttonText, { color: colors.foreground }]}>
+                  Pause download
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable
+              onPress={onDownload}
+              style={[
+                styles.button,
+                { backgroundColor: colors.primary, borderColor: colors.primary, marginTop: 16 },
+              ]}
+            >
+              <Text style={[styles.buttonText, { color: colors.background }]}>
+                {modelStatus?.state === "partial"
+                  ? `Resume download (${gb(modelStatus.bytes)} so far)`
+                  : "Download model"}
+              </Text>
+            </Pressable>
+          )}
+
+          {offlineMsg ? (
+            <View style={styles.statusRow}>
+              <Feather
+                name="info"
+                size={14}
+                color={colors.mutedForeground}
+                style={{ marginTop: 2 }}
+              />
+              <Text style={[styles.status, { color: colors.mutedForeground }]}>
+                {offlineMsg}
+              </Text>
+            </View>
+          ) : null}
+        </>
+      ) : null}
+    </ScrollView>
   );
 }
 
@@ -216,6 +395,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   statusRow: { flexDirection: "row", gap: 8, marginTop: 16 },
+  offlineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 20,
+  },
+  progressTrack: {
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginTop: 16,
+  },
+  progressFill: { height: "100%" },
   status: {
     flex: 1,
     fontFamily: "Inter_400Regular",

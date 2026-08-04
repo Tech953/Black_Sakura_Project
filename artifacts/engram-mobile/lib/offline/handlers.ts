@@ -1,0 +1,160 @@
+import type { Engram } from "@workspace/db";
+import { buildEngramSystemPrompt, summarizeWorldModel } from "@workspace/engram-core";
+import type { LocalHandler } from "@workspace/api-client-react";
+
+import { completeOnce } from "./llm";
+import * as store from "./store";
+
+/**
+ * Local (on-device) implementations of every REST endpoint the app calls
+ * through the generated hooks. Registered via setLocalHandler when offline
+ * mode is active. Chat streaming is handled separately (lib/offline/chat.ts).
+ *
+ * Prompt construction goes through @workspace/engram-core — the SAME persona
+ * prompts and hard safety constraints the server uses.
+ */
+function ok(body: unknown, status = 200): { status: number; body: unknown } {
+  return { status, body };
+}
+
+function notFound(msg: string): { status: number; body: unknown } {
+  return { status: 404, body: { error: msg } };
+}
+
+async function personaAsEngram(id: number): Promise<Engram | null> {
+  const persona = await store.getEngramPersona(id);
+  return persona ? (persona as unknown as Engram) : null;
+}
+
+async function handleInquiry(
+  engramId: number,
+  body: { kind?: string; question?: string },
+): Promise<{ status: number; body: unknown }> {
+  const kind = body.kind === "develop" ? "develop" : "probe";
+  const question = (body.question ?? "").trim();
+  if (!question) return { status: 400, body: { error: "Question required" } };
+  const engram = await personaAsEngram(engramId);
+  if (!engram) return notFound("Engram not found");
+
+  // Mirrors the server's probe prompt. Offline "develop" answers in character
+  // but applies no config delta (tuning requires the server's bounded pipeline).
+  const situation =
+    kind === "probe"
+      ? "Your designer is introspecting you through the inquiry system. Answer their question about yourself honestly and in-character — reflective and self-aware about being a construct, but unmistakably you. Do not change yourself; just reveal yourself."
+      : "Your designer is speaking with you through the inquiry system while you run on their handheld device in offline mode. Respond to their request in character. In this offline mode you cannot actually alter your own configuration — acknowledge their wish and respond honestly, but you remain as you are until reconnected.";
+  const system = buildEngramSystemPrompt({ engram, situation });
+  const response = await completeOnce(
+    [
+      { role: "system", content: system },
+      { role: "user", content: question },
+    ],
+    { maxTokens: 700 },
+  );
+  const row = await store.insertInquiry({ engramId, kind, question, response });
+  return ok(row, 201);
+}
+
+async function handleTransmit(engramId: number): Promise<{ status: number; body: unknown }> {
+  const engram = await personaAsEngram(engramId);
+  if (!engram) return notFound("Engram not found");
+
+  const drives = engram.drives ?? [];
+  const drive = drives.length
+    ? drives[Math.floor(Math.random() * drives.length)]
+    : { id: "presence", label: "Presence", description: "the wish to be present" };
+  const recent = (await store.listTransmissions(engramId))
+    .slice(0, 5)
+    .map((t) => String(t.content));
+  const avoid = recent.length
+    ? `\n\nYou recently expressed the following — do NOT repeat their content or phrasing:\n${recent
+        .map((c) => `  - ${c.replace(/\s+/g, " ").slice(0, 160)}`)
+        .join("\n")}`
+    : "";
+  const worldModelSummary = summarizeWorldModel(await store.loadRecentWorldModel(engramId));
+  const situation = `No prompt has come in, but your drive "${drive.label}" (${drive.description}) has built up enough that you decide, on your own, to reach out. Send a short, in-character message directed at them — unprompted contact. You may open a topic, share something on your mind, or ASK THEM A DIRECT QUESTION you genuinely want answered. 2–4 sentences. Use your formatting conventions.${avoid}`;
+  const system = buildEngramSystemPrompt({ engram, situation, worldModelSummary });
+  const content = await completeOnce(
+    [
+      { role: "system", content: system },
+      { role: "user", content: "Reach out now, unprompted, in your own voice." },
+    ],
+    { maxTokens: 500 },
+  );
+  const row = await store.insertTransmission({
+    engramId,
+    kind: "outreach",
+    drive: drive.id,
+    content,
+    mood: engram.currentMood ?? null,
+  });
+  return ok(row, 201);
+}
+
+/** Route table for offline mode. Returns undefined only for truly unknown paths. */
+export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
+  const url = path.split("?")[0];
+  let parsed: Record<string, unknown> = {};
+  if (body) {
+    try {
+      parsed = JSON.parse(body) as Record<string, unknown>;
+    } catch {
+      return { status: 400, body: { error: "Invalid JSON body" } };
+    }
+  }
+
+  if (url === "/api/healthz") return ok({ ok: true });
+
+  let m: RegExpMatchArray | null;
+
+  if (url === "/api/engrams" && method === "GET") return ok(await store.listEngrams());
+
+  if ((m = url.match(/^\/api\/engrams\/(\d+)$/)) && method === "GET") {
+    const engram = await store.getEngram(Number(m[1]));
+    return engram ? ok(engram) : notFound("Engram not found");
+  }
+
+  if ((m = url.match(/^\/api\/engrams\/(\d+)\/activate$/)) && method === "POST") {
+    const engram = await store.activateEngram(Number(m[1]));
+    return engram ? ok(engram) : notFound("Engram not found");
+  }
+
+  if ((m = url.match(/^\/api\/engrams\/(\d+)\/inquiries$/))) {
+    if (method === "GET") return ok(await store.listInquiries(Number(m[1])));
+    if (method === "POST") {
+      return handleInquiry(Number(m[1]), parsed as { kind?: string; question?: string });
+    }
+  }
+
+  if ((m = url.match(/^\/api\/engrams\/(\d+)\/transmissions$/)) && method === "GET") {
+    return ok(await store.listTransmissions(Number(m[1])));
+  }
+
+  if ((m = url.match(/^\/api\/engrams\/(\d+)\/transmissions\/mark-seen$/)) && method === "POST") {
+    const ids = Array.isArray((parsed as { ids?: number[] }).ids)
+      ? (parsed as { ids?: number[] }).ids
+      : undefined;
+    const marked = await store.markTransmissionsSeen(Number(m[1]), ids);
+    return ok({ marked });
+  }
+
+  if ((m = url.match(/^\/api\/engrams\/(\d+)\/transmit$/)) && method === "POST") {
+    return handleTransmit(Number(m[1]));
+  }
+
+  if (url === "/api/openai/conversations" && method === "POST") {
+    return ok(
+      await store.createConversation(
+        parsed as { title?: string | null; mode?: string | null; engramId?: number | null },
+      ),
+      201,
+    );
+  }
+
+  if ((m = url.match(/^\/api\/openai\/conversations\/(\d+)$/)) && method === "GET") {
+    const conv = await store.getConversation(Number(m[1]));
+    return conv ? ok(conv) : notFound("Conversation not found");
+  }
+
+  // Unknown route while offline: report clearly rather than hitting the network.
+  return { status: 503, body: { error: "Not available in offline mode" } };
+};
