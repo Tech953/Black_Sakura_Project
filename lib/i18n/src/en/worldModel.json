@@ -1,0 +1,31 @@
+{
+  "title": "WORLD MODEL",
+  "subtitle": "Each engram's persistent, provenance-tagged beliefs — how it knows what it knows",
+  "recordBelief": "Record Belief",
+  "recordWorldModelBelief": "Record World-Model Belief",
+  "record": "Record",
+  "recording": "Recording...",
+  "noEngrams": "No engrams provisioned",
+  "provenanceLabel": "Provenance (immutable once set)",
+  "contentPlaceholder": "What does the engram hold to be true...",
+  "confidence": "Confidence",
+  "confidencePercent": "{{percent}}% confidence",
+  "scope": "Scope",
+  "scopePrivate": "Private",
+  "scopeShared": "Shared",
+  "emptyForEngram": "{{name}} holds no world-model beliefs yet",
+  "emptyNoBeliefs": "No world-model beliefs yet",
+  "provenance": {
+    "observed": { "label": "Observed", "blurb": "Directly perceived" },
+    "inferred": { "label": "Inferred", "blurb": "Reasoned, not seen" },
+    "remembered": { "label": "Remembered", "blurb": "Recalled from the past" },
+    "desired": { "label": "Desired", "blurb": "Wants & intentions" },
+    "simulated": { "label": "Simulated", "blurb": "Imagined / hypothetical" }
+  },
+  "toastRecordedTitle": "Belief recorded",
+  "toastRecordedDescription": "Tagged {{label}}.",
+  "toastRecordFailed": "Failed to record belief",
+  "toastRemovedTitle": "Belief removed",
+  "toastRemovedDescription": "Entry deleted from the world-model.",
+  "toastDeleteFailed": "Failed to delete"
+}

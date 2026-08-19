@@ -1,9 +1,11 @@
 import { useGetStats, useGetPersonality } from "@workspace/api-client-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Activity, Brain, Database, CheckCircle2 } from "lucide-react";
 
 export default function Home() {
+  const { t } = useTranslation("home");
   const { data: stats, isLoading: statsLoading } = useGetStats();
   const { data: personality, isLoading: personalityLoading } = useGetPersonality();
 
@@ -11,26 +13,26 @@ export default function Home() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-widest text-primary">ENGRAM HUB</h2>
-          <p className="text-sm font-mono text-muted-foreground mt-1">Live System Status & Telemetry</p>
+          <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
+          <p className="text-sm font-mono text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_hsl(var(--primary))]"></div>
-          <span className="font-mono text-xs text-primary uppercase">Core Active</span>
+          <span className="font-mono text-xs text-primary uppercase">{t("coreActive")}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Active Persona" value={stats?.activePersona || "None"} icon={Activity} loading={statsLoading} valueClass="text-accent glow-text" />
-        <StatCard title="Total Memories" value={stats?.totalMemories?.toString() || "0"} icon={Database} loading={statsLoading} />
-        <StatCard title="Belief Nodes" value={stats?.totalBeliefs?.toString() || "0"} icon={CheckCircle2} loading={statsLoading} />
-        <StatCard title="Avg Confidence" value={stats?.avgBeliefConfidence ? `${Math.round(stats.avgBeliefConfidence * 100)}%` : "0%"} icon={Brain} loading={statsLoading} />
+        <StatCard title={t("activePersona")} value={stats?.activePersona || t("common:none")} icon={Activity} loading={statsLoading} valueClass="text-accent glow-text" />
+        <StatCard title={t("totalMemories")} value={stats?.totalMemories?.toString() || "0"} icon={Database} loading={statsLoading} />
+        <StatCard title={t("beliefNodes")} value={stats?.totalBeliefs?.toString() || "0"} icon={CheckCircle2} loading={statsLoading} />
+        <StatCard title={t("avgConfidence")} value={stats?.avgBeliefConfidence ? `${Math.round(stats.avgBeliefConfidence * 100)}%` : "0%"} icon={Brain} loading={statsLoading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="col-span-1 lg:col-span-2 bg-card/40 border-border/50 backdrop-blur-sm glow-box">
           <CardHeader>
-            <CardTitle className="font-display tracking-widest text-sm text-primary/80">Personality Radar</CardTitle>
+            <CardTitle className="font-display tracking-widest text-sm text-primary/80">{t("personalityRadar")}</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px] flex items-center justify-center">
             {personalityLoading ? (
@@ -40,7 +42,7 @@ export default function Home() {
                 <div className="absolute w-48 h-48 border border-primary/10 rounded-full"></div>
                 <div className="absolute w-32 h-32 border border-primary/5 rounded-full"></div>
                 {/* Placeholder for actual radar chart */}
-                <div className="text-center font-mono text-xs text-muted-foreground/50">RADAR VIZ OFFLINE</div>
+                <div className="text-center font-mono text-xs text-muted-foreground/50">{t("radarVizOffline")}</div>
               </div>
             )}
           </CardContent>
@@ -48,7 +50,7 @@ export default function Home() {
 
         <Card className="col-span-1 bg-card/40 border-border/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="font-display tracking-widest text-sm text-primary/80">Memory Distribution</CardTitle>
+            <CardTitle className="font-display tracking-widest text-sm text-primary/80">{t("memoryDistribution")}</CardTitle>
           </CardHeader>
           <CardContent>
             {statsLoading ? (

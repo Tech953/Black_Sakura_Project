@@ -1947,6 +1947,9 @@ components:
       properties:
         content:
           type: string
+        language:
+          type: string
+          description: Optional BCP-47 language code the assistant/engram should respond in (e.g. "es", "ja"). Omit for automatic (match the user).
       required:
         - content
     OpenaiConversationWithMessages:
@@ -2412,6 +2415,9 @@ components:
           enum: [probe, develop]
         question:
           type: string
+        language:
+          type: string
+          description: Optional BCP-47 language code the engram should respond in. Omit for automatic.
       required:
         - kind
         - question

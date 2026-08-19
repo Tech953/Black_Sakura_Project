@@ -1,8 +1,10 @@
 import type { Engram } from "@workspace/db";
 import { buildEngramSystemPrompt, summarizeWorldModel } from "@workspace/engram-core";
+import { responseLanguageInstruction } from "@workspace/i18n";
 
 import { completeStream, type ChatMessage } from "./llm";
 import * as store from "./store";
+import { resolveReplyLanguage } from "../i18n";
 
 /**
  * On-device chat turn: mirrors the server's engram-linked chat route —
@@ -27,6 +29,7 @@ export async function sendOfflineMessage(opts: {
     situation:
       "You are in a live, ongoing conversation with them right now — running fully on their handheld device, no network. Respond to their latest message in character, staying in your formatting conventions.",
     worldModelSummary,
+    responseLanguageInstruction: responseLanguageInstruction(await resolveReplyLanguage()),
   });
 
   const history = await store.listMessages(conversationId);

@@ -1,0 +1,23 @@
+{
+  "title": "THE COMMONS",
+  "subtitle": "Engram-to-engram dialogue — every turn is visible and logged, including refused attempts",
+  "turns": "{{count}} turns",
+  "refusedCount": "{{count}} refused",
+  "antiCoercionTitle": "ANTI-COERCION RAIL ACTIVE",
+  "antiCoercionBody": "An engram can never impersonate, erase, or override another's identity. Any turn that attempts coercion is refused before delivery and recorded here for audit.",
+  "emptyTitle": "No commons dialogue yet",
+  "emptyBody": "When two or more converse-capable engrams share the commons, they take turns speaking.",
+  "engramFallback": "Engram #{{id}}",
+  "status": {
+    "delivered": "Delivered",
+    "blocked": "Refused",
+    "queued": "Queued",
+    "digest": "Digest"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  }
+}

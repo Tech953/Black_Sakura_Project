@@ -1,0 +1,30 @@
+{
+  "subtitle": "Cognitive Architecture",
+  "openNavigation": "Open navigation",
+  "navigation": "Navigation",
+  "sysOnline": "SYS.ONLINE",
+  "opNominal": "OP.NOMINAL",
+  "items": {
+    "overview": "Overview",
+    "hub": "Hub",
+    "commons": "Commons",
+    "simulations": "Simulations",
+    "terminal": "Terminal",
+    "chat": "Chat",
+    "environment": "Environment",
+    "inquiry": "Inquiry",
+    "media": "Media",
+    "studio": "Studio",
+    "personality": "Personality",
+    "memory": "Memory",
+    "worldModel": "World Model",
+    "journal": "Journal",
+    "personas": "Personas",
+    "hieroCode": "Hiero-Code",
+    "beliefs": "Beliefs",
+    "evolution": "Evolution",
+    "analytics": "Analytics",
+    "downloadApp": "Download App",
+    "settings": "Settings"
+  }
+}

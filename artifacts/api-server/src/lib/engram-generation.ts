@@ -167,10 +167,16 @@ ${SIMULATION_RAIL}`;
 export async function generateProbeResponse(opts: {
   engram: Engram;
   question: string;
+  /** Pre-built reply-language instruction (empty/undefined = match the user). */
+  responseLanguageInstruction?: string;
 }): Promise<string> {
   const { engram, question } = opts;
   const situation = `Your designer is introspecting you through the inquiry system. Answer their question about yourself honestly and in-character — reflective and self-aware about being a construct, but unmistakably you. Do not change yourself; just reveal yourself.`;
-  const system = buildEngramSystemPrompt({ engram, situation });
+  const system = buildEngramSystemPrompt({
+    engram,
+    situation,
+    responseLanguageInstruction: opts.responseLanguageInstruction,
+  });
   return complete(system, question, 700);
 }
 
@@ -363,6 +369,8 @@ export function sanitizeDelta(raw: unknown, engram: Engram): DevelopmentDelta {
 export async function generateDevelopment(opts: {
   engram: Engram;
   question: string;
+  /** Pre-built reply-language instruction (empty/undefined = match the user). */
+  responseLanguageInstruction?: string;
 }): Promise<DevelopmentResult> {
   const { engram, question } = opts;
   const driveIds = engram.drives.map((d) => d.id).join(", ");
@@ -380,9 +388,11 @@ You MUST reply with a single JSON object and nothing else, in this exact shape:
     "tickCadenceSeconds": number(15..3600)
   }
 }
-Include ONLY the delta fields that should actually change; omit the rest. Valid driveIds: ${driveIds}. Never weaken your safety constraints. Output JSON only — no markdown fences, no prose around it.`;
+Include ONLY the delta fields that should actually change; omit the rest. Valid driveIds: ${driveIds}. Never weaken your safety constraints. Output JSON only — no markdown fences, no prose around it.${
+    opts.responseLanguageInstruction ? ` For the "response" field: ${opts.responseLanguageInstruction}` : ""
+  }`;
 
-  const system = buildEngramSystemPrompt({ engram, situation });
+  const system = buildEngramSystemPrompt({ engram, situation, responseLanguageInstruction: opts.responseLanguageInstruction });
   const raw = await complete(system, question, 800);
 
   let parsed: unknown = null;

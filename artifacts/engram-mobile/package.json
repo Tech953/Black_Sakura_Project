@@ -73,6 +73,9 @@
     "react": "19.1.0",
     "react-native": "0.81.5",
     "@workspace/engram-core": "workspace:*",
-    "@workspace/db": "workspace:*"
+    "@workspace/db": "workspace:*",
+    "i18next": "^25.4.2",
+    "react-i18next": "^15.7.3",
+    "@workspace/i18n": "workspace:*"
   }
 }

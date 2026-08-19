@@ -24,7 +24,8 @@
     "pdf-lib": "^1.17.1",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0",
-    "@workspace/engram-core": "workspace:*"
+    "@workspace/engram-core": "workspace:*",
+    "@workspace/i18n": "workspace:*"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

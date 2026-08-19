@@ -20,10 +20,12 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { EngramProvider } from "@/context/engram-context";
 import { setBaseUrl, setLocalHandler } from "@workspace/api-client-react";
@@ -53,12 +55,13 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
+  const { t } = useTranslation("mobile");
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
+    <Stack screenOptions={{ headerBackTitle: t("nav.back") }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="server-settings"
-        options={{ presentation: "modal", title: "Server" }}
+        options={{ presentation: "modal", title: t("nav.server") }}
       />
     </Stack>
   );

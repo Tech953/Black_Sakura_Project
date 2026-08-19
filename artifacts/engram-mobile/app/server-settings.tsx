@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Platform,
@@ -15,6 +16,7 @@ import {
 
 import { useColors } from "@/hooks/useColors";
 import { setBaseUrl } from "@workspace/api-client-react";
+import { LANGUAGES } from "@workspace/i18n";
 import {
   DEFAULT_SERVER_URL,
   getServerUrlOverride,
@@ -32,12 +34,19 @@ import {
   type ModelStatus,
 } from "@/lib/offline/model";
 import { releaseLlm } from "@/lib/offline/llm";
+import i18n, {
+  getReplyLanguageSetting,
+  setReplyLanguageSetting,
+  setUiLanguage,
+  type ReplyLanguageSetting,
+} from "@/lib/i18n";
 
 function gb(bytes: number): string {
   return `${(bytes / 1e9).toFixed(2)} GB`;
 }
 
 export default function ServerSettingsScreen() {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const router = useRouter();
   const [value, setValue] = useState("");
@@ -52,6 +61,10 @@ export default function ServerSettingsScreen() {
   const [progress, setProgress] = useState(0);
   const [offlineMsg, setOfflineMsg] = useState<string | null>(null);
 
+  // Language state
+  const [uiLang, setUiLang] = useState(i18n.language);
+  const [replyLang, setReplyLang] = useState<ReplyLanguageSetting>("match");
+
   useEffect(() => {
     getServerUrlOverride().then((override) => {
       setValue(override ?? "");
@@ -60,6 +73,23 @@ export default function ServerSettingsScreen() {
     if (Platform.OS !== "web") {
       getModelStatus().then(setModelStatus).catch(() => {});
     }
+    getReplyLanguageSetting().then(setReplyLang).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const onLangChange = (lng: string) => setUiLang(lng);
+    i18n.on("languageChanged", onLangChange);
+    return () => i18n.off("languageChanged", onLangChange);
+  }, []);
+
+  const onSelectUiLang = useCallback((code: string) => {
+    setUiLang(code);
+    void setUiLanguage(code);
+  }, []);
+
+  const onSelectReplyLang = useCallback((value: ReplyLanguageSetting) => {
+    setReplyLang(value);
+    void setReplyLanguageSetting(value);
   }, []);
 
   const refreshModel = useCallback(() => {
@@ -74,14 +104,14 @@ export default function ServerSettingsScreen() {
       await downloadModel((written, total) => {
         setProgress(total > 0 ? written / total : 0);
       });
-      setOfflineMsg("Model ready. You can now go fully offline.");
+      setOfflineMsg(t("settings.modelReady"));
     } catch (err) {
-      setOfflineMsg(err instanceof Error ? err.message : "Download failed — please retry.");
+      setOfflineMsg(err instanceof Error ? err.message : t("settings.downloadFailed"));
     } finally {
       setDownloading(false);
       refreshModel();
     }
-  }, [refreshModel]);
+  }, [refreshModel, t]);
 
   const onCancelDownload = useCallback(async () => {
     await cancelDownload();
@@ -92,19 +122,15 @@ export default function ServerSettingsScreen() {
   const onToggleOffline = useCallback(
     async (on: boolean) => {
       if (on && modelStatus?.state !== "ready") {
-        setOfflineMsg("Download the on-device model first.");
+        setOfflineMsg(t("settings.downloadFirst"));
         return;
       }
       setOffline(on);
       await setOfflineMode(on);
       if (!on) await releaseLlm().catch(() => {});
-      setOfflineMsg(
-        on
-          ? "Offline mode active — everything now runs on this device."
-          : "Back online — using the server.",
-      );
+      setOfflineMsg(on ? t("settings.offlineActive") : t("settings.backOnline"));
     },
-    [modelStatus],
+    [modelStatus, t],
   );
 
   const onDeleteModel = useCallback(async () => {
@@ -113,8 +139,8 @@ export default function ServerSettingsScreen() {
     await releaseLlm().catch(() => {});
     await deleteModel();
     refreshModel();
-    setOfflineMsg("Model deleted.");
-  }, [refreshModel]);
+    setOfflineMsg(t("settings.modelDeleted"));
+  }, [refreshModel, t]);
 
   const applyUrl = async (url: string | null) => {
     await setServerUrlOverride(url);
@@ -126,12 +152,12 @@ export default function ServerSettingsScreen() {
     const trimmed = value.trim();
     if (!trimmed) {
       await applyUrl(null);
-      setStatus("Using the default cloud server.");
+      setStatus(t("settings.usingDefault"));
       return;
     }
     const normalized = normalizeServerUrl(trimmed);
     if (!normalized) {
-      setStatus("That doesn't look like a valid address.");
+      setStatus(t("settings.invalidAddress"));
       return;
     }
     setChecking(true);
@@ -151,16 +177,14 @@ export default function ServerSettingsScreen() {
     await applyUrl(normalized);
     setValue(normalized);
     setStatus(
-      reachable
-        ? "Connected. This address is now active."
-        : "Saved — but the server did not respond. Double-check the address and that the desktop app is running.",
+      reachable ? t("settings.connected") : t("settings.savedNoResponse"),
     );
   };
 
   const onReset = async () => {
     await applyUrl(null);
     setValue("");
-    setStatus("Using the default cloud server.");
+    setStatus(t("settings.usingDefault"));
   };
 
   return (
@@ -170,21 +194,19 @@ export default function ServerSettingsScreen() {
     >
       <Stack.Screen
         options={{
-          title: "Server",
+          title: t("settings.title"),
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
         }}
       />
       <Text style={[styles.kicker, { color: colors.primary }]}>
-        ENGRAM // CONNECTION
+        {t("settings.connectionKicker")}
       </Text>
       <Text style={[styles.h1, { color: colors.foreground }]}>
-        Server address
+        {t("settings.serverAddress")}
       </Text>
       <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-        Leave blank to use the default cloud server. To run fully offline,
-        enter the address shown by the ENGRAM desktop app on your local
-        network, e.g. http://192.168.1.20:3101
+        {t("settings.serverAddressHint")}
       </Text>
 
       {!loaded ? (
@@ -215,7 +237,7 @@ export default function ServerSettingsScreen() {
               style={[styles.button, { borderColor: colors.border }]}
             >
               <Text style={[styles.buttonText, { color: colors.foreground }]}>
-                Use default
+                {t("settings.useDefault")}
               </Text>
             </Pressable>
             <Pressable
@@ -231,7 +253,7 @@ export default function ServerSettingsScreen() {
                 <ActivityIndicator color={colors.background} size="small" />
               ) : (
                 <Text style={[styles.buttonText, { color: colors.background }]}>
-                  Save & connect
+                  {t("settings.saveConnect")}
                 </Text>
               )}
             </Pressable>
@@ -253,24 +275,114 @@ export default function ServerSettingsScreen() {
         </>
       )}
 
+      <Text style={[styles.kicker, { color: colors.primary, marginTop: 36 }]}>
+        {t("settings.languageKicker")}
+      </Text>
+      <Text style={[styles.h1, { color: colors.foreground }]}>
+        {t("settings.languageTitle")}
+      </Text>
+      <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+        {t("settings.languageHint")}
+      </Text>
+
+      <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+        {t("settings.interfaceLanguage")}
+      </Text>
+      <View
+        style={[
+          styles.optionGroup,
+          { borderColor: colors.border, backgroundColor: colors.card },
+        ]}
+      >
+        {LANGUAGES.map((lang, i) => {
+          const active = uiLang === lang.code;
+          return (
+            <Pressable
+              key={lang.code}
+              testID={`ui-language-${lang.code}`}
+              onPress={() => onSelectUiLang(lang.code)}
+              style={[
+                styles.optionRow,
+                i > 0 ? { borderTopWidth: 1, borderTopColor: colors.border } : null,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.optionText,
+                  { color: active ? colors.primary : colors.foreground },
+                ]}
+              >
+                {lang.nativeName}
+              </Text>
+              {active ? (
+                <Feather name="check" size={16} color={colors.primary} />
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+        {t("settings.replyLanguage")}
+      </Text>
+      <View
+        style={[
+          styles.optionGroup,
+          { borderColor: colors.border, backgroundColor: colors.card },
+        ]}
+      >
+        {(
+          [
+            { value: "match", label: t("settings.replyMatchUi") },
+            { value: "auto", label: t("settings.replyAuto") },
+            ...LANGUAGES.map((l) => ({ value: l.code, label: l.nativeName })),
+          ] as { value: string; label: string }[]
+        ).map((opt, i) => {
+          const active = replyLang === opt.value;
+          return (
+            <Pressable
+              key={opt.value}
+              testID={`reply-language-${opt.value}`}
+              onPress={() => onSelectReplyLang(opt.value)}
+              style={[
+                styles.optionRow,
+                i > 0 ? { borderTopWidth: 1, borderTopColor: colors.border } : null,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.optionText,
+                  { color: active ? colors.primary : colors.foreground },
+                ]}
+              >
+                {opt.label}
+              </Text>
+              {active ? (
+                <Feather name="check" size={16} color={colors.primary} />
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+
       {Platform.OS !== "web" ? (
         <>
           <Text style={[styles.kicker, { color: colors.primary, marginTop: 36 }]}>
-            ENGRAM // ON-DEVICE
+            {t("settings.onDeviceKicker")}
           </Text>
           <Text style={[styles.h1, { color: colors.foreground }]}>
-            Offline mode
+            {t("settings.offlineMode")}
           </Text>
           <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-            Run the engrams entirely on this phone — no server, no network. Uses
-            a local model ({MODEL_NAME}, ~{gb(MODEL_BYTES)} one-time download)
-            and keeps conversations in on-device storage. Chat, inquiries and
-            transmissions work; media, simulations and the hub need the server.
+            {t("settings.offlineHint", {
+              model: MODEL_NAME,
+              size: gb(MODEL_BYTES),
+            })}
           </Text>
 
           <View style={[styles.offlineRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
             <Text style={[styles.buttonText, { color: colors.foreground }]}>
-              Use offline mode
+              {t("settings.useOfflineMode")}
             </Text>
             <Switch
               value={offline}
@@ -282,14 +394,14 @@ export default function ServerSettingsScreen() {
           {modelStatus?.state === "ready" ? (
             <>
               <Text style={[styles.status, { color: colors.mutedForeground, marginTop: 12 }]}>
-                Model installed ({gb(modelStatus.bytes)}).
+                {t("settings.modelInstalled", { size: gb(modelStatus.bytes) })}
               </Text>
               <Pressable
                 onPress={onDeleteModel}
                 style={[styles.button, { borderColor: colors.border, marginTop: 12 }]}
               >
                 <Text style={[styles.buttonText, { color: colors.foreground }]}>
-                  Delete model
+                  {t("settings.deleteModel")}
                 </Text>
               </Pressable>
             </>
@@ -304,14 +416,14 @@ export default function ServerSettingsScreen() {
                 />
               </View>
               <Text style={[styles.status, { color: colors.mutedForeground, marginTop: 8 }]}>
-                Downloading… {Math.round(progress * 100)}%
+                {t("settings.downloading", { percent: Math.round(progress * 100) })}
               </Text>
               <Pressable
                 onPress={onCancelDownload}
                 style={[styles.button, { borderColor: colors.border, marginTop: 12 }]}
               >
                 <Text style={[styles.buttonText, { color: colors.foreground }]}>
-                  Pause download
+                  {t("settings.pauseDownload")}
                 </Text>
               </Pressable>
             </>
@@ -325,8 +437,8 @@ export default function ServerSettingsScreen() {
             >
               <Text style={[styles.buttonText, { color: colors.background }]}>
                 {modelStatus?.state === "partial"
-                  ? `Resume download (${gb(modelStatus.bytes)} so far)`
-                  : "Download model"}
+                  ? t("settings.resumeDownload", { size: gb(modelStatus.bytes) })
+                  : t("settings.downloadModel")}
               </Text>
             </Pressable>
           )}
@@ -395,6 +507,31 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   statusRow: { flexDirection: "row", gap: 8, marginTop: 16 },
+  fieldLabel: {
+    fontFamily: "JetBrainsMono_500Medium",
+    fontSize: 11,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  optionGroup: {
+    borderWidth: 1,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  optionText: {
+    fontFamily: "Rajdhani_600SemiBold",
+    fontSize: 15,
+    letterSpacing: 0.5,
+  },
   offlineRow: {
     flexDirection: "row",
     alignItems: "center",

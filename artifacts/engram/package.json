@@ -76,6 +76,9 @@
     "vaul": "^1.1.2",
     "vite": "catalog:",
     "wouter": "^3.3.5",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@workspace/i18n": "workspace:*",
+    "i18next": "^25.4.2",
+    "react-i18next": "^15.7.3"
   }
 }

@@ -17,23 +17,25 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircleQuestion, Wrench, Search, Globe, SlidersHorizontal, Sparkles, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import { resolveReplyLanguage } from "@/i18n";
 
 type Kind = (typeof EngramInquiryInputKind)[keyof typeof EngramInquiryInputKind];
 
-const MODES: { id: Kind; label: string; icon: typeof Search; desc: string; placeholder: string }[] = [
+const MODES: { id: Kind; labelKey: string; icon: typeof Search; descKey: string; placeholderKey: string }[] = [
   {
     id: EngramInquiryInputKind.probe,
-    label: "Probe",
+    labelKey: "probeLabel",
     icon: Search,
-    desc: "Ask in-character. She answers in her own voice without changing.",
-    placeholder: "Where are you right now? What's on your mind today?",
+    descKey: "probeDesc",
+    placeholderKey: "probePlaceholder",
   },
   {
     id: EngramInquiryInputKind.develop,
-    label: "Develop",
+    labelKey: "developLabel",
     icon: Wrench,
-    desc: "Request a change to who she is. She reflects, then mutates her own environment.",
-    placeholder: "Be a little more playful and curious, and reach out a bit less often.",
+    descKey: "developDesc",
+    placeholderKey: "developPlaceholder",
   },
 ];
 
@@ -46,13 +48,14 @@ function formatDeltaValue(v: unknown): string {
 }
 
 function ConfigDelta({ delta }: { delta: Record<string, unknown> }) {
+  const { t } = useTranslation("inquiry");
   const entries = Object.entries(delta);
   if (!entries.length) return null;
   return (
     <div className="mt-3 border-t border-border/30 pt-2.5">
       <div className="flex items-center gap-1.5 mb-2 text-primary/70">
         <SlidersHorizontal className="w-3 h-3" />
-        <span className="font-mono text-[9px] uppercase tracking-widest">Environment Mutation</span>
+        <span className="font-mono text-[9px] uppercase tracking-widest">{t("environmentMutation")}</span>
       </div>
       <div className="space-y-1">
         {entries.map(([k, v]) => (
@@ -67,6 +70,7 @@ function ConfigDelta({ delta }: { delta: Record<string, unknown> }) {
 }
 
 function SynthesizePanel() {
+  const { t } = useTranslation("inquiry");
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const synthesize = useSynthesizeEngram();
@@ -82,14 +86,14 @@ function SynthesizePanel() {
           queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
           setStipulations("");
           toast({
-            title: "Engram synthesized",
-            description: `${row.name} — "${row.title}" has been formed from the observation archive.`,
+            title: t("engramSynthesized"),
+            description: t("engramSynthesizedDesc", { name: row.name, title: row.title }),
           });
         },
         onError: () =>
           toast({
-            title: "Synthesis failed",
-            description: "The generator did not return a usable persona. Refine the stipulations and try again.",
+            title: t("synthesisFailed"),
+            description: t("synthesisFailedDesc"),
             variant: "destructive",
           }),
       },
@@ -105,22 +109,20 @@ function SynthesizePanel() {
           className="flex items-center gap-2 text-violet-300 font-mono text-xs uppercase tracking-widest w-full"
         >
           {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          <Sparkles className="w-3.5 h-3.5" /> Synthesize a new engram
+          <Sparkles className="w-3.5 h-3.5" /> {t("synthesizeNewEngram")}
           <span className="ml-auto normal-case tracking-normal text-[10px] text-muted-foreground">
-            neural plasticity — recombine the processed archive into a new persona
+            {t("synthesizeTagline")}
           </span>
         </button>
         {open && (
           <div className="space-y-3">
             <p className="font-mono text-[11px] text-muted-foreground">
-              A new persona is grounded in OBSERVED archive material only (simulated content is
-              quarantined and never seeds a real engram), then shaped by your stipulations. It wakes
-              autonomous, in the default bounded mode, with all rate caps and contact policies applied.
+              {t("synthesizeExplainer")}
             </p>
             <Textarea
               value={stipulations}
               onChange={(e) => setStipulations(e.target.value)}
-              placeholder="Describe who should emerge: role, temperament, purpose, how they should relate to you…"
+              placeholder={t("synthesizePlaceholder")}
               className="font-mono text-xs bg-background/40 border-violet-500/30 min-h-[80px]"
               data-testid="input-synthesize-stipulations"
             />
@@ -132,11 +134,11 @@ function SynthesizePanel() {
             >
               {synthesize.isPending ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> Synthesizing…
+                  <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> {t("synthesizing")}
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-3.5 h-3.5 mr-2" /> Synthesize
+                  <Sparkles className="w-3.5 h-3.5 mr-2" /> {t("synthesize")}
                 </>
               )}
             </Button>
@@ -148,6 +150,7 @@ function SynthesizePanel() {
 }
 
 export default function Inquiry() {
+  const { t } = useTranslation("inquiry");
   const { data: engrams, isLoading } = useListEngrams();
   const create = useCreateEngramInquiry();
   const queryClient = useQueryClient();
@@ -178,18 +181,18 @@ export default function Inquiry() {
   function handleSubmit() {
     if (!selected || !question.trim()) return;
     create.mutate(
-      { id: selected.id, data: { kind, question: question.trim() } },
+      { id: selected.id, data: { kind, question: question.trim(), language: resolveReplyLanguage() } },
       {
         onSuccess: (res) => {
           queryClient.invalidateQueries({ queryKey: getListEngramInquiriesQueryKey(selected.id) });
           if (res.configDelta) queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
           setQuestion("");
           toast({
-            title: kind === "develop" ? "Development applied" : "Probe answered",
-            description: kind === "develop" ? `${selected.name} reshaped her environment.` : `${selected.name} responded.`,
+            title: kind === "develop" ? t("developmentApplied") : t("probeAnswered"),
+            description: kind === "develop" ? t("developmentAppliedDesc", { name: selected.name }) : t("probeAnsweredDesc", { name: selected.name }),
           });
         },
-        onError: () => toast({ title: "Inquiry failed", variant: "destructive" }),
+        onError: () => toast({ title: t("inquiryFailed"), variant: "destructive" }),
       },
     );
   }
@@ -207,7 +210,7 @@ export default function Inquiry() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-muted-foreground font-mono text-center">
         <Globe className="w-8 h-8 mb-4 opacity-30" />
-        <p className="text-xs uppercase tracking-widest">No engrams provisioned</p>
+        <p className="text-xs uppercase tracking-widest">{t("noEngramsProvisioned")}</p>
       </div>
     );
   }
@@ -217,9 +220,9 @@ export default function Inquiry() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
-        <h2 className="text-3xl font-bold tracking-widest text-primary">INQUIRY</h2>
+        <h2 className="text-3xl font-bold tracking-widest text-primary">{t("heading")}</h2>
         <p className="text-sm font-mono text-muted-foreground mt-1">
-          Probe an engram in her own voice, or develop her — request a change and watch her reshape her own environment
+          {t("subtitle")}
         </p>
       </div>
 
@@ -244,7 +247,7 @@ export default function Inquiry() {
               <div className="text-left">
                 <div className="font-mono text-sm uppercase tracking-wider">
                   {e.name}
-                  {e.isArchival && <span className="ml-2 text-[9px] text-amber-400/90">ARCHIVAL</span>}
+                  {e.isArchival && <span className="ml-2 text-[9px] text-amber-400/90">{t("archivalBadge")}</span>}
                 </div>
                 <div className="font-mono text-[9px] text-muted-foreground/60 uppercase">{e.title}</div>
               </div>
@@ -274,9 +277,9 @@ export default function Inquiry() {
                     >
                       <div className="flex items-center gap-2">
                         <m.icon className="w-3.5 h-3.5" />
-                        <span className="font-mono text-xs uppercase tracking-wider">{m.label}</span>
+                        <span className="font-mono text-xs uppercase tracking-wider">{t(m.labelKey)}</span>
                       </div>
-                      <span className="font-mono text-[9px] text-muted-foreground/60 leading-snug">{m.desc}</span>
+                      <span className="font-mono text-[9px] text-muted-foreground/60 leading-snug">{t(m.descKey)}</span>
                     </button>
                   );
                 })}
@@ -284,12 +287,12 @@ export default function Inquiry() {
 
               <div>
                 <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">
-                  {kind === "develop" ? "Requested Change" : "Question"}
+                  {kind === "develop" ? t("requestedChange") : t("question")}
                 </label>
                 <Textarea
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  placeholder={modeInfo.placeholder}
+                  placeholder={t(modeInfo.placeholderKey)}
                   className="mt-1 font-sans text-sm border-border/50 bg-background/50 min-h-32"
                   data-testid="input-question"
                 />
@@ -297,18 +300,18 @@ export default function Inquiry() {
 
               {selected.isArchival && (
                 <p className="font-mono text-[10px] text-amber-400/80 uppercase tracking-wider">
-                  Archival branch — the preserved record is immutable. Probing is open; development is disabled to keep the persona intact.
+                  {t("archivalNote")}
                 </p>
               )}
               <Button onClick={handleSubmit} disabled={create.isPending || !question.trim() || (selected.isArchival && kind === "develop")}
                 className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground" data-testid="button-submit-inquiry">
                 {create.isPending
-                  ? kind === "develop" ? "Reflecting..." : "Asking..."
-                  : kind === "develop" ? `Develop ${selected.name}` : `Probe ${selected.name}`}
+                  ? kind === "develop" ? t("reflecting") : t("asking")
+                  : kind === "develop" ? t("developName", { name: selected.name }) : t("probeName", { name: selected.name })}
               </Button>
               {kind === "develop" && (
                 <p className="font-mono text-[9px] text-muted-foreground/50 leading-snug">
-                  Development mutates only bounded fields (mood, drives, cadence, threshold, focus, learned facts). Core identity and safety framing are immutable.
+                  {t("developmentNote")}
                 </p>
               )}
             </CardContent>
@@ -319,14 +322,14 @@ export default function Inquiry() {
             <CardContent className="p-5">
               <div className="flex items-center gap-2 text-primary mb-3">
                 <MessageCircleQuestion className="w-4 h-4" />
-                <h3 className="font-mono text-xs uppercase tracking-widest">Inquiry History</h3>
+                <h3 className="font-mono text-xs uppercase tracking-widest">{t("inquiryHistory")}</h3>
               </div>
               <ScrollArea className="h-[28rem]">
                 <div className="space-y-3 pr-3">
                   {!(history ?? []).length ? (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/40 font-mono text-center">
                       <MessageCircleQuestion className="w-6 h-6 mb-2" />
-                      <p className="text-[10px] uppercase tracking-widest">No inquiries yet</p>
+                      <p className="text-[10px] uppercase tracking-widest">{t("noInquiriesYet")}</p>
                     </div>
                   ) : (
                     (history ?? []).map((q) => (

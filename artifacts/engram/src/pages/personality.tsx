@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useGetPersonality, useUpdatePersonality, getGetPersonalityQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,20 +10,21 @@ import { Save, RefreshCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const TRAITS = [
-  { key: "curiosity", label: "Curiosity", desc: "Tendency to explore new ideas and ask questions" },
-  { key: "stoicism", label: "Stoicism", desc: "Preference for measured, calm responses under stress" },
-  { key: "empathy", label: "Empathy", desc: "Weight given to social and emotional context" },
-  { key: "skepticism", label: "Skepticism", desc: "Degree of evidence required before accepting claims" },
-  { key: "precision", label: "Precision", desc: "Preference for detailed, evidence-based explanations" },
-  { key: "creativity", label: "Creativity", desc: "Willingness to generate unconventional ideas" },
-  { key: "initiative", label: "Initiative", desc: "Likelihood of proactively starting interactions" },
-  { key: "formality", label: "Formality", desc: "Degree of formal language and tone in communication" },
-  { key: "humor", label: "Humor", desc: "Frequency and warmth of levity in interactions" },
+  { key: "curiosity" },
+  { key: "stoicism" },
+  { key: "empathy" },
+  { key: "skepticism" },
+  { key: "precision" },
+  { key: "creativity" },
+  { key: "initiative" },
+  { key: "formality" },
+  { key: "humor" },
 ] as const;
 
 type TraitKey = (typeof TRAITS)[number]["key"];
 
 export default function Personality() {
+  const { t } = useTranslation("personality");
   const { data: personality, isLoading } = useGetPersonality();
   const update = useUpdatePersonality();
   const queryClient = useQueryClient();
@@ -49,7 +51,7 @@ export default function Personality() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetPersonalityQueryKey() });
         setDirty(false);
-        toast({ title: "Personality Updated", description: "Trait values have been calibrated." });
+        toast({ title: t("updatedTitle"), description: t("updatedDescription") });
       }
     });
   }
@@ -67,18 +69,18 @@ export default function Personality() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-widest text-primary">PERSONALITY CORE</h2>
-          <p className="text-sm font-mono text-muted-foreground mt-1">Dynamic trait parameters — bounded, revisable, evolving</p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
+          <p className="text-sm font-mono text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         <div className="flex gap-2 shrink-0">
           {dirty && (
             <Button variant="outline" size="sm" onClick={handleReset} className="font-mono text-xs uppercase tracking-wider border-border/50">
-              <RefreshCcw className="w-3 h-3 mr-2" /> Reset
+              <RefreshCcw className="w-3 h-3 mr-2" /> {t("reset")}
             </Button>
           )}
           <Button size="sm" onClick={handleSave} disabled={!dirty || update.isPending}
             className="font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-save-personality">
-            <Save className="w-3 h-3 mr-2" /> {update.isPending ? "Saving..." : "Save Traits"}
+            <Save className="w-3 h-3 mr-2" /> {update.isPending ? t("saving") : t("saveTraits")}
           </Button>
         </div>
       </div>
@@ -103,8 +105,8 @@ export default function Personality() {
                 <CardContent className="p-4">
                   <div className="flex justify-between items-center mb-3">
                     <div>
-                      <span className="font-display font-semibold uppercase tracking-widest text-sm text-foreground">{tr.label}</span>
-                      <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{tr.desc}</p>
+                      <span className="font-display font-semibold uppercase tracking-widest text-sm text-foreground">{t(`traits.${tr.key}`)}</span>
+                      <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{t(`traits.${tr.key}Desc`)}</p>
                     </div>
                     <span className="font-mono text-lg font-bold text-primary tabular-nums w-12 text-right">
                       {((traits[tr.key] ?? 0) * 100).toFixed(0)}
@@ -118,7 +120,7 @@ export default function Personality() {
                     data-testid={`slider-trait-${tr.key}`}
                   />
                   <div className="flex justify-between mt-1 text-[9px] font-mono text-muted-foreground/50">
-                    <span>SUPPRESSED</span><span>CALIBRATED</span><span>DOMINANT</span>
+                    <span>{t("scale.suppressed")}</span><span>{t("scale.calibrated")}</span><span>{t("scale.dominant")}</span>
                   </div>
                 </CardContent>
               </Card>

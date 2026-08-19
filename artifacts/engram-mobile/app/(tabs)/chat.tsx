@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { fetch as expoFetch } from "expo/fetch";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
@@ -42,10 +43,12 @@ function uid(): string {
 
 import { isOfflineMode, useOfflineMode } from "@/lib/offline/mode";
 import { sendOfflineMessage } from "@/lib/offline/chat";
+import { resolveReplyLanguage } from "@/lib/i18n";
 
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
 export default function ChatScreen() {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { selectedEngramId, getConversationId, setConversationId } = useEngram();
@@ -83,7 +86,9 @@ export default function ChatScreen() {
     createConversation
       .mutateAsync({
         data: {
-          title: `${engram?.name ?? "Engram"} session`,
+          title: t("chat.sessionTitle", {
+            name: engram?.name ?? t("chat.engramFallback"),
+          }),
           mode: "companion",
           engramId,
         },
@@ -169,8 +174,7 @@ export default function ChatScreen() {
             {
               id: uid(),
               role: "assistant",
-              content:
-                "[ on-device model unavailable — check that the model is downloaded in Settings ]",
+              content: t("chat.offlineUnavailable"),
             },
           ]);
         }
@@ -190,7 +194,7 @@ export default function ChatScreen() {
             "Content-Type": "application/json",
             Accept: "text/event-stream",
           },
-          body: JSON.stringify({ content: text }),
+          body: JSON.stringify({ content: text, language: await resolveReplyLanguage() }),
         },
       );
 
@@ -230,7 +234,7 @@ export default function ChatScreen() {
           {
             id: uid(),
             role: "assistant",
-            content: "[ signal interrupted — try again ]",
+            content: t("chat.signalInterrupted"),
           },
         ]);
       }
@@ -238,7 +242,7 @@ export default function ChatScreen() {
       setIsStreaming(false);
       setShowTyping(false);
     }
-  }, [input, isStreaming, conversationId, engramId]);
+  }, [input, isStreaming, conversationId, engramId, t]);
 
   if (!enabled) {
     return (
@@ -252,8 +256,8 @@ export default function ChatScreen() {
               color={colors.mutedForeground}
             />
           }
-          title="No engram selected"
-          subtitle="Pick an engram from the Personas tab to speak with it in its own voice."
+          title={t("chat.noEngram")}
+          subtitle={t("chat.noEngramSubtitle")}
         />
       </View>
     );
@@ -275,10 +279,10 @@ export default function ChatScreen() {
         ]}
       >
         <Text style={[styles.kicker, { color: colors.primary }]}>
-          DIRECT LINK // {engram?.symbol ?? "··"}
+          {t("chat.kicker")} // {engram?.symbol ?? "··"}
         </Text>
         <Text style={[styles.h1, { color: colors.foreground }]}>
-          {engram?.name ?? "Chat"}
+          {engram?.name ?? t("chat.fallbackTitle")}
         </Text>
       </View>
 
@@ -358,8 +362,10 @@ export default function ChatScreen() {
                       color={colors.mutedForeground}
                     />
                   }
-                  title={`Speak with ${engram?.name ?? "the engram"}`}
-                  subtitle="Replies stream in this engram's own voice and formatting."
+                  title={t("chat.speakWith", {
+                    name: engram?.name ?? t("chat.theEngram"),
+                  })}
+                  subtitle={t("chat.speakSubtitle")}
                 />
               </View>
             ) : null
@@ -380,7 +386,7 @@ export default function ChatScreen() {
             ref={inputRef}
             value={input}
             onChangeText={setInput}
-            placeholder="Transmit a message…"
+            placeholder={t("chat.inputPlaceholder")}
             placeholderTextColor={colors.mutedForeground}
             multiline
             blurOnSubmit={false}

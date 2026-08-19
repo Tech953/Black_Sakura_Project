@@ -1,0 +1,12 @@
+{
+  "title": "ENGRAM HUB",
+  "subtitle": "Live System Status & Telemetry",
+  "coreActive": "Core Active",
+  "activePersona": "Active Persona",
+  "totalMemories": "Total Memories",
+  "beliefNodes": "Belief Nodes",
+  "avgConfidence": "Avg Confidence",
+  "personalityRadar": "Personality Radar",
+  "radarVizOffline": "RADAR VIZ OFFLINE",
+  "memoryDistribution": "Memory Distribution"
+}

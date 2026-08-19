@@ -1,0 +1,12 @@
+{
+  "title": "PERSONA FORMS",
+  "subtitle": "Six cognitive archetypes — each reshapes memory retrieval, reasoning, and communication",
+  "systemNote": "SYSTEM NOTE:",
+  "systemNoteBody": "Switching persona forms does not alter core memory or beliefs. It rebalances retrieval priorities, reasoning weighting, and conversational style. Identity persists across all forms.",
+  "activatedTitle": "Persona Activated",
+  "activatedDescription": "{{name}} form is now dominant.",
+  "active": "Active",
+  "memoryBias": "Memory Bias",
+  "reasoning": "Reasoning",
+  "activateForm": "Activate Form"
+}

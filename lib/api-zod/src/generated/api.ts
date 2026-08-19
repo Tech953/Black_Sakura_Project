@@ -479,7 +479,8 @@ export const SendOpenaiMessageParams = zod.object({
 })
 
 export const SendOpenaiMessageBody = zod.object({
-  "content": zod.string()
+  "content": zod.string(),
+  "language": zod.string().optional().describe('Optional BCP-47 language code the assistant\/engram should respond in (e.g. \"es\", \"ja\"). Omit for automatic (match the user).')
 })
 
 export const SendOpenaiMessageResponse = zod.unknown()
@@ -1002,7 +1003,8 @@ export const CreateEngramInquiryParams = zod.object({
 
 export const CreateEngramInquiryBody = zod.object({
   "kind": zod.enum(['probe', 'develop']),
-  "question": zod.string()
+  "question": zod.string(),
+  "language": zod.string().optional().describe('Optional BCP-47 language code the engram should respond in. Omit for automatic.')
 })
 
 export const CreateEngramInquiryResponse = zod.object({

@@ -1,0 +1,13 @@
+{
+  "title": "Settings",
+  "subtitle": "Operator preferences for this terminal",
+  "languageSection": "Language",
+  "uiLanguage": "Interface language",
+  "uiLanguageHint": "Menus, labels, and pages across the app.",
+  "replyLanguage": "Engram reply language",
+  "replyLanguageHint": "The language engrams and PYRI respond in during chat and inquiries.",
+  "replyMatchUi": "Match interface language",
+  "replyAuto": "Automatic — match whatever language I write in",
+  "rtlNote": "Right-to-left layout is applied for Arabic.",
+  "saved": "Settings saved"
+}

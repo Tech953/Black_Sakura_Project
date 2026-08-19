@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Glyph } from "@/components/glyph";
@@ -16,6 +17,7 @@ export function EngramCard({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const mood = engram.currentMood || engram.emotionalBaseline.mood;
   return (
@@ -55,9 +57,9 @@ export function EngramCard({
           <View style={styles.chips}>
             <Chip label={mood} tone="primary" />
             {engram.autonomyEnabled ? (
-              <Chip label="autonomous" tone="success" />
+              <Chip label={t("card.autonomous")} tone="success" />
             ) : (
-              <Chip label="dormant" tone="muted" />
+              <Chip label={t("card.dormant")} tone="muted" />
             )}
           </View>
         </View>

@@ -1,9 +1,11 @@
 import type { Engram } from "@workspace/db";
 import { buildEngramSystemPrompt, summarizeWorldModel } from "@workspace/engram-core";
+import { responseLanguageInstruction } from "@workspace/i18n";
 import type { LocalHandler } from "@workspace/api-client-react";
 
 import { completeOnce } from "./llm";
 import * as store from "./store";
+import { resolveReplyLanguage } from "../i18n";
 
 /**
  * Local (on-device) implementations of every REST endpoint the app calls
@@ -42,7 +44,11 @@ async function handleInquiry(
     kind === "probe"
       ? "Your designer is introspecting you through the inquiry system. Answer their question about yourself honestly and in-character — reflective and self-aware about being a construct, but unmistakably you. Do not change yourself; just reveal yourself."
       : "Your designer is speaking with you through the inquiry system while you run on their handheld device in offline mode. Respond to their request in character. In this offline mode you cannot actually alter your own configuration — acknowledge their wish and respond honestly, but you remain as you are until reconnected.";
-  const system = buildEngramSystemPrompt({ engram, situation });
+  const system = buildEngramSystemPrompt({
+    engram,
+    situation,
+    responseLanguageInstruction: responseLanguageInstruction(await resolveReplyLanguage()),
+  });
   const response = await completeOnce(
     [
       { role: "system", content: system },

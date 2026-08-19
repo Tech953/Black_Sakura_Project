@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useListOpenaiConversations, useCreateOpenaiConversation, useDeleteOpenaiConversation, useListEngrams, getListOpenaiConversationsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useEventStream, type EngramEvent } from "@/hooks/use-event-stream";
+import { resolveReplyLanguage } from "@/i18n";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -27,37 +30,46 @@ interface SystemEvent {
 }
 
 /** Render a live system event as a one-line strip entry, or null to hide it. */
-function describeEvent(ev: EngramEvent): { label: string; tone: EventTone } | null {
+function describeEvent(ev: EngramEvent, t: TFunction): { label: string; tone: EventTone } | null {
   const d = (ev.data ?? {}) as Record<string, unknown>;
   switch (ev.type) {
     case "presence.changed":
       return {
-        label: `${(d["engramName"] as string) ?? "An engram"} moved to ${(d["spaceName"] as string) ?? "a space"}`,
+        label: t("eventPresenceChanged", {
+          engramName: (d["engramName"] as string) ?? t("eventAnEngram"),
+          spaceName: (d["spaceName"] as string) ?? t("eventASpace"),
+        }),
         tone: "info",
       };
     case "controls.changed": {
-      const bits = [d["paused"] ? "paused" : "active"];
-      if (d["quietMode"]) bits.push("quiet");
-      return { label: `Controls updated — ${bits.join(", ")}`, tone: "warn" };
+      const bits = [d["paused"] ? t("eventControlsPaused") : t("eventControlsActive")];
+      if (d["quietMode"]) bits.push(t("eventControlsQuiet"));
+      return { label: t("eventControlsUpdated", { bits: bits.join(", ") }), tone: "warn" };
     }
     case "simulation.step":
       return {
-        label: `Simulation advanced — step ${(d["step"] as number) ?? "?"}/${(d["maxSteps"] as number) ?? "?"}`,
+        label: t("eventSimulationStep", {
+          step: (d["step"] as number) ?? "?",
+          maxSteps: (d["maxSteps"] as number) ?? "?",
+        }),
         tone: "info",
       };
     case "media.completed":
       return {
-        label: `Perceived ${(d["modality"] as string) ?? "media"}: ${(d["filename"] as string) ?? ""}`,
+        label: t("eventMediaCompleted", {
+          modality: (d["modality"] as string) ?? t("eventMediaFallback"),
+          filename: (d["filename"] as string) ?? "",
+        }),
         tone: "good",
       };
     case "artifact.created":
-      return { label: `Generating ${(d["kind"] as string) ?? "artifact"}: ${(d["title"] as string) ?? ""}`, tone: "info" };
+      return { label: t("eventArtifactCreated", { kind: (d["kind"] as string) ?? t("eventArtifactFallback"), title: (d["title"] as string) ?? "" }), tone: "info" };
     case "artifact.completed":
-      return { label: `Generated ${(d["kind"] as string) ?? "artifact"}: ${(d["title"] as string) ?? ""}`, tone: "good" };
+      return { label: t("eventArtifactCompleted", { kind: (d["kind"] as string) ?? t("eventArtifactFallback"), title: (d["title"] as string) ?? "" }), tone: "good" };
     case "artifact.failed":
-      return { label: `Generation failed: ${(d["title"] as string) ?? ""}`, tone: "warn" };
+      return { label: t("eventArtifactFailed", { title: (d["title"] as string) ?? "" }), tone: "warn" };
     case "chat.self_initiated":
-      return { label: "An engram reached out", tone: "good" };
+      return { label: t("eventChatSelfInitiated"), tone: "good" };
     case "artifact.updated":
     case "message.created":
       return null;
@@ -94,17 +106,18 @@ interface Conversation {
   createdAt: string;
 }
 
-const MODES: { id: ChatMode; label: string; glyph: string; desc: string }[] = [
-  { id: "informational", label: "Informational", glyph: "◈", desc: "Clear, measured. Inform with evidence." },
-  { id: "alert", label: "Alert", glyph: "△", desc: "Concise. Urgent. Short sentences." },
-  { id: "tutorial", label: "Tutorial", glyph: "◎", desc: "Patient. Structured. Step by step." },
-  { id: "companion", label: "Companion", glyph: "⟡", desc: "Warm and conversational." },
-  { id: "analyst", label: "Analyst", glyph: "⟐", desc: "Precise. Data-driven. Evidence-based." },
-  { id: "silent", label: "Silent", glyph: "⬡", desc: "Minimal. Text-only output." },
-  { id: "custom", label: "Custom", glyph: "⌘", desc: "Upload your own engram context." },
+const MODES: { id: ChatMode; labelKey: string; glyph: string; descKey: string }[] = [
+  { id: "informational", labelKey: "modeInformational", glyph: "◈", descKey: "modeInformationalDesc" },
+  { id: "alert", labelKey: "modeAlert", glyph: "△", descKey: "modeAlertDesc" },
+  { id: "tutorial", labelKey: "modeTutorial", glyph: "◎", descKey: "modeTutorialDesc" },
+  { id: "companion", labelKey: "modeCompanion", glyph: "⟡", descKey: "modeCompanionDesc" },
+  { id: "analyst", labelKey: "modeAnalyst", glyph: "⟐", descKey: "modeAnalystDesc" },
+  { id: "silent", labelKey: "modeSilent", glyph: "⬡", descKey: "modeSilentDesc" },
+  { id: "custom", labelKey: "modeCustom", glyph: "⌘", descKey: "modeCustomDesc" },
 ];
 
 export default function Chat() {
+  const { t } = useTranslation("chat");
   const { data: convList, isLoading: loadingList } = useListOpenaiConversations();
   const createConv = useCreateOpenaiConversation();
   const deleteConv = useDeleteOpenaiConversation();
@@ -174,17 +187,17 @@ export default function Chat() {
       const resp = await fetch(`${BASE}/api/openai/conversations/${convId}/media`, { method: "POST", body: form });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        toast({ title: "Upload rejected", description: err.error ?? `HTTP ${resp.status}`, variant: "destructive" });
+        toast({ title: t("toastUploadRejected"), description: err.error ?? t("toastHttpError", { status: resp.status }), variant: "destructive" });
         return;
       }
       const asset = await resp.json();
       setAttachments((prev) => [...prev, { id: asset.id, filename: asset.filename, modality: asset.modality, status: asset.status, error: asset.error }]);
     } catch {
-      toast({ title: "Upload failed", description: "Could not reach the API", variant: "destructive" });
+      toast({ title: t("toastUploadFailed"), description: t("toastCouldNotReachApi"), variant: "destructive" });
     } finally {
       setUploading(false);
     }
-  }, [activeId, toast]);
+  }, [activeId, toast, t]);
 
   // Poll perception status for in-flight attachments until each settles.
   useEffect(() => {
@@ -246,7 +259,7 @@ export default function Chat() {
       setActiveId(null);
       setMessages([]);
     }
-    toast({ title: "Conversation deleted" });
+    toast({ title: t("toastConversationDeleted") });
   }
 
   async function handleSend() {
@@ -265,7 +278,7 @@ export default function Chat() {
       const resp = await fetch(`${BASE}/api/openai/conversations/${activeId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: userMsg }),
+        body: JSON.stringify({ content: userMsg, language: resolveReplyLanguage() }),
         signal: ctrl.signal,
       });
 
@@ -292,7 +305,7 @@ export default function Chat() {
             const payload = JSON.parse(raw);
             if (payload.done) break;
             if (payload.error) {
-              toast({ title: "Generation error", description: payload.error, variant: "destructive" });
+              toast({ title: t("toastGenerationError"), description: payload.error, variant: "destructive" });
               break;
             }
             if (payload.content) {
@@ -316,7 +329,7 @@ export default function Chat() {
       });
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
-        toast({ title: "Network error", description: "Could not reach the API", variant: "destructive" });
+        toast({ title: t("toastNetworkError"), description: t("toastCouldNotReachApi"), variant: "destructive" });
       }
       setMessages((prev) => prev.filter((_, i) => i !== assistantIdx));
     } finally {
@@ -356,7 +369,7 @@ export default function Chat() {
           reloadMessages(activeId);
         }
       }
-      const described = describeEvent(ev);
+      const described = describeEvent(ev, t);
       if (!described) return;
       setSysEvents((prev) =>
         [
@@ -376,8 +389,8 @@ export default function Chat() {
     <div className="flex flex-col h-full bg-card/20 backdrop-blur-sm">
         <div className="p-4 border-b border-border/50 flex items-center justify-between">
           <div>
-            <h2 className="font-mono text-xs uppercase tracking-widest text-primary">Conversations</h2>
-            <p className="font-mono text-[9px] text-muted-foreground/50 mt-0.5">LPEM Dialogue Interface</p>
+            <h2 className="font-mono text-xs uppercase tracking-widest text-primary">{t("conversations")}</h2>
+            <p className="font-mono text-[9px] text-muted-foreground/50 mt-0.5">{t("lpemDialogueInterface")}</p>
           </div>
           <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
             <DialogTrigger asChild>
@@ -387,18 +400,18 @@ export default function Chat() {
             </DialogTrigger>
             <DialogContent className="bg-card border-border/50 max-w-sm w-[calc(100vw-2rem)]">
               <DialogHeader>
-                <DialogTitle className="font-display tracking-widest text-primary">New Conversation</DialogTitle>
+                <DialogTitle className="font-display tracking-widest text-primary">{t("newConversation")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-2">
                 <div>
-                  <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">Title</label>
+                  <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">{t("titleLabel")}</label>
                   <Input value={newTitle} onChange={e => setNewTitle(e.target.value)}
-                    placeholder="Thread name..." className="mt-1 font-mono text-sm border-border/50 bg-background/50"
+                    placeholder={t("threadNamePlaceholder")} className="mt-1 font-mono text-sm border-border/50 bg-background/50"
                     onKeyDown={e => e.key === "Enter" && handleNewConversation()} />
                 </div>
                 {(engrams ?? []).length > 0 && (
                   <div>
-                    <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider mb-2 block">Talk To</label>
+                    <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider mb-2 block">{t("talkTo")}</label>
                     <div className="grid grid-cols-2 gap-1.5">
                       <button
                         onClick={() => setEngramId(null)}
@@ -418,13 +431,13 @@ export default function Chat() {
                         </button>
                       ))}
                     </div>
-                    <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">PYRI uses LPEM modes; an engram replies autonomously in her own voice.</p>
+                    <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">{t("talkToHint")}</p>
                   </div>
                 )}
                 {engramId === null && (
                   <>
                     <div>
-                      <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider mb-2 block">LPEM Mode</label>
+                      <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider mb-2 block">{t("lpemMode")}</label>
                       <div className="grid grid-cols-2 gap-1.5">
                         {MODES.map((m) => (
                           <Tooltip key={m.id}>
@@ -434,26 +447,26 @@ export default function Chat() {
                                 className={`flex items-center gap-2 px-2.5 py-2 border font-mono text-xs transition-colors ${convMode === m.id ? "border-primary/50 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
                               >
                                 <span>{m.glyph}</span>
-                                <span className="uppercase tracking-wider text-[10px]">{m.label}</span>
+                                <span className="uppercase tracking-wider text-[10px]">{t(m.labelKey)}</span>
                               </button>
                             </TooltipTrigger>
-                            <TooltipContent side="right" className="font-mono text-xs">{m.desc}</TooltipContent>
+                            <TooltipContent side="right" className="font-mono text-xs">{t(m.descKey)}</TooltipContent>
                           </Tooltip>
                         ))}
                       </div>
                     </div>
                     {convMode === "custom" && (
                       <div className="space-y-2">
-                        <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">Custom Engram</label>
+                        <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">{t("customEngramLabel")}</label>
                         <Textarea
                           value={customEngram}
                           onChange={e => setCustomEngram(e.target.value)}
-                          placeholder="Paste your engram system context here..."
+                          placeholder={t("customEngramPlaceholder")}
                           className="font-mono text-xs border-border/50 bg-background/50 min-h-24 resize-none"
                         />
                         <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-primary/70 hover:text-primary transition-colors">
                           <Upload className="w-3 h-3" />
-                          Upload .engram file
+                          {t("uploadEngramFile")}
                           <input type="file" accept=".engram,.txt,.md,.json" onChange={handleEngamorUpload} className="sr-only" />
                         </label>
                       </div>
@@ -462,7 +475,7 @@ export default function Chat() {
                 )}
                 <Button onClick={handleNewConversation} disabled={createConv.isPending || !newTitle.trim()}
                   className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground">
-                  {createConv.isPending ? "Creating..." : "Start Conversation"}
+                  {createConv.isPending ? t("creating") : t("startConversation")}
                 </Button>
               </div>
             </DialogContent>
@@ -476,7 +489,7 @@ export default function Chat() {
             ) : !(convList ?? []).length ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/40 font-mono text-center">
                 <MessageSquare className="w-6 h-6 mb-2" />
-                <p className="text-[10px] uppercase">No conversations</p>
+                <p className="text-[10px] uppercase">{t("noConversations")}</p>
               </div>
             ) : (
               (convList as Conversation[]).map((c) => {
@@ -518,7 +531,7 @@ export default function Chat() {
       {isMobile && (
         <Sheet open={convSheetOpen} onOpenChange={setConvSheetOpen}>
           <SheetContent side="left" aria-describedby={undefined} className="w-80 max-w-[85vw] p-0 border-border/50">
-            <SheetTitle className="sr-only">Conversations</SheetTitle>
+            <SheetTitle className="sr-only">{t("conversations")}</SheetTitle>
             {sidebar}
           </SheetContent>
         </Sheet>
@@ -530,7 +543,7 @@ export default function Chat() {
         <div className="h-12 border-b border-border/50 px-4 md:px-6 flex items-center gap-2 md:gap-3 bg-background/50 backdrop-blur-sm shrink-0">
           {isMobile && (
             <button
-              aria-label="Open conversations"
+              aria-label={t("openConversations")}
               onClick={() => setConvSheetOpen(true)}
               className="flex items-center justify-center w-8 h-8 -ml-1 text-foreground/70 hover:text-primary transition-colors shrink-0"
             >
@@ -543,15 +556,15 @@ export default function Chat() {
               <span className="font-mono text-xs text-foreground/80 truncate">{activeConv.title}</span>
               <div className="ml-auto flex items-center gap-2 shrink-0">
                 <span
-                  title={liveConnected ? "Live updates connected" : "Live updates reconnecting…"}
+                  title={liveConnected ? t("liveUpdatesConnected") : t("liveUpdatesReconnecting")}
                   className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider ${liveConnected ? "text-emerald-400/80" : "text-muted-foreground/40"}`}
                 >
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${liveConnected ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"}`} />
-                  Live
+                  {t("live")}
                 </span>
                 {activeEngram?.isArchival && (
                   <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-wider border-amber-400/40 text-amber-400/90">
-                    Archival · Continuity Line
+                    {t("common:archivalBadge")}
                   </Badge>
                 )}
                 <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-wider border-primary/30 text-primary/70">
@@ -560,7 +573,7 @@ export default function Chat() {
               </div>
             </>
           ) : (
-            <span className="font-mono text-xs text-muted-foreground/50 uppercase tracking-widest">Select or create a conversation</span>
+            <span className="font-mono text-xs text-muted-foreground/50 uppercase tracking-widest">{t("selectOrCreate")}</span>
           )}
         </div>
 
@@ -586,12 +599,12 @@ export default function Chat() {
           {!activeId ? (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground/40 font-mono">
               <div className="text-5xl mb-4">◈</div>
-              <p className="text-sm uppercase tracking-widest">PYRI Dialogue Interface</p>
-              <p className="text-xs mt-2 text-muted-foreground/30">Create a conversation to begin</p>
+              <p className="text-sm uppercase tracking-widest">{t("dialogueInterfaceTitle")}</p>
+              <p className="text-xs mt-2 text-muted-foreground/30">{t("createToBegin")}</p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 {MODES.map((m) => (
                   <span key={m.id} className="font-mono text-[10px] text-muted-foreground/30 border border-muted/20 px-2 py-1">
-                    {m.glyph} {m.label}
+                    {m.glyph} {t(m.labelKey)}
                   </span>
                 ))}
               </div>
@@ -599,8 +612,8 @@ export default function Chat() {
           ) : !messages.length ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground/40 font-mono">
               <span className="text-3xl mb-3">{modeInfo?.glyph}</span>
-              <p className="text-xs uppercase tracking-widest">{modeInfo?.desc}</p>
-              <p className="text-[10px] mt-1 text-muted-foreground/30">Send a message to begin</p>
+              <p className="text-xs uppercase tracking-widest">{modeInfo ? t(modeInfo.descKey) : ""}</p>
+              <p className="text-[10px] mt-1 text-muted-foreground/30">{t("sendToBegin")}</p>
             </div>
           ) : (
             messages.map((msg, idx) => {
@@ -609,7 +622,7 @@ export default function Chat() {
                   <div key={idx} className="flex justify-center">
                     <div className="w-full max-w-[90%] md:max-w-[82%]">
                       <div className="font-mono text-[9px] uppercase tracking-widest mb-1 text-cyan-300/60 flex items-center justify-center gap-1.5">
-                        <Eye className="w-3 h-3" /> Perceived Context
+                        <Eye className="w-3 h-3" /> {t("perceivedContext")}
                       </div>
                       <div className="px-4 py-3 text-xs leading-relaxed font-mono whitespace-pre-wrap bg-cyan-500/[0.06] border border-dashed border-cyan-400/30 text-foreground/70">
                         {msg.content}
@@ -622,7 +635,7 @@ export default function Chat() {
                 <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] md:max-w-[78%] ${msg.role === "user" ? "order-1" : ""}`}>
                     <div className={`font-mono text-[9px] uppercase tracking-widest mb-1 ${msg.role === "user" ? "text-right text-muted-foreground/50" : "text-primary/50"}`}>
-                      {msg.role === "user" ? "YOU" : activeEngram ? `${activeEngram.name.toUpperCase()} · ${activeEngram.symbol}` : `PYRI · ${modeInfo?.glyph ?? "◈"}`}
+                      {msg.role === "user" ? t("you") : activeEngram ? `${activeEngram.name.toUpperCase()} · ${activeEngram.symbol}` : `PYRI · ${modeInfo?.glyph ?? "◈"}`}
                     </div>
                     <div className={`px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user"
@@ -632,7 +645,7 @@ export default function Chat() {
                       {msg.content || (msg.streaming && (
                         <span className="flex items-center gap-1 text-muted-foreground/50">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          <span className="font-mono text-[10px]">generating</span>
+                          <span className="font-mono text-[10px]">{t("generating")}</span>
                         </span>
                       ))}
                       {msg.streaming && msg.content && (
@@ -668,12 +681,12 @@ export default function Chat() {
                 >
                   {att.status === "failed" ? <AlertTriangle className="w-3 h-3 shrink-0" /> : <Loader2 className="w-3 h-3 animate-spin shrink-0" />}
                   <span className="truncate max-w-[140px]">{att.filename}</span>
-                  <span className="uppercase text-muted-foreground/50">{att.status === "failed" ? "failed" : "perceiving…"}</span>
+                  <span className="uppercase text-muted-foreground/50">{att.status === "failed" ? t("attachmentFailed") : t("attachmentPerceiving")}</span>
                   {att.status === "failed" && (
                     <button
                       onClick={() => setAttachments((p) => p.filter((a) => a.id !== att.id))}
                       className="hover:text-rose-200"
-                      aria-label="Dismiss attachment"
+                      aria-label={t("dismissAttachment")}
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -700,7 +713,7 @@ export default function Chat() {
               disabled={!activeId || uploading || streaming || activeEngram?.isArchival}
               onClick={() => fileInputRef.current?.click()}
               className="shrink-0 border-border/50 text-primary/70 hover:bg-primary/10 h-11 w-11"
-              aria-label="Attach media"
+              aria-label={t("attachMedia")}
             >
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
             </Button>
@@ -710,10 +723,10 @@ export default function Chat() {
               onKeyDown={handleKeyDown}
               placeholder={
                 activeEngram?.isArchival
-                  ? "Centralized continuity line — append-only; the preserved record is immutable."
+                  ? t("archivalPlaceholder")
                   : activeId
-                    ? `Message PYRI in ${convMode} mode…`
-                    : "Select a conversation first…"
+                    ? t("messagePyriPlaceholder", { mode: convMode })
+                    : t("selectConversationFirst")
               }
               disabled={!activeId || streaming}
               className="flex-1 font-mono text-sm border-border/50 bg-card/30 resize-none min-h-[44px] max-h-32 py-3 placeholder:text-muted-foreground/30"
@@ -740,7 +753,7 @@ export default function Chat() {
             )}
           </div>
           <p className="font-mono text-[9px] text-muted-foreground/30 text-center mt-2">
-            Enter to send · Shift+Enter for newline · Attach or drop media for {activeEngram ? activeEngram.name : "PYRI"} to perceive
+            {t("inputHint", { name: activeEngram ? activeEngram.name : "PYRI" })}
           </p>
         </div>
       </div>
