@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useListMemories, useCreateMemory, useDeleteMemory, getListMemoriesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +34,7 @@ const LAYER_SYMBOLS: Record<Layer, string> = {
 };
 
 export default function Memory() {
+  const { t } = useTranslation("memory");
   const [activeLayer, setActiveLayer] = useState<Layer | "all">("all");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ layer: "episodic" as Layer, content: "", confidence: 0.75 });
@@ -51,7 +53,7 @@ export default function Memory() {
         queryClient.invalidateQueries({ queryKey: getListMemoriesQueryKey() });
         setOpen(false);
         setForm({ layer: "episodic", content: "", confidence: 0.75 });
-        toast({ title: "Memory Encoded", description: `Added to ${form.layer} layer.` });
+        toast({ title: t("encodedTitle"), description: t("encodedDescription", { layer: form.layer }) });
       }
     });
   }
@@ -60,7 +62,7 @@ export default function Memory() {
     deleteMem.mutate({ id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListMemoriesQueryKey() });
-        toast({ title: "Memory Purged", description: "Entry removed from store." });
+        toast({ title: t("purgedTitle"), description: t("purgedDescription") });
       }
     });
   }
@@ -69,18 +71,18 @@ export default function Memory() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-widest text-primary">MEMORY ARCHITECTURE</h2>
-          <p className="text-sm font-mono text-muted-foreground mt-1">Six-layer persistent knowledge store</p>
+          <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
+          <p className="text-sm font-mono text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground" data-testid="button-create-memory">
-              <Plus className="w-3 h-3 mr-2" /> Encode Memory
+              <Plus className="w-3 h-3 mr-2" /> {t("encodeMemory")}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border/50 max-w-lg">
             <DialogHeader>
-              <DialogTitle className="font-display tracking-widest text-primary">Encode New Memory</DialogTitle>
+              <DialogTitle className="font-display tracking-widest text-primary">{t("encodeNewMemory")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-2">
               <Select value={form.layer} onValueChange={(v) => setForm(p => ({ ...p, layer: v as Layer }))}>
@@ -92,7 +94,7 @@ export default function Memory() {
                 </SelectContent>
               </Select>
               <Textarea
-                placeholder="Memory content..."
+                placeholder={t("contentPlaceholder")}
                 value={form.content}
                 onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
                 className="font-mono text-sm border-border/50 bg-background/50 min-h-28"
@@ -100,7 +102,7 @@ export default function Memory() {
               />
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-mono text-muted-foreground">
-                  <span>Confidence</span>
+                  <span>{t("confidence")}</span>
                   <span className="text-primary">{Math.round(form.confidence * 100)}%</span>
                 </div>
                 <Slider min={0} max={1} step={0.01} value={[form.confidence]}
@@ -108,7 +110,7 @@ export default function Memory() {
               </div>
               <Button onClick={handleCreate} disabled={createMem.isPending || !form.content.trim()}
                 className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground" data-testid="button-confirm-memory">
-                {createMem.isPending ? "Encoding..." : "Encode"}
+                {createMem.isPending ? t("encoding") : t("encode")}
               </Button>
             </div>
           </DialogContent>
@@ -120,7 +122,7 @@ export default function Memory() {
         <button onClick={() => setActiveLayer("all")}
           className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 border transition-colors ${activeLayer === "all" ? "border-primary text-primary bg-primary/10" : "border-border/50 text-muted-foreground hover:border-primary/50"}`}
           data-testid="filter-all">
-          All Layers
+          {t("allLayers")}
         </button>
         {LAYERS.map(l => (
           <button key={l} onClick={() => setActiveLayer(l)}
@@ -137,7 +139,7 @@ export default function Memory() {
         ) : !memories || memories.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground font-mono">
             <Database className="w-8 h-8 mb-4 opacity-30" />
-            <p className="text-xs uppercase tracking-widest">No memories encoded in this layer</p>
+            <p className="text-xs uppercase tracking-widest">{t("emptyState")}</p>
           </div>
         ) : (
           memories.map(m => (

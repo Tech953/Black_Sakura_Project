@@ -250,6 +250,8 @@ export interface OpenaiConversationInput {
 
 export interface OpenaiMessageInput {
   content: string;
+  /** Optional BCP-47 language code the assistant/engram should respond in (e.g. "es", "ja"). Omit for automatic (match the user). */
+  language?: string;
 }
 
 export interface OpenaiConversationWithMessages {
@@ -492,6 +494,8 @@ export const EngramInquiryInputKind = {
 export interface EngramInquiryInput {
   kind: EngramInquiryInputKind;
   question: string;
+  /** Optional BCP-47 language code the engram should respond in. Omit for automatic. */
+  language?: string;
 }
 
 export interface MarkSeenInput {

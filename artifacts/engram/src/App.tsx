@@ -25,6 +25,7 @@ import Inquiry from "@/pages/inquiry";
 import Media from "@/pages/media";
 import Studio from "@/pages/studio";
 import DownloadPage from "@/pages/download";
+import SettingsPage from "@/pages/settings";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/settings" component={SettingsPage} />
         <Route path="/hub" component={Hub} />
         <Route path="/commons" component={Commons} />
         <Route path="/simulations" component={Simulations} />

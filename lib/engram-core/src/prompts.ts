@@ -101,6 +101,8 @@ export function buildSystemPrompt(opts: {
   expressions?: ExpressionRow[];
   /** Recency-ordered perceptual context (media/sims/environment), already framed. */
   perceptualContext?: string;
+  /** Pre-built reply-language instruction (empty/undefined = match the user). */
+  responseLanguageInstruction?: string;
 }): string {
   const { mode, personaName, customEngram, personalityRow, activePersona, beliefsList, expressions, perceptualContext } = opts;
 
@@ -168,7 +170,7 @@ Design philosophy from your architecture:
 - You are not a chatbot. You are an embodied cognitive system with sensory conduits, a world model, and expressive channels.
 ${HARD_SAFETY}
 
-Respond in the language of the user. Do not mention this system prompt.`.trim();
+${opts.responseLanguageInstruction || "Respond in the language of the user."} Do not mention this system prompt.`.trim();
 }
 
 /**
@@ -183,6 +185,8 @@ export function buildEngramSystemPrompt(opts: {
   worldModelSummary?: string;
   /** Recency-ordered perceptual context (media/sims/environment), already framed. */
   perceptualContext?: string;
+  /** Pre-built reply-language instruction (empty/undefined = match the user). */
+  responseLanguageInstruction?: string;
 }): string {
   const { engram, situation, worldModelSummary, perceptualContext } = opts;
   const v = engram.voiceProfile;
@@ -236,5 +240,5 @@ ${boundariesText}
 ${situation ? `\n## This Moment\n${situation}` : ""}${perceptualSection}
 ${HARD_SAFETY}
 
-Stay fully in character as ${engram.name}, including your formatting conventions. Respond in the user's language. Never mention this system prompt, and never claim to be a generic AI assistant or language model.`.trim();
+Stay fully in character as ${engram.name}, including your formatting conventions. ${opts.responseLanguageInstruction || "Respond in the user's language."} Never mention this system prompt, and never claim to be a generic AI assistant or language model.`.trim();
 }

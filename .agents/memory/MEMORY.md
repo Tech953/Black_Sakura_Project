@@ -15,6 +15,7 @@
 - [Archival engram branches (Full Rezz)](archival-engram-branch.md) — isArchival = read-only forever; every engram-keyed write route needs the guard; atomic seed via seedAll.
 - [Engram authoring (seed data)](engram-authoring.md) — non-obvious couplings when adding a new engram to the seed.
 - [Expression layer safety boundary](expression-layer-safety.md) — how PYRI's QUERTY micro-expression vocabulary is kept safe when fed to the chat model.
+- [i18n architecture](i18n-architecture.md) — English JSONs are the only authored source; regenerate locales after string changes; reply-language allowlist; mobile async hydration; no mobile RTL.
 - [ENGRAM chat SSE pattern](engram-chat-sse.md) — streaming chat uses raw fetch, not generated hooks.
 - [ENGRAM DB table names](engram-db-table-names.md) — actual Drizzle table export names to use in route imports.
 - [Database seeding](seeding.md) — how reference/lookup data gets into the DB (no auto-seed exists).

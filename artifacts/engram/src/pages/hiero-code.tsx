@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useListHieroSymbols, useListExpressions } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +14,7 @@ const VALENCE_COLORS: Record<string, string> = {
 const AROUSAL_BARS: Record<string, number> = { Low: 1, Medium: 2, High: 3 };
 
 export default function HieroCode() {
+  const { t } = useTranslation("hieroCode");
   const { data: symbols, isLoading } = useListHieroSymbols();
   const { data: expressions, isLoading: exprLoading } = useListExpressions();
   const [selected, setSelected] = useState<number[]>([]);
@@ -45,14 +47,14 @@ export default function HieroCode() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
-        <h2 className="text-3xl font-bold tracking-widest text-primary">HIERO-CODE SYSTEM</h2>
-        <p className="text-sm font-mono text-muted-foreground mt-1">Symbolic internal language — glyphs, meanings, compound expressions</p>
+        <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
+        <p className="text-sm font-mono text-muted-foreground mt-1">{t("subtitle")}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Symbol reference */}
         <div className="space-y-3">
-          <p className="font-mono text-xs text-muted-foreground/70 uppercase tracking-widest">Primary Glyphs — select up to 3 to build compound</p>
+          <p className="font-mono text-xs text-muted-foreground/70 uppercase tracking-widest">{t("primaryGlyphs")}</p>
           {isLoading ? (
             Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-20 bg-primary/5" />)
           ) : (
@@ -70,7 +72,7 @@ export default function HieroCode() {
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`font-display font-bold uppercase tracking-widest text-base ${catColor}`}>{s.name}</span>
                         <Badge variant="outline" className={`font-mono text-[9px] uppercase border-current ${catColor}`}>{s.category}</Badge>
-                        {isSelected && <span className="font-mono text-[9px] text-primary uppercase">Selected</span>}
+                        {isSelected && <span className="font-mono text-[9px] text-primary uppercase">{t("selected")}</span>}
                       </div>
                       <p className="text-sm text-foreground/70 font-sans leading-relaxed">{s.meaning}</p>
                     </div>
@@ -85,12 +87,12 @@ export default function HieroCode() {
         <div className="space-y-4">
           <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="font-display tracking-widest text-sm text-primary/80">Compound Expression Builder</CardTitle>
+              <CardTitle className="font-display tracking-widest text-sm text-primary/80">{t("compoundBuilder")}</CardTitle>
             </CardHeader>
             <CardContent>
               {selected.length === 0 ? (
                 <div className="text-center py-8 font-mono text-xs text-muted-foreground/50 uppercase tracking-widest">
-                  Select glyphs from the left to build a compound expression
+                  {t("builderEmpty")}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -103,14 +105,14 @@ export default function HieroCode() {
                     ))}
                   </div>
                   <div className="border-t border-border/30 pt-4 space-y-2">
-                    <p className="font-mono text-xs text-muted-foreground/60 uppercase">Expression</p>
+                    <p className="font-mono text-xs text-muted-foreground/60 uppercase">{t("expression")}</p>
                     <p className="font-mono text-sm text-primary">{compound}</p>
-                    <p className="font-mono text-xs text-muted-foreground/60 uppercase mt-3">Interpretation</p>
+                    <p className="font-mono text-xs text-muted-foreground/60 uppercase mt-3">{t("interpretation")}</p>
                     <p className="text-sm text-foreground/80 font-sans italic leading-relaxed">{compoundMeaning}</p>
                   </div>
                   <button onClick={() => setSelected([])}
                     className="font-mono text-xs uppercase text-muted-foreground hover:text-foreground transition-colors">
-                    Clear selection
+                    {t("clearSelection")}
                   </button>
                 </div>
               )}
@@ -121,7 +123,7 @@ export default function HieroCode() {
           {symbols && symbols[0]?.compounds && (
             <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="font-display tracking-widest text-sm text-primary/80">Known Compounds</CardTitle>
+                <CardTitle className="font-display tracking-widest text-sm text-primary/80">{t("knownCompounds")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {symbols.flatMap(s => {
@@ -145,39 +147,37 @@ export default function HieroCode() {
       {/* Emotive Expression Layer */}
       <div className="pt-4 border-t border-border/30 space-y-4">
         <div className="flex flex-col gap-1">
-          <h3 className="text-2xl font-bold tracking-widest text-amber-400">EMOTIVE EXPRESSION LAYER</h3>
+          <h3 className="text-2xl font-bold tracking-widest text-amber-400">{t("emotiveLayerTitle")}</h3>
           <p className="text-sm font-mono text-muted-foreground">
-            QUERTY micro-expressions — ASCII affect glyphs PYRI uses to make her felt state observable in chat
+            {t("emotiveLayerSubtitle")}
           </p>
           <p className="text-xs font-mono text-muted-foreground/60 leading-relaxed max-w-3xl mt-1">
-            Each glyph encodes eyes + mouth + optional gesture, mapped to a valence (positive / neutral / negative) and an
-            arousal level. PYRI draws on this vocabulary to color her delivery by mode — freely in COMPANION, sparingly in
-            INFORMATIONAL, never in SILENT.
+            {t("emotiveLayerBody")}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">Valence</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">{t("valence")}</span>
             {["All", "Positive", "Neutral", "Negative"].map(v => (
               <button key={v} onClick={() => setValenceFilter(v)}
                 data-testid={`filter-valence-${v.toLowerCase()}`}
                 className={`font-mono text-[10px] uppercase tracking-widest px-2 py-1 rounded border transition-colors ${
                   valenceFilter === v ? "border-amber-400/60 text-amber-400 bg-amber-400/5" : "border-border/30 text-muted-foreground/60 hover:text-foreground/80"
                 }`}>
-                {v}
+                {t(`filters.${v.toLowerCase()}`)}
               </button>
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">Arousal</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">{t("arousal")}</span>
             {["All", "Low", "Medium", "High"].map(a => (
               <button key={a} onClick={() => setArousalFilter(a)}
                 data-testid={`filter-arousal-${a.toLowerCase()}`}
                 className={`font-mono text-[10px] uppercase tracking-widest px-2 py-1 rounded border transition-colors ${
                   arousalFilter === a ? "border-amber-400/60 text-amber-400 bg-amber-400/5" : "border-border/30 text-muted-foreground/60 hover:text-foreground/80"
                 }`}>
-                {a}
+                {t(`filters.${a.toLowerCase()}`)}
               </button>
             ))}
           </div>
@@ -189,7 +189,7 @@ export default function HieroCode() {
           </div>
         ) : filteredExpressions.length === 0 ? (
           <div className="text-center py-10 font-mono text-xs text-muted-foreground/50 uppercase tracking-widest">
-            No expressions match the selected filters
+            {t("noExpressionsMatch")}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -204,7 +204,7 @@ export default function HieroCode() {
                       <span className={`font-mono text-2xl leading-none ${valColor.split(" ")[0]}`}>{e.glyph}</span>
                       <div className="flex flex-col items-end gap-1">
                         <Badge variant="outline" className={`font-mono text-[9px] uppercase ${valColor}`}>{e.valence}</Badge>
-                        <div className="flex items-center gap-0.5" title={`${e.arousal} arousal`}>
+                        <div className="flex items-center gap-0.5" title={t("arousalTooltip", { level: e.arousal })}>
                           {[1, 2, 3].map(n => (
                             <span key={n} className={`h-1 w-3 rounded-full ${n <= bars ? "bg-amber-400/80" : "bg-border/40"}`} />
                           ))}

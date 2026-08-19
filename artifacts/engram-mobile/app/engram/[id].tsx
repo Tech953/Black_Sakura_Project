@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Platform,
@@ -25,6 +26,7 @@ import {
 } from "@workspace/api-client-react";
 
 export default function EngramDetailScreen() {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -59,7 +61,7 @@ export default function EngramDetailScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: engram?.name ?? "Engram",
+          title: engram?.name ?? t("detail.fallbackTitle"),
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.primary,
           headerTitleStyle: {
@@ -95,21 +97,21 @@ export default function EngramDetailScreen() {
                   tone="primary"
                 />
                 {engram.autonomyEnabled ? (
-                  <Chip label="autonomous" tone="success" />
+                  <Chip label={t("detail.autonomous")} tone="success" />
                 ) : (
-                  <Chip label="dormant" tone="muted" />
+                  <Chip label={t("detail.dormant")} tone="muted" />
                 )}
               </View>
             </View>
           </View>
 
-          <Section label="Origin" colors={colors}>
+          <Section label={t("detail.origin")} colors={colors}>
             <Text style={[styles.body, { color: colors.foreground }]}>
               {engram.origin}
             </Text>
           </Section>
 
-          <Section label="Voice" colors={colors}>
+          <Section label={t("detail.voice")} colors={colors}>
             <Text style={[styles.body, { color: colors.foreground }]}>
               {engram.voiceProfile.speechStyle}
             </Text>
@@ -127,7 +129,7 @@ export default function EngramDetailScreen() {
             ) : null}
           </Section>
 
-          <Section label="Drive Pressure" colors={colors}>
+          <Section label={t("detail.drivePressure")} colors={colors}>
             <View style={{ gap: 14 }}>
               {engram.drives.map((drive) => {
                 const pressure = engram.driveState?.[drive.id] ?? 0;
@@ -159,7 +161,7 @@ export default function EngramDetailScreen() {
             </View>
           </Section>
 
-          <Section label="Focus Themes" colors={colors}>
+          <Section label={t("detail.focusThemes")} colors={colors}>
             <View style={styles.themeWrap}>
               {engram.focusThemes.map((t, i) => (
                 <Chip key={i} label={t} tone="violet" />
@@ -167,20 +169,23 @@ export default function EngramDetailScreen() {
             </View>
           </Section>
 
-          <Section label="Baseline" colors={colors}>
+          <Section label={t("detail.baseline")} colors={colors}>
             <View style={{ gap: 12 }}>
               <Metric
-                label="valence"
+                metricKey="valence"
+                label={t("detail.valence")}
                 value={engram.emotionalBaseline.valence}
                 colors={colors}
               />
               <Metric
-                label="arousal"
+                metricKey="arousal"
+                label={t("detail.arousal")}
                 value={engram.emotionalBaseline.arousal}
                 colors={colors}
               />
               <Metric
-                label="volatility"
+                metricKey="volatility"
+                label={t("detail.volatility")}
                 value={engram.emotionalBaseline.volatility}
                 colors={colors}
               />
@@ -202,7 +207,7 @@ export default function EngramDetailScreen() {
         >
           <PrimaryButton
             testID="activate-button"
-            label={isActive ? "Active engram" : "Make active"}
+            label={isActive ? t("detail.activeEngram") : t("detail.makeActive")}
             onPress={onActivate}
             loading={activate.isPending}
             disabled={isActive}
@@ -242,16 +247,18 @@ function Section({
 }
 
 function Metric({
+  metricKey,
   label,
   value,
   colors,
 }: {
+  metricKey: string;
   label: string;
   value: number;
   colors: ReturnType<typeof useColors>;
 }) {
   // valence ranges -1..1; map to 0..1 for the bar.
-  const norm = label === "valence" ? (value + 1) / 2 : value;
+  const norm = metricKey === "valence" ? (value + 1) / 2 : value;
   return (
     <View style={{ gap: 6 }}>
       <View style={styles.driveRow}>

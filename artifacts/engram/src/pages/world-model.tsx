@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Trash2, Plus, Globe, Eye, GitBranch, Archive, Target, FlaskConical, Lock, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 type Provenance = (typeof WorldModelInputProvenance)[keyof typeof WorldModelInputProvenance];
 type Scope = (typeof WorldModelInputScope)[keyof typeof WorldModelInputScope];
@@ -28,19 +29,23 @@ const PROVENANCE_ORDER: Provenance[] = ["observed", "inferred", "remembered", "d
 
 const PROVENANCE_META: Record<
   Provenance,
-  { label: string; blurb: string; color: string; bar: string; icon: typeof Eye }
+  { color: string; bar: string; icon: typeof Eye }
 > = {
-  observed: { label: "Observed", blurb: "Directly perceived", color: "text-cyan-400", bar: "bg-cyan-400", icon: Eye },
-  inferred: { label: "Inferred", blurb: "Reasoned, not seen", color: "text-violet-400", bar: "bg-violet-400", icon: GitBranch },
-  remembered: { label: "Remembered", blurb: "Recalled from the past", color: "text-emerald-400", bar: "bg-emerald-400", icon: Archive },
-  desired: { label: "Desired", blurb: "Wants & intentions", color: "text-amber-400", bar: "bg-amber-400", icon: Target },
-  simulated: { label: "Simulated", blurb: "Imagined / hypothetical", color: "text-rose-400", bar: "bg-rose-400", icon: FlaskConical },
+  observed: { color: "text-cyan-400", bar: "bg-cyan-400", icon: Eye },
+  inferred: { color: "text-violet-400", bar: "bg-violet-400", icon: GitBranch },
+  remembered: { color: "text-emerald-400", bar: "bg-emerald-400", icon: Archive },
+  desired: { color: "text-amber-400", bar: "bg-amber-400", icon: Target },
+  simulated: { color: "text-rose-400", bar: "bg-rose-400", icon: FlaskConical },
 };
 
 export default function WorldModel() {
   const { data: engrams, isLoading: engramsLoading } = useListEngrams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation("worldModel");
+
+  const provLabel = (prov: Provenance) => t(`provenance.${prov}.label`);
+  const provBlurb = (prov: Provenance) => t(`provenance.${prov}.blurb`);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
@@ -101,9 +106,9 @@ export default function WorldModel() {
           queryClient.invalidateQueries({ queryKey: getListEngramWorldModelQueryKey(selectedId) });
           setOpen(false);
           setForm({ provenance: "observed", content: "", confidence: 0.7, scope: "private" });
-          toast({ title: "Belief recorded", description: `Tagged ${PROVENANCE_META[form.provenance].label}.` });
+          toast({ title: t("toastRecordedTitle"), description: t("toastRecordedDescription", { label: provLabel(form.provenance) }) });
         },
-        onError: () => toast({ title: "Failed to record belief", variant: "destructive" }),
+        onError: () => toast({ title: t("toastRecordFailed"), variant: "destructive" }),
       },
     );
   }
@@ -115,9 +120,9 @@ export default function WorldModel() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListEngramWorldModelQueryKey(selectedId) });
-          toast({ title: "Belief removed", description: "Entry deleted from the world-model." });
+          toast({ title: t("toastRemovedTitle"), description: t("toastRemovedDescription") });
         },
-        onError: () => toast({ title: "Failed to delete", variant: "destructive" }),
+        onError: () => toast({ title: t("toastDeleteFailed"), variant: "destructive" }),
       },
     );
   }
@@ -135,7 +140,7 @@ export default function WorldModel() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-muted-foreground font-mono text-center">
         <Globe className="w-8 h-8 mb-4 opacity-30" />
-        <p className="text-xs uppercase tracking-widest">No engrams provisioned</p>
+        <p className="text-xs uppercase tracking-widest">{t("noEngrams")}</p>
       </div>
     );
   }
@@ -146,9 +151,9 @@ export default function WorldModel() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-3xl font-bold tracking-widest text-primary">WORLD MODEL</h2>
+          <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            Each engram's persistent, provenance-tagged beliefs — how it knows what it knows
+            {t("subtitle")}
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -159,16 +164,16 @@ export default function WorldModel() {
               disabled={selectedId === null}
               data-testid="button-create-entry"
             >
-              <Plus className="w-3 h-3 mr-2" /> Record Belief
+              <Plus className="w-3 h-3 mr-2" /> {t("recordBelief")}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border/50 max-w-lg">
             <DialogHeader>
-              <DialogTitle className="font-display tracking-widest text-primary">Record World-Model Belief</DialogTitle>
+              <DialogTitle className="font-display tracking-widest text-primary">{t("recordWorldModelBelief")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-2">
               <div className="space-y-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Provenance (immutable once set)</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("provenanceLabel")}</span>
                 <Select value={form.provenance} onValueChange={(v) => setForm((p) => ({ ...p, provenance: v as Provenance }))}>
                   <SelectTrigger className="font-mono text-sm border-border/50 bg-background/50" data-testid="select-provenance">
                     <SelectValue />
@@ -176,14 +181,14 @@ export default function WorldModel() {
                   <SelectContent className="bg-card border-border/50">
                     {PROVENANCE_ORDER.map((prov) => (
                       <SelectItem key={prov} value={prov} className="font-mono uppercase text-xs">
-                        {PROVENANCE_META[prov].label} — {PROVENANCE_META[prov].blurb}
+                        {provLabel(prov)} — {provBlurb(prov)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <Textarea
-                placeholder="What does the engram hold to be true..."
+                placeholder={t("contentPlaceholder")}
                 value={form.content}
                 onChange={(e) => setForm((p) => ({ ...p, content: e.target.value }))}
                 className="font-mono text-sm border-border/50 bg-background/50 min-h-28"
@@ -191,20 +196,20 @@ export default function WorldModel() {
               />
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-mono text-muted-foreground">
-                  <span>Confidence</span>
+                  <span>{t("confidence")}</span>
                   <span className="text-primary">{Math.round(form.confidence * 100)}%</span>
                 </div>
                 <Slider min={0} max={1} step={0.01} value={[form.confidence]} onValueChange={(v) => setForm((p) => ({ ...p, confidence: v[0] }))} />
               </div>
               <div className="space-y-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Scope</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("scope")}</span>
                 <Select value={form.scope} onValueChange={(v) => setForm((p) => ({ ...p, scope: v as Scope }))}>
                   <SelectTrigger className="font-mono text-sm border-border/50 bg-background/50" data-testid="select-scope">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border/50">
-                    <SelectItem value="private" className="font-mono uppercase text-xs">Private</SelectItem>
-                    <SelectItem value="shared" className="font-mono uppercase text-xs">Shared</SelectItem>
+                    <SelectItem value="private" className="font-mono uppercase text-xs">{t("scopePrivate")}</SelectItem>
+                    <SelectItem value="shared" className="font-mono uppercase text-xs">{t("scopeShared")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -214,7 +219,7 @@ export default function WorldModel() {
                 className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground"
                 data-testid="button-confirm-entry"
               >
-                {create.isPending ? "Recording..." : "Record"}
+                {create.isPending ? t("recording") : t("record")}
               </Button>
             </div>
           </DialogContent>
@@ -247,7 +252,7 @@ export default function WorldModel() {
         <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground font-mono">
           <Globe className="w-8 h-8 mb-4 opacity-30" />
           <p className="text-xs uppercase tracking-widest">
-            {selected ? `${selected.name} holds no world-model beliefs yet` : "No world-model beliefs yet"}
+            {selected ? t("emptyForEngram", { name: selected.name }) : t("emptyNoBeliefs")}
           </p>
         </div>
       ) : (
@@ -261,8 +266,8 @@ export default function WorldModel() {
               <section key={prov} data-testid={`group-${prov}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <Icon className={`w-4 h-4 ${meta.color}`} />
-                  <h3 className={`font-display uppercase tracking-widest text-sm ${meta.color}`}>{meta.label}</h3>
-                  <span className="font-mono text-[10px] text-muted-foreground/60">{meta.blurb}</span>
+                  <h3 className={`font-display uppercase tracking-widest text-sm ${meta.color}`}>{provLabel(prov)}</h3>
+                  <span className="font-mono text-[10px] text-muted-foreground/60">{provBlurb(prov)}</span>
                   <span className="font-mono text-[10px] text-muted-foreground/40 ml-auto">{rows.length}</span>
                 </div>
                 <div className="space-y-3">
@@ -279,7 +284,7 @@ export default function WorldModel() {
                               variant="outline"
                               className={`font-mono text-[9px] uppercase tracking-wider border-border/50 ${meta.color}`}
                             >
-                              {meta.label}
+                              {provLabel(prov)}
                             </Badge>
                             <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-wider border-border/50 text-muted-foreground gap-1">
                               {entry.scope === "shared" ? <Share2 className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
@@ -297,7 +302,7 @@ export default function WorldModel() {
                             <div className="h-1 w-24 bg-secondary overflow-hidden">
                               <div className={`h-full ${meta.bar} transition-all`} style={{ width: `${entry.confidence * 100}%` }} />
                             </div>
-                            <span className="font-mono text-[10px] text-muted-foreground">{Math.round(entry.confidence * 100)}% confidence</span>
+                            <span className="font-mono text-[10px] text-muted-foreground">{t("confidencePercent", { percent: Math.round(entry.confidence * 100) })}</span>
                           </div>
                         </div>
                         <button

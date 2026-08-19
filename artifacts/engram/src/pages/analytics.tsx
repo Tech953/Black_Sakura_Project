@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useGetStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,29 +23,30 @@ const CUSTOM_TOOLTIP_STYLE = {
 };
 
 export default function Analytics() {
+  const { t } = useTranslation("analytics");
   const { data: stats, isLoading } = useGetStats();
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
-        <h2 className="text-3xl font-bold tracking-widest text-primary">ANALYTICS</h2>
-        <p className="text-sm font-mono text-muted-foreground mt-1">System-wide telemetry — memory topology, belief distribution, initiative history</p>
+        <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
+        <p className="text-sm font-mono text-muted-foreground mt-1">{t("subtitle")}</p>
       </div>
 
       {/* Top metrics */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: "Memories", value: stats?.totalMemories },
-          { label: "Beliefs", value: stats?.totalBeliefs },
-          { label: "Journal", value: stats?.totalJournalEntries },
-          { label: "Initiatives", value: stats?.totalInitiativeEvents },
-          { label: "Revisions", value: stats?.evolutionRevisions },
-        ].map(({ label, value }) => (
-          <Card key={label} className="bg-card/40 border-border/50 backdrop-blur-sm">
+          { id: "memories", label: t("metrics.memories"), value: stats?.totalMemories },
+          { id: "beliefs", label: t("metrics.beliefs"), value: stats?.totalBeliefs },
+          { id: "journal", label: t("metrics.journal"), value: stats?.totalJournalEntries },
+          { id: "initiatives", label: t("metrics.initiatives"), value: stats?.totalInitiativeEvents },
+          { id: "revisions", label: t("metrics.revisions"), value: stats?.evolutionRevisions },
+        ].map(({ id, label, value }) => (
+          <Card key={id} className="bg-card/40 border-border/50 backdrop-blur-sm">
             <CardContent className="p-4">
               <p className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider mb-2">{label}</p>
               {isLoading ? <Skeleton className="h-7 w-12 bg-primary/10" /> : (
-                <p className="font-display text-2xl font-bold text-primary" data-testid={`stat-${label.toLowerCase()}`}>{value ?? 0}</p>
+                <p className="font-display text-2xl font-bold text-primary" data-testid={`stat-${id}`}>{value ?? 0}</p>
               )}
             </CardContent>
           </Card>
@@ -55,7 +57,7 @@ export default function Analytics() {
         {/* Memory by layer */}
         <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="font-display tracking-widest text-sm text-primary/80">Memory by Layer</CardTitle>
+            <CardTitle className="font-display tracking-widest text-sm text-primary/80">{t("memoryByLayer")}</CardTitle>
           </CardHeader>
           <CardContent className="h-56">
             {isLoading ? <Skeleton className="h-full bg-primary/5" /> : (
@@ -80,7 +82,7 @@ export default function Analytics() {
         {/* Initiative events over time */}
         <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="font-display tracking-widest text-sm text-primary/80">Initiative Events (7 days)</CardTitle>
+            <CardTitle className="font-display tracking-widest text-sm text-primary/80">{t("initiativeEvents")}</CardTitle>
           </CardHeader>
           <CardContent className="h-56">
             {isLoading ? <Skeleton className="h-full bg-primary/5" /> : (
@@ -102,7 +104,7 @@ export default function Analytics() {
         {/* Belief confidence distribution */}
         <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="font-display tracking-widest text-sm text-primary/80">Belief Confidence Distribution</CardTitle>
+            <CardTitle className="font-display tracking-widest text-sm text-primary/80">{t("beliefConfidenceDistribution")}</CardTitle>
           </CardHeader>
           <CardContent className="h-56">
             {isLoading ? <Skeleton className="h-full bg-primary/5" /> : (
@@ -127,19 +129,19 @@ export default function Analytics() {
         {/* Initiative score formula */}
         <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="font-display tracking-widest text-sm text-primary/80">Initiative Score Formula</CardTitle>
+            <CardTitle className="font-display tracking-widest text-sm text-primary/80">{t("initiativeScoreFormula")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="p-4 border border-primary/20 bg-primary/5 font-mono text-xs sm:text-sm text-primary text-center break-words">
-              score = importance × confidence × timing × novelty
+              {t("formula")}
             </div>
-            <p className="font-mono text-xs text-muted-foreground/70">Threshold for delivery: 0.65. Suppressed below threshold to prevent interruption noise.</p>
+            <p className="font-mono text-xs text-muted-foreground/70">{t("thresholdNote")}</p>
             <div className="space-y-2">
               {[
-                { label: "importance", desc: "How critical is the detected signal?", color: "text-rose-400" },
-                { label: "confidence", desc: "How reliable is the observation?", color: "text-amber-400" },
-                { label: "timing", desc: "Is the user receptive right now?", color: "text-sky-400" },
-                { label: "novelty", desc: "Has this been surfaced before?", color: "text-emerald-400" },
+                { label: "importance", desc: t("factors.importanceDesc"), color: "text-rose-400" },
+                { label: "confidence", desc: t("factors.confidenceDesc"), color: "text-amber-400" },
+                { label: "timing", desc: t("factors.timingDesc"), color: "text-sky-400" },
+                { label: "novelty", desc: t("factors.noveltyDesc"), color: "text-emerald-400" },
               ].map(f => (
                 <div key={f.label} className="flex gap-3 items-start">
                   <span className={`font-mono text-xs font-bold w-20 shrink-0 ${f.color}`}>{f.label}</span>

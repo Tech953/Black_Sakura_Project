@@ -10,4 +10,6 @@ import type { EngramInquiryInputKind } from './engramInquiryInputKind';
 export interface EngramInquiryInput {
   kind: EngramInquiryInputKind;
   question: string;
+  /** Optional BCP-47 language code the engram should respond in. Omit for automatic. */
+  language?: string;
 }

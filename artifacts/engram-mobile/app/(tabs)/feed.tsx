@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
@@ -26,6 +27,7 @@ import {
 } from "@workspace/api-client-react";
 
 export default function FeedScreen() {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -90,8 +92,8 @@ export default function FeedScreen() {
         <View style={{ paddingTop: topPad }} />
         <EmptyState
           icon={<Feather name="radio" size={28} color={colors.mutedForeground} />}
-          title="No engram selected"
-          subtitle="Choose an engram from the Personas tab to monitor its live transmissions."
+          title={t("feed.noEngram")}
+          subtitle={t("feed.noEngramSubtitle")}
         />
       </View>
     );
@@ -102,10 +104,10 @@ export default function FeedScreen() {
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.kicker, { color: colors.primary }]}>
-            LIVE FEED // {engram?.symbol ?? "··"}
+            {t("feed.kicker")} // {engram?.symbol ?? "··"}
           </Text>
           <Text style={[styles.h1, { color: colors.foreground }]}>
-            {engram?.name ?? "Transmissions"}
+            {engram?.name ?? t("feed.fallbackTitle")}
           </Text>
         </View>
         <IconButton
@@ -143,8 +145,8 @@ export default function FeedScreen() {
                     color={colors.mutedForeground}
                   />
                 }
-                title="Awaiting signal"
-                subtitle="This engram has not transmitted yet. Tap the bolt to provoke one now."
+                title={t("feed.awaitingSignal")}
+                subtitle={t("feed.awaitingSignalSubtitle")}
               />
             </View>
           }

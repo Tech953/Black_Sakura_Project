@@ -51,20 +51,22 @@ import {
   Activity,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
-const KIND_META: Record<string, { label: string; icon: typeof Users; accent: string }> = {
-  commons: { label: "Commons", icon: Users, accent: "text-cyan-400" },
-  private_room: { label: "Private Room", icon: Home, accent: "text-violet-400" },
-  simulation_chamber: { label: "Simulation Chamber", icon: FlaskConical, accent: "text-rose-400" },
-  archive: { label: "Archive", icon: Archive, accent: "text-emerald-400" },
-  terminal: { label: "Human Terminal", icon: Terminal, accent: "text-amber-400" },
-  quiescence: { label: "Quiescence", icon: Moon, accent: "text-indigo-400" },
+const KIND_META: Record<string, { icon: typeof Users; accent: string }> = {
+  commons: { icon: Users, accent: "text-cyan-400" },
+  private_room: { icon: Home, accent: "text-violet-400" },
+  simulation_chamber: { icon: FlaskConical, accent: "text-rose-400" },
+  archive: { icon: Archive, accent: "text-emerald-400" },
+  terminal: { icon: Terminal, accent: "text-amber-400" },
+  quiescence: { icon: Moon, accent: "text-indigo-400" },
 };
 
-const VISIBILITY_META: Record<string, { label: string; icon: typeof Globe }> = {
-  public: { label: "Public", icon: Globe },
-  occupants: { label: "Occupants", icon: Eye },
-  operators: { label: "Operators", icon: ShieldCheck },
+const VISIBILITY_META: Record<string, { icon: typeof Globe }> = {
+  public: { icon: Globe },
+  occupants: { icon: Eye },
+  operators: { icon: ShieldCheck },
 };
 
 const ACTIVITY_META: Record<string, { icon: typeof LogIn; color: string }> = {
@@ -76,18 +78,26 @@ const ACTIVITY_META: Record<string, { icon: typeof LogIn; color: string }> = {
 };
 
 function kindMeta(kind: string) {
-  return KIND_META[kind] ?? { label: kind, icon: Globe, accent: "text-primary" };
+  return KIND_META[kind] ?? { icon: Globe, accent: "text-primary" };
 }
 
-function relativeTime(iso: string): string {
+function kindLabel(t: TFunction, kind: string): string {
+  return KIND_META[kind] ? t(`kind.${kind}`) : kind;
+}
+
+function visibilityLabel(t: TFunction, scope: string): string {
+  return VISIBILITY_META[scope] ? t(`visibility.${scope}`) : t("visibility.public");
+}
+
+function relativeTime(t: TFunction, iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const sec = Math.round(diff / 1000);
-  if (sec < 60) return "just now";
+  if (sec < 60) return t("time.justNow");
   const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return t("time.minutesAgo", { count: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.round(hr / 24)}d ago`;
+  if (hr < 24) return t("time.hoursAgo", { count: hr });
+  return t("time.daysAgo", { count: Math.round(hr / 24) });
 }
 
 export default function Hub() {
@@ -98,6 +108,7 @@ export default function Hub() {
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation("hub");
   const move = useMoveEngramPresence();
 
   const [open, setOpen] = useState(false);
@@ -136,13 +147,13 @@ export default function Hub() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListHubPresenceQueryKey() });
           queryClient.invalidateQueries({ queryKey: getListHubActivityQueryKey() });
-          const eName = engramById.get(engramId)?.name ?? "Engram";
-          const sName = (spaces ?? []).find((s) => s.id === spaceId)?.name ?? "space";
-          toast({ title: "Presence updated", description: `${eName} → ${sName}.` });
+          const eName = engramById.get(engramId)?.name ?? t("fallbackEngram");
+          const sName = (spaces ?? []).find((s) => s.id === spaceId)?.name ?? t("fallbackSpace");
+          toast({ title: t("toastPresenceUpdatedTitle"), description: t("toastPresenceUpdatedDescription", { engram: eName, space: sName }) });
           setOpen(false);
           setMoveNote("");
         },
-        onError: () => toast({ title: "Failed to move engram", variant: "destructive" }),
+        onError: () => toast({ title: t("toastMoveFailed"), variant: "destructive" }),
       },
     );
   }
@@ -166,9 +177,9 @@ export default function Hub() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-3xl font-bold tracking-widest text-primary">THE HUB</h2>
+          <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            The shared world the engrams inhabit — where each one is, and how they move between spaces
+            {t("subtitle")}
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -179,19 +190,19 @@ export default function Hub() {
               disabled={!engrams?.length}
               data-testid="button-relocate"
             >
-              <MoveRight className="w-3 h-3 mr-2" /> Relocate Engram
+              <MoveRight className="w-3 h-3 mr-2" /> {t("relocateEngram")}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border/50 max-w-lg">
             <DialogHeader>
-              <DialogTitle className="font-display tracking-widest text-primary">Relocate Engram</DialogTitle>
+              <DialogTitle className="font-display tracking-widest text-primary">{t("relocateEngram")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-2">
               <div className="space-y-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Engram</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("engramLabel")}</span>
                 <Select value={moveEngramId} onValueChange={setMoveEngramId}>
                   <SelectTrigger className="font-mono text-sm border-border/50 bg-background/50" data-testid="select-move-engram">
-                    <SelectValue placeholder="Choose an engram" />
+                    <SelectValue placeholder={t("chooseEngram")} />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border/50">
                     {(engrams ?? []).map((e) => (
@@ -203,27 +214,27 @@ export default function Hub() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Destination Space</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("destinationSpaceLabel")}</span>
                 <Select value={moveSpaceId} onValueChange={setMoveSpaceId}>
                   <SelectTrigger className="font-mono text-sm border-border/50 bg-background/50" data-testid="select-move-space">
-                    <SelectValue placeholder="Choose a space" />
+                    <SelectValue placeholder={t("chooseSpace")} />
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border/50">
                     {orderedSpaces.map((s) => (
                       <SelectItem key={s.id} value={String(s.id)} className="font-mono text-xs">
-                        {kindMeta(s.kind).label} — {s.name}
-                        {!s.allowsInitiative ? " (rest)" : ""}
+                        {kindLabel(t, s.kind)} — {s.name}
+                        {!s.allowsInitiative ? t("restSuffix") : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Note (optional)</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("noteOptionalLabel")}</span>
                 <Input
                   value={moveNote}
                   onChange={(e) => setMoveNote(e.target.value)}
-                  placeholder="Why is it here..."
+                  placeholder={t("notePlaceholder")}
                   className="font-mono text-sm border-border/50 bg-background/50"
                   data-testid="input-move-note"
                 />
@@ -234,7 +245,7 @@ export default function Hub() {
                 className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground"
                 data-testid="button-confirm-move"
               >
-                {move.isPending ? "Moving..." : "Move"}
+                {move.isPending ? t("moving") : t("move")}
               </Button>
             </div>
           </DialogContent>
@@ -258,7 +269,7 @@ export default function Hub() {
         <div className="lg:col-span-1">
           <div className="flex items-center gap-2 mb-3">
             <Activity className="w-4 h-4 text-primary" />
-            <h3 className="font-display uppercase tracking-widest text-sm text-primary">Recent Activity</h3>
+            <h3 className="font-display uppercase tracking-widest text-sm text-primary">{t("recentActivity")}</h3>
           </div>
           <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
             <CardContent className="p-3">
@@ -270,7 +281,7 @@ export default function Hub() {
                 </div>
               ) : !activity?.length ? (
                 <p className="font-mono text-[11px] text-muted-foreground/60 uppercase tracking-widest text-center py-8">
-                  No movements logged yet
+                  {t("noMovements")}
                 </p>
               ) : (
                 <ul className="space-y-1">
@@ -296,6 +307,7 @@ function SpaceCard({
   occupants: EngramPresence[];
   engramById: Map<number, Engram>;
 }) {
+  const { t } = useTranslation("hub");
   const meta = kindMeta(space.kind);
   const Icon = meta.icon;
   const vis = VISIBILITY_META[space.visibilityScope] ?? VISIBILITY_META.public;
@@ -316,11 +328,11 @@ function SpaceCard({
               <h3 className="font-display tracking-wider text-sm text-foreground truncate">{space.name}</h3>
               {!space.allowsInitiative && (
                 <Badge variant="outline" className="font-mono text-[8px] uppercase tracking-wider border-indigo-400/40 text-indigo-300 gap-1">
-                  <Moon className="w-2.5 h-2.5" /> Rest
+                  <Moon className="w-2.5 h-2.5" /> {t("restBadge")}
                 </Badge>
               )}
             </div>
-            <span className={`font-mono text-[10px] uppercase tracking-widest ${meta.accent}`}>{meta.label}</span>
+            <span className={`font-mono text-[10px] uppercase tracking-widest ${meta.accent}`}>{kindLabel(t, space.kind)}</span>
           </div>
         </div>
 
@@ -328,7 +340,7 @@ function SpaceCard({
 
         <div className="flex items-center gap-1.5 flex-wrap">
           <Badge variant="outline" className="font-mono text-[8px] uppercase tracking-wider border-border/50 text-muted-foreground gap-1">
-            <VisIcon className="w-2.5 h-2.5" /> {vis.label}
+            <VisIcon className="w-2.5 h-2.5" /> {visibilityLabel(t, space.visibilityScope)}
           </Badge>
           <Badge variant="outline" className="font-mono text-[8px] uppercase tracking-wider border-border/50 text-muted-foreground">
             {space.actionScope}
@@ -338,17 +350,17 @@ function SpaceCard({
             className={`font-mono text-[8px] uppercase tracking-wider border-border/50 gap-1 ${space.logged ? "text-emerald-400/80" : "text-muted-foreground/50"}`}
           >
             {space.logged ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
-            {space.logged ? "Logged" : "Unlogged"}
+            {space.logged ? t("logged") : t("unlogged")}
           </Badge>
         </div>
 
         <div className="mt-auto pt-2 border-t border-border/30">
           <div className="flex items-center justify-between mb-2">
-            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">Present</span>
+            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60">{t("present")}</span>
             <span className="font-mono text-[9px] text-muted-foreground/60">{occupants.length}</span>
           </div>
           {occupants.length === 0 ? (
-            <span className="font-mono text-[10px] text-muted-foreground/40 italic">— empty —</span>
+            <span className="font-mono text-[10px] text-muted-foreground/40 italic">{t("empty")}</span>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {occupants.map((p) => {
@@ -380,6 +392,7 @@ function SpaceCard({
 }
 
 function ActivityRow({ entry }: { entry: HubActivityEntry }) {
+  const { t } = useTranslation("hub");
   const meta = ACTIVITY_META[entry.kind] ?? ACTIVITY_META.system;
   const Icon = meta.icon;
   return (
@@ -387,7 +400,7 @@ function ActivityRow({ entry }: { entry: HubActivityEntry }) {
       <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${meta.color}`} />
       <div className="min-w-0 flex-1">
         <p className="text-xs text-foreground/80 leading-snug font-sans break-words">{entry.summary}</p>
-        <span className="font-mono text-[9px] text-muted-foreground/40 uppercase tracking-wider">{relativeTime(entry.createdAt)}</span>
+        <span className="font-mono text-[9px] text-muted-foreground/40 uppercase tracking-wider">{relativeTime(t, entry.createdAt)}</span>
       </div>
     </li>
   );

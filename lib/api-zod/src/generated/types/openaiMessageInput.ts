@@ -8,4 +8,6 @@
 
 export interface OpenaiMessageInput {
   content: string;
+  /** Optional BCP-47 language code the assistant/engram should respond in (e.g. "es", "ja"). Omit for automatic (match the user). */
+  language?: string;
 }

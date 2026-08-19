@@ -1,0 +1,23 @@
+{
+  "title": "ANALYTICS",
+  "subtitle": "System-wide telemetry — memory topology, belief distribution, initiative history",
+  "metrics": {
+    "memories": "Memories",
+    "beliefs": "Beliefs",
+    "journal": "Journal",
+    "initiatives": "Initiatives",
+    "revisions": "Revisions"
+  },
+  "memoryByLayer": "Memory by Layer",
+  "initiativeEvents": "Initiative Events (7 days)",
+  "beliefConfidenceDistribution": "Belief Confidence Distribution",
+  "initiativeScoreFormula": "Initiative Score Formula",
+  "formula": "score = importance × confidence × timing × novelty",
+  "thresholdNote": "Threshold for delivery: 0.65. Suppressed below threshold to prevent interruption noise.",
+  "factors": {
+    "importanceDesc": "How critical is the detected signal?",
+    "confidenceDesc": "How reliable is the observation?",
+    "timingDesc": "Is the user receptive right now?",
+    "noveltyDesc": "Has this been surfaced before?"
+  }
+}

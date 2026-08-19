@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
@@ -26,6 +27,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function EngramsScreen() {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -59,19 +61,21 @@ export default function EngramsScreen() {
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
         <View style={styles.headerTopRow}>
           <Text style={[styles.kicker, { color: colors.primary }]}>
-            ENGRAM // REGISTRY
+            {t("personas.kicker")}
           </Text>
           <Pressable
             onPress={() => router.push("/server-settings")}
             hitSlop={12}
-            accessibilityLabel="Server settings"
+            accessibilityLabel={t("personas.serverSettings")}
           >
             <Feather name="settings" size={18} color={colors.mutedForeground} />
           </Pressable>
         </View>
-        <Text style={[styles.h1, { color: colors.foreground }]}>Personas</Text>
+        <Text style={[styles.h1, { color: colors.foreground }]}>
+          {t("personas.title")}
+        </Text>
         <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-          Select an engram to make it active across feed, chat, and inquiry.
+          {t("personas.subtitle")}
         </Text>
       </View>
 
@@ -85,8 +89,8 @@ export default function EngramsScreen() {
             icon={
               <Feather name="wifi-off" size={28} color={colors.mutedForeground} />
             }
-            title="Connection lost"
-            subtitle="Could not reach the ENGRAM core."
+            title={t("personas.connectionLost")}
+            subtitle={t("personas.connectionLostSubtitle")}
           />
           <Pressable
             onPress={() => refetch()}
@@ -98,7 +102,7 @@ export default function EngramsScreen() {
                 opacity: pressed || isRefetching ? 0.6 : 1,
               },
             ]}
-            accessibilityLabel="Retry connection"
+            accessibilityLabel={t("personas.retryConnection")}
           >
             {isRefetching ? (
               <ActivityIndicator size="small" color={colors.primary} />
@@ -106,16 +110,16 @@ export default function EngramsScreen() {
               <Feather name="refresh-cw" size={16} color={colors.primary} />
             )}
             <Text style={[styles.retryText, { color: colors.primary }]}>
-              RETRY
+              {t("personas.retry")}
             </Text>
           </Pressable>
           <Pressable
             onPress={() => router.push("/server-settings")}
             hitSlop={8}
-            accessibilityLabel="Open server settings"
+            accessibilityLabel={t("personas.openServerSettings")}
           >
             <Text style={[styles.retryLink, { color: colors.mutedForeground }]}>
-              Check server address or go offline
+              {t("personas.checkServerLink")}
             </Text>
           </Pressable>
         </View>
@@ -146,8 +150,8 @@ export default function EngramsScreen() {
                 icon={
                   <Feather name="cpu" size={28} color={colors.mutedForeground} />
                 }
-                title="No engrams yet"
-                subtitle="The registry is empty. Seed engrams from the dashboard to begin."
+                title={t("personas.empty")}
+                subtitle={t("personas.emptySubtitle")}
               />
             </View>
           }

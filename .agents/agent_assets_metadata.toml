@@ -35,3 +35,10 @@ id = "88WrrF4AZ8iTC99g9_hvH"
 uri = "file://docs/building-the-android-apk.md"
 type = "text"
 title = "How to build the ENGRAM Android .apk"
+
+[[outputs]]
+id = "wAGdkofmpVSyTrIWSbpWj"
+uri = "file://docs/ENGRAM-developers-guide.csv"
+type = "table"
+title = "ENGRAM Developer's Guide (CSV)"
+description = "Comprehensive developer reference: architecture, setup, domain concepts, API contract, i18n, mobile/desktop builds, database, testing, operations, and gotchas — one row per topic with locations and key commands."

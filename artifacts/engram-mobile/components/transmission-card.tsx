@@ -1,21 +1,23 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
+import type { TFunction } from "i18next";
 
 import { Chip, MonoLabel, ScoreBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import type { EngramTransmission } from "@workspace/api-client-react";
 
-function relativeTime(iso?: string): string {
+function relativeTime(t: TFunction<"mobile">, iso?: string): string {
   if (!iso) return "";
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
   const diff = Date.now() - then;
   const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return t("feed.justNow");
+  if (m < 60) return t("feed.minutesAgo", { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return t("feed.hoursAgo", { count: h });
+  return t("feed.daysAgo", { count: Math.floor(h / 24) });
 }
 
 export function TransmissionCard({
@@ -23,6 +25,7 @@ export function TransmissionCard({
 }: {
   transmission: EngramTransmission;
 }) {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const score = transmission.overallScore ?? 0;
   const scoreColor =
@@ -48,7 +51,7 @@ export function TransmissionCard({
             <Chip label={transmission.kind} tone="muted" />
           ) : null}
         </View>
-        <MonoLabel>{relativeTime(transmission.createdAt)}</MonoLabel>
+        <MonoLabel>{relativeTime(t, transmission.createdAt)}</MonoLabel>
       </View>
 
       <Text style={[styles.content, { color: colors.foreground }]}>
@@ -57,7 +60,7 @@ export function TransmissionCard({
 
       <View style={styles.footer}>
         <View style={styles.scoreRow}>
-          <MonoLabel style={{ width: 64 }}>signal</MonoLabel>
+          <MonoLabel style={{ width: 64 }}>{t("feed.signal")}</MonoLabel>
           <View style={{ flex: 1 }}>
             <ScoreBar value={score} color={scoreColor} />
           </View>
@@ -67,7 +70,7 @@ export function TransmissionCard({
         </View>
         {transmission.mood ? (
           <MonoLabel color={colors.secondaryForeground}>
-            mood · {transmission.mood}
+            {t("feed.mood")} · {transmission.mood}
           </MonoLabel>
         ) : null}
       </View>

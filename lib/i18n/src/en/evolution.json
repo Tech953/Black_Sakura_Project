@@ -1,0 +1,11 @@
+{
+  "title": "EVOLUTION LOG",
+  "subtitle": "Behavioral changelog — every adaptation, its trigger, evidence, and outcome",
+  "designPrinciple": "DESIGN PRINCIPLE:",
+  "designPrincipleBody": "Core code changes only through explicit review. Data, heuristics, and confidence values evolve continuously. All growth is inspectable and reversible.",
+  "emptyState": "No evolution entries recorded",
+  "triggerLabel": "Trigger:",
+  "evidence": "Evidence",
+  "expectedImpact": "Expected Impact",
+  "validation": "Validation"
+}

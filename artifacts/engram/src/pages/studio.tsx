@@ -10,6 +10,8 @@ import {
   type Engram,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,17 +34,17 @@ import { useToast } from "@/hooks/use-toast";
 
 const STATUS_META: Record<
   string,
-  { label: string; cls: string; pulse?: boolean }
+  { statusKey: string; cls: string; pulse?: boolean }
 > = {
-  pending: { label: "Queued", cls: "border-amber-500/40 text-amber-400" },
+  pending: { statusKey: "pending", cls: "border-amber-500/40 text-amber-400" },
   processing: {
-    label: "Generating",
+    statusKey: "processing",
     cls: "border-sky-500/40 text-sky-400",
     pulse: true,
   },
-  completed: { label: "Ready", cls: "border-emerald-500/40 text-emerald-400" },
-  failed: { label: "Failed", cls: "border-rose-500/40 text-rose-400" },
-  canceled: { label: "Canceled", cls: "border-muted-foreground/40 text-muted-foreground" },
+  completed: { statusKey: "completed", cls: "border-emerald-500/40 text-emerald-400" },
+  failed: { statusKey: "failed", cls: "border-rose-500/40 text-rose-400" },
+  canceled: { statusKey: "canceled", cls: "border-muted-foreground/40 text-muted-foreground" },
 };
 
 const KIND_ICON: Record<string, typeof FileText> = {
@@ -51,21 +53,21 @@ const KIND_ICON: Record<string, typeof FileText> = {
   video: Video,
 };
 
-const KINDS: { value: "pdf" | "image" | "video"; label: string; note: string }[] = [
-  { value: "pdf", label: "PDF", note: "always offline" },
-  { value: "image", label: "Image", note: "cloud / best-effort" },
-  { value: "video", label: "Video", note: "cloud / best-effort" },
+const KINDS: { value: "pdf" | "image" | "video" }[] = [
+  { value: "pdf" },
+  { value: "image" },
+  { value: "video" },
 ];
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const sec = Math.round(diff / 1000);
-  if (sec < 60) return "just now";
+  if (sec < 60) return i18n.t("studio:relativeTime.justNow");
   const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return i18n.t("studio:relativeTime.minutesAgo", { count: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.round(hr / 24)}d ago`;
+  if (hr < 24) return i18n.t("studio:relativeTime.hoursAgo", { count: hr });
+  return i18n.t("studio:relativeTime.daysAgo", { count: Math.round(hr / 24) });
 }
 
 function formatBytes(n: number): string {
@@ -76,6 +78,7 @@ function formatBytes(n: number): string {
 }
 
 export default function Studio() {
+  const { t } = useTranslation("studio");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -130,15 +133,15 @@ export default function Studio() {
       },
       {
         onSuccess: () => {
-          toast({ title: "Generation queued", description: `${kind.toUpperCase()} job created.` });
+          toast({ title: t("queuedTitle"), description: t("queuedDescription", { kind: kind.toUpperCase() }) });
           setTitle("");
           setPrompt("");
           queryClient.invalidateQueries({ queryKey: getListArtifactsQueryKey() });
         },
         onError: (e) =>
           toast({
-            title: "Could not queue",
-            description: e instanceof Error ? e.message : "Unknown error",
+            title: t("couldNotQueue"),
+            description: e instanceof Error ? e.message : t("unknownError"),
             variant: "destructive",
           }),
       },
@@ -150,30 +153,28 @@ export default function Studio() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-3xl font-bold tracking-widest text-primary flex items-center gap-3 glow-text">
-            <Hammer className="w-7 h-7" /> CREATION STUDIO
+            <Hammer className="w-7 h-7" /> {t("title")}
           </h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            Engrams author real files — PDFs offline, images &amp; video via the cloud generation provider
+            {t("subtitle")}
           </p>
         </div>
         <Badge
           variant="outline"
           className="font-mono text-[10px] uppercase tracking-wider border-primary/40 text-primary gap-1.5"
         >
-          <Sparkles className="w-3 h-3" /> {ordered.length} artifacts
+          <Sparkles className="w-3 h-3" /> {t("artifactsBadge", { count: ordered.length })}
         </Badge>
       </div>
 
       <div className="bg-primary/[0.03] border border-primary/20 p-4 font-mono text-xs text-muted-foreground space-y-1">
         <p className="text-primary/80 flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5" /> GENERATION → GENERATED PROVENANCE
+          <Sparkles className="w-3.5 h-3.5" /> {t("provenanceTitle")}
         </p>
         <p>
-          Generated artifacts are a separate subsystem from perception. They never become OBSERVED
-          reality — if a piece ever lands in the world model it is pinned{" "}
-          <span className="text-primary/90">generated</span> / source{" "}
-          <span className="text-primary/90">artifact:&lt;id&gt;</span>. PDF always works offline;
-          image &amp; video need an online generation provider and fail with a clear message otherwise.
+          {t("provenanceBodyStart")}{" "}
+          <span className="text-primary/90">{t("provenanceGenerated")}</span> {t("provenanceSource")}{" "}
+          <span className="text-primary/90">{t("provenanceArtifactId")}</span>{t("provenanceBodyEnd")}
         </p>
       </div>
 
@@ -181,7 +182,7 @@ export default function Studio() {
       <Card className="bg-card/40 border-primary/25 backdrop-blur-sm">
         <CardContent className="p-4 space-y-3">
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
-            <Sparkles className="w-3 h-3" /> Create now
+            <Sparkles className="w-3 h-3" /> {t("createNow")}
           </p>
           <div className="flex flex-col md:flex-row gap-3">
             <select
@@ -192,7 +193,7 @@ export default function Studio() {
               className="bg-background border border-border/60 text-sm font-mono px-3 py-2 text-foreground focus:border-primary/60 outline-none"
               data-testid="select-engram"
             >
-              <option value="">Select engram…</option>
+              <option value="">{t("selectEngram")}</option>
               {(engrams ?? []).map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.symbol ? `${e.symbol} ` : ""}
@@ -209,7 +210,7 @@ export default function Studio() {
             >
               {KINDS.map((k) => (
                 <option key={k.value} value={k.value}>
-                  {k.label} — {k.note}
+                  {t("kindOption", { label: t(`kinds.${k.value}`), note: t(`kinds.${k.value}Note`) })}
                 </option>
               ))}
             </select>
@@ -218,7 +219,7 @@ export default function Studio() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title"
+              placeholder={t("titlePlaceholder")}
               className="flex-1 bg-background border border-border/60 text-sm font-mono px-3 py-2 text-foreground placeholder:text-muted-foreground/40 focus:border-primary/60 outline-none"
               data-testid="input-title"
             />
@@ -227,7 +228,7 @@ export default function Studio() {
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="What should the engram create? (the generation brief)"
+            placeholder={t("promptPlaceholder")}
             rows={3}
             className="w-full bg-background border border-border/60 text-sm font-mono px-3 py-2 text-foreground placeholder:text-muted-foreground/40 focus:border-primary/60 outline-none resize-y"
             data-testid="input-prompt"
@@ -250,7 +251,7 @@ export default function Studio() {
               ) : (
                 <Sparkles className="w-3.5 h-3.5 mr-1.5" />
               )}
-              Generate
+              {t("generate")}
             </Button>
           </div>
         </CardContent>
@@ -265,10 +266,9 @@ export default function Studio() {
         ) : !ordered.length ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground font-mono text-center">
             <Hammer className="w-8 h-8 mb-4 opacity-30" />
-            <p className="text-xs uppercase tracking-widest">Nothing generated yet</p>
+            <p className="text-xs uppercase tracking-widest">{t("emptyTitle")}</p>
             <p className="text-[10px] mt-2 opacity-60 max-w-sm">
-              Queue a creation above, or let an engram autonomously author one within its caps. Each
-              job runs asynchronously and produces a downloadable file.
+              {t("emptyBody")}
             </p>
           </div>
         ) : (
@@ -292,6 +292,7 @@ function ArtifactCard({
   artifact: EngramArtifact;
   engram?: Engram;
 }) {
+  const { t } = useTranslation("studio");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -308,9 +309,9 @@ function ArtifactCard({
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListArtifactsQueryKey() });
-          toast({ title: "Re-queued for generation" });
+          toast({ title: t("requeued") });
         },
-        onError: () => toast({ title: "Retry failed", variant: "destructive" }),
+        onError: () => toast({ title: t("retryFailed"), variant: "destructive" }),
       },
     );
   }
@@ -321,9 +322,9 @@ function ArtifactCard({
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListArtifactsQueryKey() });
-          toast({ title: "Artifact deleted" });
+          toast({ title: t("deleted") });
         },
-        onError: () => toast({ title: "Delete failed", variant: "destructive" }),
+        onError: () => toast({ title: t("deleteFailed"), variant: "destructive" }),
       },
     );
   }
@@ -371,7 +372,7 @@ function ArtifactCard({
                 {status.pulse && (
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse mr-1" />
                 )}
-                {status.label}
+                {t(`status.${status.statusKey}`)}
               </Badge>
               <span className="font-mono text-[10px] text-muted-foreground/40 ml-auto">
                 {relativeTime(artifact.createdAt)}
@@ -401,7 +402,7 @@ function ArtifactCard({
         {artifact.status === "failed" && artifact.error && (
           <div className="border border-rose-500/25 bg-rose-500/[0.04] p-3 space-y-1">
             <p className="font-mono text-[10px] uppercase tracking-wider text-rose-400/80 flex items-center gap-1.5">
-              <AlertTriangle className="w-3 h-3" /> Generation failed
+              <AlertTriangle className="w-3 h-3" /> {t("generationFailed")}
             </p>
             <p className="text-xs font-mono text-rose-300/70 break-words">{artifact.error}</p>
           </div>
@@ -431,7 +432,7 @@ function ArtifactCard({
                 className="w-full h-72 border border-border/40 bg-white/[0.02]"
               >
                 <p className="font-mono text-[10px] text-muted-foreground/60 p-3">
-                  PDF preview unavailable — use Download.
+                  {t("pdfPreviewUnavailable")}
                 </p>
               </object>
             )}
@@ -447,7 +448,7 @@ function ArtifactCard({
               className="inline-flex items-center font-mono text-[10px] uppercase tracking-wider border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 h-8 px-3"
               data-testid={`button-download-${artifact.id}`}
             >
-              <Download className="w-3 h-3 mr-1.5" /> Download
+              <Download className="w-3 h-3 mr-1.5" /> {t("download")}
             </a>
           )}
           {artifact.status === "failed" && (
@@ -459,7 +460,7 @@ function ArtifactCard({
               className="font-mono text-[10px] uppercase tracking-wider border-amber-500/40 text-amber-300 hover:bg-amber-500/10 h-8"
               data-testid={`button-retry-${artifact.id}`}
             >
-              <RotateCw className="w-3 h-3 mr-1.5" /> Retry
+              <RotateCw className="w-3 h-3 mr-1.5" /> {t("retry")}
             </Button>
           )}
           <Button
@@ -470,7 +471,7 @@ function ArtifactCard({
             className="font-mono text-[10px] uppercase tracking-wider border-rose-500/40 text-rose-300 hover:bg-rose-500/10 h-8 ml-auto"
             data-testid={`button-delete-${artifact.id}`}
           >
-            <Trash2 className="w-3 h-3 mr-1.5" /> Delete
+            <Trash2 className="w-3 h-3 mr-1.5" /> {t("delete")}
           </Button>
         </div>
       </CardContent>

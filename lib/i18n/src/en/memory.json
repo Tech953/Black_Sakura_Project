@@ -1,0 +1,16 @@
+{
+  "title": "MEMORY ARCHITECTURE",
+  "subtitle": "Six-layer persistent knowledge store",
+  "encodeMemory": "Encode Memory",
+  "encodeNewMemory": "Encode New Memory",
+  "contentPlaceholder": "Memory content...",
+  "confidence": "Confidence",
+  "encoding": "Encoding...",
+  "encode": "Encode",
+  "encodedTitle": "Memory Encoded",
+  "encodedDescription": "Added to {{layer}} layer.",
+  "purgedTitle": "Memory Purged",
+  "purgedDescription": "Entry removed from store.",
+  "allLayers": "All Layers",
+  "emptyState": "No memories encoded in this layer"
+}

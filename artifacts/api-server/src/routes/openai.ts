@@ -29,6 +29,7 @@ import { detectModality } from "../lib/media-extraction";
 import { publishEvent } from "../lib/events";
 
 import { isArchivalEngram } from "../lib/archival";
+import { responseLanguageInstruction } from "@workspace/i18n";
 const router = Router();
 
 /** Hard cap on a single inline upload's size. Defaults to 25 MiB; overridable via env. */
@@ -155,6 +156,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
   }
   const { id } = parsedParams.data;
   const { content } = parsedBody.data;
+  const languageInstruction = responseLanguageInstruction(parsedBody.data.language);
   if (!content.trim()) {
     res.status(400).json({ error: "Message content must not be empty." });
     return;
@@ -189,6 +191,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
         "You are in a live, ongoing conversation with them right now. Respond to their latest message in character, staying in your formatting conventions.",
       worldModelSummary,
       perceptualContext,
+      responseLanguageInstruction: languageInstruction,
     });
   } else {
     const [personalityRow] = await db.select().from(personalityTable);
@@ -215,6 +218,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       activePersona: activePersonaRow[0] ?? null,
       beliefsList: beliefsList.map((b) => ({ statement: b.statement, confidence: b.confidence })),
       perceptualContext,
+      responseLanguageInstruction: languageInstruction,
       expressions: expressionsList.map(
         (e): ExpressionRow => ({
           glyph: e.glyph,

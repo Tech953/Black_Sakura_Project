@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
+import { responseLanguageInstruction } from "@workspace/i18n";
 import {
   engramsTable,
   engramTransmissionsTable,
@@ -358,7 +359,11 @@ router.post("/engrams/:id/inquiries", async (req, res) => {
 
   try {
     if (kind === "probe") {
-      const response = await generateProbeResponse({ engram, question });
+      const response = await generateProbeResponse({
+        engram,
+        question,
+        responseLanguageInstruction: responseLanguageInstruction(parsedBody.data.language),
+      });
       const [row] = await db
         .insert(engramInquiriesTable)
         .values({ engramId: engram.id, kind, question, response, configDelta: null })
@@ -368,7 +373,11 @@ router.post("/engrams/:id/inquiries", async (req, res) => {
     }
 
     // develop: tune the engram within bounded fields.
-    const { response, delta } = await generateDevelopment({ engram, question });
+    const { response, delta } = await generateDevelopment({
+      engram,
+      question,
+      responseLanguageInstruction: responseLanguageInstruction(parsedBody.data.language),
+    });
 
     const patch: Partial<typeof engramsTable.$inferInsert> = { updatedAt: new Date() };
     if (delta.emotionalBaseline) {
