@@ -47,5 +47,5 @@ description = "Comprehensive developer reference: architecture, setup, domain co
 id = "ZWZlTIdkafgwQtalPq030"
 uri = "file://downloads/ENGRAM-android.apk"
 type = "unspecified"
-title = "ENGRAM Android APK"
-description = "Existing Android APK reposted from downloads/ENGRAM-android.apk. This build is the audited 162.6 MB APK; it is debug-signed and has not yet been rebuilt to address the Galaxy Z Flip 8 crash."
+title = "ENGRAM Android APK — rebuilt"
+description = "Fresh APK rebuilt from the current mobile source after aligning Expo dependencies (Expo 54.0.37, expo-file-system 19.0.24, expo-constants 18.0.14). Native llama.rn libraries, 64-bit ABIs, APK signature verification, and zip alignment passed. SHA-256: bfeb4fc5789555bc3015822492e9dceda87e52c4aa548f79dbe8b1c9fa331a55."
