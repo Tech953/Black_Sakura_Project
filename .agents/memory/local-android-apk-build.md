@@ -32,3 +32,8 @@ NSIS `.exe` needs wine → CI-only. Local Windows deliverable is the electron-bu
 
 ## Delivery
 The api-server Download endpoints serve committed files in `downloads/` first (`.zip`→win, `.apk`→android). One-command refresh exists; any installer-refresh flow must reuse the prebuilt android/ project (re-running prebuild wipes the Hermes/Babel fixes above) and must stage LLAMA_TARGET=win32 llama binaries when cross-packaging the Windows zip from Linux. Beware: a multi-GB zip in `downloads/` will bloat any future git push.
+
+## Modern Android device QA
+- Increment `android.versionCode` for each downloadable APK so an existing install can upgrade instead of being rejected as an equal/older package.
+- For Android 15/16-era devices, validate both APK ZIP alignment with `zipalign -c -P 16 -v 4` and every arm64 ELF `LOAD` segment alignment (`0x4000`); uncompressed native libraries must be 16 KB compatible.
+- Keep `android.resizeableActivity` enabled for foldables so folding/unfolding and multi-window configuration changes remain supported.
