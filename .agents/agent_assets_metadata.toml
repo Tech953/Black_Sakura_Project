@@ -42,3 +42,10 @@ uri = "file://docs/ENGRAM-developers-guide.csv"
 type = "table"
 title = "ENGRAM Developer's Guide (CSV)"
 description = "Comprehensive developer reference: architecture, setup, domain concepts, API contract, i18n, mobile/desktop builds, database, testing, operations, and gotchas — one row per topic with locations and key commands."
+
+[[outputs]]
+id = "ZWZlTIdkafgwQtalPq030"
+uri = "file://downloads/ENGRAM-android.apk"
+type = "unspecified"
+title = "ENGRAM Android APK"
+description = "Existing Android APK reposted from downloads/ENGRAM-android.apk. This build is the audited 162.6 MB APK; it is debug-signed and has not yet been rebuilt to address the Galaxy Z Flip 8 crash."
