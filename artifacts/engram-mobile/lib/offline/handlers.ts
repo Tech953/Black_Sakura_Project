@@ -4,6 +4,7 @@ import { responseLanguageInstruction } from "@workspace/i18n";
 import type { LocalHandler } from "@workspace/api-client-react";
 
 import { completeOnce } from "./llm";
+import { assertOfflineInput } from "./limits";
 import * as store from "./store";
 import { resolveReplyLanguage } from "../i18n";
 
@@ -35,6 +36,11 @@ async function handleInquiry(
   const kind = body.kind === "develop" ? "develop" : "probe";
   const question = (body.question ?? "").trim();
   if (!question) return { status: 400, body: { error: "Question required" } };
+  try {
+    assertOfflineInput(question);
+  } catch {
+    return { status: 413, body: { error: "Question is too long for offline mode." } };
+  }
   const engram = await personaAsEngram(engramId);
   if (!engram) return notFound("Engram not found");
 
@@ -54,7 +60,7 @@ async function handleInquiry(
       { role: "system", content: system },
       { role: "user", content: question },
     ],
-    { maxTokens: 700 },
+    { maxTokens: 384 },
   );
   const row = await store.insertInquiry({ engramId, kind, question, response });
   return ok(row, 201);
@@ -78,13 +84,18 @@ async function handleTransmit(engramId: number): Promise<{ status: number; body:
     : "";
   const worldModelSummary = summarizeWorldModel(await store.loadRecentWorldModel(engramId));
   const situation = `No prompt has come in, but your drive "${drive.label}" (${drive.description}) has built up enough that you decide, on your own, to reach out. Send a short, in-character message directed at them — unprompted contact. You may open a topic, share something on your mind, or ASK THEM A DIRECT QUESTION you genuinely want answered. 2–4 sentences. Use your formatting conventions.${avoid}`;
-  const system = buildEngramSystemPrompt({ engram, situation, worldModelSummary });
+  const system = buildEngramSystemPrompt({
+    engram,
+    situation,
+    worldModelSummary,
+    responseLanguageInstruction: responseLanguageInstruction(await resolveReplyLanguage()),
+  });
   const content = await completeOnce(
     [
       { role: "system", content: system },
       { role: "user", content: "Reach out now, unprompted, in your own voice." },
     ],
-    { maxTokens: 500 },
+    { maxTokens: 384 },
   );
   const row = await store.insertTransmission({
     engramId,

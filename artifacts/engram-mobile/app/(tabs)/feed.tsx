@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TransmissionCard } from "@/components/transmission-card";
-import { EmptyState, IconButton } from "@/components/ui";
+import { EmptyState, IconButton, PrimaryButton } from "@/components/ui";
 import { useEngram } from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
 import { useQueryClient } from "@tanstack/react-query";
@@ -40,7 +40,12 @@ export default function FeedScreen() {
   const { data: engram } = useGetEngram(engramId, {
     query: { enabled, queryKey: getGetEngramQueryKey(engramId) },
   });
-  const { data: transmissions, isLoading } = useListEngramTransmissions(
+  const {
+    data: transmissions,
+    isLoading,
+    isError,
+    refetch,
+  } = useListEngramTransmissions(
     engramId,
     {
       query: {
@@ -52,6 +57,7 @@ export default function FeedScreen() {
   );
   const transmit = useTransmitEngram();
   const markSeen = useMarkTransmissionsSeen();
+  const [pulseFailed, setPulseFailed] = useState(false);
 
   const unseenIds = useMemo(
     () => (transmissions ?? []).filter((t) => !t.seen).map((t) => t.id),
@@ -73,6 +79,7 @@ export default function FeedScreen() {
 
   const onPulse = useCallback(async () => {
     if (!enabled) return;
+    setPulseFailed(false);
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
@@ -82,7 +89,7 @@ export default function FeedScreen() {
         queryKey: getListEngramTransmissionsQueryKey(engramId),
       });
     } catch {
-      // ignore
+      setPulseFailed(true);
     }
   }, [enabled, engramId, queryClient, transmit]);
 
@@ -123,7 +130,27 @@ export default function FeedScreen() {
         </IconButton>
       </View>
 
-      {isLoading ? (
+      {isError || pulseFailed ? (
+        <View
+          style={[
+            styles.errorCard,
+            { borderColor: colors.destructive + "66", backgroundColor: colors.card },
+          ]}
+        >
+          <Text style={[styles.errorText, { color: colors.destructive }]}>
+            {t("errors.message")}
+          </Text>
+          <PrimaryButton
+            label={t("errors.tryAgain")}
+            tone="outline"
+            onPress={() => {
+              setPulseFailed(false);
+              void refetch();
+            }}
+            style={{ marginTop: 10, height: 42 }}
+          />
+        </View>
+      ) : isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -180,4 +207,16 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  errorCard: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 12,
+  },
+  errorText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    lineHeight: 19,
+  },
 });

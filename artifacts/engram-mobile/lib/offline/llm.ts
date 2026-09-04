@@ -1,6 +1,11 @@
 import { Platform } from "react-native";
 
 import { MODEL_PATH } from "./model";
+import { getModelStatus } from "./model";
+import {
+  OFFLINE_LIMITS,
+  boundChatMessages,
+} from "./limits";
 
 /**
  * On-device language model runtime (llama.cpp via llama.rn).
@@ -17,6 +22,29 @@ type LlamaModule = typeof import("llama.rn");
 type LlamaContext = Awaited<ReturnType<LlamaModule["initLlama"]>>;
 
 let contextPromise: Promise<LlamaContext> | null = null;
+let lifecycleTail: Promise<void> = Promise.resolve();
+
+export class OfflineInferenceError extends Error {
+  constructor(
+    readonly code:
+      | "MODEL_UNAVAILABLE"
+      | "GENERATION_TIMEOUT"
+      | "EMPTY_RESPONSE",
+    message: string,
+  ) {
+    super(message);
+    this.name = "OfflineInferenceError";
+  }
+}
+
+function runExclusive<T>(work: () => Promise<T>): Promise<T> {
+  const previous = lifecycleTail;
+  let unlock!: () => void;
+  lifecycleTail = new Promise<void>((resolve) => {
+    unlock = resolve;
+  });
+  return previous.then(work).finally(unlock);
+}
 
 function loadLlama(): LlamaModule {
   if (Platform.OS === "web") {
@@ -28,11 +56,19 @@ function loadLlama(): LlamaModule {
 }
 
 async function ensureContext(): Promise<LlamaContext> {
+  const model = await getModelStatus();
+  if (model.state !== "ready") {
+    throw new OfflineInferenceError(
+      "MODEL_UNAVAILABLE",
+      "The on-device model is not downloaded or is incomplete.",
+    );
+  }
   if (!contextPromise) {
     const { initLlama } = loadLlama();
     contextPromise = initLlama({
       model: MODEL_PATH.replace(/^file:\/\//, ""),
-      n_ctx: 4096,
+      n_ctx: OFFLINE_LIMITS.modelContextTokens,
+      n_batch: 256,
       n_gpu_layers: 0,
       use_mlock: false,
     }).catch((err: unknown) => {
@@ -45,16 +81,18 @@ async function ensureContext(): Promise<LlamaContext> {
 
 /** Free the model context (e.g. when offline mode is turned off). */
 export async function releaseLlm(): Promise<void> {
-  const p = contextPromise;
-  contextPromise = null;
-  if (p) {
-    try {
-      const ctx = await p;
-      await ctx.release();
-    } catch {
-      // never initialized
+  await runExclusive(async () => {
+    const p = contextPromise;
+    contextPromise = null;
+    if (p) {
+      try {
+        const ctx = await p;
+        await ctx.release();
+      } catch {
+        // never initialized or already released
+      }
     }
-  }
+  });
 }
 
 const THINK_OPEN = "<think>";
@@ -74,20 +112,11 @@ function stripThink(text: string): string {
  * and a trailing partial "<think" prefix held back until it resolves. This
  * makes fragmented tag tokens ("<th" + "ink>") impossible to leak.
  */
-function visibleText(raw: string): string {
-  let s = raw;
-  for (;;) {
-    const open = s.indexOf(THINK_OPEN);
-    if (open === -1) break;
-    const close = s.indexOf(THINK_CLOSE, open);
-    if (close === -1) return s.slice(0, open); // inside a think block — withhold the rest
-    s = s.slice(0, open) + s.slice(close + THINK_CLOSE.length);
+function trailingTagPrefixLength(value: string, tag: string): number {
+  for (let length = tag.length - 1; length > 0; length -= 1) {
+    if (value.endsWith(tag.slice(0, length))) return length;
   }
-  // Hold back a trailing partial "<think>" prefix (e.g. raw ends with "<thi").
-  for (let k = THINK_OPEN.length - 1; k > 0; k--) {
-    if (s.endsWith(THINK_OPEN.slice(0, k))) return s.slice(0, s.length - k);
-  }
-  return s;
+  return 0;
 }
 
 const STOP_WORDS = ["<|im_end|>", "<|endoftext|>"];
@@ -101,35 +130,98 @@ export async function completeStream(
   onToken: (delta: string) => void,
   opts: { maxTokens?: number; temperature?: number } = {},
 ): Promise<string> {
-  const ctx = await ensureContext();
-  let raw = "";
-  let emitted = 0;
+  return runExclusive(async () => {
+    const ctx = await ensureContext();
+    const boundedMessages = boundChatMessages(messages);
+    let streamedText = "";
+    let streamBuffer = "";
+    let inThinkBlock = false;
+    let emitted = 0;
 
-  const flush = (text: string) => {
-    if (text.length > emitted) {
-      onToken(text.slice(emitted));
-      emitted = text.length;
+    const flush = (text: string) => {
+      if (text.length > emitted) {
+        onToken(text.slice(emitted));
+        emitted = text.length;
+      }
+    };
+
+    const consumeToken = (token: string) => {
+      streamBuffer += token;
+      for (;;) {
+        if (inThinkBlock) {
+          const close = streamBuffer.indexOf(THINK_CLOSE);
+          if (close === -1) {
+            const held = trailingTagPrefixLength(streamBuffer, THINK_CLOSE);
+            streamBuffer = streamBuffer.slice(-held);
+            return;
+          }
+          streamBuffer = streamBuffer.slice(close + THINK_CLOSE.length);
+          inThinkBlock = false;
+          continue;
+        }
+
+        const open = streamBuffer.indexOf(THINK_OPEN);
+        if (open !== -1) {
+          streamedText += streamBuffer.slice(0, open);
+          streamBuffer = streamBuffer.slice(open + THINK_OPEN.length);
+          inThinkBlock = true;
+          continue;
+        }
+
+        const held = trailingTagPrefixLength(streamBuffer, THINK_OPEN);
+        streamedText += held
+          ? streamBuffer.slice(0, -held)
+          : streamBuffer;
+        streamBuffer = held ? streamBuffer.slice(-held) : "";
+        return;
+      }
+    };
+
+    const completion = ctx.completion(
+      {
+        messages: boundedMessages,
+        n_predict: Math.min(
+          opts.maxTokens ?? OFFLINE_LIMITS.maxOutputTokens,
+          OFFLINE_LIMITS.maxOutputTokens,
+        ),
+        temperature: opts.temperature ?? 0.7,
+        stop: STOP_WORDS,
+        enable_thinking: false,
+      } as Parameters<LlamaContext["completion"]>[0],
+      (data: { token: string }) => {
+        consumeToken(data.token);
+        flush(streamedText);
+      },
+    );
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      void ctx.stopCompletion().catch(() => {});
+    }, OFFLINE_LIMITS.maxGenerationMs);
+
+    try {
+      const result = await completion;
+      if (timedOut) {
+        throw new OfflineInferenceError(
+          "GENERATION_TIMEOUT",
+          "The on-device response took too long.",
+        );
+      }
+      if (!inThinkBlock) streamedText += streamBuffer;
+      const full = stripThink(result.text || streamedText);
+      if (!full) {
+        throw new OfflineInferenceError(
+          "EMPTY_RESPONSE",
+          "The on-device model returned no response.",
+        );
+      }
+      flush(full);
+      return full;
+    } finally {
+      clearTimeout(timeout);
+      if (timedOut) await completion.catch(() => {});
     }
-  };
-
-  const result = await ctx.completion(
-    {
-      messages,
-      n_predict: opts.maxTokens ?? 768,
-      temperature: opts.temperature ?? 0.7,
-      stop: STOP_WORDS,
-      enable_thinking: false,
-    } as Parameters<LlamaContext["completion"]>[0],
-    (data: { token: string }) => {
-      raw += data.token;
-      flush(visibleText(raw));
-    },
-  );
-
-  raw = result.text ?? raw;
-  const full = stripThink(raw);
-  flush(full);
-  return full;
+  });
 }
 
 /** One-shot (non-streaming) completion for inquiries/transmissions. */

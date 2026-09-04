@@ -10,6 +10,7 @@ import type { WorldModelEntryView } from "@workspace/engram-core";
  * them across sessions (mirroring the server's observed-entry write in chat).
  */
 let db: SQLite.SQLiteDatabase | null = null;
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -17,6 +18,17 @@ function nowIso(): string {
 
 export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
+  if (!dbPromise) dbPromise = initializeDb();
+  try {
+    db = await dbPromise;
+    return db;
+  } catch (error) {
+    dbPromise = null;
+    throw error;
+  }
+}
+
+async function initializeDb(): Promise<SQLite.SQLiteDatabase> {
   const opened = await SQLite.openDatabaseAsync("engram-offline.db");
   await opened.execAsync(`
     PRAGMA journal_mode = WAL;
@@ -91,7 +103,6 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
       t,
     );
   }
-  db = opened;
   return opened;
 }
 
@@ -224,6 +235,25 @@ export async function appendMessage(
     role,
     content,
     nowIso(),
+  );
+}
+
+export async function removeLastMessage(
+  conversationId: number,
+  role: "user" | "assistant",
+  content: string,
+): Promise<void> {
+  const d = await getDb();
+  await d.runAsync(
+    `DELETE FROM messages
+     WHERE id = (
+       SELECT id FROM messages
+       WHERE conversationId = ? AND role = ? AND content = ?
+       ORDER BY id DESC LIMIT 1
+     )`,
+    conversationId,
+    role,
+    content,
   );
 }
 
