@@ -41,6 +41,7 @@ export async function getModelStatus(): Promise<ModelStatus> {
 }
 
 let activeDownload: FileSystem.DownloadResumable | null = null;
+let downloadPromise: Promise<void> | null = null;
 
 /** Key holding expo's serialized resume state, so a paused/interrupted download survives app relaunch. */
 const RESUME_KEY = "engram.modelDownload.resumeData";
@@ -51,7 +52,17 @@ const RESUME_KEY = "engram.modelDownload.resumeData";
  * partial file is discarded and the download restarts). Throws on failure; on
  * success the verified model is at MODEL_PATH.
  */
-export async function downloadModel(
+export function downloadModel(
+  onProgress: (writtenBytes: number, totalBytes: number) => void,
+): Promise<void> {
+  if (downloadPromise) return downloadPromise;
+  downloadPromise = performDownload(onProgress).finally(() => {
+    downloadPromise = null;
+  });
+  return downloadPromise;
+}
+
+async function performDownload(
   onProgress: (writtenBytes: number, totalBytes: number) => void,
 ): Promise<void> {
   await FileSystem.makeDirectoryAsync(MODEL_DIR, { intermediates: true });
@@ -132,6 +143,9 @@ export async function cancelDownload(): Promise<void> {
 }
 
 export async function deleteModel(): Promise<void> {
+  const inFlight = downloadPromise;
+  await cancelDownload();
+  await inFlight?.catch(() => {});
   await FileSystem.deleteAsync(MODEL_PATH, { idempotent: true });
   await FileSystem.deleteAsync(PARTIAL_PATH, { idempotent: true });
   await AsyncStorage.removeItem(RESUME_KEY).catch(() => {});

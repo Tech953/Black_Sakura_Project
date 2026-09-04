@@ -3,6 +3,7 @@ import { buildEngramSystemPrompt, summarizeWorldModel } from "@workspace/engram-
 import { responseLanguageInstruction } from "@workspace/i18n";
 
 import { completeStream, type ChatMessage } from "./llm";
+import { assertOfflineInput } from "./limits";
 import * as store from "./store";
 import { resolveReplyLanguage } from "../i18n";
 
@@ -18,6 +19,7 @@ export async function sendOfflineMessage(opts: {
   onToken: (delta: string) => void;
 }): Promise<string> {
   const { conversationId, engramId, content, onToken } = opts;
+  assertOfflineInput(content);
 
   const persona = await store.getEngramPersona(engramId);
   if (!persona) throw new Error("Engram not found");
@@ -35,16 +37,6 @@ export async function sendOfflineMessage(opts: {
   const history = await store.listMessages(conversationId);
   await store.appendMessage(conversationId, "user", content);
 
-  // Mirror the server: record what they said as an OBSERVED entry.
-  await store
-    .appendObservedEntry({
-      engramId,
-      content: `They said: "${content.replace(/\s+/g, " ").trim().slice(0, 240)}"`,
-      confidence: 0.85,
-      source: `chat:${conversationId}`,
-    })
-    .catch(() => {});
-
   // Small on-device context: keep the most recent exchanges.
   const recent = history.slice(-16);
   const messages: ChatMessage[] = [
@@ -56,7 +48,22 @@ export async function sendOfflineMessage(opts: {
     { role: "user", content },
   ];
 
-  const full = await completeStream(messages, onToken, { maxTokens: 768 });
-  await store.appendMessage(conversationId, "assistant", full);
-  return full;
+  try {
+    const full = await completeStream(messages, onToken, { maxTokens: 384 });
+    await store.appendMessage(conversationId, "assistant", full);
+    // Mirror the server only after a successful turn, so failed turns do not
+    // become durable observations.
+    await store
+      .appendObservedEntry({
+        engramId,
+        content: `They said: "${content.replace(/\s+/g, " ").trim().slice(0, 240)}"`,
+        confidence: 0.85,
+        source: `chat:${conversationId}`,
+      })
+      .catch(() => {});
+    return full;
+  } catch (error) {
+    await store.removeLastMessage(conversationId, "user", content).catch(() => {});
+    throw error;
+  }
 }

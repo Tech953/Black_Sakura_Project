@@ -44,6 +44,7 @@ function uid(): string {
 import { isOfflineMode, useOfflineMode } from "@/lib/offline/mode";
 import { sendOfflineMessage } from "@/lib/offline/chat";
 import { resolveReplyLanguage } from "@/lib/i18n";
+import { OFFLINE_LIMITS } from "@/lib/offline/limits";
 
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
@@ -131,21 +132,28 @@ export default function ChatScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
 
+    const userMessageId = uid();
     setInput("");
-    setMessages((prev) => [...prev, { id: uid(), role: "user", content: text }]);
+    setMessages((prev) => [
+      ...prev,
+      { id: userMessageId, role: "user", content: text },
+    ]);
     setIsStreaming(true);
     setShowTyping(true);
 
     let full = "";
     let assistantAdded = false;
+    let assistantMessageId: string | null = null;
+    let updateTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const pushToken = (delta: string) => {
-      full += delta;
+    const renderStream = () => {
+      updateTimer = null;
       if (!assistantAdded) {
         setShowTyping(false);
+        assistantMessageId = uid();
         setMessages((prev) => [
           ...prev,
-          { id: uid(), role: "assistant", content: full },
+          { id: assistantMessageId!, role: "assistant", content: full },
         ]);
         assistantAdded = true;
       } else {
@@ -155,6 +163,19 @@ export default function ChatScreen() {
           return next;
         });
       }
+    };
+    const pushToken = (delta: string) => {
+      full += delta;
+      if (updateTimer == null) {
+        updateTimer = setTimeout(renderStream, 50);
+      }
+    };
+    const flushStream = () => {
+      if (updateTimer != null) {
+        clearTimeout(updateTimer);
+        updateTimer = null;
+      }
+      if (full.length > 0) renderStream();
     };
 
     // On-device offline mode: stream from the local model, no network.
@@ -167,18 +188,23 @@ export default function ChatScreen() {
           onToken: pushToken,
         });
       } catch {
+        flushStream();
         setShowTyping(false);
-        if (!assistantAdded) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: uid(),
-              role: "assistant",
-              content: t("chat.offlineUnavailable"),
-            },
-          ]);
-        }
+        setMessages((prev) => [
+          ...prev.filter(
+            (message) =>
+              message.id !== userMessageId &&
+              message.id !== assistantMessageId,
+          ),
+          {
+            id: uid(),
+            role: "assistant",
+            content: t("chat.offlineUnavailable"),
+          },
+        ]);
+        setInput(text);
       } finally {
+        flushStream();
         setIsStreaming(false);
         setShowTyping(false);
       }
@@ -227,18 +253,18 @@ export default function ChatScreen() {
         }
       }
     } catch {
+      flushStream();
       setShowTyping(false);
-      if (!assistantAdded) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: uid(),
-            role: "assistant",
-            content: t("chat.signalInterrupted"),
-          },
-        ]);
-      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: uid(),
+          role: "assistant",
+          content: t("chat.signalInterrupted"),
+        },
+      ]);
     } finally {
+      flushStream();
       setIsStreaming(false);
       setShowTyping(false);
     }
@@ -389,6 +415,7 @@ export default function ChatScreen() {
             placeholder={t("chat.inputPlaceholder")}
             placeholderTextColor={colors.mutedForeground}
             multiline
+            maxLength={OFFLINE_LIMITS.maxInputChars}
             blurOnSubmit={false}
             style={[
               styles.input,

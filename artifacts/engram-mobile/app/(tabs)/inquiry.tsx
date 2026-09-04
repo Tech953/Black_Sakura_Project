@@ -44,6 +44,7 @@ export default function InquiryScreen() {
 
   const [mode, setMode] = useState<Mode>("probe");
   const [question, setQuestion] = useState("");
+  const [submitFailed, setSubmitFailed] = useState(false);
 
   const { data: engram } = useGetEngram(engramId, {
     query: { enabled, queryKey: getGetEngramQueryKey(engramId) },
@@ -55,6 +56,7 @@ export default function InquiryScreen() {
 
   const onSubmit = useCallback(async () => {
     if (!enabled || question.trim().length === 0) return;
+    setSubmitFailed(false);
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
@@ -77,7 +79,7 @@ export default function InquiryScreen() {
         });
       }
     } catch {
-      // ignore
+      setSubmitFailed(true);
     }
   }, [create, enabled, engramId, mode, question, queryClient]);
 
@@ -169,6 +171,7 @@ export default function InquiryScreen() {
           }
           placeholderTextColor={colors.mutedForeground}
           multiline
+          maxLength={4000}
           style={[
             styles.input,
             {
@@ -189,6 +192,26 @@ export default function InquiryScreen() {
           onPress={onSubmit}
           style={{ marginTop: 14 }}
         />
+
+        {submitFailed ? (
+          <View
+            style={[
+              styles.errorCard,
+              { borderColor: colors.destructive + "66", backgroundColor: colors.card },
+            ]}
+          >
+            <Text style={[styles.errorText, { color: colors.destructive }]}>
+              {t("errors.message")}
+            </Text>
+            <PrimaryButton
+              label={t("errors.tryAgain")}
+              tone="outline"
+              onPress={onSubmit}
+              disabled={create.isPending}
+              style={{ marginTop: 10, height: 42 }}
+            />
+          </View>
+        ) : null}
 
         <MonoLabel style={{ marginTop: 28, marginBottom: 12 }}>
           {t("inquiry.history")}
@@ -297,6 +320,17 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
     gap: 8,
+  },
+  errorCard: {
+    borderWidth: 1,
+    padding: 12,
+    marginTop: 12,
+    borderRadius: 6,
+  },
+  errorText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    lineHeight: 19,
   },
   q: {
     fontFamily: "Rajdhani_600SemiBold",

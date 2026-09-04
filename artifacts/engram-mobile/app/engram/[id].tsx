@@ -35,7 +35,7 @@ export default function EngramDetailScreen() {
   const id = Number(params.id);
   const { selectedEngramId, setSelectedEngramId } = useEngram();
 
-  const { data: engram, isLoading } = useGetEngram(id, {
+  const { data: engram, isLoading, isError, refetch } = useGetEngram(id, {
     query: { enabled: !Number.isNaN(id), queryKey: getGetEngramQueryKey(id) },
   });
   const activate = useActivateEngram();
@@ -70,9 +70,21 @@ export default function EngramDetailScreen() {
           },
         }}
       />
-      {isLoading || !engram ? (
+      {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
+        </View>
+      ) : isError || !engram ? (
+        <View style={styles.errorState}>
+          <Text style={[styles.errorText, { color: colors.destructive }]}>
+            {t("errors.message")}
+          </Text>
+          <PrimaryButton
+            label={t("errors.tryAgain")}
+            tone="outline"
+            onPress={() => void refetch()}
+            style={{ marginTop: 14, minWidth: 150 }}
+          />
         </View>
       ) : (
         <ScrollView
@@ -275,6 +287,18 @@ function Metric({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  errorState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 28,
+  },
+  errorText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+  },
   scroll: { padding: 20 },
   hero: {
     flexDirection: "row",
