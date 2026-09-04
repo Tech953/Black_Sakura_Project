@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveStoredDesktopDownload } from "./download-storage";
 
 // Repo-root-relative default downloads dir, resolved cwd-independently. After
 // esbuild bundles the server into a single dist file, import.meta.url points at
@@ -232,11 +233,12 @@ export type ResolvedDesktopFile = {
   sizeBytes: number;
 } & (
   | { source: "bundled"; localPath: string }
+  | { source: "storage"; url: string }
   | { source: "github"; url: string }
 );
 
 export type DesktopResolution = {
-  source: "bundled" | "github" | null;
+  source: "bundled" | "storage" | "github" | null;
   version: string | null;
   installers: ResolvedDesktopFile[];
 };
@@ -314,6 +316,26 @@ export async function resolveDesktop(): Promise<DesktopResolution> {
     const version =
       bundled.map((b) => deriveVersion(b.filename)).find((v) => v) ?? null;
     return { source: "bundled", version, installers: bundled };
+  }
+  const stored = await resolveStoredDesktopDownload();
+  if (stored) {
+    const os = desktopOsForFile(stored.filename);
+    if (os) {
+      return {
+        source: "storage",
+        version: deriveVersion(stored.filename),
+        installers: [
+          {
+            os,
+            ext: extOf(stored.filename),
+            filename: stored.filename,
+            sizeBytes: stored.sizeBytes,
+            source: "storage",
+            url: stored.url,
+          },
+        ],
+      };
+    }
   }
   const release = await resolveReleaseDesktop();
   if (release.installers.length > 0) {
