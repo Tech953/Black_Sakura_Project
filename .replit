@@ -24,12 +24,12 @@ args = "mobile-offline"
 name = "mobile-offline"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pnpm --filter @workspace/engram-mobile run test"
-
 [workflows.workflow.metadata]
 isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm run test:mobile-offline"
 
 [agent]
 stack = "PNPM_WORKSPACE"

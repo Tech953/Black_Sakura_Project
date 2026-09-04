@@ -46,6 +46,13 @@ json_version() { # json_version <file> — read top-level or expo version
   ' "$1"
 }
 
+# Keep a native offline regression from being packaged into a downloadable APK.
+# Run this before either installer build so a failure stops release work early.
+if [ "$DO_ANDROID" = 1 ]; then
+  echo "==> Android: running mobile offline reliability checks"
+  pnpm run test:mobile-offline
+fi
+
 # ---------------------------------------------------------------- desktop ----
 if [ "$DO_DESKTOP" = 1 ]; then
   DESKTOP_VERSION="$(json_version "$DESKTOP_DIR/package.json")"
