@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 
 import { MODEL_PATH } from "./model";
 import { getModelStatus } from "./model";
+import { loadLlamaModule, type LlamaModule } from "./native";
 import {
   OFFLINE_LIMITS,
   boundChatMessages,
@@ -18,7 +19,6 @@ export interface ChatMessage {
   content: string;
 }
 
-type LlamaModule = typeof import("llama.rn");
 type LlamaContext = Awaited<ReturnType<LlamaModule["initLlama"]>>;
 
 let contextPromise: Promise<LlamaContext> | null = null;
@@ -50,9 +50,9 @@ function loadLlama(): LlamaModule {
   if (Platform.OS === "web") {
     throw new Error("On-device model is not available on web.");
   }
-  // Lazy require keeps llama.rn out of the startup path (and out of web bundles).
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require("llama.rn") as LlamaModule;
+  // The local loader keeps llama.rn out of the startup path (and out of web
+  // bundles), while giving native lifecycle tests a safe seam.
+  return loadLlamaModule();
 }
 
 async function ensureContext(): Promise<LlamaContext> {
