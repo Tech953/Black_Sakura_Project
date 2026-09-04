@@ -41,12 +41,9 @@ variables → Actions):
 | `ANDROID_KEY_PASSWORD` | key password from `.keys/android-signing.env` |
 
 The keystore and its credentials live in the (gitignored) `.keys/` directory of
-the Replit workspace — see `.keys/README.md` for copy-paste setup commands. The
-workflow then verifies the built APK's signer certificate against the pinned
-release-key fingerprint and **fails the build** if it doesn't match, so a wrong
-or missing keystore can never silently ship. With **no** secrets set, CI falls
-back to a **debug-signed** APK: sideloadable, but in-place updates over an
-older build may require uninstalling first.
+the Replit workspace. The workflow verifies the built APK's signer certificate
+against the pinned release-key fingerprint and **fails the build** if the
+keystore is wrong or missing, so a debug-signed APK can never silently ship.
 
 ---
 
@@ -110,7 +107,9 @@ artifacts/engram-mobile/android/app/build/outputs/apk/release/app-release.apk
 `android.versionCode` (an integer that **must increase** for every release the
 Play Store / in-place update accepts). In CI these are stamped from the git tag
 and the run number; for local builds, bump them by hand in `app.json` before
-prebuilding if you want an update-safe sequence.
+prebuilding if you want an update-safe sequence. Keep the matching `versionCode`
+in `android/app/build.gradle`; the installer script refuses to package a
+mismatch.
 
 ### Release signing (update-safe installs)
 
@@ -137,8 +136,9 @@ cd artifacts/engram-mobile/android
 ./gradlew :app:assembleRelease
 ```
 
-If the variables are unset (or the keystore file is missing), the build falls
-back to the debug key — installable, but not update-safe.
+The direct Gradle command still has a debug fallback for development-only
+builds, but `scripts/build-installers.sh` and CI require the release keystore
+and verify that the APK signer matches it before staging a downloadable APK.
 
 Keep the keystore safe and **never commit it** — losing it means you can no
 longer ship updates that install over existing copies.

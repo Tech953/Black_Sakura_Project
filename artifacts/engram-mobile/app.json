@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "ai.pyri.engram",
-      "versionCode": 2,
+      "versionCode": 3,
       "resizeableActivity": true
     },
     "web": {

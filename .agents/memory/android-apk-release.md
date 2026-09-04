@@ -35,11 +35,20 @@ unchanged regardless of how the page fetches.
 - **Groovy trap:** `signingConfig (cond) ? a : b` parses as a method call on the
   boolean and crashes AGP ("Boolean cannot be cast to SigningConfig"). Put the
   fallback inside the signingConfig block instead of a ternary at the buildType.
-- CI (android job) decodes `ANDROID_KEYSTORE_BASE64` and verifies the APK isn't
-  debug-signed when secrets are present. The repl's GitHub PAT could NOT set Actions
-  secrets (403 on actions/secrets public-key) — the user must add them; see
-  `.keys/README.md`. **Never lose or commit the keystore** — losing it permanently
-  breaks in-place updates for existing installs.
+- CI (android job) requires all four `ANDROID_KEYSTORE_*` Actions secrets, decodes
+  and opens the keystore, then pins the APK certificate fingerprint. It fails
+  rather than silently shipping a debug-signed or rotated-key APK.
+- The local installer script sources `.keys/android-signing.env`, requires the
+  keystore, checks the APK certificate against that keystore, and checks that the
+  APK `versionCode` matches `app.json`. **Never lose or commit the keystore** —
+  losing it permanently breaks in-place updates for existing installs.
+
+### Memory-constrained release builds
+- **Why:** an unrestricted Gradle release build can have its daemon killed while
+  Metro and native CMake compilation run concurrently in the workspace.
+- **How to apply:** local installer builds use `--max-workers=2`, a 1536 MB Gradle
+  heap, reduced metaspace, and a 768 MB Node heap; retrying without these limits
+  is likely to fail before packaging.
 
 ## OS/device detection ordering
 - An Android browser User-Agent string also contains the substring `linux`.
