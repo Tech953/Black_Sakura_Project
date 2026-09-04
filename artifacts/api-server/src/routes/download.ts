@@ -16,8 +16,8 @@ import {
 //   GET /api/download/android.apk        -> the apk binary
 //   GET /api/download/desktop            -> JSON meta (per-OS installers)
 //   GET /api/download/desktop/file/:name -> a single installer binary
-// Each binary resolves a bundled file first, else proxy-streams the matching
-// asset from the latest GitHub release — see lib/downloads.ts.
+// Desktop binaries resolve bundled -> App Storage -> GitHub. App Storage uses
+// a short-lived direct redirect so multi-GB installers do not transit Node.
 const router = Router();
 
 function desktopDownloadPath(filename: string): string {
@@ -225,6 +225,8 @@ router.get("/download/desktop/file/:name", async (req, res) => {
       OCTET_MIME,
       installer.sizeBytes,
     );
+  } else if (installer.source === "storage") {
+    res.redirect(302, installer.url);
   } else {
     await proxyDownload(
       req,
