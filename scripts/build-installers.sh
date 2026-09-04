@@ -9,7 +9,7 @@
 #
 # What it produces in downloads/ (older siblings of the same kind are removed):
 #   ENGRAM-<desktopVersion>-x64.zip   (electron-builder Windows portable zip)
-#   ENGRAM-android-<appVersion>.apk   (Gradle release APK, debug-signed)
+#   ENGRAM-android-<appVersion>.apk   (Gradle release APK, stable-key signed)
 #
 # Notes:
 # - The Windows portable ZIP is the only desktop target buildable on Linux
@@ -27,6 +27,7 @@ DOWNLOADS_DIR="$REPO_ROOT/downloads"
 MOBILE_DIR="$REPO_ROOT/artifacts/engram-mobile"
 DESKTOP_DIR="$REPO_ROOT/artifacts/desktop"
 SDK_DIR="$REPO_ROOT/.android-sdk"
+KEYS_DIR="$REPO_ROOT/.keys"
 
 DO_DESKTOP=1
 DO_ANDROID=1
@@ -83,27 +84,69 @@ if [ "$DO_ANDROID" = 1 ]; then
   [ -d "$MOBILE_DIR/android" ] || { echo "ERROR: $MOBILE_DIR/android missing — run the prebuild steps in docs/building-the-android-apk.md first" >&2; exit 1; }
   [ -d "$SDK_DIR" ] || { echo "ERROR: Android SDK missing at $SDK_DIR — see docs/building-the-android-apk.md" >&2; exit 1; }
 
+  # Prefer the workspace's ignored signing environment for local builds. CI
+  # provides the same four variables directly through its secret store.
+  if [ -z "${ANDROID_KEYSTORE_PATH:-}" ] && [ -f "$KEYS_DIR/android-signing.env" ]; then
+    # shellcheck disable=SC1091
+    . "$KEYS_DIR/android-signing.env"
+  fi
+  for signing_var in ANDROID_KEYSTORE_PATH ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+    if [ -z "${!signing_var:-}" ]; then
+      echo "ERROR: $signing_var is required for an update-safe Android release." >&2
+      echo "Source .keys/android-signing.env or configure the CI signing secrets." >&2
+      exit 1
+    fi
+  done
+  [ -f "$ANDROID_KEYSTORE_PATH" ] || { echo "ERROR: Android keystore not found at configured path." >&2; exit 1; }
+
   # The android/ project is NOT regenerated here (prebuild --clean would wipe
   # the Hermes/Babel fixes), so guard against a stale native versionName: the
-  # APK we publish must actually carry the version its filename claims.
+  # APK we publish must actually carry the version and versionCode it claims.
   GRADLE_VERSION="$(grep -oP 'versionName\s+"\K[^"]+' "$MOBILE_DIR/android/app/build.gradle" | head -1 || true)"
+  APP_VERSION_CODE="$(node -e 'const j = require(process.argv[1]); process.stdout.write(String(j.expo.android.versionCode));' "$MOBILE_DIR/app.json")"
+  GRADLE_VERSION_CODE="$(grep -oP 'versionCode\s+\K[0-9]+' "$MOBILE_DIR/android/app/build.gradle" | head -1 || true)"
   if [ "$GRADLE_VERSION" != "$APP_VERSION" ]; then
     echo "ERROR: app.json version ($APP_VERSION) != android/app/build.gradle versionName ($GRADLE_VERSION)." >&2
     echo "Update versionName (and versionCode) in $MOBILE_DIR/android/app/build.gradle to match app.json," >&2
     echo "or re-run prebuild per docs/building-the-android-apk.md (then re-apply its Hermes/Babel fixes)." >&2
     exit 1
   fi
+  if [ "$GRADLE_VERSION_CODE" != "$APP_VERSION_CODE" ]; then
+    echo "ERROR: app.json versionCode ($APP_VERSION_CODE) != android/app/build.gradle versionCode ($GRADLE_VERSION_CODE)." >&2
+    echo "Update both versionCode values before building an Android release." >&2
+    exit 1
+  fi
 
   export ANDROID_HOME="$SDK_DIR"
   export ANDROID_SDK_ROOT="$SDK_DIR"
-  ( cd "$MOBILE_DIR/android" && ./gradlew :app:assembleRelease -x lint --no-daemon )
+  export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=768}"
+  GRADLE_JVMARGS="${ORG_GRADLE_JVMARGS:--Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8}"
+  ( cd "$MOBILE_DIR/android" && ./gradlew :app:assembleRelease -x lint --no-daemon --max-workers="${GRADLE_MAX_WORKERS:-2}" -Dorg.gradle.jvmargs="$GRADLE_JVMARGS" )
 
   APK_SRC="$MOBILE_DIR/android/app/build/outputs/apk/release/app-release.apk"
   [ -f "$APK_SRC" ] || { echo "ERROR: APK not found at $APK_SRC" >&2; exit 1; }
 
+  BUILD_TOOLS_DIR="$(find "$SDK_DIR/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+  APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+  AAPT="$BUILD_TOOLS_DIR/aapt"
+  [ -x "$APKSIGNER" ] || { echo "ERROR: apksigner not found in $BUILD_TOOLS_DIR" >&2; exit 1; }
+  APK_CERT="$("$APKSIGNER" verify --print-certs "$APK_SRC" 2>/dev/null | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')"
+  KEY_CERT="$(keytool -list -v -keystore "$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" 2>/dev/null | awk -F': ' '/SHA256:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')"
+  if [ -z "$APK_CERT" ] || [ "$APK_CERT" != "$KEY_CERT" ]; then
+    echo "ERROR: APK signer does not match the configured release keystore; refusing to stage it." >&2
+    exit 1
+  fi
+  APK_BADGING="$("$AAPT" dump badging "$APK_SRC")"
+  APK_VERSION_CODE="$(printf '%s\n' "$APK_BADGING" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p" | sed -n '1p')"
+  if [ "$APK_VERSION_CODE" != "$APP_VERSION_CODE" ]; then
+    echo "ERROR: built APK versionCode ($APK_VERSION_CODE) != app.json versionCode ($APP_VERSION_CODE)." >&2
+    exit 1
+  fi
+
   find "$DOWNLOADS_DIR" -maxdepth 1 -name '*.apk' -delete
   cp "$APK_SRC" "$DOWNLOADS_DIR/ENGRAM-android-$APP_VERSION.apk"
-  echo "==> Android: refreshed $DOWNLOADS_DIR/ENGRAM-android-$APP_VERSION.apk"
+  cp "$APK_SRC" "$DOWNLOADS_DIR/ENGRAM-android.apk"
+  echo "==> Android: refreshed $DOWNLOADS_DIR/ENGRAM-android-$APP_VERSION.apk and $DOWNLOADS_DIR/ENGRAM-android.apk"
 fi
 
 echo "==> Done. downloads/ now contains:"

@@ -248,22 +248,37 @@ jobs:
       - name: Expo prebuild (android)
         run: pnpm --filter @workspace/engram-mobile exec expo prebuild --platform android --no-install --clean
 
-      # Release signing (optional but recommended): when the ANDROID_KEYSTORE_*
-      # repository secrets are set, decode the keystore and export the env vars
-      # the Gradle signing config (injected by the withAndroidReleaseSigning
-      # Expo config plugin) reads at build time. With no secrets set, the build
-      # falls back to the debug signing config (sideloadable, not update-safe).
+      # Release signing is required for every downloadable APK. A debug-signed
+      # fallback is not update-safe and must never reach a release artifact.
       # Required secrets: ANDROID_KEYSTORE_BASE64 (base64 of the .keystore
       # file), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
-      - name: Prepare release keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      - name: Require release signing secrets
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required Android release signing secret: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Prepare release keystore
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           set -euo pipefail
           KEYSTORE="$RUNNER_TEMP/engram-release.keystore"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
           echo "ANDROID_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
           echo "Release keystore staged; APK will be release-signed."
 
@@ -284,10 +299,9 @@ jobs:
       # catches both a debug-signed fallback and a wrong/rotated keystore, either
       # of which would strand existing installs without in-place updates.
       - name: Verify APK signature
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         shell: bash
         env:
-          EXPECTED_CERT_SHA256: "1ac898e0c11971c328bb2e5a3f40aec035e8096c8c3dfcb82aab8bff6748654b"
+          EXPECTED_CERT_SHA256: "bddee3e52a4251d0ce9c01fd2b47bb12f10c8d510c09de8cde29092fb00703e6"
         run: |
           set -euo pipefail
           APK="artifacts/engram-mobile/android/app/build/outputs/apk/release/app-release.apk"
