@@ -294,12 +294,16 @@
     "subtitle": "Live-Systemstatus & Telemetrie",
     "coreActive": "Kern aktiv",
     "activePersona": "Aktive Persona",
-    "totalMemories": "Gesamte Erinnerungen",
-    "beliefNodes": "Glaubensknoten",
-    "avgConfidence": "Durchschn. Konfidenz",
+    "totalMemories": "Erinnerungen gesamt",
+    "beliefNodes": "Überzeugungsknoten",
+    "avgConfidence": "Ø Konfidenz",
+    "desktopPromoTitle": "Desktop-App holen",
+    "desktopPromoBody": "Führe ENGRAM lokal aus – mit Offline-Zugriff und eigenem nativen Arbeitsbereich.",
+    "desktopPromoAction": "Downloads anzeigen",
+    "desktopPromoDismiss": "Desktop-App-Hinweis schließen",
     "personalityRadar": "Persönlichkeitsradar",
     "radarVizOffline": "RADAR-VIZ OFFLINE",
-    "memoryDistribution": "Erinnerungsverteilung"
+    "memoryDistribution": "Speicherverteilung"
   },
   "hub": {
     "title": "DER HUB",

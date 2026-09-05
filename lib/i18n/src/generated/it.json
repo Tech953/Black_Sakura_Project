@@ -296,7 +296,11 @@
     "activePersona": "Persona attiva",
     "totalMemories": "Memorie totali",
     "beliefNodes": "Nodi di credenza",
-    "avgConfidence": "Confidenza media",
+    "avgConfidence": "Conf. media",
+    "desktopPromoTitle": "Scarica l'app desktop",
+    "desktopPromoBody": "Esegui ENGRAM in locale con accesso offline e uno spazio di lavoro nativo dedicato.",
+    "desktopPromoAction": "Vedi download",
+    "desktopPromoDismiss": "Chiudi il messaggio dell'app desktop",
     "personalityRadar": "Radar della personalità",
     "radarVizOffline": "VIZ RADAR OFFLINE",
     "memoryDistribution": "Distribuzione della memoria"

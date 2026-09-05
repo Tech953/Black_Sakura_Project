@@ -290,15 +290,19 @@
     "arousalTooltip": "استثارة {{level}}"
   },
   "home": {
-    "title": "مركز ENGRAM",
-    "subtitle": "حالة النظام والقياسات المباشرة",
+    "title": "ENGRAM HUB",
+    "subtitle": "حالة النظام والقياسات الحية",
     "coreActive": "النواة نشطة",
     "activePersona": "الشخصية النشطة",
     "totalMemories": "إجمالي الذكريات",
     "beliefNodes": "عُقد المعتقدات",
     "avgConfidence": "متوسط الثقة",
+    "desktopPromoTitle": "احصل على تطبيق سطح المكتب",
+    "desktopPromoBody": "شغّل ENGRAM محليًا مع وصول دون اتصال ومساحة عمل أصلية مخصصة.",
+    "desktopPromoAction": "عرض التنزيلات",
+    "desktopPromoDismiss": "تجاهل رسالة تطبيق سطح المكتب",
     "personalityRadar": "رادار الشخصية",
-    "radarVizOffline": "تصوّر الرادار غير متصل",
+    "radarVizOffline": "تصور الرادار غير متصل",
     "memoryDistribution": "توزيع الذكريات"
   },
   "hub": {

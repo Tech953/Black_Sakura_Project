@@ -6,6 +6,10 @@
   "totalMemories": "Total Memories",
   "beliefNodes": "Belief Nodes",
   "avgConfidence": "Avg Confidence",
+  "desktopPromoTitle": "Get the desktop app",
+  "desktopPromoBody": "Run ENGRAM locally with offline access and a dedicated native workspace.",
+  "desktopPromoAction": "View downloads",
+  "desktopPromoDismiss": "Dismiss desktop app message",
   "personalityRadar": "Personality Radar",
   "radarVizOffline": "RADAR VIZ OFFLINE",
   "memoryDistribution": "Memory Distribution"

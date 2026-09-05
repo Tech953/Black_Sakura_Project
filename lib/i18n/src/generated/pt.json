@@ -291,15 +291,19 @@
   },
   "home": {
     "title": "ENGRAM HUB",
-    "subtitle": "Status do Sistema e Telemetria em Tempo Real",
-    "coreActive": "Núcleo Ativo",
-    "activePersona": "Persona Ativa",
-    "totalMemories": "Total de Memórias",
-    "beliefNodes": "Nós de Crença",
-    "avgConfidence": "Confiança Média",
-    "personalityRadar": "Radar de Personalidade",
+    "subtitle": "Status do sistema ao vivo e telemetria",
+    "coreActive": "Núcleo ativo",
+    "activePersona": "Persona ativa",
+    "totalMemories": "Memórias totais",
+    "beliefNodes": "Nós de crença",
+    "avgConfidence": "Confiança média",
+    "desktopPromoTitle": "Baixe o app para desktop",
+    "desktopPromoBody": "Execute o ENGRAM localmente com acesso offline e um espaço nativo dedicado.",
+    "desktopPromoAction": "Ver downloads",
+    "desktopPromoDismiss": "Dispensar mensagem do app desktop",
+    "personalityRadar": "Radar de personalidade",
     "radarVizOffline": "VIZ DO RADAR OFFLINE",
-    "memoryDistribution": "Distribuição de Memórias"
+    "memoryDistribution": "Distribuição de memória"
   },
   "hub": {
     "title": "O HUB",
