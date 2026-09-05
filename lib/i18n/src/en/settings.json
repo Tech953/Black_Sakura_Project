@@ -9,5 +9,10 @@
   "replyMatchUi": "Match interface language",
   "replyAuto": "Automatic — match whatever language I write in",
   "rtlNote": "Right-to-left layout is applied for Arabic.",
-  "saved": "Settings saved"
+  "saved": "Settings saved",
+  "ggufSection": "Local AI",
+  "ggufTitle": "Custom GGUF models",
+  "ggufBody": "Use your own .gguf model with ENGRAM's managed local engine. The desktop app copies the model into protected app storage, checks it before launch, and keeps it available across updates.",
+  "ggufDesktopOnly": "Custom GGUF import runs in the ENGRAM desktop app. The web app can connect to a local server, but a browser cannot start or manage the desktop engine.",
+  "ggufDownloadAction": "Get the desktop app"
 }

@@ -843,14 +843,19 @@
     "title": "設定",
     "subtitle": "この端末のオペレーター設定",
     "languageSection": "言語",
-    "uiLanguage": "表示言語",
+    "uiLanguage": "インターフェース言語",
     "uiLanguageHint": "アプリ全体のメニュー、ラベル、ページ。",
     "replyLanguage": "engramの応答言語",
     "replyLanguageHint": "チャットや問い合わせで、engramとPYRIが応答する言語。",
-    "replyMatchUi": "表示言語に合わせる",
+    "replyMatchUi": "インターフェース言語に合わせる",
     "replyAuto": "自動 — 入力した言語に合わせる",
     "rtlNote": "アラビア語では右から左のレイアウトが適用されます。",
-    "saved": "設定を保存しました"
+    "saved": "設定を保存しました",
+    "ggufSection": "ローカルAI",
+    "ggufTitle": "カスタムGGUFモデル",
+    "ggufBody": "独自の .gguf モデルを、ENGRAMの管理されたローカルエンジンで使用します。デスクトップアプリはモデルを保護されたアプリストレージにコピーし、起動前に確認して、アップデート後も使えるよう保持します。",
+    "ggufDesktopOnly": "カスタムGGUFのインポートはENGRAMデスクトップアプリで実行します。Webアプリはローカルサーバーに接続できますが、ブラウザーではデスクトップエンジンの起動や管理はできません。",
+    "ggufDownloadAction": "デスクトップアプリを入手"
   },
   "simulations": {
     "title": "シミュレーション・チャンバー",

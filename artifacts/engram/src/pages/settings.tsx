@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { LANGUAGES } from "@workspace/i18n";
 import {
@@ -9,7 +10,7 @@ import {
   setReplyLanguageSetting,
   type ReplyLanguageSetting,
 } from "@/i18n";
-import { Globe, MessageSquare } from "lucide-react";
+import { Download, Globe, MessageSquare } from "lucide-react";
 
 export default function SettingsPage() {
   const { t } = useTranslation("settings");
@@ -85,6 +86,36 @@ export default function SettingsPage() {
           </div>
 
           <p className="font-mono text-[10px] text-muted-foreground/50">{t("rtlNote")}</p>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card/40 border-border/50 backdrop-blur-sm" data-testid="section-custom-gguf">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+            <Download className="w-3.5 h-3.5" />
+            {t("ggufSection")}
+          </div>
+          <div>
+            <h2 className="font-mono text-sm uppercase tracking-wider text-foreground">
+              {t("ggufTitle")}
+            </h2>
+            <p className="font-mono text-[11px] text-muted-foreground mt-2 leading-relaxed">
+              {t("ggufBody")}
+            </p>
+          </div>
+          <div className="border border-primary/20 bg-primary/5 px-3 py-2.5">
+            <p className="font-mono text-[10px] text-primary/90 leading-relaxed">
+              {t("ggufDesktopOnly")}
+            </p>
+          </div>
+          <Link
+            href="/download"
+            className="inline-flex items-center gap-2 border border-primary/50 px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-primary transition-colors hover:bg-primary/10"
+            data-testid="link-custom-gguf-download"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {t("ggufDownloadAction")}
+          </Link>
         </CardContent>
       </Card>
     </div>

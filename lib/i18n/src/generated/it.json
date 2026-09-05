@@ -841,16 +841,21 @@
   },
   "settings": {
     "title": "Impostazioni",
-    "subtitle": "Preferenze operatore per questo terminale",
+    "subtitle": "Preferenze dell'operatore per questo terminale",
     "languageSection": "Lingua",
     "uiLanguage": "Lingua dell'interfaccia",
     "uiLanguageHint": "Menu, etichette e pagine in tutta l'app.",
-    "replyLanguage": "Lingua di risposta dell'engram",
-    "replyLanguageHint": "La lingua in cui engram e PYRI rispondono durante chat e richieste.",
-    "replyMatchUi": "Corrisponde alla lingua dell'interfaccia",
-    "replyAuto": "Automatico — corrisponde a qualsiasi lingua in cui scrivo",
+    "replyLanguage": "Lingua delle risposte dell'engram",
+    "replyLanguageHint": "La lingua in cui gli engram e PYRI rispondono durante chat e richieste.",
+    "replyMatchUi": "Usa la lingua dell'interfaccia",
+    "replyAuto": "Automatico — usa la lingua in cui scrivo",
     "rtlNote": "Il layout da destra a sinistra è applicato per l'arabo.",
-    "saved": "Impostazioni salvate"
+    "saved": "Impostazioni salvate",
+    "ggufSection": "AI locale",
+    "ggufTitle": "Modelli GGUF personalizzati",
+    "ggufBody": "Usa il tuo modello .gguf con il motore locale gestito di ENGRAM. L'app desktop copia il modello nello spazio di archiviazione protetto dell'app, lo verifica prima dell'avvio e lo mantiene disponibile negli aggiornamenti.",
+    "ggufDesktopOnly": "L'importazione di GGUF personalizzati funziona nell'app desktop ENGRAM. L'app web può connettersi a un server locale, ma un browser non può avviare o gestire il motore desktop.",
+    "ggufDownloadAction": "Scarica l'app desktop"
   },
   "simulations": {
     "title": "CAMERE DI SIMULAZIONE",

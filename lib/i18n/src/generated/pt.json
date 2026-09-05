@@ -846,11 +846,16 @@
     "uiLanguage": "Idioma da interface",
     "uiLanguageHint": "Menus, rótulos e páginas em todo o app.",
     "replyLanguage": "Idioma de resposta do engram",
-    "replyLanguageHint": "O idioma em que os engrams e PYRI respondem durante chats e consultas.",
+    "replyLanguageHint": "O idioma em que os engrams e PYRI respondem no chat e em consultas.",
     "replyMatchUi": "Corresponder ao idioma da interface",
     "replyAuto": "Automático — corresponder ao idioma em que eu escrever",
     "rtlNote": "O layout da direita para a esquerda é aplicado ao árabe.",
-    "saved": "Configurações salvas"
+    "saved": "Configurações salvas",
+    "ggufSection": "IA local",
+    "ggufTitle": "Modelos GGUF personalizados",
+    "ggufBody": "Use seu próprio modelo .gguf com o mecanismo local gerenciado do ENGRAM. O app para desktop copia o modelo para o armazenamento protegido do app, verifica-o antes da inicialização e o mantém disponível entre atualizações.",
+    "ggufDesktopOnly": "A importação de GGUF personalizado é executada no app para desktop do ENGRAM. O app web pode se conectar a um servidor local, mas um navegador não pode iniciar nem gerenciar o mecanismo desktop.",
+    "ggufDownloadAction": "Obter o app para desktop"
   },
   "simulations": {
     "title": "CÂMARAS DE SIMULAÇÃO",

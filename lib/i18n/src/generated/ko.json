@@ -844,13 +844,18 @@
     "subtitle": "이 터미널의 운영자 환경설정",
     "languageSection": "언어",
     "uiLanguage": "인터페이스 언어",
-    "uiLanguageHint": "앱 전반의 메뉴, 라벨, 페이지.",
-    "replyLanguage": "Engram 응답 언어",
+    "uiLanguageHint": "앱 전반의 메뉴, 라벨, 페이지입니다.",
+    "replyLanguage": "engram 응답 언어",
     "replyLanguageHint": "채팅과 문의에서 engram과 PYRI가 응답하는 언어입니다.",
     "replyMatchUi": "인터페이스 언어와 일치",
-    "replyAuto": "자동 — 내가 쓰는 언어에 맞춤",
+    "replyAuto": "자동 — 내가 입력한 언어에 맞춤",
     "rtlNote": "아랍어에는 오른쪽에서 왼쪽 레이아웃이 적용됩니다.",
-    "saved": "설정이 저장됨"
+    "saved": "설정 저장됨",
+    "ggufSection": "로컬 AI",
+    "ggufTitle": "사용자 지정 GGUF 모델",
+    "ggufBody": "자체 .gguf 모델을 ENGRAM의 관리형 로컬 엔진에서 사용하세요. 데스크톱 앱은 모델을 보호된 앱 저장소로 복사하고, 실행 전에 검사하며, 업데이트 후에도 계속 사용할 수 있게 유지합니다.",
+    "ggufDesktopOnly": "사용자 지정 GGUF 가져오기는 ENGRAM 데스크톱 앱에서 실행됩니다. 웹 앱은 로컬 서버에 연결할 수 있지만, 브라우저에서는 데스크톱 엔진을 시작하거나 관리할 수 없습니다.",
+    "ggufDownloadAction": "데스크톱 앱 받기"
   },
   "simulations": {
     "title": "시뮬레이션 챔버",

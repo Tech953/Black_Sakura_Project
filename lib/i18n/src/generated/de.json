@@ -841,16 +841,21 @@
   },
   "settings": {
     "title": "Einstellungen",
-    "subtitle": "Operator-Präferenzen für dieses Terminal",
+    "subtitle": "Operator-Einstellungen für dieses Terminal",
     "languageSection": "Sprache",
     "uiLanguage": "Oberflächensprache",
     "uiLanguageHint": "Menüs, Bezeichnungen und Seiten in der gesamten App.",
-    "replyLanguage": "Antwortsprache von engram",
+    "replyLanguage": "Antwortsprache des Engram",
     "replyLanguageHint": "Die Sprache, in der engrams und PYRI im Chat und bei Anfragen antworten.",
     "replyMatchUi": "An Oberflächensprache anpassen",
-    "replyAuto": "Automatisch — Sprache meiner Eingabe verwenden",
+    "replyAuto": "Automatisch — an die Sprache anpassen, in der ich schreibe",
     "rtlNote": "Rechts-nach-links-Layout wird für Arabisch angewendet.",
-    "saved": "Einstellungen gespeichert"
+    "saved": "Einstellungen gespeichert",
+    "ggufSection": "Lokale KI",
+    "ggufTitle": "Benutzerdefinierte GGUF-Modelle",
+    "ggufBody": "Nutze dein eigenes .gguf-Modell mit der verwalteten lokalen Engine von ENGRAM. Die Desktop-App kopiert das Modell in den geschützten App-Speicher, prüft es vor dem Start und hält es über Updates hinweg verfügbar.",
+    "ggufDesktopOnly": "Der Import benutzerdefinierter GGUFs läuft in der ENGRAM-Desktop-App. Die Web-App kann sich mit einem lokalen Server verbinden, aber ein Browser kann die Desktop-Engine nicht starten oder verwalten.",
+    "ggufDownloadAction": "Desktop-App holen"
   },
   "simulations": {
     "title": "SIMULATIONSKAMMERN",
