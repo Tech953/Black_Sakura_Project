@@ -98,9 +98,9 @@ const llamaBin = path.join(
 const llamaModel = path.join(resourcesDir, "llama", "model.gguf");
 
 // This is deliberately a CI-only packaged-smoke seam, not a user-facing
-// fallback. It lets the release check exercise the complete managed-GGUF
-// import/selection/verification/start path with a tiny syntactically-valid
-// fixture instead of distributing or downloading a real multi-GB model.
+// fallback. It lets the release check substitute a downloaded, pinned
+// compatible GGUF for the native file picker without distributing it inside
+// the installer. The real picker remains the only production selection path.
 // Normal packaged builds fail closed: neither variable has any effect unless
 // the app is running in GitHub Actions' CI environment.
 const packagedSmokeEnabled =
@@ -112,9 +112,11 @@ const packagedSmokeSimulatedFailure =
   packagedSmokeEnabled &&
   process.env.ENGRAM_PACKAGED_UPGRADE_FAIL_START === "1";
 const packagedSmokeGguf = packagedSmokeEnabled
-  && process.env.ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE !== "1"
   ? process.env.ENGRAM_PACKAGED_GGUF_FIXTURE
   : undefined;
+const packagedSmokeUsesRealRuntime =
+  packagedSmokeEnabled &&
+  process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1";
 
 function bundledModelAvailable(): boolean {
   const spec = offlineModelSpec();
@@ -293,18 +295,6 @@ function customGgufStore(): CustomGgufStore {
     userDataPath("models", "custom"),
   );
   return customStoreInstance;
-}
-
-async function preparePackagedSmokeCustomGguf(): Promise<void> {
-  if (!packagedSmokeGguf) return;
-  if (!path.isAbsolute(packagedSmokeGguf)) {
-    throw new Error("Packaged GGUF smoke fixture must be an absolute path.");
-  }
-  // Use the same store import and persisted selection used by the IPC flow.
-  // This is intentionally invoked only by the CI gate above.
-  const imported = await customGgufStore().importModel(packagedSmokeGguf);
-  const settings = loadSettings();
-  saveSettings({ ...settings, mode: "custom", custom: imported });
 }
 
 function managedCustomPath(metadata: CustomGgufMetadata): string {
@@ -519,7 +509,10 @@ async function startLlama(settings: Settings): Promise<void> {
     llamaModelAlias = `downloaded-${spec.sha256.slice(0, 12)}`;
   }
   llamaPort = await findFreePort();
-  if (packagedSmokeEnabled) {
+  if (
+    packagedSmokeEnabled &&
+    !(packagedSmokeUsesRealRuntime && mode === "custom")
+  ) {
     // A minimal loopback-only llama health endpoint is sufficient for the
     // desktop's launch contract. It is never reachable in production because
     // packagedSmokeEnabled is CI-gated above; custom GGUF verification still
@@ -1193,21 +1186,31 @@ ipcMain.handle("gguf:choose", async () => {
     for (const [id, selection] of pendingGgufSelections) {
       if (selection.expiresAt < Date.now()) pendingGgufSelections.delete(id);
     }
-    const options: OpenDialogOptions = {
-      title: "Choose a GGUF model",
-      buttonLabel: "Choose model",
-      properties: ["openFile"],
-      filters: [{ name: "GGUF model", extensions: ["gguf"] }],
-    };
-    const result =
-      settingsWindow && !settingsWindow.isDestroyed()
-        ? await dialog.showOpenDialog(settingsWindow, options)
-        : await dialog.showOpenDialog(options);
-    if (result.canceled || result.filePaths.length !== 1) {
-      return { ok: false, cancelled: true };
+    if (packagedSmokeGguf) {
+      // CI substitutes only the result of the native picker. The absolute
+      // source path stays in the main process and is never included in the
+      // renderer-facing selection payload.
+      if (!path.isAbsolute(packagedSmokeGguf)) {
+        throw new Error("Packaged GGUF smoke fixture must be an absolute path.");
+      }
+      sourcePath = packagedSmokeGguf;
+    } else {
+      const options: OpenDialogOptions = {
+        title: "Choose a GGUF model",
+        buttonLabel: "Choose model",
+        properties: ["openFile"],
+        filters: [{ name: "GGUF model", extensions: ["gguf"] }],
+      };
+      const result =
+        settingsWindow && !settingsWindow.isDestroyed()
+          ? await dialog.showOpenDialog(settingsWindow, options)
+          : await dialog.showOpenDialog(options);
+      if (result.canceled || result.filePaths.length !== 1) {
+        return { ok: false, cancelled: true };
+      }
+      sourcePath = result.filePaths[0]!;
     }
 
-    sourcePath = result.filePaths[0]!;
     const inspection = await customGgufStore().inspectForImport(sourcePath);
     const selectionId = randomUUID();
     pendingGgufSelections.set(selectionId, {
@@ -1554,7 +1557,6 @@ if (!gotLock) {
     buildMenu();
     try {
       await customGgufStore().cleanStalePartials();
-      await preparePackagedSmokeCustomGguf();
       await startServer();
       if (packagedSmokeSimulatedFailure) {
         console.error("[desktop] packaged upgrade rollback smoke: intentional startup failure");

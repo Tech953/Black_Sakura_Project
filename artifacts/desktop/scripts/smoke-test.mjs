@@ -41,11 +41,9 @@ const LAUNCH_TIMEOUT_MS = 120_000;
 const RENDER_TIMEOUT_MS = 60_000;
 const WATCHDOG_MS = 180_000;
 
-function createTinyGgufFixture(directory) {
-  // The store's production minimum is 1 MiB. This is only a valid container
-  // header, never an inference-capable model; main.ts permits it exclusively
-  // behind its CI-only packaged-smoke gate and replaces llama-server with a
-  // loopback health stub after the real import/verification path completes.
+function createOfflineModelFixture(directory) {
+  // The offline-model lifecycle has its own tiny byte fixture. The custom-model
+  // journey below uses a separately downloaded, real compatible GGUF.
   const fixture = path.join(directory, "packaged-smoke.gguf");
   const bytes = Buffer.alloc(1024 * 1024, 0);
   bytes.write("GGUF", 0, "ascii");
@@ -215,8 +213,28 @@ if (process.env.EXPECT_SLIM_LLM === "1") {
 // ---------------------------------------------------------------------------
 async function main() {
   const userDataDir = mkdtempSync(path.join(os.tmpdir(), "engram-smoke-"));
-  const ggufFixture = createTinyGgufFixture(userDataDir);
-  const offlineFixture = await serveOfflineModelFixture(ggufFixture);
+  const ggufFixture = process.env.ENGRAM_PACKAGED_GGUF_FIXTURE;
+  if (!ggufFixture || !path.isAbsolute(ggufFixture) || !existsSync(ggufFixture)) {
+    fail(
+      "a real compatible GGUF fixture is required; set " +
+        "ENGRAM_PACKAGED_GGUF_FIXTURE to a downloaded test model",
+    );
+  }
+  if (path.resolve(ggufFixture).startsWith(`${path.resolve(resources)}${path.sep}`)) {
+    fail("the GGUF smoke fixture must not be staged inside installer resources");
+  }
+  const ggufHeader = readFileSync(ggufFixture).subarray(0, 8);
+  if (
+    ggufHeader.length !== 8 ||
+    ggufHeader.toString("ascii", 0, 4) !== "GGUF" ||
+    ggufHeader.readUInt32LE(4) < 1 ||
+    ggufHeader.readUInt32LE(4) > 3
+  ) {
+    fail(`invalid GGUF smoke fixture: ${ggufFixture}`);
+  }
+  const offlineFixture = await serveOfflineModelFixture(
+    createOfflineModelFixture(userDataDir),
+  );
   const args = [`--user-data-dir=${userDataDir}`];
   // CI Linux runs under xvfb as a privileged user with no GPU; these switches
   // keep Electron from refusing to start. They are no-ops on the runtime paths
@@ -236,6 +254,7 @@ async function main() {
       GITHUB_ACTIONS: "true",
       ENGRAM_PACKAGED_GGUF_SMOKE: "1",
       ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
+      ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1",
       ENGRAM_PACKAGED_UPGRADE_STAGE: "A",
       ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
       ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
@@ -249,14 +268,25 @@ async function main() {
     // (startServer awaits waitForHealth before createMainWindow). If migrations,
     // seed, or pglite are broken, the server never goes healthy and no window
     // appears -> firstWindow times out -> this throws -> job fails.
-    const window = await app.firstWindow({ timeout: LAUNCH_TIMEOUT_MS });
-    await window.waitForLoadState("domcontentloaded");
-
-    const url = window.url();
-    if (!/^http:\/\/127\.0\.0\.1:\d+\//.test(url)) {
-      throw new Error(`unexpected window URL (expected loopback): ${url}`);
+    let window = await app.firstWindow({ timeout: LAUNCH_TIMEOUT_MS });
+    let url;
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await window.waitForLoadState("domcontentloaded");
+      url = window.url();
+      if (/^http:\/\/127\.0\.0\.1:\d+\//.test(url)) break;
+      const loopbackWindow = app
+        .windows()
+        .find((candidate) => /^http:\/\/127\.0\.0\.1:\d+\//.test(candidate.url()));
+      if (loopbackWindow) {
+        window = loopbackWindow;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
-    log(`window loaded: ${url}`);
+    if (!/^http:\/\/127\.0\.0\.1:\d+\//.test(window.url())) {
+      throw new Error(`unexpected window URL (expected loopback): ${window.url()}`);
+    }
+    log(`window loaded: ${window.url()}`);
 
     // Dashboard actually rendered: React mounted content into #root.
     await window.waitForFunction(
@@ -281,10 +311,9 @@ async function main() {
     }
     log("/api/healthz -> 200 OK");
 
-    // The startup seam imported through CustomGgufStore, persisted the custom
-    // selection, verified it immediately before launch, and started the
-    // loopback fixture runtime. Assert the selected custom model is live from
-    // the packaged Settings IPC surface as the final end-to-end proof.
+    // Open Settings through the same production menu/IPC path. In CI the main
+    // process substitutes the downloaded fixture for the native picker result;
+    // the renderer still receives only the allowlisted inspection payload.
     const settingsPromise = app
       .waitForEvent("window", { timeout: 5_000 })
       .catch(() => null);
@@ -296,14 +325,113 @@ async function main() {
       throw new Error("Settings window did not open from the application menu.");
     }
     await settings.waitForLoadState("domcontentloaded");
-    const customStatus = await settings.evaluate(async () => {
+    const customImport = await settings.evaluate(async (sourcePath) => {
+      const selection = await window.engram.chooseGguf();
+      if (!selection.ok) {
+        throw new Error(selection.error ?? "native GGUF picker failed");
+      }
+      const selectionPayload = JSON.stringify(selection.selection);
+      if (selectionPayload.includes(sourcePath)) {
+        throw new Error("GGUF source path leaked into the renderer selection payload");
+      }
+      if (
+        selection.selection.filename !== "SmolLM2-135M-Instruct-Q4_K_M.gguf" ||
+        selection.selection.byteSize < 1_000_000 ||
+        selection.selection.ggufVersion < 1 ||
+        selection.selection.ggufVersion > 3
+      ) {
+        throw new Error(`unexpected native GGUF selection: ${selectionPayload}`);
+      }
+
+      const cancelledStates = [];
+      let cancelRequested = false;
+      let cancelError;
+      let resolveCancelled;
+      let rejectCancelled;
+      const cancelledDone = new Promise((resolve, reject) => {
+        resolveCancelled = resolve;
+        rejectCancelled = reject;
+      });
+      const unsubscribeCancelled = window.engram.onGgufImportStatus((status) => {
+        cancelledStates.push(status.state);
+        if (status.state === "copying" && !cancelRequested) {
+          cancelRequested = true;
+          void window.engram.cancelGgufImport(status.operationId)
+            .catch((error) => {
+              cancelError = String(error);
+              rejectCancelled(error);
+            });
+        }
+        if (status.state === "cancelled" || status.state === "error") {
+          resolveCancelled(status);
+        }
+      });
+      const cancelledImport = await window.engram.importGguf(selection.selection.selectionId);
+      if (!cancelledImport.ok || !cancelledImport.operationId) {
+        unsubscribeCancelled();
+        throw new Error(cancelledImport.error ?? "GGUF cancellation import did not start");
+      }
+      const cancelledStatus = await cancelledDone;
+      unsubscribeCancelled();
+      if (cancelError || cancelledStatus.state !== "cancelled" || !cancelRequested) {
+        throw new Error(
+          `GGUF cancellation did not complete cleanly: ${JSON.stringify({
+            cancelledStates,
+            cancelledStatus,
+            cancelError,
+          })}`,
+        );
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const secondSelection = await window.engram.chooseGguf();
+      if (!secondSelection.ok) {
+        throw new Error(secondSelection.error ?? "native GGUF picker retry failed");
+      }
+      const importStates = [];
+      let resolveImported;
+      let rejectImported;
+      const importedDone = new Promise((resolve, reject) => {
+        resolveImported = resolve;
+        rejectImported = reject;
+      });
+      const unsubscribeImported = window.engram.onGgufImportStatus((status) => {
+        importStates.push(status.state);
+        if (status.state === "completed") resolveImported(status);
+        if (status.state === "error" || status.state === "cancelled") {
+          rejectImported(new Error(status.error ?? `GGUF import ${status.state}`));
+        }
+      });
+      const imported = await window.engram.importGguf(secondSelection.selection.selectionId);
+      if (!imported.ok || !imported.operationId) {
+        unsubscribeImported();
+        throw new Error(imported.error ?? "GGUF import did not start");
+      }
+      const completedStatus = await importedDone;
+      unsubscribeImported();
       const value = await window.engram.getSettings();
       return {
+        cancelledStates,
+        importStates,
+        completedStatus,
+        customModel: value.customModel,
         mode: value.mode,
-        status: value.customModel.status,
-        fingerprint: value.customModel.metadata?.sha256,
       };
-    });
+    }, ggufFixture);
+    const customStatus = {
+      mode: customImport.mode,
+      status: customImport.customModel.status,
+      fingerprint: customImport.customModel.metadata?.sha256,
+    };
+    if (
+      !customImport.cancelledStates.includes("copying") ||
+      !customImport.cancelledStates.includes("cancelled") ||
+      !customImport.importStates.includes("copying") ||
+      !customImport.importStates.includes("activating") ||
+      !customImport.importStates.includes("completed")
+    ) {
+      throw new Error(`custom GGUF progress journey was incomplete: ${JSON.stringify(customImport)}`);
+    }
     if (
       customStatus.mode !== "custom" ||
       customStatus.status !== "active" ||
@@ -311,78 +439,168 @@ async function main() {
     ) {
       throw new Error(`custom GGUF import/selection/launch was not active: ${JSON.stringify(customStatus)}`);
     }
-    log("custom GGUF import, selection, verification, and launch path active");
-
-    const cancelledStatus = await settings.evaluate(async () => {
-      const downloadStarted = new Promise((resolve) => {
-        const unsubscribe = window.engram.onOfflineModelStatus((status) => {
-          if (status.state === "downloading") {
-            unsubscribe();
-            resolve(status);
-          }
-        });
-      });
-      const result = await window.engram.downloadOfflineModel();
-      if (!result.ok || !result.operationId) {
-        throw new Error(result.error ?? "offline-model cancellation download failed");
-      }
-      await downloadStarted;
-      const cancelled = await window.engram.cancelOfflineModelDownload(result.operationId);
-      if (!cancelled.ok) {
-        throw new Error(cancelled.error ?? "offline-model cancellation failed");
-      }
-      // The cancel IPC acknowledges the AbortController immediately; allow the
-      // async downloader's finally block to release its operation slot before
-      // the retry below.
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      return { operationId: result.operationId, cancelled: true };
-    });
-    if (!cancelledStatus.cancelled) {
-      throw new Error(`offline model cancellation was not acknowledged: ${JSON.stringify(cancelledStatus)}`);
-    }
-    log("offline model cancellation was acknowledged through IPC");
-
-    await settings.evaluate(async () => {
-      for (let attempt = 0; attempt < 40; attempt += 1) {
-        const result = await window.engram.downloadOfflineModel();
-        if (result.ok) return;
-        if (!result.error?.toLowerCase().includes("already running")) {
-          throw new Error(result.error ?? "offline-model download failed");
-        }
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      }
-      throw new Error("offline-model retry remained blocked by the cancelled operation");
-    });
-    const downloadedStatus = await settings.evaluate(async () => {
-      const deadline = Date.now() + 60_000;
-      let latest;
-      while (Date.now() < deadline) {
-        const value = await window.engram.getSettings();
-        latest = {
-          mode: value.mode,
-          status: value.offlineModel.status,
-          downloadedBytes: value.offlineModel.downloadedBytes,
-          error: value.offlineModel.error,
-          storageLocation: value.offlineModel.storageLocation,
-        };
-        if (value.offlineModel.status === "active") {
-          return latest;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      throw new Error(`downloaded offline model did not become active: ${JSON.stringify(latest)}`);
-    });
+    const customStorePath = path.join(userDataDir, "models", "custom");
+    const customEntries = readdirSync(customStorePath);
     if (
-      downloadedStatus.mode !== "bundled" ||
-      downloadedStatus.status !== "active" ||
-      downloadedStatus.downloadedBytes !== offlineFixture.bytes ||
-      !downloadedStatus.storageLocation.includes(userDataDir)
+      customEntries.some((entry) => entry.endsWith(".partial")) ||
+      !customEntries.includes(`${customStatus.fingerprint}.gguf`)
     ) {
-      throw new Error(`offline model download/activation was not active in userData: ${JSON.stringify(downloadedStatus)}`);
+      throw new Error(`custom GGUF store was not transactional: ${JSON.stringify(customEntries)}`);
     }
-    log("offline model downloaded, verified, activated, and stored below Electron userData");
+    log("custom GGUF picker, progress, cancellation, activation, and launch path active");
 
     await app.close();
+    log("custom GGUF persisted after shutdown");
+
+    const customRestartedApp = await electron.launch({
+      executablePath: exe,
+      args,
+      timeout: LAUNCH_TIMEOUT_MS,
+      env: {
+        ...process.env,
+        CI: "true",
+        GITHUB_ACTIONS: "true",
+        ENGRAM_PACKAGED_GGUF_SMOKE: "1",
+        ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1",
+        ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE: "1",
+        ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
+        ENGRAM_PACKAGED_UPGRADE_STAGE: "custom-restart",
+        ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
+        ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
+        ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
+        ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256: offlineFixture.sha256,
+      },
+    });
+    let customRestartedSettings;
+    const expectedOfflineStatus = process.env.EXPECT_SLIM_LLM === "1" ? "active" : "available";
+    let downloadedStatus;
+    try {
+      const restartedWindow = await customRestartedApp.firstWindow({ timeout: LAUNCH_TIMEOUT_MS });
+      await restartedWindow.waitForLoadState("domcontentloaded");
+      const restartedSettingsPromise = customRestartedApp
+        .waitForEvent("window", { timeout: 5_000 })
+        .catch(() => null);
+      await restartedWindow.keyboard.press(process.platform === "darwin" ? "Meta+," : "Control+,");
+      customRestartedSettings =
+        (await restartedSettingsPromise) ??
+        customRestartedApp.windows().find((candidate) => candidate !== restartedWindow);
+      if (!customRestartedSettings) {
+        throw new Error("Settings window did not open after custom GGUF restart.");
+      }
+      await customRestartedSettings.waitForLoadState("domcontentloaded");
+      const persistedCustom = await customRestartedSettings.evaluate(async () => {
+        const value = await window.engram.getSettings();
+        return {
+          mode: value.mode,
+          status: value.customModel.status,
+          fingerprint: value.customModel.metadata?.sha256,
+        };
+      });
+      if (
+        persistedCustom.mode !== "custom" ||
+        persistedCustom.status !== "active" ||
+        persistedCustom.fingerprint !== customStatus.fingerprint
+      ) {
+        throw new Error(`custom GGUF was not active after restart: ${JSON.stringify(persistedCustom)}`);
+      }
+      log("custom GGUF survived restart and was re-verified by the packaged runtime");
+
+      const removedCustom = await customRestartedSettings.evaluate(async () => {
+        const result = await window.engram.removeGguf();
+        if (!result.ok) throw new Error(result.error ?? "custom GGUF removal failed");
+        const value = await window.engram.getSettings();
+        return {
+          mode: value.mode,
+          status: value.customModel.status,
+        };
+      });
+      if (removedCustom.status !== "none") {
+        throw new Error(`custom GGUF remained after removal: ${JSON.stringify(removedCustom)}`);
+      }
+      const afterRemoveEntries = readdirSync(customStorePath);
+      if (afterRemoveEntries.some((entry) => entry.endsWith(".gguf") || entry.endsWith(".partial"))) {
+        throw new Error(`custom GGUF files remained after removal: ${JSON.stringify(afterRemoveEntries)}`);
+      }
+      log("custom GGUF was removed through the packaged Settings IPC surface");
+
+      const cancelledStatus = await customRestartedSettings.evaluate(async () => {
+        const downloadStarted = new Promise((resolve) => {
+          const unsubscribe = window.engram.onOfflineModelStatus((status) => {
+            if (status.state === "downloading") {
+              unsubscribe();
+              resolve(status);
+            }
+          });
+        });
+        const result = await window.engram.downloadOfflineModel();
+        if (!result.ok || !result.operationId) {
+          throw new Error(result.error ?? "offline-model cancellation download failed");
+        }
+        await downloadStarted;
+        const cancelled = await window.engram.cancelOfflineModelDownload(result.operationId);
+        if (!cancelled.ok) {
+          throw new Error(cancelled.error ?? "offline-model cancellation failed");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        return { operationId: result.operationId, cancelled: true };
+      });
+      if (!cancelledStatus.cancelled) {
+        throw new Error(`offline model cancellation was not acknowledged: ${JSON.stringify(cancelledStatus)}`);
+      }
+      log("offline model cancellation was acknowledged through IPC");
+
+      await customRestartedSettings.evaluate(async () => {
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          const result = await window.engram.downloadOfflineModel();
+          if (result.ok) return;
+          if (!result.error?.toLowerCase().includes("already running")) {
+            throw new Error(result.error ?? "offline-model download failed");
+          }
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        throw new Error("offline-model retry remained blocked by the cancelled operation");
+      });
+      downloadedStatus = await customRestartedSettings.evaluate(async (expectedStatus) => {
+        const deadline = Date.now() + 60_000;
+        let latest;
+        while (Date.now() < deadline) {
+          const value = await window.engram.getSettings();
+          latest = {
+            mode: value.mode,
+            status: value.offlineModel.status,
+            downloadedBytes: value.offlineModel.downloadedBytes,
+            error: value.offlineModel.error,
+            storageLocation: value.offlineModel.storageLocation,
+          };
+          if (value.offlineModel.status === expectedStatus) return latest;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        throw new Error(
+          `downloaded offline model did not become ${expectedStatus}: ${JSON.stringify(latest)}`,
+        );
+      }, expectedOfflineStatus);
+      if (
+        downloadedStatus.mode !== "bundled" ||
+        downloadedStatus.status !== expectedOfflineStatus ||
+        downloadedStatus.downloadedBytes !== offlineFixture.bytes ||
+        !downloadedStatus.storageLocation.includes(userDataDir)
+      ) {
+        throw new Error(
+          `offline model download/activation was not ${expectedOfflineStatus} in userData: ${JSON.stringify(downloadedStatus)}`,
+        );
+      }
+      log(
+        `offline model downloaded, verified, and stored below Electron userData (${expectedOfflineStatus} on this package)`,
+      );
+
+    } finally {
+      try {
+        await customRestartedApp.close();
+      } catch {
+        const proc = customRestartedApp.process();
+        if (proc && !proc.killed) proc.kill("SIGKILL");
+      }
+    }
     log("simulated version A shutdown completed with the model still in userData");
 
     const failedUpgradeApp = await electron.launch({
@@ -478,7 +696,7 @@ async function main() {
       });
       if (
         persistedStatus.mode !== "bundled" ||
-        persistedStatus.status !== "active" ||
+        persistedStatus.status !== expectedOfflineStatus ||
         persistedStatus.downloadedBytes !== offlineFixture.bytes ||
         persistedStatus.storageLocation !== downloadedStatus.storageLocation
       ) {

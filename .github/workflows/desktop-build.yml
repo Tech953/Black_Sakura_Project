@@ -212,6 +212,16 @@ jobs:
           }
           NODE
 
+      # Download a small, pinned real GGUF only after packaging. It exercises
+      # the custom-model picker/import/runtime path without ever entering the
+      # installer resources or the published installer artifact.
+      - name: Stage compatible GGUF smoke fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @workspace/desktop exec node scripts/download-smoke-gguf.mjs \
+            "${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf"
+
       # Confirm the packaged app actually LAUNCHES, not just that an installer was
       # produced. Launches the unpacked build via Playwright's Electron driver and
       # asserts: pglite.wasm/pglite.data shipped next to the server bundle, the
@@ -222,6 +232,7 @@ jobs:
         shell: bash
         env:
           EXPECT_SLIM_LLM: ${{ matrix.platform == 'win' && '1' || '0' }}
+          ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
         run: |
           if [ "${{ matrix.platform }}" = "linux" ]; then
             sudo apt-get update
