@@ -66,6 +66,28 @@ describe("offline SQLite failure harness", () => {
     await expect(second).resolves.toBe(database);
   });
 
+  it("migrates optional conversation persona fields on existing installs", async () => {
+    const database = {
+      execAsync: vi.fn(async () => {}),
+      runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
+    };
+    mocks.openDatabaseAsync.mockResolvedValue(database);
+
+    await getDb();
+
+    const migrations = database.execAsync.mock.calls.map(([sql]) => String(sql));
+    expect(
+      migrations.some((sql) =>
+        sql.includes("conversations ADD COLUMN personaName TEXT"),
+      ),
+    ).toBe(true);
+    expect(
+      migrations.some((sql) =>
+        sql.includes("conversations ADD COLUMN customEngram TEXT"),
+      ),
+    ).toBe(true);
+  });
+
   it("exports stable row IDs and maps local chat observations to conversations", async () => {
     const database = {
       execAsync: vi.fn(async () => {}),

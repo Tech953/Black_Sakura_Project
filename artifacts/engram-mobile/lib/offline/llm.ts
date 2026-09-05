@@ -98,14 +98,6 @@ export async function releaseLlm(): Promise<void> {
 const THINK_OPEN = "<think>";
 const THINK_CLOSE = "</think>";
 
-/** Strip Qwen3 <think> blocks — reasoning must never leak into the reply. */
-function stripThink(text: string): string {
-  return text
-    .replace(/<think>[\s\S]*?<\/think>/g, "")
-    .replace(/<think>[\s\S]*$/g, "")
-    .trim();
-}
-
 /**
  * The portion of `raw` that is definitely safe to show mid-stream: complete
  * think blocks removed, any open (unterminated) think block withheld entirely,
@@ -117,6 +109,29 @@ function trailingTagPrefixLength(value: string, tag: string): number {
     if (value.endsWith(tag.slice(0, length))) return length;
   }
   return 0;
+}
+
+/**
+ * Return only text that is safe to display from a cumulative model stream.
+ * This is pure so every possible token boundary can be checked independently.
+ */
+export function visibleTextWithoutThinkBlocks(raw: string): string {
+  let visible = "";
+  let cursor = 0;
+
+  for (;;) {
+    const open = raw.indexOf(THINK_OPEN, cursor);
+    if (open === -1) {
+      const remainder = raw.slice(cursor);
+      const held = trailingTagPrefixLength(remainder, THINK_OPEN);
+      return visible + (held ? remainder.slice(0, -held) : remainder);
+    }
+
+    visible += raw.slice(cursor, open);
+    const close = raw.indexOf(THINK_CLOSE, open + THINK_OPEN.length);
+    if (close === -1) return visible;
+    cursor = close + THINK_CLOSE.length;
+  }
 }
 
 const STOP_WORDS = ["<|im_end|>", "<|endoftext|>"];
@@ -133,9 +148,8 @@ export async function completeStream(
   return runExclusive(async () => {
     const ctx = await ensureContext();
     const boundedMessages = boundChatMessages(messages);
+    let rawText = "";
     let streamedText = "";
-    let streamBuffer = "";
-    let inThinkBlock = false;
     let emitted = 0;
 
     const flush = (text: string) => {
@@ -146,35 +160,8 @@ export async function completeStream(
     };
 
     const consumeToken = (token: string) => {
-      streamBuffer += token;
-      for (;;) {
-        if (inThinkBlock) {
-          const close = streamBuffer.indexOf(THINK_CLOSE);
-          if (close === -1) {
-            const held = trailingTagPrefixLength(streamBuffer, THINK_CLOSE);
-            streamBuffer = streamBuffer.slice(-held);
-            return;
-          }
-          streamBuffer = streamBuffer.slice(close + THINK_CLOSE.length);
-          inThinkBlock = false;
-          continue;
-        }
-
-        const open = streamBuffer.indexOf(THINK_OPEN);
-        if (open !== -1) {
-          streamedText += streamBuffer.slice(0, open);
-          streamBuffer = streamBuffer.slice(open + THINK_OPEN.length);
-          inThinkBlock = true;
-          continue;
-        }
-
-        const held = trailingTagPrefixLength(streamBuffer, THINK_OPEN);
-        streamedText += held
-          ? streamBuffer.slice(0, -held)
-          : streamBuffer;
-        streamBuffer = held ? streamBuffer.slice(-held) : "";
-        return;
-      }
+      rawText += token;
+      streamedText = visibleTextWithoutThinkBlocks(rawText);
     };
 
     const completion = ctx.completion(
@@ -207,8 +194,9 @@ export async function completeStream(
           "The on-device response took too long.",
         );
       }
-      if (!inThinkBlock) streamedText += streamBuffer;
-      const full = stripThink(result.text || streamedText);
+      const full = visibleTextWithoutThinkBlocks(
+        result.text || rawText,
+      ).trim();
       if (!full) {
         throw new OfflineInferenceError(
           "EMPTY_RESPONSE",

@@ -46,6 +46,8 @@ async function initializeDb(): Promise<SQLite.SQLiteDatabase> {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT,
       mode TEXT NOT NULL DEFAULT 'companion',
+      personaName TEXT,
+      customEngram TEXT,
       engramId INTEGER,
       createdAt TEXT NOT NULL,
       syncedAt TEXT
@@ -120,6 +122,15 @@ async function initializeDb(): Promise<SQLite.SQLiteDatabase> {
   } catch (error) {
     if (!String(error).toLowerCase().includes("duplicate column")) throw error;
   }
+  for (const column of ["personaName", "customEngram"]) {
+    try {
+      await opened.execAsync(
+        `ALTER TABLE conversations ADD COLUMN ${column} TEXT;`,
+      );
+    } catch (error) {
+      if (!String(error).toLowerCase().includes("duplicate column")) throw error;
+    }
+  }
   // Seed personas once (keyed on slug, like the server's idempotent seed).
   const t = nowIso();
   for (const seed of engramSeedData) {
@@ -153,16 +164,17 @@ interface EngramRow {
 /** Serialize a stored engram to the shape the generated API client expects. */
 function serializeEngram(row: EngramRow): Record<string, unknown> {
   const seed = JSON.parse(row.data) as NewEngram;
+  const currentMood = row.currentMood ?? seed.currentMood ?? undefined;
   return {
     ...seed,
     id: row.id,
     slug: row.slug,
     driveState: seed.driveState ?? {},
-    currentMood: row.currentMood ?? seed.currentMood ?? null,
+    currentMood,
     isChatActive: row.isChatActive === 1,
     isArchival: seed.isArchival ?? false,
-    lastTickAt: null,
-    lastTransmissionAt: null,
+    lastTickAt: undefined,
+    lastTransmissionAt: undefined,
     backoffUntil: null,
     mode: "quiescent",
     humanContactEnabled: false,
@@ -210,24 +222,30 @@ export async function activateEngram(id: number): Promise<Record<string, unknown
 export async function createConversation(opts: {
   title?: string | null;
   mode?: string | null;
+  personaName?: string | null;
+  customEngram?: string | null;
   engramId?: number | null;
 }): Promise<Record<string, unknown>> {
   const d = await getDb();
   const t = nowIso();
   const res = await d.runAsync(
-    "INSERT INTO conversations (title, mode, engramId, createdAt) VALUES (?, ?, ?, ?)",
+    `INSERT INTO conversations
+     (title, mode, personaName, customEngram, engramId, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?)`,
     opts.title ?? null,
     opts.mode ?? "companion",
+    opts.personaName ?? null,
+    opts.customEngram ?? null,
     opts.engramId ?? null,
     t,
   );
   return {
     id: res.lastInsertRowId,
-    title: opts.title ?? null,
+    title: opts.title ?? "New conversation",
     mode: opts.mode ?? "companion",
-    personaName: null,
-    customEngram: null,
-    engramId: opts.engramId ?? null,
+    personaName: opts.personaName ?? undefined,
+    customEngram: opts.customEngram ?? undefined,
+    engramId: opts.engramId ?? undefined,
     createdAt: t,
   };
 }
@@ -243,7 +261,18 @@ export async function getConversation(id: number): Promise<Record<string, unknow
     "SELECT * FROM messages WHERE conversationId = ? ORDER BY id",
     id,
   );
-  return { ...conv, personaName: null, customEngram: null, messages: msgs };
+  return {
+    ...conv,
+    title:
+      typeof conv.title === "string" ? conv.title : "New conversation",
+    personaName:
+      typeof conv.personaName === "string" ? conv.personaName : undefined,
+    customEngram:
+      typeof conv.customEngram === "string" ? conv.customEngram : undefined,
+    engramId:
+      typeof conv.engramId === "number" ? conv.engramId : undefined,
+    messages: msgs,
+  };
 }
 
 export async function listMessages(
@@ -328,7 +357,13 @@ export async function listTransmissions(engramId: number): Promise<Record<string
     "SELECT * FROM transmissions WHERE engramId = ? ORDER BY id DESC LIMIT 50",
     engramId,
   );
-  return rows.map((r) => ({ ...r, wasDelivered: r.wasDelivered === 1, seen: r.seen === 1 }));
+  return rows.map((r) => ({
+    ...r,
+    drive: typeof r.drive === "string" ? r.drive : "presence",
+    mood: typeof r.mood === "string" ? r.mood : undefined,
+    wasDelivered: r.wasDelivered === 1,
+    seen: r.seen === 1,
+  }));
 }
 
 export async function insertTransmission(opts: {
@@ -364,9 +399,9 @@ export async function insertTransmission(opts: {
     id: res.lastInsertRowId,
     engramId: opts.engramId,
     kind: opts.kind,
-    drive: opts.drive,
+    drive: opts.drive ?? "presence",
     content: opts.content,
-    mood: opts.mood,
+    mood: opts.mood ?? undefined,
     ...scores,
     wasDelivered: true,
     seen: false,

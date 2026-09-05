@@ -15,11 +15,53 @@ vi.mock("./model", () => ({
 import {
   completeStream,
   releaseLlm,
+  visibleTextWithoutThinkBlocks,
   type ChatMessage,
 } from "./llm";
 import { OFFLINE_LIMITS } from "./limits";
 
 const messages: ChatMessage[] = [{ role: "user", content: "hello" }];
+
+describe("Qwen think-block hold-back", () => {
+  it("never exposes a partial opening tag at any token boundary", () => {
+    const tokens = [
+      "before<",
+      "th",
+      "ink>secret",
+      "</th",
+      "ink>after<",
+      "thi",
+      "nk>hidden",
+      "</think>done",
+    ];
+    let raw = "";
+    const visible = tokens.map((token) => {
+      raw += token;
+      return visibleTextWithoutThinkBlocks(raw);
+    });
+
+    expect(visible).toEqual([
+      "before",
+      "before",
+      "before",
+      "before",
+      "beforeafter",
+      "beforeafter",
+      "beforeafter",
+      "beforeafterdone",
+    ]);
+    expect(visible.every((value) => !value.includes("<think"))).toBe(true);
+    expect(visible.every((value) => !value.includes("secret"))).toBe(true);
+    expect(visible.every((value) => !value.includes("hidden"))).toBe(true);
+  });
+
+  it("withholds an unfinished tag when generation ends mid-fragment", () => {
+    expect(visibleTextWithoutThinkBlocks("answer<thi")).toBe("answer");
+    expect(visibleTextWithoutThinkBlocks("answer<think>private")).toBe(
+      "answer",
+    );
+  });
+});
 
 async function flushMicrotasks() {
   for (let i = 0; i < 8; i++) await Promise.resolve();
