@@ -422,28 +422,42 @@ function findFreePort(): Promise<number> {
 
 function waitForHealth(port: number, timeoutMs = 60000): Promise<void> {
   const start = Date.now();
+  let lastFailure = "";
   return new Promise((resolve, reject) => {
     const attempt = (): void => {
       const req = http.get(
         { host: "127.0.0.1", port, path: "/api/healthz", timeout: 2000 },
         (res) => {
-          res.resume();
+          let body = "";
+          res.setEncoding("utf8");
+          res.on("data", (chunk) => {
+            body += chunk;
+          });
           if (res.statusCode === 200) {
             resolve();
           } else {
+            lastFailure = `HTTP ${res.statusCode}${body ? `: ${body.slice(0, 500)}` : ""}`;
             retry();
           }
         },
       );
-      req.on("error", retry);
+      req.on("error", (error) => {
+        lastFailure = error.message;
+        retry();
+      });
       req.on("timeout", () => {
         req.destroy();
+        lastFailure = "request timed out";
         retry();
       });
     };
     const retry = (): void => {
       if (Date.now() - start > timeoutMs) {
-        reject(new Error("Embedded server did not become healthy in time."));
+        reject(
+          new Error(
+            `Embedded server did not become healthy in time.${lastFailure ? ` Last check: ${lastFailure}.` : ""}`,
+          ),
+        );
       } else {
         setTimeout(attempt, 500);
       }
@@ -699,7 +713,12 @@ async function startServer(
   });
 
   try {
-    await Promise.race([waitForHealth(currentPort), serverFailure]);
+    // Windows Defender and first-run PGlite initialization can make the
+    // embedded child take substantially longer than a warm Linux launch.
+    await Promise.race([
+      waitForHealth(currentPort, process.platform === "win32" ? 180_000 : 60_000),
+      serverFailure,
+    ]);
     startupSettled = true;
   } catch (error) {
     startupSettled = true;
