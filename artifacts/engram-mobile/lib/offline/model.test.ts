@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => {
     customBackupExists: false,
     sourceExists: true,
     sourceBytes: 2_000_000,
+    freeBytes: 2_000_000_000,
     headerBase64: "R0dVRgMAAAA=",
     copyGate: undefined as Promise<void> | undefined,
     partBytes: 0,
@@ -102,7 +103,7 @@ vi.mock("expo-file-system/legacy", () => ({
   makeDirectoryAsync: vi.fn(async () => {
   }),
   getFreeDiskStorageAsync: vi.fn(async () => {
-    return 2_000_000_000;
+    return mocks.state.freeBytes;
   }),
   getInfoAsync: vi.fn(async (path: string) => {
     if (path.endsWith("custom-model.gguf.previous")) {
@@ -146,6 +147,7 @@ import {
   cancelDownload,
   cancelCustomModelImport,
   downloadModel,
+  getCustomModelStorageCheck,
   getModelStatus,
   importCustomModel,
 } from "./model";
@@ -160,6 +162,7 @@ describe("offline model download failure harness", () => {
     mocks.state.customBackupExists = false;
     mocks.state.sourceExists = true;
     mocks.state.sourceBytes = 2_000_000;
+    mocks.state.freeBytes = 2_000_000_000;
     mocks.state.headerBase64 = "R0dVRgMAAAA=";
     mocks.state.copyGate = undefined;
     mocks.state.partBytes = 0;
@@ -252,6 +255,39 @@ describe("offline model download failure harness", () => {
       bytes: mocks.state.sourceBytes,
     });
     expect(CUSTOM_MODEL_PATH).toContain("/models/custom-model.gguf");
+  });
+
+  it("reports selected model size and app-private storage headroom before copying", async () => {
+    await expect(
+      getCustomModelStorageCheck("file:///picked-model.gguf", mocks.state.sourceBytes),
+    ).resolves.toMatchObject({
+      byteSize: 2_000_000,
+      requiredBytes: 2_200_000,
+      freeBytes: 2_000_000_000,
+      hasHeadroom: true,
+    });
+    expect(mocks.state.copy).not.toHaveBeenCalled();
+  });
+
+  it("reports insufficient storage without touching the selected file", async () => {
+    mocks.state.freeBytes = 2_199_999;
+
+    await expect(
+      getCustomModelStorageCheck("file:///picked-model.gguf", mocks.state.sourceBytes),
+    ).resolves.toMatchObject({
+      byteSize: 2_000_000,
+      requiredBytes: 2_200_000,
+      freeBytes: 2_199_999,
+      hasHeadroom: false,
+    });
+    await expect(
+      importCustomModel(
+        "file:///picked-model.gguf",
+        "too-large-for-device.gguf",
+        mocks.state.sourceBytes,
+      ),
+    ).rejects.toThrow("Not enough storage");
+    expect(mocks.state.copy).not.toHaveBeenCalled();
   });
 
   it("rejects a non-GGUF file before copying it", async () => {
