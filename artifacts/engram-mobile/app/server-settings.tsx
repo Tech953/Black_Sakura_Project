@@ -35,9 +35,11 @@ import {
   cancelCustomModelImport,
   deleteActiveModel,
   downloadModel,
+  getCustomModelStorageCheck,
   getModelStatus,
   importCustomModel,
   ModelImportCancelledError,
+  type CustomModelStorageCheck,
   type ModelStatus,
 } from "@/lib/offline/model";
 import { releaseLlm, validateActiveModel } from "@/lib/offline/llm";
@@ -54,6 +56,12 @@ import { isRtlLanguage } from "@/lib/layout-direction";
 function gb(bytes: number): string {
   return `${(bytes / 1e9).toFixed(2)} GB`;
 }
+
+type PendingGguf = {
+  uri: string;
+  filename: string;
+  byteSize: number;
+};
 
 export default function ServerSettingsScreen() {
   const { t } = useTranslation("mobile");
@@ -72,6 +80,9 @@ export default function ServerSettingsScreen() {
   const [progress, setProgress] = useState(0);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  const [checkingImportStorage, setCheckingImportStorage] = useState(false);
+  const [pendingGguf, setPendingGguf] = useState<PendingGguf | null>(null);
+  const [importStorage, setImportStorage] = useState<CustomModelStorageCheck | null>(null);
   const [offlineMsg, setOfflineMsg] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -195,14 +206,41 @@ export default function ServerSettingsScreen() {
 
     const asset = result.assets[0];
     setOfflineMsg(null);
+    try {
+      setPendingGguf({
+        uri: asset.uri,
+        filename: asset.name,
+        byteSize: asset.size ?? 0,
+      });
+      setImportStorage(null);
+      setCheckingImportStorage(true);
+      const storage = await getCustomModelStorageCheck(asset.uri, asset.size);
+      setPendingGguf((current) =>
+        current ? { ...current, byteSize: storage.byteSize } : current,
+      );
+      setImportStorage(storage);
+    } catch (err) {
+      setOfflineMsg(
+        err instanceof Error
+          ? err.message
+          : t("settings.modelImportFailed"),
+      );
+    } finally {
+      setCheckingImportStorage(false);
+    }
+  }, [t]);
+
+  const onConfirmImport = useCallback(async () => {
+    if (!pendingGguf || !importStorage || importStorage.hasHeadroom === false) return;
+    setOfflineMsg(null);
     setImporting(true);
     setImportProgress(0);
     await releaseLlm().catch(() => {});
     try {
       await importCustomModel(
-        asset.uri,
-        asset.name,
-        asset.size,
+        pendingGguf.uri,
+        pendingGguf.filename,
+        pendingGguf.byteSize,
         (fraction) => setImportProgress(fraction),
         async () => {
           setImportProgress(0.9);
@@ -224,9 +262,17 @@ export default function ServerSettingsScreen() {
     } finally {
       setImporting(false);
       setImportProgress(0);
+      setPendingGguf(null);
+      setImportStorage(null);
       refreshModel();
     }
-  }, [offline, refreshModel, t]);
+  }, [offline, pendingGguf, importStorage, refreshModel, t]);
+
+  const onCancelPendingImport = useCallback(() => {
+    setPendingGguf(null);
+    setImportStorage(null);
+    setOfflineMsg(null);
+  }, []);
 
   const onCancelImport = useCallback(() => {
     if (cancelCustomModelImport()) {
@@ -555,6 +601,90 @@ export default function ServerSettingsScreen() {
                 </Text>
               </Pressable>
             </>
+          ) : pendingGguf ? (
+            <>
+              <View
+                testID="gguf-storage-preview"
+                style={[
+                  styles.storagePreview,
+                  { borderColor: colors.border, backgroundColor: colors.card },
+                ]}
+              >
+                <Text style={[styles.buttonText, rtl && styles.rtlText, { color: colors.foreground }]}>
+                  {t("settings.selectedModel", { filename: pendingGguf.filename })}
+                </Text>
+                <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
+                  {t("settings.modelSize", { size: gb(pendingGguf.byteSize) })}
+                </Text>
+                {checkingImportStorage ? (
+                  <View style={styles.statusRow}>
+                    <ActivityIndicator color={colors.primary} size="small" />
+                    <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
+                      {t("settings.checkingStorage")}
+                    </Text>
+                  </View>
+                ) : importStorage?.freeBytes != null ? (
+                  <>
+                    <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
+                      {t("settings.availableStorage", { size: gb(importStorage.freeBytes) })}
+                    </Text>
+                    <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
+                      {t("settings.requiredStorage", { size: gb(importStorage.requiredBytes) })}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
+                    {t("settings.storageCheckUnavailable")}
+                  </Text>
+                )}
+                {importStorage?.hasHeadroom === false ? (
+                  <Text
+                    testID="gguf-storage-warning"
+                    style={[styles.status, rtl && styles.rtlText, { color: colors.destructive }]}
+                  >
+                    {t("settings.storageInsufficient", {
+                      size: gb(Math.max(importStorage.requiredBytes - (importStorage.freeBytes ?? 0), 0)),
+                    })}
+                  </Text>
+                ) : null}
+              </View>
+              <View style={styles.row}>
+                <Pressable
+                  testID="cancel-gguf-selection"
+                  onPress={onCancelPendingImport}
+                  style={[styles.button, { borderColor: colors.border }]}
+                >
+                  <Text style={[styles.buttonText, { color: colors.foreground }]}>
+                    {t("settings.chooseAnotherModel")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  testID="confirm-gguf-import"
+                  onPress={onConfirmImport}
+                  disabled={
+                    checkingImportStorage ||
+                    !importStorage ||
+                    importStorage.hasHeadroom === false
+                  }
+                  style={[
+                    styles.button,
+                    {
+                      backgroundColor:
+                        checkingImportStorage ||
+                        !importStorage ||
+                        importStorage.hasHeadroom === false
+                          ? colors.muted
+                          : colors.primary,
+                      borderColor: colors.primary,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.buttonText, { color: colors.background }]}>
+                    {t("settings.confirmImport")}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
           ) : activeModel ? (
             <>
               <Text
@@ -765,6 +895,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginTop: 20,
+  },
+  storagePreview: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+    gap: 6,
+    marginTop: 12,
   },
   progressTrack: {
     height: 10,

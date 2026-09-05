@@ -20,6 +20,7 @@ const CUSTOM_PARTIAL_PATH = `${CUSTOM_MODEL_PATH}.part`;
 const CUSTOM_BACKUP_PATH = `${CUSTOM_MODEL_PATH}.previous`;
 const CUSTOM_METADATA_KEY = "engram.customModel.metadata";
 const MIN_GGUF_BYTES = 1024 * 1024;
+export const MODEL_IMPORT_SAFETY_MULTIPLIER = 1.1;
 const GGUF_MAGIC = "GGUF";
 const MIN_GGUF_VERSION = 2;
 const MAX_GGUF_VERSION = 4;
@@ -56,6 +57,13 @@ export type ModelStatus =
     };
 
 export type ImportProgress = (fraction: number) => void;
+
+export type CustomModelStorageCheck = {
+  byteSize: number;
+  requiredBytes: number;
+  freeBytes: number | null;
+  hasHeadroom: boolean | null;
+};
 
 export class ModelImportCancelledError extends Error {
   readonly code = "MODEL_IMPORT_CANCELLED";
@@ -162,6 +170,29 @@ async function modelInfo(path: string): Promise<{ exists: boolean; bytes: number
   return {
     exists: info.exists,
     bytes: info.exists ? ((info as { size?: number }).size ?? 0) : 0,
+  };
+}
+
+/**
+ * Check the app-private storage headroom for a picked model without copying,
+ * persisting, or uploading the provider URI.
+ */
+export async function getCustomModelStorageCheck(
+  sourceUri: string,
+  sourceBytes?: number,
+): Promise<CustomModelStorageCheck> {
+  const sourceInfo = await modelInfo(sourceUri);
+  const byteSize = sourceBytes ?? sourceInfo.bytes;
+  if (!sourceInfo.exists || byteSize < MIN_GGUF_BYTES) {
+    throw new Error("The GGUF file is missing or too small to be a model.");
+  }
+  const freeBytes = await FileSystem.getFreeDiskStorageAsync().catch(() => null);
+  const requiredBytes = Math.ceil(byteSize * MODEL_IMPORT_SAFETY_MULTIPLIER);
+  return {
+    byteSize,
+    requiredBytes,
+    freeBytes,
+    hasHeadroom: freeBytes === null ? null : freeBytes >= requiredBytes,
   };
 }
 
@@ -361,15 +392,11 @@ export async function importCustomModel(
     }
 
     await FileSystem.makeDirectoryAsync(MODEL_DIR, { intermediates: true });
-    const sourceInfo = await modelInfo(sourceUri);
-    const byteSize = sourceBytes ?? sourceInfo.bytes;
-    if (!sourceInfo.exists || byteSize < MIN_GGUF_BYTES) {
-      throw new Error("The GGUF file is missing or too small to be a model.");
-    }
-    const free = await FileSystem.getFreeDiskStorageAsync().catch(() => null);
-    if (free != null && free < byteSize * 1.1) {
+    const storage = await getCustomModelStorageCheck(sourceUri, sourceBytes);
+    const byteSize = storage.byteSize;
+    if (storage.hasHeadroom === false) {
       throw new Error(
-        `Not enough storage: the model needs ~${Math.ceil(byteSize / 1e9)} GB free.`,
+        `Not enough storage: the model needs ~${Math.ceil(storage.requiredBytes / 1e9)} GB free.`,
       );
     }
 
