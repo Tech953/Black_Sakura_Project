@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "mobile-offline"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "mobile-release-deps"
+
 [[workflows.workflow]]
 name = "mobile-offline"
 author = "agent"
@@ -30,6 +34,17 @@ isValidation = true
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm run test:mobile-offline"
+
+[[workflows.workflow]]
+name = "mobile-release-deps"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/engram-mobile run release:preflight"
+
+[workflows.workflow.metadata]
+isValidation = true
 
 [agent]
 stack = "PNPM_WORKSPACE"

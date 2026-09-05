@@ -134,10 +134,12 @@ if [ "$DO_ANDROID" = 1 ]; then
   export ANDROID_SDK_ROOT="$SDK_DIR"
   export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=768}"
   GRADLE_JVMARGS="${ORG_GRADLE_JVMARGS:--Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8}"
+  pnpm --filter @workspace/engram-mobile run release:preflight
   ( cd "$MOBILE_DIR/android" && ./gradlew :app:assembleRelease -x lint --no-daemon --max-workers="${GRADLE_MAX_WORKERS:-2}" -Dorg.gradle.jvmargs="$GRADLE_JVMARGS" )
 
   APK_SRC="$MOBILE_DIR/android/app/build/outputs/apk/release/app-release.apk"
   [ -f "$APK_SRC" ] || { echo "ERROR: APK not found at $APK_SRC" >&2; exit 1; }
+  node "$MOBILE_DIR/scripts/release-preflight.mjs" --skip-expo --apk "$APK_SRC"
 
   BUILD_TOOLS_DIR="$(find "$SDK_DIR/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
   APKSIGNER="$BUILD_TOOLS_DIR/apksigner"

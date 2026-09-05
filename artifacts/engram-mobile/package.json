@@ -9,6 +9,8 @@
     "serve": "node server/serve.js",
     "test": "vitest run lib",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "release:preflight": "node scripts/release-preflight.mjs",
+    "release:verify-apk": "node scripts/release-preflight.mjs --skip-expo --apk android/app/build/outputs/apk/release/app-release.apk",
     "android": "expo run:android",
     "ios": "expo run:ios"
   },
