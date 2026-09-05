@@ -45,8 +45,7 @@ import { isOfflineMode, useOfflineMode } from "@/lib/offline/mode";
 import { sendOfflineMessage } from "@/lib/offline/chat";
 import { resolveReplyLanguage } from "@/lib/i18n";
 import { OFFLINE_LIMITS } from "@/lib/offline/limits";
-
-const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+import { resolveServerApiUrl } from "@/lib/server-url";
 
 export default function ChatScreen() {
   const { t } = useTranslation("mobile");
@@ -212,17 +211,20 @@ export default function ChatScreen() {
     }
 
     try {
-      const response = await expoFetch(
-        `${BASE_URL}/api/openai/conversations/${conversationId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "text/event-stream",
-          },
-          body: JSON.stringify({ content: text, language: await resolveReplyLanguage() }),
-        },
+      const streamUrl = await resolveServerApiUrl(
+        `/api/openai/conversations/${conversationId}/messages`,
       );
+      const response = await expoFetch(streamUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({
+          content: text,
+          language: await resolveReplyLanguage(),
+        }),
+      });
 
       if (!response.ok) throw new Error("stream failed");
       const reader = response.body?.getReader();
