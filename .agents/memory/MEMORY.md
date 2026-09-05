@@ -20,6 +20,7 @@
 - [Expression layer safety boundary](expression-layer-safety.md) — how PYRI's QUERTY micro-expression vocabulary is kept safe when fed to the chat model.
 - [Persona source authority](persona-source-authority.md) — curated persona evidence needs exact trusted source keys, prompt-ranked authority, and a write-reserved seed namespace.
 - [i18n architecture](i18n-architecture.md) — English JSONs are the only authored source; regenerate locales after string changes; reply-language allowlist; mobile async hydration; no mobile RTL.
+- [Mobile web and preview authentication](mobile-web-and-preview-auth.md) — Expo web needs wa-sqlite wasm asset handling, and preview API calls need a Clerk bearer fallback plus honest HTTP errors.
 - [ENGRAM chat SSE pattern](engram-chat-sse.md) — streaming chat uses raw fetch, not generated hooks.
 - [ENGRAM DB table names](engram-db-table-names.md) — actual Drizzle table export names to use in route imports.
 - [Database seeding](seeding.md) — how reference/lookup data gets into the DB (no auto-seed exists).

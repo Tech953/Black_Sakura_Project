@@ -11,4 +11,12 @@ config.transformer = {
   unstable_transformProfile: "hermes-stable",
 };
 
+// expo-sqlite's browser adapter loads wa-sqlite as a WebAssembly asset. Expo's
+// default Metro asset list does not include wasm, so the web bundle fails while
+// resolving the offline store and repeatedly reloads instead of rendering.
+config.resolver = {
+  ...config.resolver,
+  assetExts: [...config.resolver.assetExts, "wasm"],
+};
+
 module.exports = config;

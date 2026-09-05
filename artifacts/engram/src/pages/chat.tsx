@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { useAuth } from "@clerk/react";
 import { useListOpenaiConversations, useCreateOpenaiConversation, useDeleteOpenaiConversation, useListEngrams, getListOpenaiConversationsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -118,6 +119,7 @@ const MODES: { id: ChatMode; labelKey: string; glyph: string; descKey: string }[
 
 export default function Chat() {
   const { t } = useTranslation("chat");
+  const { getToken } = useAuth();
   const { data: convList, isLoading: loadingList } = useListOpenaiConversations();
   const createConv = useCreateOpenaiConversation();
   const deleteConv = useDeleteOpenaiConversation();
@@ -145,6 +147,18 @@ export default function Chat() {
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const authFetch = useCallback(
+    async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const token = await getToken();
+      const headers = new Headers(init?.headers);
+      if (token && !headers.has("authorization")) {
+        headers.set("authorization", `Bearer ${token}`);
+      }
+      return fetch(input, { ...init, headers, credentials: "include" });
+    },
+    [getToken],
+  );
+
   function scrollToBottom() {
     setTimeout(() => {
       if (scrollRef.current) {
@@ -156,14 +170,14 @@ export default function Chat() {
   useEffect(() => { scrollToBottom(); }, [messages]);
 
   const reloadMessages = useCallback(async (id: number) => {
-    const resp = await fetch(`${BASE}/api/openai/conversations/${id}`);
+    const resp = await authFetch(`${BASE}/api/openai/conversations/${id}`);
     if (!resp.ok) return;
     const data = await resp.json();
     setMessages(data.messages ?? []);
-  }, []);
+  }, [authFetch]);
 
   const loadConversation = useCallback(async (id: number) => {
-    const resp = await fetch(`${BASE}/api/openai/conversations/${id}`);
+    const resp = await authFetch(`${BASE}/api/openai/conversations/${id}`);
     if (!resp.ok) return;
     const data = await resp.json();
     const conv: Conversation = { id: data.id, title: data.title, mode: data.mode, personaName: data.personaName, customEngram: data.customEngram, engramId: data.engramId, createdAt: data.createdAt };
@@ -175,7 +189,7 @@ export default function Chat() {
     setEngramId(conv.engramId ?? null);
     setConvSheetOpen(false);
     scrollToBottom();
-  }, []);
+  }, [authFetch]);
 
   const uploadFile = useCallback(async (file: File) => {
     const convId = activeId;
@@ -184,7 +198,7 @@ export default function Chat() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const resp = await fetch(`${BASE}/api/openai/conversations/${convId}/media`, { method: "POST", body: form });
+       const resp = await authFetch(`${BASE}/api/openai/conversations/${convId}/media`, { method: "POST", body: form });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         toast({ title: t("toastUploadRejected"), description: err.error ?? t("toastHttpError", { status: resp.status }), variant: "destructive" });
@@ -197,7 +211,7 @@ export default function Chat() {
     } finally {
       setUploading(false);
     }
-  }, [activeId, toast, t]);
+  }, [activeId, authFetch, toast, t]);
 
   // Poll perception status for in-flight attachments until each settles.
   useEffect(() => {
@@ -207,7 +221,7 @@ export default function Chat() {
     const timer = setInterval(async () => {
       for (const att of inFlight) {
         try {
-          const resp = await fetch(`${BASE}/api/media/${att.id}`);
+           const resp = await authFetch(`${BASE}/api/media/${att.id}`);
           if (!resp.ok || cancelled) continue;
           const data = await resp.json();
           const status = data.asset.status as Attachment["status"];
@@ -218,7 +232,7 @@ export default function Chat() {
       }
     }, 2000);
     return () => { cancelled = true; clearInterval(timer); };
-  }, [attachments]);
+  }, [attachments, authFetch]);
 
   // When a perception completes, pull the `context` message the worker inserted into the
   // thread (only while not streaming, so we don't clobber an in-progress reply), then drop
@@ -274,16 +288,18 @@ export default function Chat() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
+    let responseStatus: number | null = null;
     try {
-      const resp = await fetch(`${BASE}/api/openai/conversations/${activeId}/messages`, {
+      const resp = await authFetch(`${BASE}/api/openai/conversations/${activeId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: userMsg, language: resolveReplyLanguage() }),
         signal: ctrl.signal,
       });
+      responseStatus = resp.status;
 
       if (!resp.ok || !resp.body) {
-        throw new Error("Stream failed");
+        throw new Error(`Stream failed (${resp.status})`);
       }
 
       const reader = resp.body.getReader();
@@ -329,7 +345,14 @@ export default function Chat() {
       });
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
-        toast({ title: t("toastNetworkError"), description: t("toastCouldNotReachApi"), variant: "destructive" });
+        toast({
+          title: t("toastNetworkError"),
+          description:
+            responseStatus !== null
+              ? t("toastHttpError", { status: responseStatus })
+              : t("toastCouldNotReachApi"),
+          variant: "destructive",
+        });
       }
       setMessages((prev) => prev.filter((_, i) => i !== assistantIdx));
     } finally {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { ClerkProvider, Show, SignIn, SignUp, useClerk } from "@clerk/react";
+import { ClerkProvider, Show, SignIn, SignUp, useAuth, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import {
   Switch,
   Route,
@@ -204,8 +205,17 @@ function SignUpPage() {
 
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
+  const { getToken, isLoaded } = useAuth();
   const client = useQueryClient();
   const previousIdentity = useRef<string | undefined>(undefined);
+
+  // The browser normally sends the Clerk session cookie automatically, but the
+  // preview proxy can serve the dashboard and API on different hostnames. A
+  // bearer token keeps generated API hooks authenticated in that setup too.
+  useEffect(() => {
+    setAuthTokenGetter(isLoaded ? () => getToken() : null);
+    return () => setAuthTokenGetter(null);
+  }, [getToken, isLoaded]);
 
   useEffect(() => {
     return addListener(({ user, session }) => {
