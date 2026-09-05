@@ -311,6 +311,8 @@ router.post("/engrams/:id/transmissions/mark-seen", async (req, res) => {
     return;
   }
   const { id } = parsedParams.data;
+  const engram = await loadEngram(id);
+  if (engram && rejectIfArchival(engram, res)) return;
   const ids = parsedBody.data.ids;
   const filter =
     ids && ids.length > 0
@@ -352,10 +354,7 @@ router.post("/engrams/:id/inquiries", async (req, res) => {
     return;
   }
   const { kind, question } = parsedBody.data;
-  // Archival branches stay interactive through PROBE inquiries (pure Q&A —
-  // nothing about the engram changes; the exchange is only appended to the
-  // inquiry log). DEVELOP would tune the preserved persona, so it stays locked.
-  if (kind !== "probe" && rejectIfArchival(engram, res)) return;
+  if (rejectIfArchival(engram, res)) return;
 
   try {
     if (kind === "probe") {

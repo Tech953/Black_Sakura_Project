@@ -28,7 +28,7 @@ import { createMediaAsset } from "../lib/media-store";
 import { detectModality } from "../lib/media-extraction";
 import { publishEvent } from "../lib/events";
 
-import { isArchivalEngram } from "../lib/archival";
+import { ARCHIVAL_READ_ONLY_ERROR, isArchivalEngram } from "../lib/archival";
 import { responseLanguageInstruction } from "@workspace/i18n";
 const router = Router();
 
@@ -73,10 +73,7 @@ router.post("/openai/conversations", async (req, res) => {
   if (engramId != null) {
     const [engram] = await db.select().from(engramsTable).where(eq(engramsTable.id, engramId));
     if (engram?.isArchival) {
-      res.status(403).json({
-        error:
-          "This engram is a permanent archival branch preserved for continuity fidelity. New conversations cannot be started with it.",
-      });
+      res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
       return;
     }
   }
@@ -122,10 +119,7 @@ router.delete("/openai/conversations/:id", async (req, res) => {
   if (conv.engramId != null) {
     const [engram] = await db.select().from(engramsTable).where(eq(engramsTable.id, conv.engramId));
     if (engram?.isArchival) {
-      res.status(403).json({
-        error:
-          "This conversation is a permanent archival continuity record and cannot be deleted.",
-      });
+      res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
       return;
     }
   }
@@ -176,10 +170,10 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       res.status(404).json({ error: "Engram not found" });
       return;
     }
-    // Archival branches remain a single centralized continuity line: the
-    // preserved record is immutable (no edits/deletes anywhere), but the
-    // dialogue CONTINUES here append-only — new turns extend the permanence
-    // of continuity rather than violating it.
+    if (engram.isArchival) {
+      res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
     const worldModelSummary = summarizeWorldModel(await loadRecentWorldModel(engram.id));
     const perceptualContext = await buildPerceptualContext({
       engramId: engram.id,
@@ -381,10 +375,7 @@ router.post("/openai/conversations/:id/media", (req, res) => {
       return;
     }
     if (await isArchivalEngram(conv.engramId)) {
-      res.status(403).json({
-        error:
-          "This conversation is a permanent archival continuity record. It is read-only — media cannot be attached.",
-      });
+      res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
       return;
     }
 

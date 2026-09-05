@@ -1,5 +1,7 @@
 import { db } from "@workspace/db";
 import {
+  conversations,
+  engramsTable,
   engramArtifactsTable,
   engramArtifactBlobsTable,
   type EngramArtifact,
@@ -7,8 +9,21 @@ import {
   type ArtifactTrigger,
   type ArtifactJobStatus,
 } from "@workspace/db/schema";
-import { and, asc, desc, eq, gte, inArray, lt } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  lt,
+  notExists,
+} from "drizzle-orm";
 import { publishEvent } from "./events";
+import {
+  ARCHIVAL_READ_ONLY_ERROR,
+  artifactTouchesArchive,
+} from "./archival";
 
 export interface CreateArtifactInput {
   engramId: number;
@@ -27,6 +42,14 @@ export interface CreateArtifactInput {
 export async function createArtifactJob(
   input: CreateArtifactInput,
 ): Promise<EngramArtifact> {
+  if (
+    await artifactTouchesArchive({
+      engramId: input.engramId,
+      conversationId: input.conversationId ?? null,
+    })
+  ) {
+    throw new Error(ARCHIVAL_READ_ONLY_ERROR);
+  }
   const [row] = await db
     .insert(engramArtifactsTable)
     .values({
@@ -120,10 +143,35 @@ export async function claimNextPendingArtifact(): Promise<
   EngramArtifact | undefined
 > {
   const claimed = await db.transaction(async (tx) => {
+    const directArchivalOwner = tx
+      .select({ id: engramsTable.id })
+      .from(engramsTable)
+      .where(
+        and(
+          eq(engramsTable.id, engramArtifactsTable.engramId),
+          eq(engramsTable.isArchival, true),
+        ),
+      );
+    const archivalConversationOwner = tx
+      .select({ id: conversations.id })
+      .from(conversations)
+      .innerJoin(engramsTable, eq(engramsTable.id, conversations.engramId))
+      .where(
+        and(
+          eq(conversations.id, engramArtifactsTable.conversationId),
+          eq(engramsTable.isArchival, true),
+        ),
+      );
     const [pending] = await tx
       .select({ id: engramArtifactsTable.id })
       .from(engramArtifactsTable)
-      .where(eq(engramArtifactsTable.status, "pending"))
+      .where(
+        and(
+          eq(engramArtifactsTable.status, "pending"),
+          notExists(directArchivalOwner),
+          notExists(archivalConversationOwner),
+        ),
+      )
       .orderBy(asc(engramArtifactsTable.createdAt))
       .limit(1)
       .for("update", { skipLocked: true });
@@ -155,6 +203,25 @@ export async function recoverStuckArtifacts(
   olderThanMs: number,
 ): Promise<number> {
   const cutoff = new Date(Date.now() - olderThanMs);
+  const directArchivalOwner = db
+    .select({ id: engramsTable.id })
+    .from(engramsTable)
+    .where(
+      and(
+        eq(engramsTable.id, engramArtifactsTable.engramId),
+        eq(engramsTable.isArchival, true),
+      ),
+    );
+  const archivalConversationOwner = db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .innerJoin(engramsTable, eq(engramsTable.id, conversations.engramId))
+    .where(
+      and(
+        eq(conversations.id, engramArtifactsTable.conversationId),
+        eq(engramsTable.isArchival, true),
+      ),
+    );
   const rows = await db
     .update(engramArtifactsTable)
     .set({
@@ -166,6 +233,8 @@ export async function recoverStuckArtifacts(
       and(
         eq(engramArtifactsTable.status, "processing"),
         lt(engramArtifactsTable.startedAt, cutoff),
+        notExists(directArchivalOwner),
+        notExists(archivalConversationOwner),
       ),
     )
     .returning({ id: engramArtifactsTable.id });
@@ -191,6 +260,8 @@ export async function updateArtifact(
   id: number,
   patch: ArtifactPatch,
 ): Promise<EngramArtifact | undefined> {
+  const existing = await loadArtifactById(id);
+  if (existing && (await artifactTouchesArchive(existing))) return undefined;
   const [row] = await db
     .update(engramArtifactsTable)
     .set({ ...patch, updatedAt: new Date() })
@@ -212,6 +283,8 @@ export async function completeArtifact(input: {
   provider: string;
   summary: string | null;
 }): Promise<EngramArtifact | undefined> {
+  const existing = await loadArtifactById(input.id);
+  if (existing && (await artifactTouchesArchive(existing))) return undefined;
   const completed = await db.transaction(async (tx) => {
     await tx
       .delete(engramArtifactBlobsTable)
@@ -257,6 +330,8 @@ export async function completeArtifact(input: {
 export async function requeueArtifact(
   id: number,
 ): Promise<EngramArtifact | undefined> {
+  const existing = await loadArtifactById(id);
+  if (existing && (await artifactTouchesArchive(existing))) return undefined;
   return db.transaction(async (tx) => {
     const now = new Date();
     const [row] = await tx
@@ -290,6 +365,8 @@ export async function requeueArtifact(
 
 /** Delete an artifact and its bytes (cascade removes the blob row). */
 export async function deleteArtifact(id: number): Promise<boolean> {
+  const existing = await loadArtifactById(id);
+  if (existing && (await artifactTouchesArchive(existing))) return false;
   const rows = await db
     .delete(engramArtifactsTable)
     .where(eq(engramArtifactsTable.id, id))
