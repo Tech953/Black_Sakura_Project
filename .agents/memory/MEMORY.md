@@ -32,6 +32,7 @@
 - [ENGRAM AI lib template fixes](engram-ai-lib-fixes.md) — two fixes to make the Replit OpenAI integration template libs typecheck cleanly.
 - [engram web typecheck — duplicate @types/react](engram-typecheck-types-react-dup.md) — pre-existing shadcn TS errors from two @types/react versions; not feature-caused.
 - [API server testing](api-server-testing.md) — conventions and constraints for unit-testing the api-server artifact.
+- [Chromium CDP browser tests](chromium-cdp-browser-tests.md) — run local signed-in UI regressions with existing Chromium, CDP page targets, and no Playwright dependency.
 - [api-routes test db/schema mock](api-routes-test-mock.md) — why engine-touching route tests break, and how to keep the hand-rolled db/schema mock in sync.
 - [Engram engine test mock](engram-engine-test-mock.md) — how the engine unit test fakes the DB, and the trap when the engine reads a new table.
 - [PDF generation & install quirks](pdf-and-install-quirks.md) — generating/verifying PDFs without Chromium, plus a package-install fallback.
