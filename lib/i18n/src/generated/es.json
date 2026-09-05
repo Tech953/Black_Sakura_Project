@@ -297,9 +297,13 @@
     "totalMemories": "Memorias totales",
     "beliefNodes": "Nodos de creencias",
     "avgConfidence": "Conf. prom.",
+    "desktopPromoTitle": "Obtén la app de escritorio",
+    "desktopPromoBody": "Ejecuta ENGRAM localmente con acceso sin conexión y un espacio nativo dedicado.",
+    "desktopPromoAction": "Ver descargas",
+    "desktopPromoDismiss": "Descartar mensaje de app de escritorio",
     "personalityRadar": "Radar de personalidad",
-    "radarVizOffline": "VIZ RADAR OFFLINE",
-    "memoryDistribution": "Distribución de memorias"
+    "radarVizOffline": "RADAR VIZ OFFLINE",
+    "memoryDistribution": "Distribución de memoria"
   },
   "hub": {
     "title": "EL HUB",

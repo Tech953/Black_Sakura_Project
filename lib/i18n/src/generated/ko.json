@@ -297,6 +297,10 @@
     "totalMemories": "총 기억",
     "beliefNodes": "신념 노드",
     "avgConfidence": "평균 신뢰도",
+    "desktopPromoTitle": "데스크톱 앱 받기",
+    "desktopPromoBody": "오프라인 액세스와 전용 네이티브 작업 공간으로 ENGRAM을 로컬에서 실행하세요.",
+    "desktopPromoAction": "다운로드 보기",
+    "desktopPromoDismiss": "데스크톱 앱 메시지 닫기",
     "personalityRadar": "성격 레이더",
     "radarVizOffline": "RADAR VIZ 오프라인",
     "memoryDistribution": "기억 분포"

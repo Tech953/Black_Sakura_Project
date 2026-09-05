@@ -291,15 +291,19 @@
   },
   "home": {
     "title": "ENGRAM HUB",
-    "subtitle": "ライブシステム状態＆テレメトリ",
+    "subtitle": "ライブシステム状態とテレメトリ",
     "coreActive": "コア稼働中",
     "activePersona": "アクティブなペルソナ",
-    "totalMemories": "総メモリー数",
+    "totalMemories": "総メモリ数",
     "beliefNodes": "信念ノード",
     "avgConfidence": "平均信頼度",
+    "desktopPromoTitle": "デスクトップアプリを入手",
+    "desktopPromoBody": "オフラインアクセスと専用ネイティブ環境で、ENGRAM をローカル実行。",
+    "desktopPromoAction": "ダウンロードを見る",
+    "desktopPromoDismiss": "デスクトップアプリのメッセージを閉じる",
     "personalityRadar": "パーソナリティレーダー",
-    "radarVizOffline": "レーダー表示オフライン",
-    "memoryDistribution": "メモリー分布"
+    "radarVizOffline": "RADAR VIZ オフライン",
+    "memoryDistribution": "メモリ分布"
   },
   "hub": {
     "title": "THE HUB",

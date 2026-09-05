@@ -297,6 +297,10 @@
     "totalMemories": "记忆总数",
     "beliefNodes": "信念节点",
     "avgConfidence": "平均置信度",
+    "desktopPromoTitle": "获取桌面应用",
+    "desktopPromoBody": "在本地运行 ENGRAM，支持离线访问和专属原生工作区。",
+    "desktopPromoAction": "查看下载",
+    "desktopPromoDismiss": "关闭桌面应用提示",
     "personalityRadar": "人格雷达",
     "radarVizOffline": "雷达可视化离线",
     "memoryDistribution": "记忆分布"

@@ -296,9 +296,13 @@
     "activePersona": "Активная персона",
     "totalMemories": "Всего воспоминаний",
     "beliefNodes": "Узлы убеждений",
-    "avgConfidence": "Сред. уверенность",
+    "avgConfidence": "Ср. уверенность",
+    "desktopPromoTitle": "Установить десктопное приложение",
+    "desktopPromoBody": "Запускайте ENGRAM локально с офлайн-доступом и отдельным нативным рабочим пространством.",
+    "desktopPromoAction": "Смотреть загрузки",
+    "desktopPromoDismiss": "Скрыть сообщение о десктопном приложении",
     "personalityRadar": "Радар личности",
-    "radarVizOffline": "ВИЗУАЛИЗАЦИЯ РАДАРА ОТКЛ.",
+    "radarVizOffline": "ВИЗУАЛИЗАЦИЯ РАДАРА OFFLINE",
     "memoryDistribution": "Распределение памяти"
   },
   "hub": {

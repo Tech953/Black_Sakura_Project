@@ -296,9 +296,13 @@
     "activePersona": "सक्रिय पर्सोना",
     "totalMemories": "कुल स्मृतियाँ",
     "beliefNodes": "विश्वास नोड्स",
-    "avgConfidence": "औसत कॉन्फिडेंस",
+    "avgConfidence": "औसत विश्वसनीयता",
+    "desktopPromoTitle": "डेस्कटॉप ऐप प्राप्त करें",
+    "desktopPromoBody": "ऑफलाइन एक्सेस और समर्पित नेटिव वर्कस्पेस के साथ ENGRAM को लोकली चलाएँ।",
+    "desktopPromoAction": "डाउनलोड देखें",
+    "desktopPromoDismiss": "डेस्कटॉप ऐप संदेश बंद करें",
     "personalityRadar": "पर्सनैलिटी रडार",
-    "radarVizOffline": "रडार विज़ ऑफलाइन",
+    "radarVizOffline": "RADAR VIZ OFFLINE",
     "memoryDistribution": "स्मृति वितरण"
   },
   "hub": {

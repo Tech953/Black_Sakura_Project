@@ -291,15 +291,19 @@
   },
   "home": {
     "title": "ENGRAM HUB",
-    "subtitle": "État du système et télémétrie en direct",
-    "coreActive": "Noyau actif",
+    "subtitle": "État système et télémétrie en direct",
+    "coreActive": "Cœur actif",
     "activePersona": "Persona active",
-    "totalMemories": "Souvenirs totaux",
+    "totalMemories": "Mémoires totales",
     "beliefNodes": "Nœuds de croyance",
     "avgConfidence": "Confiance moy.",
+    "desktopPromoTitle": "Obtenir l’app de bureau",
+    "desktopPromoBody": "Exécutez ENGRAM en local avec un accès hors ligne et un espace natif dédié.",
+    "desktopPromoAction": "Voir les téléchargements",
+    "desktopPromoDismiss": "Masquer le message de l’app de bureau",
     "personalityRadar": "Radar de personnalité",
     "radarVizOffline": "VIZ RADAR HORS LIGNE",
-    "memoryDistribution": "Répartition des souvenirs"
+    "memoryDistribution": "Répartition des mémoires"
   },
   "hub": {
     "title": "LE HUB",
