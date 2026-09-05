@@ -12,12 +12,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import { I18nManager, Platform } from "react-native";
 import {
   resources,
   NAMESPACES,
   DEFAULT_LANGUAGE,
   SUPPORTED_LANGUAGE_CODES,
 } from "@workspace/i18n";
+import { isRtlLanguage } from "@/lib/layout-direction";
 
 const UI_LANG_KEY = "engram.uiLang";
 const REPLY_LANG_KEY = "engram.replyLang";
@@ -41,30 +43,51 @@ let replyLangCache: ReplyLanguageSetting = "match";
 let uiLangSelectionVersion = 0;
 let replyLangSelectionVersion = 0;
 
+function applyLanguageDirection(lang: string): boolean {
+  const rtl = isRtlLanguage(lang);
+  if (Platform.OS === "web") {
+    if (typeof document !== "undefined") {
+      document.documentElement.dir = rtl ? "rtl" : "ltr";
+      document.documentElement.lang = lang;
+    }
+    return false;
+  }
+  I18nManager.allowRTL(true);
+  I18nManager.swapLeftAndRightInRTL(true);
+  if (I18nManager.isRTL === rtl) return false;
+  I18nManager.forceRTL(rtl);
+  return true;
+}
+
 /**
  * Single coordinated hydration of both persisted language settings.
  * Await this before sending anything that depends on the reply language.
  */
-export const i18nReady: Promise<void> = Promise.all([
+export const i18nReady: Promise<boolean> = Promise.all([
   AsyncStorage.getItem(UI_LANG_KEY),
   AsyncStorage.getItem(REPLY_LANG_KEY),
 ])
-  .then(([storedUi, storedReply]) => {
+  .then(async ([storedUi, storedReply]) => {
+    const hydratedUi =
+      storedUi && SUPPORTED_LANGUAGE_CODES.includes(storedUi)
+        ? storedUi
+        : DEFAULT_LANGUAGE;
+    const restartRequired = applyLanguageDirection(hydratedUi);
     if (
       uiLangSelectionVersion === 0 &&
-      storedUi &&
-      SUPPORTED_LANGUAGE_CODES.includes(storedUi) &&
-      storedUi !== i18n.language
+      hydratedUi !== i18n.language
     ) {
-      void i18n.changeLanguage(storedUi);
+      await i18n.changeLanguage(hydratedUi);
     }
     if (replyLangSelectionVersion === 0 && storedReply) {
       replyLangCache = storedReply;
     }
+    return restartRequired;
   })
-  .catch(() => {});
+  .catch(() => applyLanguageDirection(DEFAULT_LANGUAGE));
 
-export async function setUiLanguage(lang: string): Promise<void> {
+export async function setUiLanguage(lang: string): Promise<boolean> {
+  if (!SUPPORTED_LANGUAGE_CODES.includes(lang)) return false;
   uiLangSelectionVersion++;
   try {
     await AsyncStorage.setItem(UI_LANG_KEY, lang);
@@ -72,6 +95,7 @@ export async function setUiLanguage(lang: string): Promise<void> {
     // ignore persistence failure; still switch in-memory
   }
   await i18n.changeLanguage(lang);
+  return applyLanguageDirection(lang);
 }
 
 export async function getReplyLanguageSetting(): Promise<ReplyLanguageSetting> {

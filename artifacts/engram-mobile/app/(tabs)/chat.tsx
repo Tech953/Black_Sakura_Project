@@ -45,11 +45,13 @@ import { isOfflineMode, useOfflineMode } from "@/lib/offline/mode";
 import { sendOfflineMessage } from "@/lib/offline/chat";
 import { getArchivalConversationId } from "@/lib/offline/store";
 import { resolveReplyLanguage } from "@/lib/i18n";
+import { isRtlLanguage } from "@/lib/layout-direction";
 import { OFFLINE_LIMITS } from "@/lib/offline/limits";
 import { resolveServerApiUrl } from "@/lib/server-url";
 
 export default function ChatScreen() {
-  const { t } = useTranslation("mobile");
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { selectedEngramId, getConversationId, setConversationId } = useEngram();
@@ -321,10 +323,10 @@ export default function ChatScreen() {
           },
         ]}
       >
-        <Text style={[styles.kicker, { color: colors.primary }]}>
+        <Text style={[styles.kicker, rtl && styles.rtlText, { color: colors.primary }]}>
           {t("chat.kicker")} // {engram?.symbol ?? "··"}
         </Text>
-        <Text style={[styles.h1, { color: colors.foreground }]}>
+        <Text style={[styles.h1, rtl && styles.rtlText, { color: colors.foreground }]}>
           {engram?.name ?? t("chat.fallbackTitle")}
         </Text>
       </View>
@@ -386,6 +388,8 @@ export default function ChatScreen() {
                       color: isUser
                         ? colors.primaryForeground
                         : colors.foreground,
+                      writingDirection: rtl ? "rtl" : "ltr",
+                      textAlign: rtl ? "right" : "left",
                     }}
                   >
                     {item.content}
@@ -443,6 +447,8 @@ export default function ChatScreen() {
                 color: colors.foreground,
                 borderRadius: colors.radius,
                 opacity: archivalReadOnly ? 0.6 : 1,
+                writingDirection: rtl ? "rtl" : "ltr",
+                textAlign: rtl ? "right" : "left",
               },
             ]}
           />
@@ -546,5 +552,10 @@ const styles = StyleSheet.create({
     height: 46,
     alignItems: "center",
     justifyContent: "center",
+  },
+  rtlText: {
+    writingDirection: "rtl",
+    textAlign: "right",
+    letterSpacing: 0,
   },
 });

@@ -23,18 +23,20 @@ import {
   Rajdhani_700Bold,
 } from "@expo-google-fonts/rajdhani";
 import { useFonts } from "expo-font";
+import { reloadAppAsync } from "expo";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import "@/lib/i18n";
+import { i18nReady } from "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PreviousCrashScreen } from "@/components/PreviousCrashScreen";
 import { EngramProvider } from "@/context/engram-context";
@@ -98,6 +100,7 @@ export default function RootLayout() {
   });
 
   const [serverReady, setServerReady] = React.useState(false);
+  const [languageReady, setLanguageReady] = React.useState(false);
   const [crashStateLoaded, setCrashStateLoaded] = React.useState(false);
   const [previousCrash, setPreviousCrash] =
     React.useState<CrashReport | null>(null);
@@ -120,9 +123,29 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    void i18nReady.then(async (restartRequired) => {
+      if (!active) return;
+      if (restartRequired && Platform.OS !== "web") {
+        try {
+          await reloadAppAsync();
+          return;
+        } catch (error) {
+          console.error("Failed to restart after changing layout direction:", error);
+        }
+      }
+      if (active) setLanguageReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (
       (fontsLoaded || fontError) &&
       crashStateLoaded &&
+      languageReady &&
       (previousCrash || serverReady)
     ) {
       SplashScreen.hideAsync();
@@ -131,6 +154,7 @@ export default function RootLayout() {
     crashStateLoaded,
     fontsLoaded,
     fontError,
+    languageReady,
     previousCrash,
     serverReady,
   ]);
@@ -138,6 +162,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (
       !crashStateLoaded ||
+      !languageReady ||
       previousCrash ||
       !serverReady ||
       (!fontsLoaded && !fontError)
@@ -153,6 +178,7 @@ export default function RootLayout() {
     crashStateLoaded,
     fontsLoaded,
     fontError,
+    languageReady,
     previousCrash,
     serverReady,
   ]);
@@ -184,7 +210,7 @@ export default function RootLayout() {
     };
   }, [previousCrash, serverReady]);
 
-  if ((!fontsLoaded && !fontError) || !crashStateLoaded) return null;
+  if ((!fontsLoaded && !fontError) || !crashStateLoaded || !languageReady) return null;
 
   if (previousCrash) {
     return (

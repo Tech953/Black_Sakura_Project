@@ -5,6 +5,7 @@ import type { TFunction } from "i18next";
 
 import { Chip, MonoLabel, ScoreBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { isRtlLanguage } from "@/lib/layout-direction";
 import type { EngramTransmission } from "@workspace/api-client-react";
 
 function relativeTime(t: TFunction<"mobile">, iso?: string): string {
@@ -25,7 +26,8 @@ export function TransmissionCard({
 }: {
   transmission: EngramTransmission;
 }) {
-  const { t } = useTranslation("mobile");
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
   const score = transmission.overallScore ?? 0;
   const scoreColor =
@@ -54,7 +56,7 @@ export function TransmissionCard({
         <MonoLabel>{relativeTime(t, transmission.createdAt)}</MonoLabel>
       </View>
 
-      <Text style={[styles.content, { color: colors.foreground }]}>
+      <Text style={[styles.content, rtl && styles.rtlText, { color: colors.foreground }]}>
         {transmission.content}
       </Text>
 
@@ -64,7 +66,7 @@ export function TransmissionCard({
           <View style={{ flex: 1 }}>
             <ScoreBar value={score} color={scoreColor} />
           </View>
-          <Text style={[styles.scoreNum, { color: colors.mutedForeground }]}>
+          <Text style={[styles.scoreNum, rtl && styles.rtlScoreNum, { color: colors.mutedForeground }]}>
             {Math.round(score * 100)}
           </Text>
         </View>
@@ -113,6 +115,11 @@ const styles = StyleSheet.create({
     fontFamily: "JetBrainsMono_500Medium",
     fontSize: 12,
     width: 28,
+    textAlign: "right",
+  },
+  rtlScoreNum: { textAlign: "left" },
+  rtlText: {
+    writingDirection: "rtl",
     textAlign: "right",
   },
 });

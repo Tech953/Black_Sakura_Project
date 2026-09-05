@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { reloadAppAsync } from "expo";
 import { Stack, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -42,6 +43,7 @@ import i18n, {
   setUiLanguage,
   type ReplyLanguageSetting,
 } from "@/lib/i18n";
+import { isRtlLanguage } from "@/lib/layout-direction";
 
 function gb(bytes: number): string {
   return `${(bytes / 1e9).toFixed(2)} GB`;
@@ -67,6 +69,7 @@ export default function ServerSettingsScreen() {
   // Language state
   const [uiLang, setUiLang] = useState(i18n.language);
   const [replyLang, setReplyLang] = useState<ReplyLanguageSetting>("match");
+  const rtl = isRtlLanguage(uiLang);
 
   useEffect(() => {
     getServerUrlOverride().then((override) => {
@@ -85,9 +88,16 @@ export default function ServerSettingsScreen() {
     return () => i18n.off("languageChanged", onLangChange);
   }, []);
 
-  const onSelectUiLang = useCallback((code: string) => {
+  const onSelectUiLang = useCallback(async (code: string) => {
     setUiLang(code);
-    void setUiLanguage(code);
+    const restartRequired = await setUiLanguage(code);
+    if (restartRequired && Platform.OS !== "web") {
+      try {
+        await reloadAppAsync();
+      } catch (error) {
+        console.error("Failed to restart after changing layout direction:", error);
+      }
+    }
   }, []);
 
   const onSelectReplyLang = useCallback((value: ReplyLanguageSetting) => {
@@ -223,13 +233,13 @@ export default function ServerSettingsScreen() {
           headerTintColor: colors.foreground,
         }}
       />
-      <Text style={[styles.kicker, { color: colors.primary }]}>
+      <Text style={[styles.kicker, rtl && styles.rtlText, { color: colors.primary }]}>
         {t("settings.connectionKicker")}
       </Text>
-      <Text style={[styles.h1, { color: colors.foreground }]}>
+      <Text style={[styles.h1, rtl && styles.rtlText, { color: colors.foreground }]}>
         {t("settings.serverAddress")}
       </Text>
-      <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+      <Text style={[styles.sub, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
         {t("settings.serverAddressHint")}
       </Text>
 
@@ -244,6 +254,8 @@ export default function ServerSettingsScreen() {
                 color: colors.foreground,
                 borderColor: colors.border,
                 backgroundColor: colors.card,
+                writingDirection: "ltr",
+                textAlign: "left",
               },
             ]}
             value={value}
@@ -291,7 +303,7 @@ export default function ServerSettingsScreen() {
                 color={colors.mutedForeground}
                 style={{ marginTop: 2 }}
               />
-              <Text style={[styles.status, { color: colors.mutedForeground }]}>
+              <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
                 {status}
               </Text>
             </View>
@@ -299,17 +311,17 @@ export default function ServerSettingsScreen() {
         </>
       )}
 
-      <Text style={[styles.kicker, { color: colors.primary, marginTop: 36 }]}>
+      <Text style={[styles.kicker, rtl && styles.rtlText, { color: colors.primary, marginTop: 36 }]}>
         {t("settings.languageKicker")}
       </Text>
-      <Text style={[styles.h1, { color: colors.foreground }]}>
+      <Text style={[styles.h1, rtl && styles.rtlText, { color: colors.foreground }]}>
         {t("settings.languageTitle")}
       </Text>
-      <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+      <Text style={[styles.sub, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
         {t("settings.languageHint")}
       </Text>
 
-      <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+      <Text style={[styles.fieldLabel, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
         {t("settings.interfaceLanguage")}
       </Text>
       <View
@@ -333,6 +345,7 @@ export default function ServerSettingsScreen() {
               <Text
                 style={[
                   styles.optionText,
+                  rtl && styles.rtlText,
                   { color: active ? colors.primary : colors.foreground },
                 ]}
               >
@@ -346,7 +359,7 @@ export default function ServerSettingsScreen() {
         })}
       </View>
 
-      <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+      <Text style={[styles.fieldLabel, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
         {t("settings.replyLanguage")}
       </Text>
       <View
@@ -376,6 +389,7 @@ export default function ServerSettingsScreen() {
               <Text
                 style={[
                   styles.optionText,
+                  rtl && styles.rtlText,
                   { color: active ? colors.primary : colors.foreground },
                 ]}
               >
@@ -391,13 +405,13 @@ export default function ServerSettingsScreen() {
 
       {Platform.OS !== "web" ? (
         <>
-          <Text style={[styles.kicker, { color: colors.primary, marginTop: 36 }]}>
+          <Text style={[styles.kicker, rtl && styles.rtlText, { color: colors.primary, marginTop: 36 }]}>
             {t("settings.onDeviceKicker")}
           </Text>
-          <Text style={[styles.h1, { color: colors.foreground }]}>
+          <Text style={[styles.h1, rtl && styles.rtlText, { color: colors.foreground }]}>
             {t("settings.offlineMode")}
           </Text>
-          <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+          <Text style={[styles.sub, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
             {t("settings.offlineHint", {
               model: MODEL_NAME,
               size: gb(MODEL_BYTES),
@@ -405,7 +419,7 @@ export default function ServerSettingsScreen() {
           </Text>
 
           <View style={[styles.offlineRow, { borderColor: colors.border, backgroundColor: colors.card }]}>
-            <Text style={[styles.buttonText, { color: colors.foreground }]}>
+            <Text style={[styles.buttonText, rtl && styles.rtlText, { color: colors.foreground }]}>
               {t("settings.useOfflineMode")}
             </Text>
             {syncing ? (
@@ -421,7 +435,7 @@ export default function ServerSettingsScreen() {
 
           {modelStatus?.state === "ready" ? (
             <>
-              <Text style={[styles.status, { color: colors.mutedForeground, marginTop: 12 }]}>
+              <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground, marginTop: 12 }]}>
                 {t("settings.modelInstalled", { size: gb(modelStatus.bytes) })}
               </Text>
               <Pressable
@@ -438,12 +452,13 @@ export default function ServerSettingsScreen() {
               <View style={[styles.progressTrack, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View
                   style={[
-                    styles.progressFill,
+                  styles.progressFill,
+                  rtl && styles.rtlProgressFill,
                     { backgroundColor: colors.primary, width: `${Math.round(progress * 100)}%` },
                   ]}
                 />
               </View>
-              <Text style={[styles.status, { color: colors.mutedForeground, marginTop: 8 }]}>
+              <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground, marginTop: 8 }]}>
                 {t("settings.downloading", { percent: Math.round(progress * 100) })}
               </Text>
               <Pressable
@@ -479,7 +494,7 @@ export default function ServerSettingsScreen() {
                 color={colors.mutedForeground}
                 style={{ marginTop: 2 }}
               />
-              <Text style={[styles.status, { color: colors.mutedForeground }]}>
+              <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
                 {offlineMsg}
               </Text>
             </View>
@@ -578,6 +593,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   progressFill: { height: "100%" },
+  rtlProgressFill: { alignSelf: "flex-end" },
+  rtlText: {
+    writingDirection: "rtl",
+    textAlign: "right",
+    letterSpacing: 0,
+  },
   status: {
     flex: 1,
     fontFamily: "Inter_400Regular",
