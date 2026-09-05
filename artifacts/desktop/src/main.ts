@@ -606,23 +606,55 @@ async function startServer(
     env,
     stdio: ["ignore", "pipe", "pipe"],
   });
+  let startupStderr = "";
+  let startupSettled = false;
+  const rememberStartupStderr = (chunk: Buffer): void => {
+    startupStderr = `${startupStderr}${chunk.toString()}`.slice(-12_000);
+  };
   serverProcess.stdout?.on("data", (chunk: Buffer) => {
     process.stdout.write(`[server] ${chunk.toString()}`);
   });
   serverProcess.stderr?.on("data", (chunk: Buffer) => {
+    rememberStartupStderr(chunk);
     process.stderr.write(`[server] ${chunk.toString()}`);
   });
-  serverProcess.on("exit", (code, signal) => {
-    if (!quitting) {
-      // eslint-disable-next-line no-console
-      console.error(
-        `[desktop] server process exited unexpectedly (code=${code}, signal=${signal}).`,
+  const serverFailure = new Promise<never>((_, reject) => {
+    serverProcess?.on("error", (error) => {
+      if (startupSettled) return;
+      startupSettled = true;
+      reject(new Error(`Embedded server failed to start: ${error.message}`));
+    });
+    serverProcess?.on("exit", (code, signal) => {
+      if (serverProcess) serverProcess = null;
+      if (startupSettled) {
+        if (!quitting) {
+          // eslint-disable-next-line no-console
+          console.error(
+            `[desktop] server process exited unexpectedly (code=${code}, signal=${signal}).`,
+          );
+        }
+        return;
+      }
+      startupSettled = true;
+      const details = startupStderr.trim()
+        ? `\n\nServer output:\n${startupStderr.trim()}`
+        : "";
+      reject(
+        new Error(
+          `Embedded server exited before becoming healthy (code=${code}, signal=${signal}).${details}`,
+        ),
       );
-    }
-    serverProcess = null;
+    });
   });
 
-  await waitForHealth(currentPort);
+  try {
+    await Promise.race([waitForHealth(currentPort), serverFailure]);
+    startupSettled = true;
+  } catch (error) {
+    startupSettled = true;
+    await stopServer();
+    throw error;
+  }
 }
 
 function stopServer(): Promise<void> {
