@@ -11,5 +11,8 @@ description: Non-obvious constraints of the phone app's self-contained offline m
 - **Backend-scoped client state:** conversation IDs are meaningless across backends. The conversation map keys are mode-prefixed (`off:<engramId>`), and the react-query cache is cleared on mode toggle. Any new client-side ID cache must follow the same rule.
 - **Seed data for non-Node runtimes:** raw persona seed lives in a module with a type-only schema import (exported via a dedicated package export) so Metro can bundle it without pg/pglite.
 - **Qwen3 think blocks:** stream output through a hold-back filter (partial `<think` prefixes withheld, open blocks suppressed until `</think>`); token fragmentation otherwise leaks reasoning.
+- **Offline REST contract parity:** validate real local-store serializer output through the generated API Zod schemas; mocks that return pre-shaped valid bodies can hide drift in nullable fields and enums.
+- **Per-request language wins:** when a valid chat/inquiry body supplies a language, use it directly. Resolve the device reply-language preference only when the request omits language.
+- **Optional conversation context is durable:** API-supported persona/custom-context fields must be persisted in local SQLite with idempotent upgrade columns, not accepted and silently discarded.
 - **Expo download resume:** `createDownloadResumable` + a `.part` file alone cannot resume; you must persist `savable().resumeData` (AsyncStorage) and reconstruct `DownloadResumable` with it, accepting HTTP 206.
 - **Metro watcher trap:** after installing packages while the expo workflow runs, Metro can crash with ENOENT watching a vanished `*_tmp_*/local-maven-repo` dir inside `.pnpm`. Fix: clear `/tmp/metro-*` caches and restart the workflow.

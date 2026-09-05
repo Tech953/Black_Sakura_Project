@@ -31,10 +31,14 @@ async function personaAsEngram(id: number): Promise<Engram | null> {
 
 async function handleInquiry(
   engramId: number,
-  body: { kind?: string; question?: string },
+  body: {
+    kind: "probe" | "develop";
+    question: string;
+    language?: string;
+  },
 ): Promise<{ status: number; body: unknown }> {
-  const kind = body.kind === "develop" ? "develop" : "probe";
-  const question = (body.question ?? "").trim();
+  const kind = body.kind;
+  const question = body.question.trim();
   if (!question) return { status: 400, body: { error: "Question required" } };
   try {
     assertOfflineInput(question);
@@ -53,7 +57,9 @@ async function handleInquiry(
   const system = buildEngramSystemPrompt({
     engram,
     situation,
-    responseLanguageInstruction: responseLanguageInstruction(await resolveReplyLanguage()),
+    responseLanguageInstruction: responseLanguageInstruction(
+      body.language ?? (await resolveReplyLanguage()),
+    ),
   });
   const response = await completeOnce(
     [
@@ -113,13 +119,21 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
   let parsed: Record<string, unknown> = {};
   if (body) {
     try {
-      parsed = JSON.parse(body) as Record<string, unknown>;
+      const value = JSON.parse(body) as unknown;
+      if (
+        value === null ||
+        typeof value !== "object" ||
+        Array.isArray(value)
+      ) {
+        return { status: 400, body: { error: "Invalid JSON body" } };
+      }
+      parsed = value as Record<string, unknown>;
     } catch {
       return { status: 400, body: { error: "Invalid JSON body" } };
     }
   }
 
-  if (url === "/api/healthz") return ok({ ok: true });
+  if (url === "/api/healthz") return ok({ status: "ok" });
 
   let m: RegExpMatchArray | null;
 
@@ -138,7 +152,24 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
   if ((m = url.match(/^\/api\/engrams\/(\d+)\/inquiries$/))) {
     if (method === "GET") return ok(await store.listInquiries(Number(m[1])));
     if (method === "POST") {
-      return handleInquiry(Number(m[1]), parsed as { kind?: string; question?: string });
+      const inquiry = parsed as {
+        kind?: unknown;
+        question?: unknown;
+        language?: unknown;
+      };
+      if (
+        (inquiry.kind !== "probe" && inquiry.kind !== "develop") ||
+        typeof inquiry.question !== "string" ||
+        (inquiry.language !== undefined &&
+          typeof inquiry.language !== "string")
+      ) {
+        return { status: 400, body: { error: "Invalid inquiry body" } };
+      }
+      return handleInquiry(Number(m[1]), {
+        kind: inquiry.kind,
+        question: inquiry.question,
+        language: inquiry.language as string | undefined,
+      });
     }
   }
 
@@ -147,9 +178,17 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
   }
 
   if ((m = url.match(/^\/api\/engrams\/(\d+)\/transmissions\/mark-seen$/)) && method === "POST") {
-    const ids = Array.isArray((parsed as { ids?: number[] }).ids)
-      ? (parsed as { ids?: number[] }).ids
-      : undefined;
+    const candidateIds = (parsed as { ids?: unknown }).ids;
+    if (
+      candidateIds !== undefined &&
+      (!Array.isArray(candidateIds) ||
+        candidateIds.some(
+          (id) => typeof id !== "number" || !Number.isFinite(id),
+        ))
+    ) {
+      return { status: 400, body: { error: "Invalid mark-seen body" } };
+    }
+    const ids = candidateIds as number[] | undefined;
     const marked = await store.markTransmissionsSeen(Number(m[1]), ids);
     return ok({ marked });
   }
@@ -159,10 +198,34 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
   }
 
   if (url === "/api/openai/conversations" && method === "POST") {
+    const conversation = parsed as {
+      title?: unknown;
+      mode?: unknown;
+      personaName?: unknown;
+      customEngram?: unknown;
+      engramId?: unknown;
+    };
+    if (
+      typeof conversation.title !== "string" ||
+      typeof conversation.mode !== "string" ||
+      (conversation.personaName !== undefined &&
+        typeof conversation.personaName !== "string") ||
+      (conversation.customEngram !== undefined &&
+        typeof conversation.customEngram !== "string") ||
+      (conversation.engramId !== undefined &&
+        (typeof conversation.engramId !== "number" ||
+          !Number.isFinite(conversation.engramId)))
+    ) {
+      return { status: 400, body: { error: "Invalid conversation body" } };
+    }
     return ok(
-      await store.createConversation(
-        parsed as { title?: string | null; mode?: string | null; engramId?: number | null },
-      ),
+      await store.createConversation({
+        title: conversation.title,
+        mode: conversation.mode,
+        personaName: conversation.personaName as string | undefined,
+        customEngram: conversation.customEngram as string | undefined,
+        engramId: conversation.engramId as number | undefined,
+      }),
       201,
     );
   }
