@@ -236,6 +236,7 @@ async function main() {
       GITHUB_ACTIONS: "true",
       ENGRAM_PACKAGED_GGUF_SMOKE: "1",
       ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
+      ENGRAM_PACKAGED_UPGRADE_STAGE: "A",
       ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
       ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
       ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
@@ -381,7 +382,113 @@ async function main() {
     }
     log("offline model downloaded, verified, activated, and stored below Electron userData");
 
-    const removedStatus = await settings.evaluate(async () => {
+    await app.close();
+    log("simulated version A shutdown completed with the model still in userData");
+
+    const failedUpgradeApp = await electron.launch({
+      executablePath: exe,
+      args,
+      timeout: LAUNCH_TIMEOUT_MS,
+      env: {
+        ...process.env,
+        CI: "true",
+        GITHUB_ACTIONS: "true",
+        ENGRAM_PACKAGED_GGUF_SMOKE: "1",
+        ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE: "1",
+        ENGRAM_PACKAGED_UPGRADE_FAIL_START: "1",
+        ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
+        ENGRAM_PACKAGED_UPGRADE_STAGE: "B-failed",
+        ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
+        ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
+        ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
+        ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256: offlineFixture.sha256,
+      },
+    });
+    await new Promise((resolve, reject) => {
+      const process = failedUpgradeApp.process();
+      if (!process) {
+        reject(new Error("failed upgrade smoke process was unavailable"));
+        return;
+      }
+      process.once("error", reject);
+      process.once("exit", resolve);
+    });
+    log("simulated failed version B exited without removing the userData model");
+
+    const upgradedApp = await electron.launch({
+      executablePath: exe,
+      args,
+      timeout: LAUNCH_TIMEOUT_MS,
+      env: {
+        ...process.env,
+        CI: "true",
+        GITHUB_ACTIONS: "true",
+        ENGRAM_PACKAGED_GGUF_SMOKE: "1",
+        ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE: "1",
+        ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
+        ENGRAM_PACKAGED_UPGRADE_STAGE: "B",
+        ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
+        ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
+        ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
+        ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256: offlineFixture.sha256,
+      },
+    });
+
+    let upgradedSettings;
+    try {
+      const upgradedWindow = await upgradedApp.firstWindow({ timeout: LAUNCH_TIMEOUT_MS });
+      await upgradedWindow.waitForLoadState("domcontentloaded");
+      await upgradedWindow.waitForFunction(
+        () => {
+          const root = document.querySelector("#root");
+          return !!root && root.children.length > 0;
+        },
+        undefined,
+        { timeout: RENDER_TIMEOUT_MS },
+      );
+      const upgradedHealth = await upgradedWindow.evaluate(async () => {
+        const res = await fetch("/api/healthz");
+        return { status: res.status, body: await res.text() };
+      });
+      if (upgradedHealth.status !== 200) {
+        throw new Error(
+          `version B /api/healthz returned ${upgradedHealth.status} (body: ${upgradedHealth.body})`,
+        );
+      }
+
+      const upgradedSettingsPromise = upgradedApp
+        .waitForEvent("window", { timeout: 5_000 })
+        .catch(() => null);
+      await upgradedWindow.keyboard.press(process.platform === "darwin" ? "Meta+," : "Control+,");
+      upgradedSettings =
+        (await upgradedSettingsPromise) ??
+        upgradedApp.windows().find((candidate) => candidate !== upgradedWindow);
+      if (!upgradedSettings) {
+        throw new Error("version B Settings window did not open.");
+      }
+      await upgradedSettings.waitForLoadState("domcontentloaded");
+      const persistedStatus = await upgradedSettings.evaluate(async () => {
+        const value = await window.engram.getSettings();
+        return {
+          mode: value.mode,
+          status: value.offlineModel.status,
+          downloadedBytes: value.offlineModel.downloadedBytes,
+          storageLocation: value.offlineModel.storageLocation,
+        };
+      });
+      if (
+        persistedStatus.mode !== "bundled" ||
+        persistedStatus.status !== "active" ||
+        persistedStatus.downloadedBytes !== offlineFixture.bytes ||
+        persistedStatus.storageLocation !== downloadedStatus.storageLocation
+      ) {
+        throw new Error(
+          `version B did not preserve the verified userData model: ${JSON.stringify(persistedStatus)}`,
+        );
+      }
+      log("simulated version B preserved the verified active model and userData path");
+
+    const removedStatus = await upgradedSettings.evaluate(async () => {
       let result;
       for (let attempt = 0; attempt < 40; attempt += 1) {
         result = await window.engram.removeOfflineModel();
@@ -415,8 +522,15 @@ async function main() {
       throw new Error(`offline model removal was not complete: ${JSON.stringify(removedStatus)}`);
     }
     log("offline model cancellation-safe lifecycle completed through IPC");
-
-    log("PASS: packaged app launches, server is healthy, dashboard, custom GGUF, and offline-model paths load");
+    } finally {
+      try {
+        await upgradedApp.close();
+      } catch {
+        const proc = upgradedApp.process();
+        if (proc && !proc.killed) proc.kill("SIGKILL");
+      }
+    }
+    log("PASS: packaged app launches, server is healthy, dashboard, custom GGUF, offline-model, and simulated upgrade paths load");
   } finally {
     try {
       await app.close();

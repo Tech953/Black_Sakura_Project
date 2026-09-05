@@ -108,7 +108,11 @@ const packagedSmokeEnabled =
   process.env.CI === "true" &&
   process.env.GITHUB_ACTIONS === "true" &&
   process.env.ENGRAM_PACKAGED_GGUF_SMOKE === "1";
+const packagedSmokeSimulatedFailure =
+  packagedSmokeEnabled &&
+  process.env.ENGRAM_PACKAGED_UPGRADE_FAIL_START === "1";
 const packagedSmokeGguf = packagedSmokeEnabled
+  && process.env.ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE !== "1"
   ? process.env.ENGRAM_PACKAGED_GGUF_FIXTURE
   : undefined;
 
@@ -1552,6 +1556,11 @@ if (!gotLock) {
       await customGgufStore().cleanStalePartials();
       await preparePackagedSmokeCustomGguf();
       await startServer();
+      if (packagedSmokeSimulatedFailure) {
+        console.error("[desktop] packaged upgrade rollback smoke: intentional startup failure");
+        app.quit();
+        return;
+      }
       createMainWindow();
       if (packagedSmokeEnabled) {
         // Headless Linux Electron does not dispatch the menu accelerator used
