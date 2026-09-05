@@ -24,3 +24,8 @@ The desktop app's "bundled" LLM mode spawns a llama.cpp `llama-server` shipped i
 - llama.cpp Linux releases ship soname symlink chains (`libX.so -> .so.0 -> .so.0.N`); naive recursive/dereferencing copies choke on them — resolve to the real file when staging.
 - The Windows llama runtime archive is a ZIP; cross-platform staging must use a ZIP extractor rather than GNU tar, even when the archive hash is valid.
 - When cross-packaging a Windows desktop build from Linux, EVERY platform-specific binary (llama server, ffmpeg, ffprobe) must be the Windows one, named `.exe`; a build that silently falls back to host-OS binaries ships a broken app. Fail the build if a target binary can't be sourced.
+- The packaged smoke test can validate the slim Windows downloader without a multi-GB transfer by setting a CI-only model-spec override and serving a tiny Range-capable GGUF fixture; it must still exercise userData placement, verification, activation, and removal.
+
+**Why:** Windows is the release platform where the managed model is intentionally absent, and Linux full-model smoke cannot prove that userData-backed activation works.
+
+**How to apply:** Keep the fixture override opt-in to packaged CI smoke only; production always uses the immutable pinned model metadata.

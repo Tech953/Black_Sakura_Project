@@ -41,13 +41,13 @@ import {
   normalizeDesktopMode,
 } from "./desktop-settings";
 import {
-  OFFLINE_MODEL,
   downloadOfflineModel,
   hasOfflineModelSync,
   offlineModelPartialPath,
   offlineModelPath,
   offlineModelStorageLocation,
   removeOfflineModel,
+  offlineModelSpec,
   verifyOfflineModel,
 } from "./offline-model";
 import type {
@@ -113,9 +113,10 @@ const packagedSmokeGguf = packagedSmokeEnabled
   : undefined;
 
 function bundledModelAvailable(): boolean {
+  const spec = offlineModelSpec();
   return (
     existsSync(llamaBin) &&
-    (existsSync(llamaModel) || hasOfflineModelSync(offlineModelRoot()))
+    (existsSync(llamaModel) || hasOfflineModelSync(offlineModelRoot(), spec))
   );
 }
 
@@ -508,9 +509,10 @@ async function startLlama(settings: Settings): Promise<void> {
     modelPath = verifiedCustom.path;
     llamaModelAlias = `custom-${settings.custom.sha256.slice(0, 12)}`;
   } else if (mode === "bundled" && !packagedBundledModelAvailable()) {
-    const verifiedDownloaded = await verifyOfflineModel(offlineModelRoot());
+    const spec = offlineModelSpec();
+    const verifiedDownloaded = await verifyOfflineModel(offlineModelRoot(), spec);
     modelPath = verifiedDownloaded.path;
-    llamaModelAlias = `downloaded-${OFFLINE_MODEL.sha256.slice(0, 12)}`;
+    llamaModelAlias = `downloaded-${spec.sha256.slice(0, 12)}`;
   }
   llamaPort = await findFreePort();
   if (packagedSmokeEnabled) {
@@ -819,12 +821,13 @@ async function getCustomModelView(settings: Settings) {
 
 async function getOfflineModelView(settings: Settings): Promise<OfflineModelView> {
   const root = offlineModelRoot();
+  const spec = offlineModelSpec();
   let downloadedBytes = 0;
   try {
-    downloadedBytes = statSync(offlineModelPath(root)).size;
+    downloadedBytes = statSync(offlineModelPath(root, spec)).size;
   } catch {
     try {
-      downloadedBytes = statSync(offlineModelPartialPath(root)).size;
+      downloadedBytes = statSync(offlineModelPartialPath(root, spec)).size;
     } catch {
       downloadedBytes = 0;
     }
@@ -839,7 +842,7 @@ async function getOfflineModelView(settings: Settings): Promise<OfflineModelView
     downloadedBytes === 0 ? "none" : "downloading";
   let error: string | undefined;
   try {
-    if (hasOfflineModelSync(root)) {
+    if (hasOfflineModelSync(root, spec)) {
       status = usingDownloadedModel ? "active" : "available";
     } else if (downloadedBytes > 0) {
       status = "partial";
@@ -850,9 +853,9 @@ async function getOfflineModelView(settings: Settings): Promise<OfflineModelView
     error = errorMessage(viewError);
   }
   return {
-    filename: OFFLINE_MODEL.filename,
-    expectedBytes: OFFLINE_MODEL.expectedBytes,
-    expectedSha256: OFFLINE_MODEL.sha256,
+    filename: spec.filename,
+    expectedBytes: spec.expectedBytes,
+    expectedSha256: spec.sha256,
     storageLocation: offlineModelStorageLocation(root),
     status,
     downloadedBytes,
@@ -866,7 +869,9 @@ async function runOfflineModelDownload(
 ): Promise<void> {
   let downloaded = false;
   try {
+    const spec = offlineModelSpec();
     const verified = await downloadOfflineModel(offlineModelRoot(), {
+      spec,
       signal: controller.signal,
       onProgress: (progress) => {
         sendOfflineModelStatus({
@@ -880,7 +885,7 @@ async function runOfflineModelDownload(
     });
     downloaded = true;
     sendOfflineModelStatus({ operationId, state: "verifying" });
-    await verifyOfflineModel(offlineModelRoot());
+    await verifyOfflineModel(offlineModelRoot(), spec);
 
     sendOfflineModelStatus({ operationId, state: "activating" });
     const previous = loadSettings();
@@ -889,7 +894,7 @@ async function runOfflineModelDownload(
       operationId,
       state: "completed",
       downloadedBytes: verified.size,
-      totalBytes: OFFLINE_MODEL.expectedBytes,
+      totalBytes: spec.expectedBytes,
     });
   } catch (error) {
     const cancelled =
@@ -1339,7 +1344,7 @@ ipcMain.handle("offline-model:remove", async () => {
     if (usingDownloadedModel) {
       await activateDesktopSettings(previous, { ...previous, mode: "offline" });
     }
-    await removeOfflineModel(offlineModelRoot());
+    await removeOfflineModel(offlineModelRoot(), offlineModelSpec());
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
