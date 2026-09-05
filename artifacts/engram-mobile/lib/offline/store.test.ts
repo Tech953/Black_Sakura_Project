@@ -34,6 +34,7 @@ describe("offline SQLite failure harness", () => {
     const database = {
       execAsync: vi.fn(async () => {}),
       runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
+      getFirstAsync: vi.fn(async () => ({ id: 999 })),
     };
     mocks.openDatabaseAsync
       .mockRejectedValueOnce(new Error("database unavailable"))
@@ -49,6 +50,7 @@ describe("offline SQLite failure harness", () => {
     const database = {
       execAsync: vi.fn(async () => {}),
       runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
+      getFirstAsync: vi.fn(async () => ({ id: 999 })),
     };
     mocks.openDatabaseAsync.mockImplementation(
       () =>
@@ -70,6 +72,7 @@ describe("offline SQLite failure harness", () => {
     const database = {
       execAsync: vi.fn(async () => {}),
       runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
+      getFirstAsync: vi.fn(async () => ({ id: 999 })),
     };
     mocks.openDatabaseAsync.mockResolvedValue(database);
 
@@ -92,7 +95,9 @@ describe("offline SQLite failure harness", () => {
     const database = {
       execAsync: vi.fn(async () => {}),
       runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
-      getFirstAsync: vi.fn(async () => null),
+      getFirstAsync: vi.fn(async (sql: string) =>
+        sql.includes("slug = ?") ? { id: 999 } : null,
+      ),
       getAllAsync: vi.fn(async (sql: string) => {
         if (sql.includes("FROM conversations c")) {
           return [
@@ -167,7 +172,9 @@ describe("offline SQLite failure harness", () => {
     const database = {
       execAsync: vi.fn(async () => {}),
       runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
-      getFirstAsync: vi.fn(async () => null),
+      getFirstAsync: vi.fn(async (sql: string) =>
+        sql.includes("slug = ?") ? { id: 999 } : null,
+      ),
       getAllAsync: vi.fn(async (sql: string, conversationId?: number) => {
         if (sql.includes("FROM conversations c")) {
           return [
@@ -229,7 +236,9 @@ describe("offline SQLite failure harness", () => {
     const database = {
       execAsync: vi.fn(async () => {}),
       getAllAsync: vi.fn(async () => []),
-      getFirstAsync: vi.fn(async () => null),
+      getFirstAsync: vi.fn(async (sql: string) =>
+        sql.includes("slug = ?") ? { id: 999 } : null,
+      ),
       withTransactionAsync: vi.fn(async (fn: () => Promise<void>) => fn()),
       runAsync: vi.fn(async (sql: string, ...args: unknown[]) => {
         if (sql.includes("SET seen = 1")) {
@@ -283,7 +292,9 @@ describe("offline SQLite failure harness", () => {
     const database = {
       execAsync: vi.fn(async () => {}),
       runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
-      getFirstAsync: vi.fn(async () => null),
+      getFirstAsync: vi.fn(async (sql: string) =>
+        sql.includes("slug = ?") ? { id: 999 } : null,
+      ),
       getAllAsync: vi.fn(async (sql: string) => {
         if (sql.includes("FROM inquiries i")) {
           return rows.map((id) => ({

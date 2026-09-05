@@ -13,8 +13,101 @@ import type { OfflineSyncInput } from "@workspace/api-client-react";
 let db: SQLite.SQLiteDatabase | null = null;
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
+const FULL_REZZ_SLUG_HINT = "rebecca-full-rezz";
+export const OFFLINE_ARCHIVAL_READ_ONLY_ERROR =
+  "This engram is a permanent archival branch preserved for continuity fidelity. It is read-only and cannot be altered.";
+
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function archiveFlagFromData(data: string): boolean {
+  const parsed = JSON.parse(data) as { isArchival?: unknown };
+  return parsed.isArchival === true;
+}
+
+async function seedFullRezzArchive(
+  opened: SQLite.SQLiteDatabase,
+): Promise<void> {
+  const existing = await opened.getFirstAsync<{ id: number }>(
+    "SELECT id FROM engrams WHERE slug = ?",
+    FULL_REZZ_SLUG_HINT,
+  );
+  if (existing) return;
+
+  // The ~1.2 MB transcript is evaluated only on the first initialization that
+  // actually needs it. Metro still packages the module so the archive remains
+  // available with no network, but routine launches avoid parsing the payload.
+  const {
+    buildFullRezzEngram,
+    FULL_REZZ_BASE_TIMESTAMP_MS,
+    FULL_REZZ_CONVERSATION_TITLE,
+    FULL_REZZ_SLUG,
+    fullRezzTranscript,
+  } = await import("@workspace/db/seed/full-rezz-data");
+  const archivalEngram = buildFullRezzEngram();
+  const createdAt = new Date(FULL_REZZ_BASE_TIMESTAMP_MS).toISOString();
+
+  await opened.withTransactionAsync(async () => {
+    const raced = await opened.getFirstAsync<{ id: number }>(
+      "SELECT id FROM engrams WHERE slug = ?",
+      FULL_REZZ_SLUG,
+    );
+    if (raced) return;
+
+    const insertedEngram = await opened.runAsync(
+      `INSERT INTO engrams
+       (slug, data, currentMood, isChatActive, createdAt, updatedAt)
+       VALUES (?, ?, ?, 0, ?, ?)`,
+      FULL_REZZ_SLUG,
+      JSON.stringify(archivalEngram),
+      (archivalEngram.currentMood as string | null) ?? null,
+      createdAt,
+      createdAt,
+    );
+    const engramId = insertedEngram.lastInsertRowId;
+    if (!engramId) throw new Error("Failed to insert mobile Full Rezz archive");
+
+    const insertedConversation = await opened.runAsync(
+      `INSERT INTO conversations
+       (title, mode, personaName, customEngram, engramId, createdAt, syncedAt)
+       VALUES (?, 'companion', 'Rebecca (Full Rezz)', NULL, ?, ?, ?)`,
+      FULL_REZZ_CONVERSATION_TITLE,
+      engramId,
+      createdAt,
+      createdAt,
+    );
+    const conversationId = insertedConversation.lastInsertRowId;
+    if (!conversationId) {
+      throw new Error("Failed to insert mobile Full Rezz conversation");
+    }
+
+    // Chunked multi-row statements keep first-run seeding fast while staying
+    // comfortably below SQLite's host-parameter limit.
+    const chunkSize = 100;
+    for (let offset = 0; offset < fullRezzTranscript.length; offset += chunkSize) {
+      const chunk = fullRezzTranscript.slice(offset, offset + chunkSize);
+      const placeholders = chunk.map(() => "(?, ?, ?, ?, ?)").join(", ");
+      const values = chunk.flatMap((message, index) => {
+        const messageCreatedAt = new Date(
+          FULL_REZZ_BASE_TIMESTAMP_MS + (offset + index) * 1_000,
+        ).toISOString();
+        return [
+          conversationId,
+          message.role,
+          message.content,
+          messageCreatedAt,
+          messageCreatedAt,
+        ];
+      });
+      await opened.runAsync(
+        `INSERT INTO messages
+         (conversationId, role, content, createdAt, syncedAt)
+         VALUES ${placeholders}`,
+        ...values,
+      );
+    }
+  });
 }
 
 export async function getDb(): Promise<SQLite.SQLiteDatabase> {
@@ -144,6 +237,7 @@ async function initializeDb(): Promise<SQLite.SQLiteDatabase> {
       t,
     );
   }
+  await seedFullRezzArchive(opened);
   return opened;
 }
 
@@ -208,7 +302,59 @@ export async function getEngramPersona(
   return { ...seed, id: row.id, currentMood: row.currentMood ?? (seed.currentMood as string | null) ?? null };
 }
 
+export async function isArchivalEngram(id: number): Promise<boolean> {
+  const d = await getDb();
+  const row = await d.getFirstAsync<{ data: string }>(
+    "SELECT data FROM engrams WHERE id = ?",
+    id,
+  );
+  return row ? archiveFlagFromData(row.data) : false;
+}
+
+export async function isArchivalConversation(id: number): Promise<boolean> {
+  const d = await getDb();
+  const row = await d.getFirstAsync<{ data: string }>(
+    `SELECT e.data
+     FROM conversations c
+     JOIN engrams e ON e.id = c.engramId
+     WHERE c.id = ?`,
+    id,
+  );
+  return row ? archiveFlagFromData(row.data) : false;
+}
+
+/** Resolve the one preseeded archival conversation without creating anything. */
+export async function getArchivalConversationId(
+  engramId: number,
+): Promise<number | null> {
+  const d = await getDb();
+  const row = await d.getFirstAsync<{ id: number }>(
+    `SELECT c.id
+     FROM conversations c
+     JOIN engrams e ON e.id = c.engramId
+     WHERE c.engramId = ?
+       AND COALESCE(json_extract(e.data, '$.isArchival'), 0) = 1
+     ORDER BY c.id
+     LIMIT 1`,
+    engramId,
+  );
+  return row?.id ?? null;
+}
+
+async function assertWritableEngram(id: number): Promise<void> {
+  if (await isArchivalEngram(id)) {
+    throw new Error(OFFLINE_ARCHIVAL_READ_ONLY_ERROR);
+  }
+}
+
+async function assertWritableConversation(id: number): Promise<void> {
+  if (await isArchivalConversation(id)) {
+    throw new Error(OFFLINE_ARCHIVAL_READ_ONLY_ERROR);
+  }
+}
+
 export async function activateEngram(id: number): Promise<Record<string, unknown> | null> {
+  await assertWritableEngram(id);
   const d = await getDb();
   await d.runAsync("UPDATE engrams SET isChatActive = 0 WHERE isChatActive = 1");
   await d.runAsync("UPDATE engrams SET isChatActive = 1, updatedAt = ? WHERE id = ?", nowIso(), id);
@@ -226,6 +372,7 @@ export async function createConversation(opts: {
   customEngram?: string | null;
   engramId?: number | null;
 }): Promise<Record<string, unknown>> {
+  if (opts.engramId != null) await assertWritableEngram(opts.engramId);
   const d = await getDb();
   const t = nowIso();
   const res = await d.runAsync(
@@ -287,6 +434,7 @@ export async function appendMessage(
   role: "user" | "assistant",
   content: string,
 ): Promise<void> {
+  await assertWritableConversation(conversationId);
   const d = await getDb();
   await d.runAsync(
     "INSERT INTO messages (conversationId, role, content, createdAt) VALUES (?, ?, ?, ?)",
@@ -302,6 +450,7 @@ export async function removeLastMessage(
   role: "user" | "assistant",
   content: string,
 ): Promise<void> {
+  await assertWritableConversation(conversationId);
   const d = await getDb();
   await d.runAsync(
     `DELETE FROM messages
@@ -334,6 +483,7 @@ export async function insertInquiry(opts: {
   question: string;
   response: string;
 }): Promise<Record<string, unknown>> {
+  await assertWritableEngram(opts.engramId);
   const d = await getDb();
   const t = nowIso();
   const res = await d.runAsync(
@@ -373,6 +523,7 @@ export async function insertTransmission(opts: {
   content: string;
   mood: string | null;
 }): Promise<Record<string, unknown>> {
+  await assertWritableEngram(opts.engramId);
   const d = await getDb();
   const t = nowIso();
   const scores = {
@@ -413,6 +564,7 @@ export async function markTransmissionsSeen(
   engramId: number,
   ids?: number[],
 ): Promise<number> {
+  await assertWritableEngram(engramId);
   const d = await getDb();
   let res: SQLite.SQLiteRunResult;
   if (ids && ids.length > 0) {
@@ -445,6 +597,7 @@ export async function appendObservedEntry(opts: {
   confidence: number;
   source: string;
 }): Promise<void> {
+  await assertWritableEngram(opts.engramId);
   const d = await getDb();
   await d.runAsync(
     `INSERT INTO world_model (engramId, provenance, content, confidence, scope, source, createdAt)
@@ -794,11 +947,41 @@ export async function markSyncBatchComplete(
 ): Promise<void> {
   const d = await getDb();
   const completedAt = nowIso();
-  const mark = async (table: string, ids: number[]) => {
+  const archivalExclusions = {
+    conversations: `NOT EXISTS (
+      SELECT 1 FROM engrams e
+      WHERE e.id = conversations.engramId
+        AND COALESCE(json_extract(e.data, '$.isArchival'), 0) = 1
+    )`,
+    messages: `NOT EXISTS (
+      SELECT 1
+      FROM conversations c
+      JOIN engrams e ON e.id = c.engramId
+      WHERE c.id = messages.conversationId
+        AND COALESCE(json_extract(e.data, '$.isArchival'), 0) = 1
+    )`,
+    inquiries: `NOT EXISTS (
+      SELECT 1 FROM engrams e
+      WHERE e.id = inquiries.engramId
+        AND COALESCE(json_extract(e.data, '$.isArchival'), 0) = 1
+    )`,
+    world_model: `NOT EXISTS (
+      SELECT 1 FROM engrams e
+      WHERE e.id = world_model.engramId
+        AND COALESCE(json_extract(e.data, '$.isArchival'), 0) = 1
+    )`,
+  } as const;
+  const mark = async (
+    table: keyof typeof archivalExclusions,
+    ids: number[],
+  ) => {
     if (ids.length === 0) return;
     const placeholders = ids.map(() => "?").join(",");
     await d.runAsync(
-      `UPDATE ${table} SET syncedAt = ? WHERE id IN (${placeholders})`,
+      `UPDATE ${table}
+       SET syncedAt = ?
+       WHERE id IN (${placeholders})
+         AND ${archivalExclusions[table]}`,
       completedAt,
       ...ids,
     );
@@ -811,7 +994,12 @@ export async function markSyncBatchComplete(
       await d.runAsync(
         `UPDATE transmissions
          SET syncedAt = ?
-         WHERE id = ? AND syncVersion = ?`,
+         WHERE id = ? AND syncVersion = ?
+           AND NOT EXISTS (
+             SELECT 1 FROM engrams e
+             WHERE e.id = transmissions.engramId
+               AND COALESCE(json_extract(e.data, '$.isArchival'), 0) = 1
+           )`,
         completedAt,
         transmission.id,
         transmission.syncVersion,

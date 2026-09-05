@@ -158,6 +158,7 @@ const database = {
     return { lastInsertRowId: 0, changes: 0 };
   }),
   getFirstAsync: vi.fn(async (sql: string, id: unknown) => {
+    if (sql.includes("slug = ?")) return { id: 999 };
     if (sql.includes("FROM engrams")) {
       return state.engrams.find((row) => row.id === id) ?? null;
     }
