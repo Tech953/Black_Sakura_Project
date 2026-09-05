@@ -49,11 +49,14 @@ export default function EngramDetailScreen() {
     setSelectedEngramId(id);
     try {
       await activate.mutateAsync({ id });
-      queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
+      void queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
+      // Dismiss back to the root route rather than relying on the Android
+      // back-stack shape. This also handles a detail screen opened by a link.
+      router.dismissTo("/");
     } catch {
-      // local selection persists
+      // Keep the detail screen mounted so a transient activation failure does
+      // not look like an app crash or strand the user on a blank route.
     }
-    router.back();
   }, [activate, id, queryClient, router, setSelectedEngramId]);
 
   return (
