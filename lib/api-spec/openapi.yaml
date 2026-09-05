@@ -576,6 +576,81 @@ paths:
               schema:
                 $ref: "#/components/schemas/OpenaiError"
 
+  /engrams/import-csv/preview:
+    post:
+      operationId: previewEngramCsvImport
+      tags: [engrams]
+      summary: Parse a CSV upload and prepare a short-lived editable engram draft without writing to the database
+      description: Accepts multipart/form-data at runtime with a required file field and optional stipulations field. The multipart body is intentionally not modeled because the shared server validator does not include browser File globals.
+      responses:
+        "200":
+          description: Short-lived editable import draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngramImportPreview"
+        "400":
+          description: Malformed or unusable CSV input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "413":
+          description: Upload exceeds the allowed size
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "415":
+          description: Unsupported upload type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "502":
+          description: Draft generation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
+  /engrams/import-csv/confirm:
+    post:
+      operationId: confirmEngramCsvImport
+      tags: [engrams]
+      summary: Confirm a short-lived CSV import draft and atomically create one mutable engram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngramImportConfirmation"
+      responses:
+        "201":
+          description: Newly created mutable engram
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Engram"
+        "400":
+          description: Invalid or unsafe confirmation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "409":
+          description: Draft is already confirming or has been consumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "410":
+          description: Draft is missing or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
   /engrams/state:
     get:
       operationId: getEngramStates
@@ -2564,6 +2639,162 @@ components:
           items:
             type: integer
           description: Restrict archive grounding to these engrams' observed material
+
+    EngramImportWarning:
+      type: object
+      required: [code, message, row]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        row:
+          type: ["integer", "null"]
+
+    EngramImportSourceSummary:
+      type: object
+      required: [filename, rowsAccepted, rowsSkipped, charactersAccepted, warnings]
+      properties:
+        filename:
+          type: string
+        rowsAccepted:
+          type: integer
+        rowsSkipped:
+          type: integer
+        charactersAccepted:
+          type: integer
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/EngramImportWarning"
+
+    EngramImportMemoryCandidate:
+      type: object
+      required: [id, content, provenance, operatorVerified, operatorVerifiedContent, sourceRows]
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        provenance:
+          type: string
+          enum: [simulated, inferred, remembered]
+          description: Uploads can never create observed entries; remembered requires explicit operator verification.
+        operatorVerified:
+          type: boolean
+          description: Must be true when provenance is remembered and is valid only for the exact operatorVerifiedContent.
+        operatorVerifiedContent:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Exact content snapshot approved by the operator; null unless a remembered candidate is verified.
+        sourceRows:
+          type: array
+          items:
+            type: integer
+
+    EngramImportEditableDraft:
+      type: object
+      required:
+        - name
+        - title
+        - symbol
+        - origin
+        - voiceProfile
+        - emotionalBaseline
+        - environmentAnchor
+        - memorySeed
+        - guardrails
+        - drives
+        - focusThemes
+        - memoryCandidates
+        - autonomyEnabled
+        - tickCadenceSeconds
+        - initiationThreshold
+        - mode
+        - humanContactEnabled
+        - simulationEnabled
+        - artifactGenerationEnabled
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 8
+        origin:
+          type: string
+          minLength: 1
+          maxLength: 500
+        voiceProfile:
+          $ref: "#/components/schemas/VoiceProfile"
+        emotionalBaseline:
+          $ref: "#/components/schemas/EmotionalBaseline"
+        environmentAnchor:
+          $ref: "#/components/schemas/EnvironmentAnchor"
+        memorySeed:
+          $ref: "#/components/schemas/MemorySeed"
+        guardrails:
+          $ref: "#/components/schemas/Guardrails"
+        drives:
+          type: array
+          items:
+            $ref: "#/components/schemas/EngramDrive"
+        focusThemes:
+          type: array
+          items:
+            type: string
+        memoryCandidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/EngramImportMemoryCandidate"
+        autonomyEnabled:
+          type: boolean
+        tickCadenceSeconds:
+          type: integer
+        initiationThreshold:
+          type: number
+        mode:
+          type: string
+          enum: [orientation, social, simulation, initiative_limited, full_bounded, quiescent]
+        humanContactEnabled:
+          type: boolean
+        simulationEnabled:
+          type: boolean
+        artifactGenerationEnabled:
+          type: boolean
+
+    EngramImportPreview:
+      type: object
+      required: [draftId, expiresAt, source, draft]
+      properties:
+        draftId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        source:
+          $ref: "#/components/schemas/EngramImportSourceSummary"
+        draft:
+          $ref: "#/components/schemas/EngramImportEditableDraft"
+
+    EngramImportConfirmation:
+      type: object
+      required: [draftId, draft]
+      properties:
+        draftId:
+          type: string
+          minLength: 1
+        draft:
+          $ref: "#/components/schemas/EngramImportEditableDraft"
 
     SimulationCreateInput:
       type: object

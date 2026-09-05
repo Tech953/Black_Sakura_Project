@@ -32,6 +32,7 @@ import studio from "./en/studio.json";
 import terminal from "./en/terminal.json";
 import worldModel from "./en/worldModel.json";
 import mobile from "./en/mobile.json";
+import createEngram from "./en/createEngram.json";
 
 import es from "./generated/es.json";
 import fr from "./generated/fr.json";
@@ -71,6 +72,7 @@ export const enResources = {
   terminal,
   worldModel,
   mobile,
+  createEngram,
 } as const;
 
 export type I18nNamespace = keyof typeof enResources;

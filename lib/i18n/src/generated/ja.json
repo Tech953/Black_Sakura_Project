@@ -169,6 +169,139 @@
       "daysAgo": "{{count}}日前"
     }
   },
+  "createEngram": {
+    "title": "ソースから Engram を初期化",
+    "subtitle": "行動記録から新しいペルソナ構造を合成します。",
+    "upload": {
+      "title": "ソース素材を選択",
+      "description": "CSV ファイルをアップロードして、ペルソナ特性、感情ベースライン、記憶候補を合成します。合成はモデル支援で行われ、編集可能なドラフトが生成されます。",
+      "fileLabel": "ソース CSV ファイル",
+      "dragDrop": "ここに CSV をドラッグ＆ドロップ",
+      "browse": "ファイルを選択",
+      "limit": "CSV のみ、最大 2 MiB",
+      "selected": "選択済み:",
+      "change": "変更",
+      "stipulationsLabel": "合成条件（任意）",
+      "stipulationsPlaceholder": "例: 職歴の抽出に特化し、個人的な人間関係は抑制する。",
+      "button": "ペルソナを合成",
+      "processing": "合成中..."
+    },
+    "preview": {
+      "title": "ドラフト合成の確認",
+      "sourceSummary": "処理済みソース: {{filename}}",
+      "sourceStats": "{{rowsAccepted}} 件を解析 | {{rowsSkipped}} 件をスキップ | {{charactersAccepted}} 文字",
+      "warnings": "合成警告",
+      "noWriteBoundary": "書き込みはまだ行われていません。初期化を確定する前に、生成されたパラメータを調整してください。",
+      "sections": {
+        "identity": "識別パラメータ",
+        "behavior": "行動・自律制御",
+        "architecture": "認知アーキテクチャ",
+        "memories": "記憶マニフェスト"
+      },
+      "fields": {
+        "name": "識別名",
+        "title": "肩書き",
+        "symbol": "シンボル（最大 8 文字）",
+        "origin": "起源ナラティブ",
+        "autonomyEnabled": "自律的イニシアチブ",
+        "humanContactEnabled": "人間との接触を許可",
+        "simulationEnabled": "シミュレーションを許可",
+        "artifactGenerationEnabled": "Artifact Gen を許可",
+        "mode": "システムモード",
+        "tickCadenceSeconds": "ティック間隔（秒）",
+        "initiationThreshold": "開始しきい値",
+        "drives": "中核ドライブ",
+        "emotionalBaseline": "感情ベースライン",
+        "voiceProfile": "ボイスプロファイル",
+        "environmentAnchor": "環境アンカー",
+        "memorySeed": "ソース由来の記憶コンテキスト",
+        "guardrails": "ガードレール",
+        "focusThemes": "フォーカステーマ（改行区切り）"
+      },
+      "architectureFields": {
+        "speechStyle": "話し方",
+        "formatting": "書式",
+        "narrationStyle": "語り口",
+        "vocabulary": "語彙（改行区切り）",
+        "sampleLines": "サンプル台詞（改行区切り）",
+        "mood": "ムード",
+        "valence": "感情価（-1 ～ 1）",
+        "arousal": "覚醒度（0 ～ 1）",
+        "volatility": "変動性（0 ～ 1）",
+        "envName": "環境名",
+        "envDescription": "説明",
+        "envAmbient": "環境サウンドトラック",
+        "envLocations": "ロケーション（改行区切り）",
+        "envItems": "アイテム（改行区切り）",
+        "memRelationship": "ユーザーとの関係",
+        "memSummary": "記憶概要",
+        "memFacts": "中核事実（改行区切り）",
+        "memFactsHelp": "新規または変更された事実は、シミュレート候補として再分類されます。候補を remembered としてマークし、正典である場合にのみ下で確認してください。",
+        "guardFraming": "システム枠組み",
+        "guardBoundaries": "厳格な境界（改行区切り）",
+        "driveId": "ドライブ ID",
+        "driveLabel": "ラベル",
+        "driveDesc": "説明",
+        "driveWeight": "重み（0 ～ 1）",
+        "driveBaseRate": "基本率（0.0001 ～ 0.01）"
+      },
+      "actions": {
+        "addDrive": "ドライブを追加",
+        "newDriveLabel": "新規ドライブ",
+        "removeDrive": "ドライブを削除",
+        "removeMemory": "候補を削除"
+      },
+      "memoryDescription": "抽出された記憶を確認してください。内容を編集するか、来歴を再分類できます。来歴が「remembered」の項目は、オペレーターによる明示的な検証が必要です。",
+      "verifyRemembered": "整合性を確認",
+      "verified": "確認済み",
+      "unverified": "確認が必要",
+      "provenance": {
+        "simulated": "Simulated",
+        "inferred": "推定",
+        "remembered": "Remembered"
+      },
+      "quiescentWarning": "注意: 安全のため、新しい engram は既定で静止状態になりますが、初期化前に下で自律境界とモードを明示的に拡張できます。",
+      "confirm": "確認して初期化",
+      "confirming": "初期化中...",
+      "cancel": "ドラフトを破棄",
+      "itemsCount": "{{count}} 件"
+    },
+    "modes": {
+      "quiescent": "QUIESCENT",
+      "orientation": "ORIENTATION",
+      "social": "SOCIAL",
+      "simulation": "SIMULATION",
+      "initiative_limited": "INITIATIVE_LIMITED",
+      "full_bounded": "FULL_BOUNDED"
+    },
+    "errors": {
+      "uploadFailed": "ソースから engram を合成できませんでした。",
+      "confirmFailed": "engram を初期化できませんでした。",
+      "unverifiedMemories": "初期化できません: 一部の remembered 候補に明示的な検証が必要です。",
+      "fileRequired": "CSV ソースファイルが必要です。",
+      "invalidFileType": "ソースファイルは CSV である必要があります。",
+      "verificationRequiredTitle": "検証が必要",
+      "errorTitle": "エラー",
+      "invalidJson": "サーバーから無効なレスポンスを受信しました。"
+    },
+    "success": {
+      "title": "Engram を初期化しました",
+      "description": "ペルソナ {{name}} の合成に成功しました。"
+    },
+    "empty": {
+      "memories": "記憶候補は抽出されませんでした。"
+    },
+    "labels": {
+      "row": "行 {{row}}:",
+      "code": "[{{code}}]",
+      "id": "ID: {{id}}",
+      "notAvailable": "なし",
+      "content": "内容",
+      "provenance": "来歴",
+      "rows": "行数: {{rows}}",
+      "toggleAdvanced": "高度なアーキテクチャを切り替え"
+    }
+  },
   "download": {
     "title": "PYRIをダウンロード",
     "subtitleSlim": "ネイティブデスクトップアプリ — ローカルモデルを接続して、完全オフラインのプライベートAIを実現",
@@ -639,7 +772,7 @@
       "terminal": "ターミナル",
       "chat": "チャット",
       "environment": "環境",
-      "inquiry": "探求",
+      "inquiry": "問い合わせ",
       "media": "メディア",
       "studio": "スタジオ",
       "personality": "人格",
@@ -651,6 +784,7 @@
       "beliefs": "信念",
       "evolution": "進化",
       "analytics": "分析",
+      "createEngram": "Engramをインポート",
       "downloadApp": "アプリをダウンロード",
       "settings": "設定"
     }

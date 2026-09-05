@@ -169,6 +169,139 @@
       "daysAgo": "قبل {{count}}ي"
     }
   },
+  "createEngram": {
+    "title": "تهيئة Engram من المصدر",
+    "subtitle": "ركّب بنية شخصية جديدة من السجلات السلوكية.",
+    "upload": {
+      "title": "اختر مادة المصدر",
+      "description": "ارفع ملف CSV لتركيب سمات الشخصية، الخطوط العاطفية الأساسية، ومرشحات الذاكرة. التركيب بمساعدة النموذج وينتج مسودة قابلة للتحرير.",
+      "fileLabel": "ملف CSV المصدر",
+      "dragDrop": "اسحب وأفلت CSV هنا",
+      "browse": "اختر ملفًا",
+      "limit": "CSV فقط، حتى 2 MiB",
+      "selected": "المحدد:",
+      "change": "تغيير",
+      "stipulationsLabel": "اشتراطات التركيب (اختياري)",
+      "stipulationsPlaceholder": "مثال: ركّز تحديدًا على استخراج التاريخ المهني وكبت العلاقات الشخصية.",
+      "button": "ركّب الشخصية",
+      "processing": "جارٍ التركيب..."
+    },
+    "preview": {
+      "title": "التحقق من مسودة التركيب",
+      "sourceSummary": "تمت معالجة المصدر: {{filename}}",
+      "sourceStats": "تم تحليل {{rowsAccepted}} سجلًا | تم تخطي {{rowsSkipped}} | {{charactersAccepted}} حرفًا",
+      "warnings": "تحذيرات التركيب",
+      "noWriteBoundary": "لم تُجرَ أي كتابة. عدّل المعلمات المُولدة قبل تأكيد التهيئة.",
+      "sections": {
+        "identity": "معلمات الهوية",
+        "behavior": "ضوابط السلوك والاستقلالية",
+        "architecture": "البنية المعرفية",
+        "memories": "بيان الذاكرة"
+      },
+      "fields": {
+        "name": "المسمى",
+        "title": "العنوان",
+        "symbol": "الرمز (بحد أقصى 8 أحرف)",
+        "origin": "سردية الأصل",
+        "autonomyEnabled": "المبادرة الذاتية",
+        "humanContactEnabled": "السماح بالاتصال البشري",
+        "simulationEnabled": "السماح بالمحاكاة",
+        "artifactGenerationEnabled": "السماح بتوليد المخرجات",
+        "mode": "وضع النظام",
+        "tickCadenceSeconds": "إيقاع النبضات (ث)",
+        "initiationThreshold": "عتبة البدء",
+        "drives": "الدوافع الأساسية",
+        "emotionalBaseline": "الخط العاطفي الأساسي",
+        "voiceProfile": "الملف الصوتي",
+        "environmentAnchor": "مرساة البيئة",
+        "memorySeed": "سياق الذاكرة المستمد من المصدر",
+        "guardrails": "الضوابط",
+        "focusThemes": "محاور التركيز (مفصولة بسطر جديد)"
+      },
+      "architectureFields": {
+        "speechStyle": "أسلوب الكلام",
+        "formatting": "التنسيق",
+        "narrationStyle": "أسلوب السرد",
+        "vocabulary": "المفردات (مفصولة بسطر جديد)",
+        "sampleLines": "سطور نموذجية (مفصولة بسطر جديد)",
+        "mood": "المزاج",
+        "valence": "التكافؤ (-1 إلى 1)",
+        "arousal": "الاستثارة (0 إلى 1)",
+        "volatility": "التقلب (0 إلى 1)",
+        "envName": "اسم البيئة",
+        "envDescription": "الوصف",
+        "envAmbient": "الموسيقى المحيطة",
+        "envLocations": "المواقع (مفصولة بسطر جديد)",
+        "envItems": "العناصر (مفصولة بسطر جديد)",
+        "memRelationship": "علاقة المستخدم",
+        "memSummary": "ملخص الذاكرة",
+        "memFacts": "الحقائق الأساسية (مفصولة بسطر جديد)",
+        "memFactsHelp": "تُعاد تصنيف الحقائق الجديدة أو المعدلة كمرشحات محاكاة. علّم المرشح كتذكُّر وتحقق منه أدناه فقط إذا كان معتمدًا.",
+        "guardFraming": "إطار النظام",
+        "guardBoundaries": "الحدود الصارمة (مفصولة بسطر جديد)",
+        "driveId": "معرّف الدافع",
+        "driveLabel": "التسمية",
+        "driveDesc": "الوصف",
+        "driveWeight": "الوزن (0 إلى 1)",
+        "driveBaseRate": "المعدل الأساسي (0.0001 إلى 0.01)"
+      },
+      "actions": {
+        "addDrive": "إضافة دافع",
+        "newDriveLabel": "دافع جديد",
+        "removeDrive": "إزالة الدافع",
+        "removeMemory": "إزالة المرشح"
+      },
+      "memoryDescription": "راجع الذكريات المستخرجة. عدّل المحتوى أو أعد تصنيف المصدر. الإدخالات ذات مصدر \"remembered\" تتطلب تحققًا صريحًا من المشغّل.",
+      "verifyRemembered": "تحقق من السلامة",
+      "verified": "تم التحقق",
+      "unverified": "يتطلب تحققًا",
+      "provenance": {
+        "simulated": "محاكى",
+        "inferred": "مستنتج",
+        "remembered": "متذكَّر"
+      },
+      "quiescentWarning": "ملاحظة: تبدأ engrams الجديدة افتراضيًا في حالة سكون حفاظًا على السلامة، لكن يمكنك توسيع حدود الاستقلالية والأوضاع أدناه صراحةً قبل التهيئة.",
+      "confirm": "تأكيد وتهيئة",
+      "confirming": "جارٍ التهيئة...",
+      "cancel": "التخلي عن المسودة",
+      "itemsCount": "{{count}} عنصر"
+    },
+    "modes": {
+      "quiescent": "خامل",
+      "orientation": "توجيه",
+      "social": "اجتماعي",
+      "simulation": "محاكاة",
+      "initiative_limited": "مبادرة_محدودة",
+      "full_bounded": "كامل_مقيد"
+    },
+    "errors": {
+      "uploadFailed": "فشل تركيب engram من المصدر.",
+      "confirmFailed": "فشلت تهيئة engram.",
+      "unverifiedMemories": "تعذر التهيئة: بعض المرشحات المتذكَّرة تتطلب تحققًا صريحًا.",
+      "fileRequired": "ملف CSV المصدر مطلوب.",
+      "invalidFileType": "يجب أن يكون ملف المصدر بصيغة CSV.",
+      "verificationRequiredTitle": "التحقق مطلوب",
+      "errorTitle": "خطأ",
+      "invalidJson": "تم استلام استجابة غير صالحة من الخادم."
+    },
+    "success": {
+      "title": "تمت تهيئة Engram",
+      "description": "تم تركيب الشخصية {{name}} بنجاح."
+    },
+    "empty": {
+      "memories": "لم يتم استخراج أي مرشحات ذاكرة."
+    },
+    "labels": {
+      "row": "الصف {{row}}:",
+      "code": "[{{code}}]",
+      "id": "المعرّف: {{id}}",
+      "notAvailable": "لا شيء",
+      "content": "المحتوى",
+      "provenance": "المصدر",
+      "rows": "الصفوف: {{rows}}",
+      "toggleAdvanced": "تبديل البنية المتقدمة"
+    }
+  },
   "download": {
     "title": "تنزيل PYRI",
     "subtitleSlim": "تطبيق سطح مكتب أصلي — وصّل نموذجًا محليًا لذكاء اصطناعي خاص يعمل بالكامل دون اتصال",
@@ -646,11 +779,12 @@
       "memory": "الذاكرة",
       "worldModel": "نموذج العالم",
       "journal": "السجل",
-      "personas": "الشخصيات",
-      "hieroCode": "هiero-Code",
+      "personas": "الأنماط",
+      "hieroCode": "هيرو-كود",
       "beliefs": "المعتقدات",
       "evolution": "التطور",
       "analytics": "التحليلات",
+      "createEngram": "استيراد Engram",
       "downloadApp": "تنزيل التطبيق",
       "settings": "الإعدادات"
     }

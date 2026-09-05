@@ -19,6 +19,7 @@ import HieroCode from "@/pages/hiero-code";
 import Beliefs from "@/pages/beliefs";
 import Evolution from "@/pages/evolution";
 import Analytics from "@/pages/analytics";
+import CreateEngram from "@/pages/create-engram";
 import Chat from "@/pages/chat";
 import Environment from "@/pages/environment";
 import Inquiry from "@/pages/inquiry";
@@ -48,6 +49,7 @@ function Router() {
         <Route path="/beliefs" component={Beliefs} />
         <Route path="/evolution" component={Evolution} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/create-engram" component={CreateEngram} />
         <Route path="/chat" component={Chat} />
         <Route path="/environment" component={Environment} />
         <Route path="/inquiry" component={Inquiry} />

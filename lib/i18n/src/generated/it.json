@@ -169,6 +169,139 @@
       "daysAgo": "{{count}}g fa"
     }
   },
+  "createEngram": {
+    "title": "Inizializza Engram dalla Fonte",
+    "subtitle": "Sintetizza una nuova struttura persona dai record comportamentali.",
+    "upload": {
+      "title": "Seleziona Materiale Sorgente",
+      "description": "Carica un file CSV per sintetizzare tratti della persona, linee base emotive e candidati memoria. La sintesi è assistita dal modello e genera una bozza modificabile.",
+      "fileLabel": "File CSV sorgente",
+      "dragDrop": "Trascina qui il CSV",
+      "browse": "Seleziona file",
+      "limit": "Solo CSV, fino a 2 MiB",
+      "selected": "Selezionato:",
+      "change": "Cambia",
+      "stipulationsLabel": "Vincoli di sintesi (opzionale)",
+      "stipulationsPlaceholder": "es. Concentrati sull'estrazione della storia professionale e sopprimi le relazioni personali.",
+      "button": "Sintetizza Persona",
+      "processing": "Sintesi in corso..."
+    },
+    "preview": {
+      "title": "Verifica bozza di sintesi",
+      "sourceSummary": "Fonte elaborata: {{filename}}",
+      "sourceStats": "{{rowsAccepted}} record analizzati | {{rowsSkipped}} saltati | {{charactersAccepted}} caratteri",
+      "warnings": "Avvisi di sintesi",
+      "noWriteBoundary": "Nessuna scrittura è stata eseguita. Regola i parametri generati prima di confermare l'inizializzazione.",
+      "sections": {
+        "identity": "Parametri identità",
+        "behavior": "Controlli comportamento e autonomia",
+        "architecture": "Architettura cognitiva",
+        "memories": "Manifest memoria"
+      },
+      "fields": {
+        "name": "Designazione",
+        "title": "Titolo",
+        "symbol": "Simbolo (max 8 caratteri)",
+        "origin": "Narrativa d'origine",
+        "autonomyEnabled": "Iniziativa autonoma",
+        "humanContactEnabled": "Consenti contatto umano",
+        "simulationEnabled": "Consenti simulazione",
+        "artifactGenerationEnabled": "Consenti generazione artefatti",
+        "mode": "Modalità sistema",
+        "tickCadenceSeconds": "Cadenza tick (s)",
+        "initiationThreshold": "Soglia di avvio",
+        "drives": "Drive primari",
+        "emotionalBaseline": "Linea base emotiva",
+        "voiceProfile": "Profilo vocale",
+        "environmentAnchor": "Ancora ambientale",
+        "memorySeed": "Contesto memoria derivato dalla fonte",
+        "guardrails": "Guardrail",
+        "focusThemes": "Temi focus (separati da nuova riga)"
+      },
+      "architectureFields": {
+        "speechStyle": "Stile di eloquio",
+        "formatting": "Formattazione",
+        "narrationStyle": "Stile narrativo",
+        "vocabulary": "Vocabolario (separato da nuova riga)",
+        "sampleLines": "Frasi esempio (separate da nuova riga)",
+        "mood": "Umore",
+        "valence": "Valenza (-1 a 1)",
+        "arousal": "Attivazione (0 a 1)",
+        "volatility": "Volatilità (0 a 1)",
+        "envName": "Nome ambiente",
+        "envDescription": "Descrizione",
+        "envAmbient": "Colonna sonora ambientale",
+        "envLocations": "Luoghi (separati da nuova riga)",
+        "envItems": "Oggetti (separati da nuova riga)",
+        "memRelationship": "Relazione con l'utente",
+        "memSummary": "Riepilogo memoria",
+        "memFacts": "Fatti chiave (separati da nuova riga)",
+        "memFactsHelp": "I fatti nuovi o modificati vengono riclassificati come candidati simulati. Contrassegna un candidato come remembered e verificalo sotto solo quando è canonico.",
+        "guardFraming": "Inquadramento sistema",
+        "guardBoundaries": "Confini rigidi (separati da nuova riga)",
+        "driveId": "ID drive",
+        "driveLabel": "Etichetta",
+        "driveDesc": "Descrizione",
+        "driveWeight": "Peso (0 a 1)",
+        "driveBaseRate": "Tasso base (0.0001 a 0.01)"
+      },
+      "actions": {
+        "addDrive": "Aggiungi Drive",
+        "newDriveLabel": "Nuovo Drive",
+        "removeDrive": "Rimuovi Drive",
+        "removeMemory": "Rimuovi candidato"
+      },
+      "memoryDescription": "Rivedi le memorie estratte. Modifica il contenuto o riclassifica la provenienza. Le voci con provenienza 'remembered' richiedono verifica esplicita dell'operatore.",
+      "verifyRemembered": "Verifica integrità",
+      "verified": "Verificato",
+      "unverified": "Richiede verifica",
+      "provenance": {
+        "simulated": "Simulato",
+        "inferred": "Inferito",
+        "remembered": "Remembered"
+      },
+      "quiescentWarning": "Nota: i nuovi engram sono quiescent per impostazione predefinita per sicurezza, ma puoi ampliare esplicitamente i confini di autonomia e le modalità qui sotto prima dell'inizializzazione.",
+      "confirm": "Conferma e inizializza",
+      "confirming": "Inizializzazione...",
+      "cancel": "Abbandona bozza",
+      "itemsCount": "{{count}} elementi"
+    },
+    "modes": {
+      "quiescent": "QUIESCENT",
+      "orientation": "ORIENTATION",
+      "social": "SOCIAL",
+      "simulation": "SIMULATION",
+      "initiative_limited": "INITIATIVE_LIMITED",
+      "full_bounded": "FULL_BOUNDED"
+    },
+    "errors": {
+      "uploadFailed": "Sintesi dell'engram dalla fonte non riuscita.",
+      "confirmFailed": "Inizializzazione dell'engram non riuscita.",
+      "unverifiedMemories": "Impossibile inizializzare: alcuni candidati remembered richiedono verifica esplicita.",
+      "fileRequired": "È richiesto un file CSV sorgente.",
+      "invalidFileType": "Il file sorgente deve essere un CSV.",
+      "verificationRequiredTitle": "Verifica richiesta",
+      "errorTitle": "Errore",
+      "invalidJson": "Risposta non valida ricevuta dal server."
+    },
+    "success": {
+      "title": "Engram inizializzato",
+      "description": "Persona {{name}} sintetizzata con successo."
+    },
+    "empty": {
+      "memories": "Nessun candidato memoria estratto."
+    },
+    "labels": {
+      "row": "Riga {{row}}:",
+      "code": "[{{code}}]",
+      "id": "ID: {{id}}",
+      "notAvailable": "Nessuno",
+      "content": "Contenuto",
+      "provenance": "Provenienza",
+      "rows": "Righe: {{rows}}",
+      "toggleAdvanced": "Attiva/disattiva architettura avanzata"
+    }
+  },
   "download": {
     "title": "SCARICA PYRI",
     "subtitleSlim": "App desktop nativa — collega un modello locale per un'AI privata e completamente offline",
@@ -651,6 +784,7 @@
       "beliefs": "Credenze",
       "evolution": "Evoluzione",
       "analytics": "Analisi",
+      "createEngram": "Importa Engram",
       "downloadApp": "Scarica app",
       "settings": "Impostazioni"
     }

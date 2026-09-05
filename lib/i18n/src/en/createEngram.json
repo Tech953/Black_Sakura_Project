@@ -1,0 +1,133 @@
+{
+  "title": "Initialize Engram from Source",
+  "subtitle": "Synthesize a new persona structure from behavioral records.",
+  "upload": {
+    "title": "Select Source Material",
+    "description": "Upload a CSV file to synthesize persona traits, emotional baselines, and memory candidates. Synthesis is model-assisted and generates an editable draft.",
+    "fileLabel": "Source CSV File",
+    "dragDrop": "Drag and drop CSV here",
+    "browse": "Select file",
+    "limit": "CSV only, up to 2 MiB",
+    "selected": "Selected:",
+    "change": "Change",
+    "stipulationsLabel": "Synthesis stipulations (optional)",
+    "stipulationsPlaceholder": "e.g., Focus specifically on extracting professional history and suppress personal relationships.",
+    "button": "Synthesize Persona",
+    "processing": "Synthesizing..."
+  },
+  "preview": {
+    "title": "Draft Synthesis Verification",
+    "sourceSummary": "Source processed: {{filename}}",
+    "sourceStats": "{{rowsAccepted}} records parsed | {{rowsSkipped}} skipped | {{charactersAccepted}} chars",
+    "warnings": "Synthesis Warnings",
+    "noWriteBoundary": "No writes have been made. Adjust the generated parameters before confirming initialization.",
+    "sections": {
+      "identity": "Identity Parameters",
+      "behavior": "Behavioral & Autonomy Controls",
+      "architecture": "Cognitive Architecture",
+      "memories": "Memory Manifest"
+    },
+    "fields": {
+      "name": "Designation",
+      "title": "Title",
+      "symbol": "Symbol (Max 8 chars)",
+      "origin": "Origin Narrative",
+      "autonomyEnabled": "Autonomous Initiative",
+      "humanContactEnabled": "Permit Human Contact",
+      "simulationEnabled": "Permit Simulation",
+      "artifactGenerationEnabled": "Permit Artifact Gen",
+      "mode": "System Mode",
+      "tickCadenceSeconds": "Tick Cadence (s)",
+      "initiationThreshold": "Initiation Threshold",
+      "drives": "Core Drives",
+      "emotionalBaseline": "Emotional Baseline",
+      "voiceProfile": "Voice Profile",
+      "environmentAnchor": "Environment Anchor",
+      "memorySeed": "Source-Derived Memory Context",
+      "guardrails": "Guardrails",
+      "focusThemes": "Focus Themes (newline separated)"
+    },
+    "architectureFields": {
+      "speechStyle": "Speech Style",
+      "formatting": "Formatting",
+      "narrationStyle": "Narration Style",
+      "vocabulary": "Vocabulary (newline separated)",
+      "sampleLines": "Sample Lines (newline separated)",
+      "mood": "Mood",
+      "valence": "Valence (-1 to 1)",
+      "arousal": "Arousal (0 to 1)",
+      "volatility": "Volatility (0 to 1)",
+      "envName": "Environment Name",
+      "envDescription": "Description",
+      "envAmbient": "Ambient Soundtrack",
+      "envLocations": "Locations (newline separated)",
+      "envItems": "Items (newline separated)",
+      "memRelationship": "User Relationship",
+      "memSummary": "Memory Summary",
+      "memFacts": "Core Facts (newline separated)",
+      "memFactsHelp": "New or changed facts are reclassified as simulated candidates. Mark a candidate remembered and verify it below only when it is canonical.",
+      "guardFraming": "System Framing",
+      "guardBoundaries": "Hard Boundaries (newline separated)",
+      "driveId": "Drive ID",
+      "driveLabel": "Label",
+      "driveDesc": "Description",
+      "driveWeight": "Weight (0 to 1)",
+      "driveBaseRate": "Base Rate (0.0001 to 0.01)"
+    },
+    "actions": {
+      "addDrive": "Add Drive",
+      "newDriveLabel": "New Drive",
+      "removeDrive": "Remove Drive",
+      "removeMemory": "Remove Candidate"
+    },
+    "memoryDescription": "Review extracted memories. Edit content or reclassify provenance. Entries with 'remembered' provenance demand explicit operator verification.",
+    "verifyRemembered": "Verify Integrity",
+    "verified": "Verified",
+    "unverified": "Requires Verification",
+    "provenance": {
+      "simulated": "Simulated",
+      "inferred": "Inferred",
+      "remembered": "Remembered"
+    },
+    "quiescentWarning": "Note: New engrams default to a quiescent state for safety, but you can explicitly broaden autonomy boundaries and modes below prior to initialization.",
+    "confirm": "Confirm & Initialize",
+    "confirming": "Initializing...",
+    "cancel": "Abandon Draft",
+    "itemsCount": "{{count}} Items"
+  },
+  "modes": {
+    "quiescent": "QUIESCENT",
+    "orientation": "ORIENTATION",
+    "social": "SOCIAL",
+    "simulation": "SIMULATION",
+    "initiative_limited": "INITIATIVE_LIMITED",
+    "full_bounded": "FULL_BOUNDED"
+  },
+  "errors": {
+    "uploadFailed": "Failed to synthesize engram from source.",
+    "confirmFailed": "Failed to initialize engram.",
+    "unverifiedMemories": "Cannot initialize: Some remembered candidates require explicit verification.",
+    "fileRequired": "A CSV source file is required.",
+    "invalidFileType": "The source file must be a CSV.",
+    "verificationRequiredTitle": "Verification Required",
+    "errorTitle": "Error",
+    "invalidJson": "Received invalid response from server."
+  },
+  "success": {
+    "title": "Engram Initialized",
+    "description": "Persona {{name}} synthesized successfully."
+  },
+  "empty": {
+    "memories": "No memory candidates extracted."
+  },
+  "labels": {
+    "row": "Row {{row}}:",
+    "code": "[{{code}}]",
+    "id": "ID: {{id}}",
+    "notAvailable": "None",
+    "content": "Content",
+    "provenance": "Provenance",
+    "rows": "Rows: {{rows}}",
+    "toggleAdvanced": "Toggle advanced architecture"
+  }
+}

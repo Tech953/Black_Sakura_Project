@@ -169,6 +169,139 @@
       "daysAgo": "hace {{count}} d"
     }
   },
+  "createEngram": {
+    "title": "Inicializar Engram desde la fuente",
+    "subtitle": "Sintetiza una nueva estructura de persona a partir de registros de comportamiento.",
+    "upload": {
+      "title": "Seleccionar material fuente",
+      "description": "Sube un archivo CSV para sintetizar rasgos de personalidad, líneas base emocionales y candidatos de memoria. La síntesis es asistida por modelo y genera un borrador editable.",
+      "fileLabel": "Archivo CSV fuente",
+      "dragDrop": "Arrastra y suelta el CSV aquí",
+      "browse": "Seleccionar archivo",
+      "limit": "Solo CSV, hasta 2 MiB",
+      "selected": "Seleccionado:",
+      "change": "Cambiar",
+      "stipulationsLabel": "Condiciones de síntesis (opcional)",
+      "stipulationsPlaceholder": "p. ej., Centrarse específicamente en extraer historial profesional y suprimir relaciones personales.",
+      "button": "Sintetizar persona",
+      "processing": "Sintetizando..."
+    },
+    "preview": {
+      "title": "Verificación del borrador de síntesis",
+      "sourceSummary": "Fuente procesada: {{filename}}",
+      "sourceStats": "{{rowsAccepted}} registros analizados | {{rowsSkipped}} omitidos | {{charactersAccepted}} caracteres",
+      "warnings": "Advertencias de síntesis",
+      "noWriteBoundary": "No se ha escrito nada. Ajusta los parámetros generados antes de confirmar la inicialización.",
+      "sections": {
+        "identity": "Parámetros de identidad",
+        "behavior": "Controles de comportamiento y autonomía",
+        "architecture": "Arquitectura cognitiva",
+        "memories": "Manifiesto de memoria"
+      },
+      "fields": {
+        "name": "Designación",
+        "title": "Título",
+        "symbol": "Símbolo (máx. 8 caracteres)",
+        "origin": "Narrativa de origen",
+        "autonomyEnabled": "Iniciativa autónoma",
+        "humanContactEnabled": "Permitir contacto humano",
+        "simulationEnabled": "Permitir simulación",
+        "artifactGenerationEnabled": "Permitir gen. de artefactos",
+        "mode": "Modo del sistema",
+        "tickCadenceSeconds": "Cadencia de tick (s)",
+        "initiationThreshold": "Umbral de iniciación",
+        "drives": "Impulsos centrales",
+        "emotionalBaseline": "Línea base emocional",
+        "voiceProfile": "Perfil de voz",
+        "environmentAnchor": "Ancla de entorno",
+        "memorySeed": "Contexto de memoria derivado de la fuente",
+        "guardrails": "Guardrails",
+        "focusThemes": "Temas de enfoque (separados por línea)"
+      },
+      "architectureFields": {
+        "speechStyle": "Estilo de habla",
+        "formatting": "Formato",
+        "narrationStyle": "Estilo de narración",
+        "vocabulary": "Vocabulario (separado por línea)",
+        "sampleLines": "Líneas de ejemplo (separadas por línea)",
+        "mood": "Estado de ánimo",
+        "valence": "Valencia (-1 a 1)",
+        "arousal": "Activación (0 a 1)",
+        "volatility": "Volatilidad (0 a 1)",
+        "envName": "Nombre del entorno",
+        "envDescription": "Descripción",
+        "envAmbient": "Banda sonora ambiental",
+        "envLocations": "Ubicaciones (separadas por línea)",
+        "envItems": "Objetos (separados por línea)",
+        "memRelationship": "Relación con el usuario",
+        "memSummary": "Resumen de memoria",
+        "memFacts": "Hechos clave (separados por línea)",
+        "memFactsHelp": "Los hechos nuevos o modificados se reclasifican como candidatos simulados. Marca un candidato como recordado y verifícalo abajo solo cuando sea canónico.",
+        "guardFraming": "Marco del sistema",
+        "guardBoundaries": "Límites estrictos (separados por línea)",
+        "driveId": "ID de impulso",
+        "driveLabel": "Etiqueta",
+        "driveDesc": "Descripción",
+        "driveWeight": "Peso (0 a 1)",
+        "driveBaseRate": "Tasa base (0.0001 a 0.01)"
+      },
+      "actions": {
+        "addDrive": "Añadir impulso",
+        "newDriveLabel": "Nuevo impulso",
+        "removeDrive": "Quitar impulso",
+        "removeMemory": "Quitar candidato"
+      },
+      "memoryDescription": "Revisa las memorias extraídas. Edita el contenido o reclasifica la procedencia. Las entradas con procedencia 'recorded' exigen verificación explícita del operador.",
+      "verifyRemembered": "Verificar integridad",
+      "verified": "Verificado",
+      "unverified": "Requiere verificación",
+      "provenance": {
+        "simulated": "Simulado",
+        "inferred": "Inferido",
+        "remembered": "Recordado"
+      },
+      "quiescentWarning": "Nota: Los nuevos engrams pasan por defecto a un estado quiescente por seguridad, pero puedes ampliar explícitamente los límites y modos de autonomía abajo antes de la inicialización.",
+      "confirm": "Confirmar e inicializar",
+      "confirming": "Inicializando...",
+      "cancel": "Descartar borrador",
+      "itemsCount": "{{count}} elementos"
+    },
+    "modes": {
+      "quiescent": "QUIESCENT",
+      "orientation": "ORIENTATION",
+      "social": "SOCIAL",
+      "simulation": "SIMULATION",
+      "initiative_limited": "INITIATIVE_LIMITED",
+      "full_bounded": "FULL_BOUNDED"
+    },
+    "errors": {
+      "uploadFailed": "No se pudo sintetizar el engram desde la fuente.",
+      "confirmFailed": "No se pudo inicializar el engram.",
+      "unverifiedMemories": "No se puede inicializar: algunos candidatos recordados requieren verificación explícita.",
+      "fileRequired": "Se requiere un archivo fuente CSV.",
+      "invalidFileType": "El archivo fuente debe ser un CSV.",
+      "verificationRequiredTitle": "Verificación requerida",
+      "errorTitle": "Error",
+      "invalidJson": "Se recibió una respuesta no válida del servidor."
+    },
+    "success": {
+      "title": "Engram inicializado",
+      "description": "La persona {{name}} se sintetizó correctamente."
+    },
+    "empty": {
+      "memories": "No se extrajeron candidatos de memoria."
+    },
+    "labels": {
+      "row": "Fila {{row}}:",
+      "code": "[{{code}}]",
+      "id": "ID: {{id}}",
+      "notAvailable": "Ninguno",
+      "content": "Contenido",
+      "provenance": "Procedencia",
+      "rows": "Filas: {{rows}}",
+      "toggleAdvanced": "Alternar arquitectura avanzada"
+    }
+  },
   "download": {
     "title": "DESCARGAR PYRI",
     "subtitleSlim": "App nativa de escritorio — conecta un modelo local para IA privada y totalmente offline",
@@ -629,7 +762,7 @@
     "subtitle": "Arquitectura cognitiva",
     "openNavigation": "Abrir navegación",
     "navigation": "Navegación",
-    "sysOnline": "SYS.EN LÍNEA",
+    "sysOnline": "SYS.ONLINE",
     "opNominal": "OP.NOMINAL",
     "items": {
       "overview": "Resumen",
@@ -651,6 +784,7 @@
       "beliefs": "Creencias",
       "evolution": "Evolución",
       "analytics": "Analíticas",
+      "createEngram": "Importar Engram",
       "downloadApp": "Descargar app",
       "settings": "Ajustes"
     }

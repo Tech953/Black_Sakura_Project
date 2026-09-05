@@ -12,3 +12,7 @@ description: Non-obvious constraints when using the OpenAPI→Orval React Query 
 **How to apply:** any time you customize a generated list/get hook's query options (enabled gating, polling), import and pass the matching `get...QueryKey(...)`.
 
 **After editing `lib/api-spec/openapi.yaml`** run `pnpm --filter @workspace/api-spec run codegen`; do not hand-edit generated files. Do not change OpenAPI `info.title` — it controls generated filenames.
+
+**Do not model multipart file bodies through this repo's shared OpenAPI-to-Zod server validator.** Document the upload endpoint, parse the multipart body at the route boundary, and use direct `FormData` from browser clients; keep non-file confirmation requests generated and validated normally.
+**Why:** multipart `File`/`Blob` schemas make the shared Node package emit browser-global types or runtime references, breaking typechecks or startup even though the browser client itself supports them.
+**How to apply:** for a new file-upload endpoint, follow the existing media/CSV upload pattern and omit only the multipart request-body schema from generated validation.
