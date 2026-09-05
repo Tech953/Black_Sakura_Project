@@ -519,6 +519,12 @@ export const GetStatsResponse = zod.object({
 /**
  * @summary List all conversations
  */
+export const listOpenaiConversationsQueryArchivedDefault = false;
+
+export const ListOpenaiConversationsQueryParams = zod.object({
+  "archived": zod.coerce.boolean().default(listOpenaiConversationsQueryArchivedDefault).describe('When true, list archived conversations; otherwise list active conversations.')
+})
+
 export const ListOpenaiConversationsResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -526,8 +532,9 @@ export const ListOpenaiConversationsResponseItem = zod.object({
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
-  "engramIds": zod.array(zod.number()),
-  "createdAt": zod.coerce.date()
+  "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable()
 })
 export const ListOpenaiConversationsResponse = zod.array(ListOpenaiConversationsResponseItem)
 
@@ -535,13 +542,18 @@ export const ListOpenaiConversationsResponse = zod.array(ListOpenaiConversations
 /**
  * @summary Create a new conversation
  */
+export const createOpenaiConversationBodyEngramIdsMin = 2;
+export const createOpenaiConversationBodyEngramIdsMax = 6;
+
+
+
 export const CreateOpenaiConversationBody = zod.object({
   "title": zod.string(),
   "mode": zod.string(),
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
-  "engramIds": zod.array(zod.number()).min(2).max(6).optional()
+  "engramIds": zod.array(zod.number()).min(createOpenaiConversationBodyEngramIdsMin).max(createOpenaiConversationBodyEngramIdsMax).optional().describe('Select 2–6 non-archival engrams for a human-mediated group conversation.')
 })
 
 export const CreateOpenaiConversationResponse = zod.object({
@@ -551,8 +563,9 @@ export const CreateOpenaiConversationResponse = zod.object({
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
-  "engramIds": zod.array(zod.number()),
-  "createdAt": zod.coerce.date()
+  "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable()
 })
 
 
@@ -570,13 +583,15 @@ export const GetOpenaiConversationResponse = zod.object({
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()).optional(),
   "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable(),
   "messages": zod.array(zod.object({
   "id": zod.number(),
   "conversationId": zod.number(),
   "role": zod.string(),
   "content": zod.string(),
-  "speakerEngramId": zod.number().nullable().optional(),
+  "speakerEngramId": zod.number().nullish(),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -593,6 +608,30 @@ export const DeleteOpenaiConversationResponse = zod.void()
 
 
 /**
+ * @summary Archive or restore a conversation
+ */
+export const ArchiveOpenaiConversationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ArchiveOpenaiConversationBody = zod.object({
+  "archived": zod.boolean()
+})
+
+export const ArchiveOpenaiConversationResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "mode": zod.string(),
+  "personaName": zod.string().optional(),
+  "customEngram": zod.string().optional(),
+  "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary List messages in a conversation
  */
 export const ListOpenaiMessagesParams = zod.object({
@@ -604,7 +643,7 @@ export const ListOpenaiMessagesResponseItem = zod.object({
   "conversationId": zod.number(),
   "role": zod.string(),
   "content": zod.string(),
-  "speakerEngramId": zod.number().nullable().optional(),
+  "speakerEngramId": zod.number().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListOpenaiMessagesResponse = zod.array(ListOpenaiMessagesResponseItem)

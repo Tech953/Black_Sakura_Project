@@ -56,6 +56,7 @@ import type {
   ListHubActivityParams,
   ListMediaParams,
   ListMemoriesParams,
+  ListOpenaiConversationsParams,
   ListSimulationsParams,
   MarkMessagesSeenInput,
   MarkMessagesSeenResult,
@@ -69,6 +70,7 @@ import type {
   OfflineSyncInput,
   OfflineSyncResult,
   OpenaiConversation,
+  OpenaiConversationArchiveInput,
   OpenaiConversationInput,
   OpenaiConversationWithMessages,
   OpenaiError,
@@ -1672,20 +1674,27 @@ export function useGetStats<TData = Awaited<ReturnType<typeof getStats>>, TError
 
 
 
-export const getListOpenaiConversationsUrl = () => {
+export const getListOpenaiConversationsUrl = (params?: ListOpenaiConversationsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/openai/conversations`
+  return stringifiedParams.length > 0 ? `/api/openai/conversations?${stringifiedParams}` : `/api/openai/conversations`
 }
 
 /**
  * @summary List all conversations
  */
-export const listOpenaiConversations = async ( options?: RequestInit): Promise<OpenaiConversation[]> => {
+export const listOpenaiConversations = async (params?: ListOpenaiConversationsParams, options?: RequestInit): Promise<OpenaiConversation[]> => {
 
-  return customFetch<OpenaiConversation[]>(getListOpenaiConversationsUrl(),
+  return customFetch<OpenaiConversation[]>(getListOpenaiConversationsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1698,23 +1707,23 @@ export const listOpenaiConversations = async ( options?: RequestInit): Promise<O
 
 
 
-export const getListOpenaiConversationsQueryKey = () => {
+export const getListOpenaiConversationsQueryKey = (params?: ListOpenaiConversationsParams,) => {
     return [
-    `/api/openai/conversations`
+    `/api/openai/conversations`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListOpenaiConversationsQueryOptions = <TData = Awaited<ReturnType<typeof listOpenaiConversations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpenaiConversations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListOpenaiConversationsQueryOptions = <TData = Awaited<ReturnType<typeof listOpenaiConversations>>, TError = ErrorType<unknown>>(params?: ListOpenaiConversationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpenaiConversations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListOpenaiConversationsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListOpenaiConversationsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOpenaiConversations>>> = ({ signal }) => listOpenaiConversations({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOpenaiConversations>>> = ({ signal }) => listOpenaiConversations(params, { signal, ...requestOptions });
 
 
 
@@ -1732,11 +1741,11 @@ export type ListOpenaiConversationsQueryError = ErrorType<unknown>
  */
 
 export function useListOpenaiConversations<TData = Awaited<ReturnType<typeof listOpenaiConversations>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpenaiConversations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListOpenaiConversationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpenaiConversations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListOpenaiConversationsQueryOptions(options)
+  const queryOptions = getListOpenaiConversationsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1964,6 +1973,77 @@ export const useDeleteOpenaiConversation = <TError = ErrorType<OpenaiError>,
         TContext
       > => {
       return useMutation(getDeleteOpenaiConversationMutationOptions(options));
+    }
+
+export const getArchiveOpenaiConversationUrl = (id: number,) => {
+
+
+
+
+  return `/api/openai/conversations/${id}/archive`
+}
+
+/**
+ * @summary Archive or restore a conversation
+ */
+export const archiveOpenaiConversation = async (id: number,
+    openaiConversationArchiveInput: OpenaiConversationArchiveInput, options?: RequestInit): Promise<OpenaiConversation> => {
+
+  return customFetch<OpenaiConversation>(getArchiveOpenaiConversationUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(openaiConversationArchiveInput)
+  }
+);}
+
+
+
+
+export const getArchiveOpenaiConversationMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveOpenaiConversation>>, TError,{id: number;data: BodyType<OpenaiConversationArchiveInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof archiveOpenaiConversation>>, TError,{id: number;data: BodyType<OpenaiConversationArchiveInput>}, TContext> => {
+
+const mutationKey = ['archiveOpenaiConversation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof archiveOpenaiConversation>>, {id: number;data: BodyType<OpenaiConversationArchiveInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  archiveOpenaiConversation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ArchiveOpenaiConversationMutationResult = NonNullable<Awaited<ReturnType<typeof archiveOpenaiConversation>>>
+    export type ArchiveOpenaiConversationMutationBody = BodyType<OpenaiConversationArchiveInput>
+    export type ArchiveOpenaiConversationMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Archive or restore a conversation
+ */
+export const useArchiveOpenaiConversation = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveOpenaiConversation>>, TError,{id: number;data: BodyType<OpenaiConversationArchiveInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof archiveOpenaiConversation>>,
+        TError,
+        {id: number;data: BodyType<OpenaiConversationArchiveInput>},
+        TContext
+      > => {
+      return useMutation(getArchiveOpenaiConversationMutationOptions(options));
     }
 
 export const getListOpenaiMessagesUrl = (id: number,) => {

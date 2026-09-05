@@ -71,6 +71,13 @@
       "when": 1788616170409,
       "tag": "0009_striped_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788625991307,
+      "tag": "0010_old_shen",
+      "breakpoints": true
     }
   ]
 }

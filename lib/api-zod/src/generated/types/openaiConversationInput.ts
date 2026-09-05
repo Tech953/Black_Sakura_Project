@@ -12,5 +12,10 @@ export interface OpenaiConversationInput {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  /**
+     * Select 2–6 non-archival engrams for a human-mediated group conversation.
+     * @minItems 2
+     * @maxItems 6
+     */
   engramIds?: number[];
 }

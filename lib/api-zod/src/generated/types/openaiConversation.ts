@@ -13,6 +13,9 @@ export interface OpenaiConversation {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  /** Explicit participants for a human-mediated group conversation. */
   engramIds: number[];
   createdAt: Date;
+  /** @nullable */
+  archivedAt: Date | null;
 }
