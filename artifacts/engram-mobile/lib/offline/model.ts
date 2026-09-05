@@ -57,6 +57,28 @@ export type ModelStatus =
 
 export type ImportProgress = (fraction: number) => void;
 
+export class ModelImportCancelledError extends Error {
+  readonly code = "MODEL_IMPORT_CANCELLED";
+
+  constructor() {
+    super("GGUF import was cancelled.");
+    this.name = "ModelImportCancelledError";
+  }
+}
+
+type ImportControl = { cancelled: boolean };
+let activeImport: ImportControl | null = null;
+
+export function cancelCustomModelImport(): boolean {
+  if (!activeImport) return false;
+  activeImport.cancelled = true;
+  return true;
+}
+
+function throwIfImportCancelled(control: ImportControl): void {
+  if (control.cancelled) throw new ModelImportCancelledError();
+}
+
 function safeFilename(filename: string): string {
   const basename = filename.split(/[\\/]/).pop()?.trim() || "custom-model.gguf";
   return basename.slice(0, 160);
@@ -327,84 +349,99 @@ export async function importCustomModel(
   onProgress?: ImportProgress,
   validate?: () => Promise<void>,
 ): Promise<CustomModelMetadata> {
+  if (activeImport) {
+    throw new Error("Another GGUF import is already in progress.");
+  }
+  const control: ImportControl = { cancelled: false };
+  activeImport = control;
   const filename = safeFilename(originalFilename);
-  if (!filename.toLowerCase().endsWith(".gguf")) {
-    throw new Error("Choose a file with the .gguf extension.");
-  }
-
-  await FileSystem.makeDirectoryAsync(MODEL_DIR, { intermediates: true });
-  const sourceInfo = await modelInfo(sourceUri);
-  const byteSize = sourceBytes ?? sourceInfo.bytes;
-  if (!sourceInfo.exists || byteSize < MIN_GGUF_BYTES) {
-    throw new Error("The GGUF file is missing or too small to be a model.");
-  }
-  const free = await FileSystem.getFreeDiskStorageAsync().catch(() => null);
-  if (free != null && free < byteSize * 1.1) {
-    throw new Error(
-      `Not enough storage: the model needs ~${Math.ceil(byteSize / 1e9)} GB free.`,
-    );
-  }
-
-  await FileSystem.deleteAsync(CUSTOM_PARTIAL_PATH, { idempotent: true });
-  onProgress?.(0);
   try {
-    await FileSystem.copyAsync({
-      from: sourceUri,
-      to: CUSTOM_PARTIAL_PATH,
-    });
-    const staged = await modelInfo(CUSTOM_PARTIAL_PATH);
-    if (!staged.exists || staged.bytes !== byteSize) {
-      throw new Error("The imported GGUF copy was incomplete.");
-    }
-    const ggufVersion = await readGgufVersion(CUSTOM_PARTIAL_PATH);
-    onProgress?.(0.75);
-
-    const previousMetadata = await AsyncStorage.getItem(CUSTOM_METADATA_KEY);
-    const previous = await modelInfo(CUSTOM_MODEL_PATH);
-    await FileSystem.deleteAsync(CUSTOM_BACKUP_PATH, { idempotent: true });
-    if (previous.exists) {
-      await FileSystem.moveAsync({
-        from: CUSTOM_MODEL_PATH,
-        to: CUSTOM_BACKUP_PATH,
-      });
+    if (!filename.toLowerCase().endsWith(".gguf")) {
+      throw new Error("Choose a file with the .gguf extension.");
     }
 
-    const metadata: CustomModelMetadata = {
-      filename,
-      byteSize,
-      ggufVersion,
-      importedAt: new Date().toISOString(),
-    };
-    try {
-      await FileSystem.moveAsync({
-        from: CUSTOM_PARTIAL_PATH,
-        to: CUSTOM_MODEL_PATH,
-      });
-      await AsyncStorage.setItem(
-        CUSTOM_METADATA_KEY,
-        JSON.stringify(metadata),
+    await FileSystem.makeDirectoryAsync(MODEL_DIR, { intermediates: true });
+    const sourceInfo = await modelInfo(sourceUri);
+    const byteSize = sourceBytes ?? sourceInfo.bytes;
+    if (!sourceInfo.exists || byteSize < MIN_GGUF_BYTES) {
+      throw new Error("The GGUF file is missing or too small to be a model.");
+    }
+    const free = await FileSystem.getFreeDiskStorageAsync().catch(() => null);
+    if (free != null && free < byteSize * 1.1) {
+      throw new Error(
+        `Not enough storage: the model needs ~${Math.ceil(byteSize / 1e9)} GB free.`,
       );
-      if (validate) await validate();
+    }
+
+    await FileSystem.deleteAsync(CUSTOM_PARTIAL_PATH, { idempotent: true });
+    throwIfImportCancelled(control);
+    onProgress?.(0);
+    try {
+      await FileSystem.copyAsync({
+        from: sourceUri,
+        to: CUSTOM_PARTIAL_PATH,
+      });
+      throwIfImportCancelled(control);
+      const staged = await modelInfo(CUSTOM_PARTIAL_PATH);
+      if (!staged.exists || staged.bytes !== byteSize) {
+        throw new Error("The imported GGUF copy was incomplete.");
+      }
+      const ggufVersion = await readGgufVersion(CUSTOM_PARTIAL_PATH);
+      throwIfImportCancelled(control);
+      onProgress?.(0.75);
+
+      const previousMetadata = await AsyncStorage.getItem(CUSTOM_METADATA_KEY);
+      const previous = await modelInfo(CUSTOM_MODEL_PATH);
       await FileSystem.deleteAsync(CUSTOM_BACKUP_PATH, { idempotent: true });
-      onProgress?.(1);
-      return metadata;
-    } catch (error) {
-      await FileSystem.deleteAsync(CUSTOM_MODEL_PATH, { idempotent: true });
-      if ((await modelInfo(CUSTOM_BACKUP_PATH)).exists) {
+      throwIfImportCancelled(control);
+      if (previous.exists) {
         await FileSystem.moveAsync({
-          from: CUSTOM_BACKUP_PATH,
-          to: CUSTOM_MODEL_PATH,
+          from: CUSTOM_MODEL_PATH,
+          to: CUSTOM_BACKUP_PATH,
         });
       }
-      if (previousMetadata) {
-        await AsyncStorage.setItem(CUSTOM_METADATA_KEY, previousMetadata);
-      } else {
-        await AsyncStorage.removeItem(CUSTOM_METADATA_KEY).catch(() => {});
+
+      const metadata: CustomModelMetadata = {
+        filename,
+        byteSize,
+        ggufVersion,
+        importedAt: new Date().toISOString(),
+      };
+      try {
+        throwIfImportCancelled(control);
+        await FileSystem.moveAsync({
+          from: CUSTOM_PARTIAL_PATH,
+          to: CUSTOM_MODEL_PATH,
+        });
+        await AsyncStorage.setItem(
+          CUSTOM_METADATA_KEY,
+          JSON.stringify(metadata),
+        );
+        if (validate) await validate();
+        throwIfImportCancelled(control);
+        await FileSystem.deleteAsync(CUSTOM_BACKUP_PATH, { idempotent: true });
+        onProgress?.(1);
+        return metadata;
+      } catch (error) {
+        await FileSystem.deleteAsync(CUSTOM_MODEL_PATH, { idempotent: true });
+        if ((await modelInfo(CUSTOM_BACKUP_PATH)).exists) {
+          await FileSystem.moveAsync({
+            from: CUSTOM_BACKUP_PATH,
+            to: CUSTOM_MODEL_PATH,
+          });
+        }
+        if (previousMetadata) {
+          await AsyncStorage.setItem(CUSTOM_METADATA_KEY, previousMetadata);
+        } else {
+          await AsyncStorage.removeItem(CUSTOM_METADATA_KEY).catch(() => {});
+        }
+        throw error;
       }
-      throw error;
+    } finally {
+      await FileSystem.deleteAsync(CUSTOM_PARTIAL_PATH, { idempotent: true });
     }
   } finally {
-    await FileSystem.deleteAsync(CUSTOM_PARTIAL_PATH, { idempotent: true });
+    if (activeImport === control) activeImport = null;
   }
 }
 
