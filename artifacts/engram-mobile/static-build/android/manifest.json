@@ -1,0 +1,102 @@
+{
+  "id": "f727c3ec-720e-4d74-9819-d5e6cf20404e",
+  "createdAt": "2026-09-05T03:25:47.766Z",
+  "runtimeVersion": "exposdk:54.0.0",
+  "launchAsset": {
+    "key": "bundle-1788578747766-20161",
+    "contentType": "application/javascript",
+    "url": "https://d8d76f30-60ca-487c-b77f-ebf37ab48c82-00-265vr933bogl.worf.replit.dev/1788578747766-20161/_expo/static/js/android/bundle.js"
+  },
+  "assets": [],
+  "metadata": {},
+  "extra": {
+    "eas": {},
+    "expoClient": {
+      "name": "ENGRAM Mobile",
+      "slug": "engram-mobile",
+      "version": "1.0.2",
+      "orientation": "portrait",
+      "icon": "./assets/images/icon.png",
+      "scheme": "engram-mobile",
+      "userInterfaceStyle": "dark",
+      "jsEngine": "hermes",
+      "newArchEnabled": true,
+      "splash": {
+        "image": "./assets/images/icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#040610",
+        "imageUrl": "http://127.0.0.1:8081/assets/./assets/images/icon.png"
+      },
+      "backgroundColor": "#040610",
+      "ios": {
+        "supportsTablet": false
+      },
+      "android": {
+        "package": "ai.pyri.engram",
+        "versionCode": 4,
+        "resizeableActivity": true
+      },
+      "web": {
+        "favicon": "./assets/images/icon.png"
+      },
+      "plugins": [
+        [
+          "expo-router",
+          {
+            "origin": "https://replit.com/"
+          }
+        ],
+        "expo-font",
+        "expo-web-browser",
+        "./plugins/withAndroidLaunchReliability",
+        "./plugins/withAndroidReleaseSigning"
+      ],
+      "experiments": {
+        "typedRoutes": true,
+        "reactCompiler": true
+      },
+      "_internal": {
+        "isDebug": false,
+        "projectRoot": "/home/runner/workspace/artifacts/engram-mobile",
+        "dynamicConfigPath": {},
+        "staticConfigPath": "/home/runner/workspace/artifacts/engram-mobile/app.json",
+        "packageJsonPath": "/home/runner/workspace/artifacts/engram-mobile/package.json",
+        "pluginHistory": {
+          "expo-font": {
+            "name": "expo-font",
+            "version": "14.0.12"
+          },
+          "expo-web-browser": {
+            "name": "expo-web-browser",
+            "version": "15.0.11"
+          }
+        }
+      },
+      "sdkVersion": "54.0.0",
+      "platforms": [
+        "ios",
+        "android",
+        "web"
+      ],
+      "extra": {
+        "router": {
+          "origin": "https://replit.com/"
+        }
+      },
+      "iconUrl": "http://127.0.0.1:8081/assets/./assets/images/icon.png",
+      "hostUri": "d8d76f30-60ca-487c-b77f-ebf37ab48c82-00-265vr933bogl.worf.replit.dev/android"
+    },
+    "expoGo": {
+      "debuggerHost": "d8d76f30-60ca-487c-b77f-ebf37ab48c82-00-265vr933bogl.worf.replit.dev/android",
+      "developer": {
+        "tool": "expo-cli",
+        "projectRoot": "/home/runner/workspace/artifacts/engram-mobile"
+      },
+      "packagerOpts": {
+        "dev": false
+      },
+      "mainModuleName": "node_modules/.pnpm/expo-router@6.0.24_@types+react-dom@19.1.11_@types+react@19.1.17__@types+react@19.1.17__a8963d9f475924884ad807606c930713/node_modules/expo-router/entry"
+    },
+    "scopeKey": "@anonymous/engram-mobile-8b8bbdf6-6901-4d66-be18-4517d37d5613"
+  }
+}

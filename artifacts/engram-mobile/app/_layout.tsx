@@ -25,7 +25,7 @@ import {
 import { useFonts } from "expo-font";
 import { reloadAppAsync } from "expo";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Redirect, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
@@ -34,13 +34,19 @@ import { AppState, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ClerkLoaded, ClerkProvider, useAuth, useUser } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 
 import "@/lib/i18n";
 import { i18nReady } from "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PreviousCrashScreen } from "@/components/PreviousCrashScreen";
 import { EngramProvider } from "@/context/engram-context";
-import { setBaseUrl, setLocalHandler } from "@workspace/api-client-react";
+import {
+  setAuthTokenGetter,
+  setBaseUrl,
+  setLocalHandler,
+} from "@workspace/api-client-react";
 import { DEFAULT_SERVER_URL, resolveServerUrl } from "@/lib/server-url";
 import {
   isOfflineMode,
@@ -49,7 +55,11 @@ import {
 } from "@/lib/offline/mode";
 import { offlineHandler } from "@/lib/offline/handlers";
 import { syncOfflineData } from "@/lib/offline/sync";
+import { setOfflineStoreAccount } from "@/lib/offline/store";
 import { queryClient } from "@/lib/query-client";
+
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 // Apply the built-in default synchronously, then swap in any persisted
 // override (e.g. the desktop app's LAN address) as soon as storage resolves —
@@ -77,11 +87,98 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: t("nav.back") }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen
         name="server-settings"
         options={{ presentation: "modal", title: t("nav.server") }}
       />
     </Stack>
+  );
+}
+
+/**
+ * No query or offline sync work runs until the active Clerk account has been
+ * selected. This makes account transitions an isolation boundary rather than
+ * merely a visual redirect.
+ */
+function AuthenticatedApp() {
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
+  const [accountReady, setAccountReady] = React.useState(false);
+  const userId = isSignedIn ? user?.id ?? null : null;
+
+  useEffect(() => {
+    let active = true;
+    setAccountReady(false);
+    setAuthTokenGetter(null);
+    queryClient.clear();
+
+    if (!userId) return () => {
+      active = false;
+    };
+
+    void setOfflineStoreAccount(userId)
+      .then(() => {
+        if (!active) return;
+        setAuthTokenGetter(() => getToken());
+        setAccountReady(true);
+      })
+      .catch((error) => {
+        // Fail closed: a store-selection failure must not expose an earlier
+        // account's local state or permit its queued history to synchronize.
+        console.error("Unable to isolate offline data for this account:", error);
+      });
+
+    return () => {
+      active = false;
+      setAuthTokenGetter(null);
+      queryClient.clear();
+    };
+  }, [getToken, userId]);
+
+  useEffect(() => {
+    if (!accountReady || !userId) return;
+    const retryPendingHistory = () => {
+      if (isOfflineMode()) return;
+      void syncOfflineData()
+        .then((result) => {
+          if (result.syncedRows > 0 && !isOfflineMode()) queryClient.clear();
+        })
+        .catch(() => {
+          // Pending rows remain isolated in this user's database for a later retry.
+        });
+    };
+    retryPendingHistory();
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") retryPendingHistory();
+    });
+    const retryTimer = setInterval(retryPendingHistory, 30_000);
+    return () => {
+      appStateSubscription.remove();
+      clearInterval(retryTimer);
+    };
+  }, [accountReady, userId]);
+
+  if (!isLoaded) return null;
+  if (!isSignedIn) {
+    return (
+      <>
+        <RootLayoutNav />
+        <Redirect href="/(auth)/sign-in" />
+      </>
+    );
+  }
+  if (!userId || !accountReady) return null;
+
+  return (
+    <EngramProvider key={userId} accountId={userId}>
+      <GestureHandlerRootView>
+        <KeyboardProvider>
+          <StatusBar style="light" />
+          <RootLayoutNav />
+        </KeyboardProvider>
+      </GestureHandlerRootView>
+    </EngramProvider>
   );
 }
 
@@ -183,33 +280,6 @@ export default function RootLayout() {
     serverReady,
   ]);
 
-  useEffect(() => {
-    if (!serverReady || previousCrash) return;
-    const retryPendingHistory = () => {
-      if (isOfflineMode()) return;
-      void syncOfflineData()
-        .then((result) => {
-          if (result.syncedRows > 0 && !isOfflineMode()) queryClient.clear();
-        })
-        .catch(() => {
-          // Pending rows remain local; the foreground/interval retry will reuse
-          // the same stable IDs after connectivity returns.
-        });
-    };
-    retryPendingHistory();
-    const appStateSubscription = AppState.addEventListener(
-      "change",
-      (state) => {
-        if (state === "active") retryPendingHistory();
-      },
-    );
-    const retryTimer = setInterval(retryPendingHistory, 30_000);
-    return () => {
-      appStateSubscription.remove();
-      clearInterval(retryTimer);
-    };
-  }, [previousCrash, serverReady]);
-
   if ((!fontsLoaded && !fontError) || !crashStateLoaded || !languageReady) return null;
 
   if (previousCrash) {
@@ -229,26 +299,27 @@ export default function RootLayout() {
   if (!serverReady) return null;
 
   return (
-    <SafeAreaProvider>
-      <ErrorBoundary
-        onError={(error, componentStack) => {
-          void persistFatalCrash(error, {
-            source: "react-boundary",
-            componentStack,
-          });
-        }}
-      >
-        <QueryClientProvider client={queryClient}>
-          <EngramProvider>
-            <GestureHandlerRootView>
-              <KeyboardProvider>
-                <StatusBar style="light" />
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </EngramProvider>
-        </QueryClientProvider>
-      </ErrorBoundary>
-    </SafeAreaProvider>
+    <ClerkProvider
+      publishableKey={publishableKey}
+      tokenCache={tokenCache}
+      proxyUrl={proxyUrl}
+    >
+      <ClerkLoaded>
+        <SafeAreaProvider>
+          <ErrorBoundary
+            onError={(error, componentStack) => {
+              void persistFatalCrash(error, {
+                source: "react-boundary",
+                componentStack,
+              });
+            }}
+          >
+            <QueryClientProvider client={queryClient}>
+              <AuthenticatedApp />
+            </QueryClientProvider>
+          </ErrorBoundary>
+        </SafeAreaProvider>
+      </ClerkLoaded>
+    </ClerkProvider>
   );
 }

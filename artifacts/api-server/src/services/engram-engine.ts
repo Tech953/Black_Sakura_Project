@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { engramsTable, engramTransmissionsTable } from "@workspace/db/schema";
+import { engramsTable, engramTransmissionsTable, SYSTEM_OWNER_ID } from "@workspace/db/schema";
 import type {
   Engram,
   EngramTransmission,
@@ -7,7 +7,7 @@ import type {
   HubSpace,
   EngramPresence,
 } from "@workspace/db";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { generateTransmission, type TransmissionKind } from "../lib/engram-generation";
 import { summarizeWorldModel } from "../lib/world-model";
@@ -78,13 +78,24 @@ export function accrue(
   return { state, charges };
 }
 
-async function recentTransmissions(engramId: number, since: number): Promise<EngramTransmission[]> {
+async function recentTransmissions(
+  ownerId: string,
+  engramId: number,
+  since: number,
+): Promise<EngramTransmission[]> {
   return db
     .select()
     .from(engramTransmissionsTable)
     .where(
       and(
         eq(engramTransmissionsTable.engramId, engramId),
+        inArray(
+          engramTransmissionsTable.engramId,
+          db
+            .select({ id: engramsTable.id })
+            .from(engramsTable)
+            .where(and(eq(engramsTable.id, engramId), eq(engramsTable.ownerId, ownerId))),
+        ),
         gte(engramTransmissionsTable.createdAt, new Date(since)),
       ),
     )
@@ -134,6 +145,7 @@ async function emit(
     // contact (full_bounded, not quiet mode). Urgent-only / quiet contact still routes
     // through the bounded human-contact bus for audit, but stays off the chat feed.
     const { delivered } = await attemptOperatorContact({
+      ownerId: engram.ownerId!,
       engram,
       capabilities,
       charge: top.charge,
@@ -212,7 +224,22 @@ export interface TickResult {
  *
  * @param opts.force ignore per-engram cadence (used by the manual /tick endpoint).
  */
-export async function runTick(opts: { force?: boolean } = {}): Promise<TickResult> {
+export async function runTick(opts: { force?: boolean; ownerId?: string } = {}): Promise<TickResult> {
+  if (!opts.ownerId) {
+    const owners = await db
+      .selectDistinct({ ownerId: engramsTable.ownerId })
+      .from(engramsTable)
+      .where(and(eq(engramsTable.autonomyEnabled, true), ne(engramsTable.ownerId, SYSTEM_OWNER_ID)));
+    const results: TickResult[] = [];
+    for (const { ownerId } of owners) {
+      results.push(await runTick({ ...opts, ownerId }));
+    }
+    return {
+      ticked: results.reduce((total, result) => total + result.ticked, 0),
+      generated: results.reduce((total, result) => total + result.generated, 0),
+      transmissions: results.flatMap((result) => result.transmissions),
+    };
+  }
   if (ticking) return { ticked: 0, generated: 0, transmissions: [] };
   ticking = true;
   const now = Date.now();
@@ -223,17 +250,19 @@ export async function runTick(opts: { force?: boolean } = {}): Promise<TickResul
     const engrams = await db
       .select()
       .from(engramsTable)
-      .where(eq(engramsTable.autonomyEnabled, true));
+      .where(
+        and(eq(engramsTable.autonomyEnabled, true), eq(engramsTable.ownerId, opts.ownerId)),
+      );
 
     // Load global runtime controls once per tick. A global pause (or quiet mode)
     // flows through capabilitiesFor below, so a paused engine only accrues/persists.
-    const controls = await loadControls();
+    const controls = await loadControls(opts.ownerId);
 
     // Load Hub state once per tick: an engram located in a space that disallows
     // initiative (quiescence/rest) accrues pressure but never self-initiates.
-    const spaces = await loadSpaces();
+    const spaces = await loadSpaces(opts.ownerId);
     const spaceById = new Map<number, HubSpace>(spaces.map((s) => [s.id, s]));
-    const presence = await loadPresence();
+    const presence = await loadPresence(opts.ownerId);
     const spaceByEngram = new Map<number, HubSpace>();
     const presenceByEngram = new Map<number, EngramPresence>();
     for (const p of presence) {
@@ -299,7 +328,7 @@ export async function runTick(opts: { force?: boolean } = {}): Promise<TickResul
       ticked++;
 
       // Rate caps (rolling hour / day).
-      const recent = await recentTransmissions(engram.id, now - 24 * 3600_000);
+      const recent = await recentTransmissions(opts.ownerId, engram.id, now - 24 * 3600_000);
       const hourCount = recent.filter(
         (r) => now - new Date(r.createdAt).getTime() < 3600_000,
       ).length;
@@ -402,13 +431,15 @@ export async function forceTransmission(engram: Engram): Promise<EngramTransmiss
     pressure: 0.6,
     charge: 0.6,
   };
-  const recent = await recentTransmissions(engram.id, now - 24 * 3600_000);
+  const ownerId = engram.ownerId;
+  if (!ownerId) throw new Error("Cannot transmit for an engram without an owner");
+  const recent = await recentTransmissions(ownerId, engram.id, now - 24 * 3600_000);
 
   // Operator-forced, but still routed through the same capability/human-contact
   // policy so a forced outreach respects pause/quiet/quiescence and the rate caps.
-  const controls = await loadControls();
-  const presence = await loadPresenceForEngram(engram.id);
-  const space = presence ? await loadSpaceById(presence.spaceId) : undefined;
+  const controls = await loadControls(ownerId);
+  const presence = await loadPresenceForEngram(engram.id, ownerId);
+  const space = presence ? await loadSpaceById(presence.spaceId, ownerId) : undefined;
   const capabilities = capabilitiesFor({
     mode: engram.mode,
     controls,

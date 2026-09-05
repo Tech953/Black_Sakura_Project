@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { engramsTable } from "@workspace/db/schema";
 import type { Engram, EngramArtifact } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import {
   claimNextPendingArtifact,
@@ -14,6 +14,7 @@ import { publishEvent } from "../lib/events";
 import type { ArtifactKind } from "@workspace/db/schema";
 import { summarizeWorldModel } from "../lib/world-model";
 import { loadRecentWorldModel } from "../lib/world-model-store";
+import { loadOwnedConversation } from "../lib/account-bootstrap";
 
 /**
  * Async generation ticker — the OUTPUT mirror of `media-worker.ts`. Same lifecycle
@@ -29,17 +30,23 @@ let ticking = false;
 let started = false;
 let timer: NodeJS.Timeout | null = null;
 
-async function loadEngram(id: number): Promise<Engram | undefined> {
+async function loadEngram(id: number, ownerId: string): Promise<Engram | undefined> {
   const [row] = await db
     .select()
     .from(engramsTable)
-    .where(eq(engramsTable.id, id));
+    .where(and(eq(engramsTable.id, id), eq(engramsTable.ownerId, ownerId)));
   return row;
 }
 
 async function processArtifact(artifact: EngramArtifact): Promise<void> {
-  const engram = await loadEngram(artifact.engramId);
+  const engram = await loadEngram(artifact.engramId, artifact.ownerId);
   if (!engram) throw new Error("Owning engram no longer exists.");
+  if (
+    artifact.conversationId != null &&
+    !(await loadOwnedConversation(artifact.conversationId, artifact.ownerId))
+  ) {
+    throw new Error("Owning conversation no longer belongs to this artifact job owner.");
+  }
 
   let worldModelSummary: string | undefined;
   try {
@@ -106,6 +113,7 @@ export async function runArtifactTick(): Promise<{ processed: number }> {
       if (failed) {
         publishEvent({
           type: "artifact.failed",
+          ownerId: failed.ownerId,
           engramId: failed.engramId,
           conversationId: failed.conversationId,
           data: failed,

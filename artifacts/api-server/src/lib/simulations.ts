@@ -61,18 +61,18 @@ export async function applySimulationControl(
     case "start":
       if (sim.status !== "proposed")
         throw new SimulationTransitionError(`cannot start a simulation in status "${sim.status}"`);
-      return updateSimulation(sim.id, {
+      return updateSimulation(sim.id, sim.ownerId, {
         status: "running",
         startedAt: sim.startedAt ?? new Date(),
       });
     case "resume":
       if (sim.status !== "paused")
         throw new SimulationTransitionError(`cannot resume a simulation in status "${sim.status}"`);
-      return updateSimulation(sim.id, { status: "running" });
+      return updateSimulation(sim.id, sim.ownerId, { status: "running" });
     case "pause":
       if (sim.status !== "running")
         throw new SimulationTransitionError(`cannot pause a simulation in status "${sim.status}"`);
-      return updateSimulation(sim.id, { status: "paused", pausedAt: new Date() });
+      return updateSimulation(sim.id, sim.ownerId, { status: "paused", pausedAt: new Date() });
     case "end":
       if (sim.status === "ended")
         throw new SimulationTransitionError("simulation already ended");
@@ -102,7 +102,7 @@ export async function endSimulation(sim: EngramSimulation): Promise<EngramSimula
       logger.warn({ err, simulationId: sim.id }, "simulation exit-summary generation failed");
     }
   }
-  return updateSimulation(sim.id, {
+  return updateSimulation(sim.id, sim.ownerId, {
     status: "ended",
     endedAt: new Date(),
     ...(exitSummary ? { exitSummary } : {}),
@@ -141,10 +141,14 @@ async function advanceSimulation(
   engram: Engram,
   now: number,
 ): Promise<SimulationTickOutcome | null> {
+  if (engram.ownerId !== sim.ownerId) {
+    logger.warn({ simulationId: sim.id }, "simulation owner no longer matches its engram");
+    return null;
+  }
   // Atomically claim the step first (CAS on currentStep + running status). The
   // engine tick, an immediate kick, and concurrent control requests can all race
   // here; only one wins, so a step number can never be generated twice.
-  const claimed = await claimSimulationStep(sim.id, sim.currentStep, new Date(now));
+  const claimed = await claimSimulationStep(sim.id, sim.ownerId, sim.currentStep, new Date(now));
   if (!claimed) return null;
 
   const maxSteps = Math.min(sim.maxSteps, SIMULATION_MAX_STEPS_CAP);
@@ -173,6 +177,7 @@ async function advanceSimulation(
 
   publishEvent({
     type: "simulation.step",
+    ownerId: sim.ownerId,
     engramId: engram.id,
     data: {
       simulationId: sim.id,
@@ -185,6 +190,7 @@ async function advanceSimulation(
 
   try {
     await appendActivity({
+      ownerId: sim.ownerId,
       spaceId: sim.spaceId,
       engramId: engram.id,
       kind: "system",
@@ -212,6 +218,7 @@ async function proposeSimulation(
   if (!premise) return null;
 
   const sim = await createSimulation({
+    ownerId: engram.ownerId!,
     engramId: engram.id,
     spaceId: chamber.id,
     premise,
@@ -222,6 +229,7 @@ async function proposeSimulation(
 
   try {
     await appendActivity({
+      ownerId: chamber.ownerId,
       spaceId: chamber.id,
       engramId: engram.id,
       kind: "system",
@@ -253,7 +261,7 @@ export async function openOperatorSimulation(opts: {
   // Re-check DB-backed presence here (not only in the route) so the safety
   // assertion is local to the write: the engram must actually be active in the
   // chamber at creation time.
-  const presence = await loadPresenceForEngram(engram.id);
+  const presence = await loadPresenceForEngram(engram.id, chamber.ownerId);
   if (!presence || presence.spaceId !== chamber.id || presence.status !== "active") {
     throw new SimulationTransitionError(
       `${engram.name} must be present in the simulation chamber to run a simulation`,
@@ -271,6 +279,7 @@ export async function openOperatorSimulation(opts: {
     );
   }
   const sim = await createSimulation({
+    ownerId: engram.ownerId!,
     engramId: engram.id,
     spaceId: chamber.id,
     premise,
@@ -281,6 +290,7 @@ export async function openOperatorSimulation(opts: {
   });
   try {
     await appendActivity({
+      ownerId: chamber.ownerId,
       spaceId: chamber.id,
       engramId: engram.id,
       kind: "system",
@@ -307,11 +317,11 @@ export async function kickSimulation(sim: EngramSimulation): Promise<void> {
     if (last !== null && now - last < sim.stepCooldownSeconds * 1000) return;
     const engram = await loadEngramRow(sim.engramId);
     if (!engram) return;
-    const presence = await loadPresenceForEngram(engram.id);
+    const presence = await loadPresenceForEngram(engram.id, sim.ownerId);
     if (!presence || presence.spaceId !== sim.spaceId || presence.status !== "active") return;
-    const space = await loadSpaceById(sim.spaceId);
+    const space = await loadSpaceById(sim.spaceId, sim.ownerId);
     if (!space) return;
-    const controls = await loadControls();
+    const controls = await loadControls(sim.ownerId);
     if (!canEngramSimulate(engram, space, controls)) return;
     await advanceSimulation(sim, engram, now);
   } catch (err) {
@@ -354,8 +364,9 @@ export async function maybeRunSimulationStep(opts: {
       // The engram left the chamber mid-run. Auto-pause instead of silently
       // freezing so the operator sees an honest state and can resume later.
       try {
-        await updateSimulation(sim.id, { status: "paused", pausedAt: new Date(now) });
+        await updateSimulation(sim.id, sim.ownerId, { status: "paused", pausedAt: new Date(now) });
         await appendActivity({
+          ownerId: sim.ownerId,
           spaceId: sim.spaceId,
           engramId: engram.id,
           kind: "system",

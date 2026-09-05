@@ -10,7 +10,7 @@ import {
   expressionsTable,
   engramsTable,
 } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { llm, LLM_MODEL } from "../lib/llm";
 import {
   CreateOpenaiConversationBody,
@@ -30,6 +30,7 @@ import { publishEvent } from "../lib/events";
 
 import { ARCHIVAL_READ_ONLY_ERROR, isArchivalEngram } from "../lib/archival";
 import { responseLanguageInstruction } from "@workspace/i18n";
+import { loadOwnedConversation, loadOwnedEngram } from "../lib/account-bootstrap";
 const router = Router();
 
 /** Hard cap on a single inline upload's size. Defaults to 25 MiB; overridable via env. */
@@ -59,6 +60,7 @@ router.get("/openai/conversations", async (req, res) => {
   const rows = await db
     .select()
     .from(conversations)
+    .where(eq(conversations.ownerId, req.userId!))
     .orderBy(desc(conversations.createdAt));
   res.json(rows);
 });
@@ -71,7 +73,11 @@ router.post("/openai/conversations", async (req, res) => {
   }
   const { title, mode, personaName, customEngram, engramId } = parsed.data;
   if (engramId != null) {
-    const [engram] = await db.select().from(engramsTable).where(eq(engramsTable.id, engramId));
+    const engram = await loadOwnedEngram(engramId, req.userId!);
+    if (!engram) {
+      res.status(404).json({ error: "Engram not found" });
+      return;
+    }
     if (engram?.isArchival) {
       res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
       return;
@@ -79,7 +85,7 @@ router.post("/openai/conversations", async (req, res) => {
   }
   const [row] = await db
     .insert(conversations)
-    .values({ title, mode: mode ?? "companion", personaName, customEngram, engramId })
+    .values({ ownerId: req.userId!, title, mode: mode ?? "companion", personaName, customEngram, engramId })
     .returning();
   res.status(201).json(row);
 });
@@ -91,7 +97,7 @@ router.get("/openai/conversations/:id", async (req, res) => {
     return;
   }
   const { id } = parsed.data;
-  const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
+  const conv = await loadOwnedConversation(id, req.userId!);
   if (!conv) {
     res.status(404).json({ error: "Conversation not found" });
     return;
@@ -111,19 +117,19 @@ router.delete("/openai/conversations/:id", async (req, res) => {
     return;
   }
   const { id } = parsed.data;
-  const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
+  const conv = await loadOwnedConversation(id, req.userId!);
   if (!conv) {
     res.status(404).json({ error: "Conversation not found" });
     return;
   }
   if (conv.engramId != null) {
-    const [engram] = await db.select().from(engramsTable).where(eq(engramsTable.id, conv.engramId));
+    const engram = await loadOwnedEngram(conv.engramId, req.userId!);
     if (engram?.isArchival) {
       res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
       return;
     }
   }
-  await db.delete(conversations).where(eq(conversations.id, id));
+  await db.delete(conversations).where(and(eq(conversations.id, id), eq(conversations.ownerId, req.userId!)));
   res.status(204).send();
 });
 
@@ -131,6 +137,11 @@ router.get("/openai/conversations/:id/messages", async (req, res) => {
   const parsed = ListOpenaiMessagesParams.safeParse({ id: Number(req.params.id) });
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const conv = await loadOwnedConversation(parsed.data.id, req.userId!);
+  if (!conv) {
+    res.status(404).json({ error: "Conversation not found" });
     return;
   }
   const msgs = await db
@@ -156,7 +167,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     return;
   }
 
-  const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
+  const conv = await loadOwnedConversation(id, req.userId!);
   if (!conv) {
     res.status(404).json({ error: "Conversation not found" });
     return;
@@ -165,7 +176,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
   // An engram-linked conversation embodies that engram's persona; otherwise PYRI answers.
   let systemPrompt: string;
   if (conv.engramId) {
-    const [engram] = await db.select().from(engramsTable).where(eq(engramsTable.id, conv.engramId));
+    const engram = await loadOwnedEngram(conv.engramId, req.userId!);
     if (!engram) {
       res.status(404).json({ error: "Engram not found" });
       return;
@@ -188,7 +199,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       responseLanguageInstruction: languageInstruction,
     });
   } else {
-    const [personalityRow] = await db.select().from(personalityTable);
+    const [personalityRow] = await db.select().from(personalityTable).where(eq(personalityTable.ownerId, req.userId!));
     const activePersonaRow = await db
       .select()
       .from(personasTable)
@@ -239,6 +250,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     .returning();
   publishEvent({
     type: "message.created",
+    ownerId: req.userId!,
     conversationId: id,
     engramId: conv.engramId ?? null,
     data: userMessage,
@@ -318,6 +330,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       .returning();
     publishEvent({
       type: "message.created",
+      ownerId: req.userId!,
       conversationId: id,
       engramId: conv.engramId ?? null,
       data: assistantMessage,
@@ -366,10 +379,7 @@ router.post("/openai/conversations/:id/media", (req, res) => {
       return;
     }
 
-    const [conv] = await db
-      .select()
-      .from(conversations)
-      .where(eq(conversations.id, convId));
+    const conv = await loadOwnedConversation(convId, req.userId!);
     if (!conv) {
       res.status(404).json({ error: "Conversation not found" });
       return;
@@ -381,6 +391,7 @@ router.post("/openai/conversations/:id/media", (req, res) => {
 
     try {
       const asset = await createMediaAsset({
+        ownerId: req.userId!,
         engramId: conv.engramId ?? null,
         conversationId: conv.id,
         filename: file.originalname || "upload",

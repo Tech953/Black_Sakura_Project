@@ -84,10 +84,9 @@ mac:
   target:
     - dmg
   category: public.app-category.productivity
-  # Signing + notarization. Signing is opt-in via env: provide a Developer ID
-  # certificate through CSC_LINK / CSC_KEY_PASSWORD. With no certificate present
-  # electron-builder skips signing entirely (and therefore notarization too), so
-  # local/unsigned builds keep working.
+  # Signing + notarization. Tag-release CI requires a Developer ID certificate
+  # through CSC_LINK / CSC_KEY_PASSWORD and Apple notarization credentials.
+  # Local/manual engineering builds may omit them and remain unsigned.
   #
   # Gatekeeper on modern macOS requires BOTH a Developer ID signature AND Apple
   # notarization — a signed-but-unnotarized app still shows the "unidentified
@@ -107,8 +106,7 @@ mac:
   # .app and hands them to @electron/osx-sign, which signs them with the same
   # hardened runtime + inherit entitlements + secure timestamp as the rest of the
   # bundle. Paths are relative to the .app's Contents (no extension on macOS).
-  # This is a no-op for unsigned local/CI builds (signing is skipped without a
-  # cert), so those keep working unchanged.
+  # This remains a no-op for explicitly unsigned local/manual builds.
   binaries:
     - Contents/Resources/bin/ffmpeg
     - Contents/Resources/bin/ffprobe
@@ -117,9 +115,8 @@ mac:
     # notarization rejects the app. Harmless if the file is absent (unsigned
     # local builds skip signing entirely).
     - Contents/Resources/llama/bin/llama-server
-  # notarize runs only after a successful sign, and only when Apple credentials
-  # are present in the environment (APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD +
-  # APPLE_TEAM_ID, or the APPLE_API_KEY trio); otherwise it is skipped gracefully.
+  # notarize runs after signing. Tag-release CI supplies and requires
+  # APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID.
   notarize: true
 
 win:
@@ -134,9 +131,8 @@ win:
     # auto-updating distribution; the .zip is for no-install use. Adds no per-OS
     # cost and ships in the same release.
     - zip
-  # Authenticode signing is opt-in via WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD
-  # (electron-builder maps these to the certificate file + password). With no
-  # certificate the executable is left unsigned. A timestamp countersignature
+  # Tag-release CI requires WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD
+  # (electron-builder maps these to the certificate file + password). A timestamp countersignature
   # keeps the signature valid after the signing certificate eventually expires,
   # and SHA-256 is required for SmartScreen to trust the signature.
   signtoolOptions:

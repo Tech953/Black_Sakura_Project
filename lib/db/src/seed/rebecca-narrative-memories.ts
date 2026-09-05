@@ -1,6 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { AppDatabase } from "../index";
-import { engramWorldModelTable, engramsTable } from "../schema";
+import {
+  engramWorldModelTable,
+  engramsTable,
+  SYSTEM_OWNER_ID,
+} from "../schema";
 import {
   REBECCA_NARRATIVE_MEMORY_FACTS,
   REBECCA_NARRATIVE_MEMORY_NODES,
@@ -32,7 +36,12 @@ export async function seedRebeccaNarrativeMemories(
   const [baseRebecca] = await db
     .select()
     .from(engramsTable)
-    .where(eq(engramsTable.slug, REBECCA_BASE_SLUG));
+    .where(
+      and(
+        eq(engramsTable.ownerId, SYSTEM_OWNER_ID),
+        eq(engramsTable.slug, REBECCA_BASE_SLUG),
+      ),
+    );
 
   if (!baseRebecca) {
     return {

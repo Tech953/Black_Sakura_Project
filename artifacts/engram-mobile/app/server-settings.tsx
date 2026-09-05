@@ -1,10 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import { reloadAppAsync } from "expo";
 import { Stack, useRouter } from "expo-router";
+import { useClerk } from "@clerk/expo";
 import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -53,6 +55,7 @@ export default function ServerSettingsScreen() {
   const { t } = useTranslation("mobile");
   const colors = useColors();
   const router = useRouter();
+  const { signOut } = useClerk();
   const [value, setValue] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -175,6 +178,23 @@ export default function ServerSettingsScreen() {
     refreshModel();
     setOfflineMsg(t("settings.modelDeleted"));
   }, [refreshModel, t]);
+
+  const onSignOut = useCallback(() => {
+    Alert.alert(
+      "Sign out of ENGRAM?",
+      "Your downloaded private model stays on this device. Account history remains isolated and is unavailable until you sign in again.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: () => {
+            void signOut();
+          },
+        },
+      ],
+    );
+  }, [signOut]);
 
   const applyUrl = async (url: string | null) => {
     await setServerUrlOverride(url);
@@ -501,6 +521,17 @@ export default function ServerSettingsScreen() {
           ) : null}
         </>
       ) : null}
+
+      <Text style={[styles.kicker, rtl && styles.rtlText, { color: colors.primary, marginTop: 36 }]}>
+        ACCOUNT
+      </Text>
+      <Pressable
+        testID="sign-out"
+        onPress={onSignOut}
+        style={[styles.button, { borderColor: colors.destructive, marginTop: 12 }]}
+      >
+        <Text style={[styles.buttonText, { color: colors.destructive }]}>Sign out</Text>
+      </Pressable>
     </ScrollView>
   );
 }

@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   hubSpacesTable,
   engramsTable,
   engramPresenceTable,
   type NewHubSpace,
+  SYSTEM_OWNER_ID,
 } from "../schema";
 import type { AppDatabase } from "../index";
 
@@ -122,18 +123,21 @@ export async function seedHub(
 ): Promise<{ spacesInserted: number; spacesTotal: number; placed: number }> {
   const insertedSpaces = await db
     .insert(hubSpacesTable)
-    .values(spaces)
-    .onConflictDoNothing({ target: hubSpacesTable.slug })
+    .values(spaces.map((space) => ({ ...space, ownerId: SYSTEM_OWNER_ID })))
+    .onConflictDoNothing({ target: [hubSpacesTable.ownerId, hubSpacesTable.slug] })
     .returning({ slug: hubSpacesTable.slug });
 
   // Resolve the default home space (commons) for presence backfill.
   const [commons] = await db
     .select({ id: hubSpacesTable.id })
     .from(hubSpacesTable)
-    .where(eq(hubSpacesTable.slug, "commons"));
+    .where(and(eq(hubSpacesTable.ownerId, SYSTEM_OWNER_ID), eq(hubSpacesTable.slug, "commons")));
   if (!commons) throw new Error("commons space not found after seeding");
 
-  const engrams = await db.select({ id: engramsTable.id }).from(engramsTable);
+  const engrams = await db
+    .select({ id: engramsTable.id })
+    .from(engramsTable)
+    .where(eq(engramsTable.ownerId, SYSTEM_OWNER_ID));
   const present = await db
     .select({ engramId: engramPresenceTable.engramId })
     .from(engramPresenceTable);

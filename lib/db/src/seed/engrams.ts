@@ -9,7 +9,9 @@ export async function seedEngrams(
   const result = await db
     .insert(engramsTable)
     .values(engramSeedData)
-    .onConflictDoNothing({ target: engramsTable.slug })
+    .onConflictDoNothing({
+      target: [engramsTable.ownerId, engramsTable.slug],
+    })
     .returning({ slug: engramsTable.slug });
   return { inserted: result.length, total: engramSeedData.length };
 }

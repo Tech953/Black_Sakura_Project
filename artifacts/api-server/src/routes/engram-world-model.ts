@@ -14,37 +14,39 @@ import {
 import {
   applyWorldModelPatch,
   clampConfidence,
+  isReservedRebeccaAdaptiveSource,
   ProvenanceImmutableError,
 } from "../lib/world-model";
-import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
+import { ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
+import { loadOwnedEngram } from "../lib/account-bootstrap";
 
 const router = Router();
 
 const WORLD_MODEL_LIST_CAP = 200;
 const DEFAULT_CONFIDENCE = 0.7;
-
-async function engramExists(id: number): Promise<boolean> {
-  const [row] = await db
-    .select({ id: engramsTable.id })
-    .from(engramsTable)
-    .where(eq(engramsTable.id, id));
-  return Boolean(row);
-}
+export const REBECCA_ADAPTIVE_SOURCE_READ_ONLY_ERROR =
+  "Rebecca source-authority memories are seed-managed and cannot be created, changed, or deleted through the API.";
 
 async function loadEntry(
+  ownerId: string,
   engramId: number,
   entryId: number,
 ): Promise<EngramWorldModelEntry | undefined> {
   const [row] = await db
-    .select()
+    .select({ entry: engramWorldModelTable })
     .from(engramWorldModelTable)
+    .innerJoin(
+      engramsTable,
+      eq(engramsTable.id, engramWorldModelTable.engramId),
+    )
     .where(
       and(
         eq(engramWorldModelTable.id, entryId),
         eq(engramWorldModelTable.engramId, engramId),
+        eq(engramsTable.ownerId, ownerId),
       ),
     );
-  return row;
+  return row?.entry;
 }
 
 function serialize(row: EngramWorldModelEntry) {
@@ -67,17 +69,26 @@ router.get("/engrams/:id/world-model", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  if (!(await engramExists(parsed.data.id))) {
+  if (!(await loadOwnedEngram(parsed.data.id, req.userId!))) {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
   const rows = await db
-    .select()
+    .select({ entry: engramWorldModelTable })
     .from(engramWorldModelTable)
-    .where(eq(engramWorldModelTable.engramId, parsed.data.id))
+    .innerJoin(
+      engramsTable,
+      eq(engramsTable.id, engramWorldModelTable.engramId),
+    )
+    .where(
+      and(
+        eq(engramWorldModelTable.engramId, parsed.data.id),
+        eq(engramsTable.ownerId, req.userId!),
+      ),
+    )
     .orderBy(desc(engramWorldModelTable.createdAt))
     .limit(WORLD_MODEL_LIST_CAP);
-  res.json(rows.map(serialize));
+  res.json(rows.map(({ entry }) => serialize(entry)));
 });
 
 router.post("/engrams/:id/world-model", async (req, res) => {
@@ -87,15 +98,20 @@ router.post("/engrams/:id/world-model", async (req, res) => {
     res.status(400).json({ error: "Invalid request" });
     return;
   }
-  if (!(await engramExists(parsedParams.data.id))) {
+  const engram = await loadOwnedEngram(parsedParams.data.id, req.userId!);
+  if (!engram) {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
-  if (await isArchivalEngram(parsedParams.data.id)) {
+  if (engram.isArchival) {
     res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
   const body = parsedBody.data;
+  if (isReservedRebeccaAdaptiveSource(body.source)) {
+    res.status(409).json({ error: REBECCA_ADAPTIVE_SOURCE_READ_ONLY_ERROR });
+    return;
+  }
   const [row] = await db
     .insert(engramWorldModelTable)
     .values({
@@ -120,13 +136,23 @@ router.patch("/engrams/:id/world-model/:entryId", async (req, res) => {
     res.status(400).json({ error: "Invalid request" });
     return;
   }
-  const existing = await loadEntry(parsedParams.data.id, parsedParams.data.entryId);
+  const engram = await loadOwnedEngram(parsedParams.data.id, req.userId!);
+  const existing = engram
+    ? await loadEntry(req.userId!, parsedParams.data.id, parsedParams.data.entryId)
+    : undefined;
   if (!existing) {
     res.status(404).json({ error: "World-model entry not found" });
     return;
   }
-  if (await isArchivalEngram(parsedParams.data.id)) {
+  if (engram!.isArchival) {
     res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+    return;
+  }
+  if (
+    isReservedRebeccaAdaptiveSource(existing.source) ||
+    isReservedRebeccaAdaptiveSource(parsedBody.data.source)
+  ) {
+    res.status(409).json({ error: REBECCA_ADAPTIVE_SOURCE_READ_ONLY_ERROR });
     return;
   }
 
@@ -154,7 +180,12 @@ router.patch("/engrams/:id/world-model/:entryId", async (req, res) => {
   const [row] = await db
     .update(engramWorldModelTable)
     .set({ ...merged, updatedAt: new Date() })
-    .where(eq(engramWorldModelTable.id, existing.id))
+    .where(
+      and(
+        eq(engramWorldModelTable.id, existing.id),
+        eq(engramWorldModelTable.engramId, parsedParams.data.id),
+      ),
+    )
     .returning();
   res.json(serialize(row));
 });
@@ -168,16 +199,30 @@ router.delete("/engrams/:id/world-model/:entryId", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const existing = await loadEntry(parsed.data.id, parsed.data.entryId);
+  const engram = await loadOwnedEngram(parsed.data.id, req.userId!);
+  const existing = engram
+    ? await loadEntry(req.userId!, parsed.data.id, parsed.data.entryId)
+    : undefined;
   if (!existing) {
     res.status(404).json({ error: "World-model entry not found" });
     return;
   }
-  if (await isArchivalEngram(parsed.data.id)) {
+  if (engram!.isArchival) {
     res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
-  await db.delete(engramWorldModelTable).where(eq(engramWorldModelTable.id, existing.id));
+  if (isReservedRebeccaAdaptiveSource(existing.source)) {
+    res.status(409).json({ error: REBECCA_ADAPTIVE_SOURCE_READ_ONLY_ERROR });
+    return;
+  }
+  await db
+    .delete(engramWorldModelTable)
+    .where(
+      and(
+        eq(engramWorldModelTable.id, existing.id),
+        eq(engramWorldModelTable.engramId, parsed.data.id),
+      ),
+    );
   res.status(204).send();
 });
 

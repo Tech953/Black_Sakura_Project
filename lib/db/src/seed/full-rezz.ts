@@ -1,6 +1,11 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { isDeepStrictEqual } from "node:util";
-import { engramsTable, conversations, messages } from "../schema";
+import {
+  engramsTable,
+  conversations,
+  messages,
+  SYSTEM_OWNER_ID,
+} from "../schema";
 import type { AppDatabase } from "../index";
 import {
   buildFullRezzEngram,
@@ -40,15 +45,22 @@ export async function seedFullRezzArchive(
   return db.transaction(async (tx) => {
     const inserted = await tx
       .insert(engramsTable)
-      .values(archivalEngram)
-      .onConflictDoNothing({ target: engramsTable.slug })
+      .values({ ...archivalEngram, ownerId: SYSTEM_OWNER_ID })
+      .onConflictDoNothing({
+        target: [engramsTable.ownerId, engramsTable.slug],
+      })
       .returning({ id: engramsTable.id });
 
     if (inserted.length === 0) {
       const [existingEngram] = await tx
         .select()
         .from(engramsTable)
-        .where(eq(engramsTable.slug, FULL_REZZ_SLUG));
+        .where(
+          and(
+            eq(engramsTable.ownerId, SYSTEM_OWNER_ID),
+            eq(engramsTable.slug, FULL_REZZ_SLUG),
+          ),
+        );
       if (!existingEngram) {
         throw new Error("Full Rezz archive slug conflicted but no row could be loaded");
       }
@@ -138,6 +150,7 @@ export async function seedFullRezzArchive(
     const [conv] = await tx
       .insert(conversations)
       .values({
+        ownerId: SYSTEM_OWNER_ID,
         title: FULL_REZZ_CONVERSATION_TITLE,
         mode: "companion",
         personaName: "Rebecca (Full Rezz)",

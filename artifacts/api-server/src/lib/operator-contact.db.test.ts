@@ -96,6 +96,7 @@ describe("attemptOperatorContact — self-initiated chat", () => {
     const unsubscribe = subscribe({ engramId: engram.id }, (e) => seen.push(e));
 
     const outcome = await attemptOperatorContact({
+      ownerId: engram.ownerId!,
       engram,
       capabilities: OPEN_CAPS,
       charge: 0.95, // urgent -> delivered
@@ -147,6 +148,7 @@ describe("attemptOperatorContact — self-initiated chat", () => {
     const unsubscribe = subscribe({ engramId: engram.id }, (e) => seen.push(e));
 
     const outcome = await attemptOperatorContact({
+      ownerId: engram.ownerId!,
       engram,
       capabilities: OPEN_CAPS,
       charge: 0.95,
@@ -173,6 +175,7 @@ describe("attemptOperatorContact — self-initiated chat", () => {
     const engram = await insertEngram();
 
     const outcome = await attemptOperatorContact({
+      ownerId: engram.ownerId!,
       engram,
       capabilities: NO_HUMAN_CAPS, // canContactHuman=false -> blocked
       charge: 0.95,
@@ -198,6 +201,7 @@ describe("attemptOperatorContact — self-initiated chat", () => {
     const engram = await insertEngram();
 
     const first = await attemptOperatorContact({
+      ownerId: engram.ownerId!,
       engram,
       capabilities: OPEN_CAPS,
       charge: 0.95,
@@ -205,6 +209,7 @@ describe("attemptOperatorContact — self-initiated chat", () => {
       target: "chatConversation",
     });
     const second = await attemptOperatorContact({
+      ownerId: engram.ownerId!,
       engram,
       capabilities: OPEN_CAPS,
       charge: 0.95,

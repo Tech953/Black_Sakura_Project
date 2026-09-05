@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { engramsTable } from "@workspace/db/schema";
 import type { Engram, MediaAsset } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import {
   claimNextPendingJob,
@@ -17,6 +17,7 @@ import { generateMediaCommentary } from "../lib/engram-generation";
 import { summarizeWorldModel } from "../lib/world-model";
 import { loadRecentWorldModel } from "../lib/world-model-store";
 import { publishEvent } from "../lib/events";
+import { loadOwnedConversation } from "../lib/account-bootstrap";
 
 const WORKER_INTERVAL_MS = Number(process.env.MEDIA_WORKER_INTERVAL_MS) || 5_000;
 /** A job stuck "processing" longer than this (e.g. a crash mid-job) is failed and unwedged. */
@@ -28,8 +29,10 @@ let ticking = false; // re-entrancy guard: never run two ticks (or two jobs) at 
 let started = false; // lifecycle guard so the worker only starts once
 let timer: NodeJS.Timeout | null = null;
 
-async function loadEngram(id: number): Promise<Engram | undefined> {
-  const [row] = await db.select().from(engramsTable).where(eq(engramsTable.id, id));
+async function loadEngram(id: number, ownerId: string): Promise<Engram | undefined> {
+  const [row] = await db.select().from(engramsTable).where(
+    and(eq(engramsTable.id, id), eq(engramsTable.ownerId, ownerId)),
+  );
   return row;
 }
 
@@ -40,6 +43,19 @@ async function loadEngram(id: number): Promise<Engram | undefined> {
  * in-voice commentary. Throws on hard failure so the caller marks the job failed.
  */
 async function processAsset(asset: MediaAsset): Promise<void> {
+  // Recheck the durable ownership captured at enqueue time before touching bytes
+  // or writing derived state. A global worker may claim any account's job, but
+  // it must never process a template or a job whose parent changed ownership.
+  const engram =
+    asset.engramId == null
+      ? undefined
+      : await loadEngram(asset.engramId, asset.ownerId);
+  if (asset.engramId != null && !engram) {
+    throw new Error("Owning engram no longer belongs to this media job owner.");
+  }
+  if (asset.conversationId != null && !(await loadOwnedConversation(asset.conversationId, asset.ownerId))) {
+    throw new Error("Owning conversation no longer belongs to this media job owner.");
+  }
   const blob = await loadMediaBlob(asset.id);
   if (!blob) throw new Error("Media bytes are missing for this asset.");
 
@@ -75,7 +91,6 @@ async function processAsset(asset: MediaAsset): Promise<void> {
 
     // In-voice reaction. Best-effort: extraction already succeeded and observations are
     // persisted, so a commentary failure must not fail the whole job.
-    const engram = await loadEngram(asset.engramId);
     if (engram) {
       try {
         const worldModelSummary = summarizeWorldModel(
@@ -107,6 +122,7 @@ async function processAsset(asset: MediaAsset): Promise<void> {
 
   publishEvent({
     type: "media.completed",
+    ownerId: asset.ownerId,
     engramId: asset.engramId,
     conversationId: asset.conversationId,
     data: {

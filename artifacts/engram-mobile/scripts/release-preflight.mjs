@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdtempSync,
   readdirSync,
+  readFileSync,
   realpathSync,
   rmSync,
   statSync,
@@ -16,6 +17,22 @@ import { fileURLToPath } from "node:url";
 const mobileRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requiredAbis = ["arm64-v8a", "x86_64"];
 const minimumArm64LoadAlignment = 0x4000n;
+const requiredAndroidPermissions = [
+  "android.permission.INTERNET",
+  "android.permission.VIBRATE",
+];
+const forbiddenAndroidPermissions = [
+  "android.permission.ACCESS_COARSE_LOCATION",
+  "android.permission.ACCESS_FINE_LOCATION",
+  "android.permission.READ_EXTERNAL_STORAGE",
+  "android.permission.WRITE_EXTERNAL_STORAGE",
+  "android.permission.RECORD_AUDIO",
+  "android.permission.SYSTEM_ALERT_WINDOW",
+];
+const backupResourceFiles = [
+  "app/src/main/res/xml/backup_rules.xml",
+  "app/src/main/res/xml/data_extraction_rules.xml",
+];
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -106,6 +123,91 @@ function findAndroidBuildTool(name) {
   );
 }
 
+function assertAndroidPrivacyPolicy(manifest, context) {
+  if (!/android:allowBackup\s*=\s*"false"/.test(manifest)) {
+    throw new Error(`${context} must set android:allowBackup="false".`);
+  }
+  for (const attribute of [
+    'android:fullBackupContent="@xml/backup_rules"',
+    'android:dataExtractionRules="@xml/data_extraction_rules"',
+  ]) {
+    if (!manifest.includes(attribute)) {
+      throw new Error(`${context} is missing ${attribute}.`);
+    }
+  }
+  for (const permission of requiredAndroidPermissions) {
+    if (!manifest.includes(`android:name="${permission}"`)) {
+      throw new Error(`${context} is missing required permission ${permission}.`);
+    }
+  }
+  for (const permission of forbiddenAndroidPermissions) {
+    if (manifest.includes(`android:name="${permission}"`)) {
+      throw new Error(`${context} includes forbidden permission ${permission}.`);
+    }
+  }
+}
+
+function verifyCheckedInAndroidPrivacyPolicy() {
+  const manifestPath = path.join(mobileRoot, "android/app/src/main/AndroidManifest.xml");
+  if (!existsSync(manifestPath)) {
+    throw new Error(`Checked-in Android manifest not found at ${manifestPath}.`);
+  }
+  assertAndroidPrivacyPolicy(
+    readFileSync(manifestPath, "utf8"),
+    "Checked-in Android manifest",
+  );
+  for (const relativePath of backupResourceFiles) {
+    const resourcePath = path.join(mobileRoot, "android", relativePath);
+    if (!existsSync(resourcePath)) {
+      throw new Error(`Required Android backup exclusion resource not found at ${resourcePath}.`);
+    }
+    const resource = readFileSync(resourcePath, "utf8");
+    if (!resource.includes('<exclude domain="database" path="."')) {
+      throw new Error(`Android backup exclusion resource is incomplete: ${resourcePath}.`);
+    }
+  }
+  console.log("Checked-in Android backup and permission policy is hardened.");
+}
+
+function verifyApkPrivacyPolicy(apkPath) {
+  const aapt = findAndroidBuildTool("aapt");
+  const manifest = run(aapt, ["dump", "xmltree", apkPath, "AndroidManifest.xml"], {
+    capture: true,
+  });
+  const allowBackup = manifest.match(
+    /A:\s+android:allowBackup\([^)]+\)=\(type 0x12\)(0x[0-9a-f]+)/i,
+  );
+  if (!allowBackup || BigInt(allowBackup[1]) !== 0n) {
+    throw new Error("Release APK must set android:allowBackup=false.");
+  }
+  if (
+    !manifest.includes("android:fullBackupContent") ||
+    !manifest.includes("android:dataExtractionRules")
+  ) {
+    throw new Error("Release APK is missing explicit Android backup exclusion rules.");
+  }
+
+  const permissions = run(aapt, ["dump", "permissions", apkPath], { capture: true });
+  for (const permission of requiredAndroidPermissions) {
+    if (!permissions.includes(permission)) {
+      throw new Error(`Release APK is missing required permission ${permission}.`);
+    }
+  }
+  for (const permission of forbiddenAndroidPermissions) {
+    if (permissions.includes(permission)) {
+      throw new Error(`Release APK includes forbidden permission ${permission}.`);
+    }
+  }
+
+  const resources = run(aapt, ["dump", "resources", apkPath], { capture: true });
+  for (const resource of ["backup_rules", "data_extraction_rules"]) {
+    if (!resources.includes(resource)) {
+      throw new Error(`Release APK is missing XML resource ${resource}.`);
+    }
+  }
+  console.log("Release APK backup and permission policy is hardened.");
+}
+
 function verifyArm64ElfAlignment(apkPath) {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "engram-apk-"));
   try {
@@ -153,6 +255,7 @@ function verifyApk(apkPath) {
   if (!existsSync(resolved) || !statSync(resolved).isFile()) {
     throw new Error(`Release APK not found at ${resolved}`);
   }
+  verifyApkPrivacyPolicy(resolved);
   const entries = run("unzip", ["-Z1", resolved], { capture: true })
     .split(/\r?\n/)
     .filter(Boolean);
@@ -218,6 +321,7 @@ function parseArgs(argv) {
 try {
   const { skipExpo, apkPath } = parseArgs(process.argv.slice(2));
   if (!skipExpo) checkExpoPackageVersions();
+  verifyCheckedInAndroidPrivacyPolicy();
   ensureLlamaNativeLibraries();
   if (apkPath) verifyApk(apkPath);
   console.log("Mobile release dependency preflight passed.");

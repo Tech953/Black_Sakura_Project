@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { subscribe, type EngramEvent } from "../lib/events";
+import { loadOwnedConversation, loadOwnedEngram } from "../lib/account-bootstrap";
 
 const router: IRouter = Router();
 
@@ -21,11 +22,23 @@ function parseId(value: unknown): number | undefined {
  * Not modeled in OpenAPI (SSE streams aren't expressible there), mirroring the chat
  * stream and the media/artifact raw routes.
  */
-router.get("/events", (req, res) => {
+router.get("/events", async (req, res) => {
   const scope = {
+    ownerId: req.userId!,
     engramId: parseId(req.query["engramId"]),
     conversationId: parseId(req.query["conversationId"]),
   };
+  if (scope.engramId != null && !(await loadOwnedEngram(scope.engramId, scope.ownerId))) {
+    res.status(404).json({ error: "Engram not found" });
+    return;
+  }
+  if (
+    scope.conversationId != null &&
+    !(await loadOwnedConversation(scope.conversationId, scope.ownerId))
+  ) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
 
   res.status(200);
   res.setHeader("Content-Type", "text/event-stream");

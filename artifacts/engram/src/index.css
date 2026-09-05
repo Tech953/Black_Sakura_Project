@@ -1,4 +1,6 @@
+@layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
+@import "@clerk/themes/shadcn.css";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
@@ -187,4 +189,15 @@
   pointer-events: none;
   z-index: 9999;
   opacity: 0.15;
+}
+
+/* Clerk pseudo-states need a stylesheet; appearance element styles cannot express them. */
+.cl-formFieldInput::placeholder {
+  color: rgb(148 163 184);
+  opacity: 1;
+}
+
+.cl-formFieldInput:focus {
+  border-color: rgb(34 211 238);
+  box-shadow: 0 0 0 1px rgb(34 211 238 / 0.35);
 }

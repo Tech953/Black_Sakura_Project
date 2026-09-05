@@ -40,16 +40,18 @@ import {
   conversations,
   messages,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { MediaAsset } from "@workspace/db/schema";
 import { createMediaAsset } from "../lib/media-store";
 import { runMediaTick } from "./media-worker";
 
 // Bring the in-memory schema up before any test runs (migrate only — no seed).
 const ready = ensureDatabaseReady({ seed: false });
+const TEST_OWNER_ID = "test_media_worker_owner";
 
 beforeEach(async () => {
   await ready;
+  await db.execute(sql`ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS owner_id text NOT NULL DEFAULT '__engram_system_template__'`);
   // Each test starts from an empty queue. Clear children before parents (same FK
   // ordering as media-store.db.test.ts).
   await db.delete(mediaObservationsTable);
@@ -82,6 +84,7 @@ async function insertEngram(): Promise<number> {
   const [row] = await db
     .insert(engramsTable)
     .values({
+      ownerId: TEST_OWNER_ID,
       slug: `wk-engram-${engramSeq}`,
       name: `Worker Engram ${engramSeq}`,
       title: "Test",
@@ -114,6 +117,7 @@ async function insertEngram(): Promise<number> {
 /** Seed a real pending asset + blob through the actual upload path. */
 async function seedPendingAsset(engramId: number | null): Promise<MediaAsset> {
   return createMediaAsset({
+    ownerId: TEST_OWNER_ID,
     engramId,
     filename: "harbor.txt",
     mimeType: "text/plain",
@@ -130,6 +134,7 @@ async function insertProcessingAsset(
   const [row] = await db
     .insert(mediaAssetsTable)
     .values({
+      ownerId: TEST_OWNER_ID,
       engramId,
       filename: "harbor.txt",
       mimeType: "text/plain",

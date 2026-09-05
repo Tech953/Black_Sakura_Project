@@ -58,7 +58,7 @@ import {
   engramArtifactsTable,
   engramArtifactBlobsTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   createArtifactJob,
   loadArtifactById,
@@ -69,9 +69,11 @@ import {
 import { runArtifactTick } from "./artifact-worker";
 
 const ready = ensureDatabaseReady({ seed: false });
+const TEST_OWNER_ID = "test_artifact_worker_owner";
 
 beforeEach(async () => {
   await ready;
+  await db.execute(sql`ALTER TABLE engram_artifacts ADD COLUMN IF NOT EXISTS owner_id text NOT NULL DEFAULT '__engram_system_template__'`);
   h.create.mockClear();
   h.generateImage.mockClear();
   h.generateVideo.mockClear();
@@ -90,6 +92,7 @@ async function insertEngram(): Promise<number> {
   const [row] = await db
     .insert(engramsTable)
     .values({
+      ownerId: TEST_OWNER_ID,
       slug: `studio-engram-${seq}`,
       name: `Studio Engram ${seq}`,
       title: "Author",
@@ -123,6 +126,7 @@ describe("artifact worker — local PDF generation end-to-end", () => {
   it("queues a PDF job, the worker completes it, and the bytes are a real PDF", async () => {
     const engramId = await insertEngram();
     const job = await createArtifactJob({
+      ownerId: TEST_OWNER_ID,
       engramId,
       trigger: "operator",
       kind: "pdf",
@@ -155,6 +159,7 @@ describe("artifact worker — local PDF generation end-to-end", () => {
     } as never);
     const engramId = await insertEngram();
     const job = await createArtifactJob({
+      ownerId: TEST_OWNER_ID,
       engramId,
       trigger: "operator",
       kind: "pdf",
@@ -173,6 +178,7 @@ describe("artifact worker — local PDF generation end-to-end", () => {
   it("fails closed for image/video (no provider) with a clear message; no blob written", async () => {
     const engramId = await insertEngram();
     const job = await createArtifactJob({
+      ownerId: TEST_OWNER_ID,
       engramId,
       trigger: "operator",
       kind: "image",
@@ -191,6 +197,7 @@ describe("artifact worker — local PDF generation end-to-end", () => {
   it("requeues a failed job and clears the prior result + blob", async () => {
     const engramId = await insertEngram();
     const job = await createArtifactJob({
+      ownerId: TEST_OWNER_ID,
       engramId,
       trigger: "operator",
       kind: "pdf",
@@ -220,6 +227,7 @@ describe("artifact worker — local PDF generation end-to-end", () => {
   it("deletes an artifact and its bytes", async () => {
     const engramId = await insertEngram();
     const job = await createArtifactJob({
+      ownerId: TEST_OWNER_ID,
       engramId,
       trigger: "operator",
       kind: "pdf",

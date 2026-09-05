@@ -7,6 +7,7 @@ import {
 import { resolveServerUrl } from "../server-url";
 import {
   buildPendingSyncBatch,
+  getOfflineStoreAccountId,
   markSyncBatchComplete,
   syncBatchIds,
 } from "./store";
@@ -46,6 +47,15 @@ async function assertServerReachable(serverUrl: string): Promise<void> {
 }
 
 async function drainPendingRows(): Promise<OfflineSyncResult> {
+  const syncAccountId = getOfflineStoreAccountId();
+  if (!syncAccountId) {
+    throw new Error("An authenticated account is required to synchronize offline history.");
+  }
+  const assertSameAccount = () => {
+    if (getOfflineStoreAccountId() !== syncAccountId) {
+      throw new Error("Offline account changed; synchronization was cancelled.");
+    }
+  };
   const deviceId = await getDeviceId();
   let batch = await buildPendingSyncBatch(deviceId);
   if (syncBatchIds(batch).length === 0) {
@@ -53,6 +63,7 @@ async function drainPendingRows(): Promise<OfflineSyncResult> {
   }
   const serverUrl = await resolveServerUrl();
   await assertServerReachable(serverUrl);
+  assertSameAccount();
   setBaseUrl(serverUrl);
   let syncedRows = 0;
   let batches = 0;
@@ -61,7 +72,12 @@ async function drainPendingRows(): Promise<OfflineSyncResult> {
     const expectedIds = syncBatchIds(batch);
     if (expectedIds.length === 0) return { syncedRows, batches };
 
+    // The bearer token is read by the API client at request time. Guard the
+    // account immediately before that point so an in-flight sync can never
+    // upload account A's batch with account B's newly installed Clerk token.
+    assertSameAccount();
     const result = await syncOfflineHistory(batch.payload);
+    assertSameAccount();
     const acknowledged = new Set(result.syncedIds);
     if (expectedIds.some((id) => !acknowledged.has(id))) {
       throw new Error("Server did not acknowledge every offline row");

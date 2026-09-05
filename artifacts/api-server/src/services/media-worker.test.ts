@@ -45,7 +45,10 @@ const h = vi.hoisted(() => {
 
 vi.mock("@workspace/db", () => ({ db: h.db }));
 vi.mock("@workspace/db/schema", () => ({ engramsTable: h.engramsTable }));
-vi.mock("drizzle-orm", () => ({ eq: () => ({}) }));
+vi.mock("drizzle-orm", () => ({ and: () => ({}), eq: () => ({}) }));
+vi.mock("../lib/account-bootstrap", () => ({
+  loadOwnedConversation: vi.fn(async () => ({ id: 1 })),
+}));
 vi.mock("../lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -73,6 +76,7 @@ import { runMediaTick } from "./media-worker";
 function makeAsset(overrides: Partial<MediaAsset> = {}): MediaAsset {
   return {
     id: 7,
+    ownerId: "test_media_worker_owner",
     engramId: 3,
     filename: "harbor.txt",
     mimeType: "text/plain",
@@ -93,7 +97,7 @@ function makeAsset(overrides: Partial<MediaAsset> = {}): MediaAsset {
 }
 
 function makeEngram(): Engram {
-  return { id: 3, name: "Arezo" } as Engram;
+  return { id: 3, name: "Arezo", ownerId: "test_media_worker_owner" } as Engram;
 }
 
 beforeEach(() => {
@@ -284,7 +288,7 @@ describe("runMediaTick — commentary is best-effort", () => {
     expect(patch.observationCount).toBe(2);
   });
 
-  it("completes without commentary when the owning engram no longer exists", async () => {
+  it("fails the job when the owner-scoped engram no longer exists", async () => {
     h.claimNextPendingJob.mockResolvedValueOnce(makeAsset());
     h.state.engram = null;
 
@@ -292,8 +296,8 @@ describe("runMediaTick — commentary is best-effort", () => {
 
     expect(h.generateMediaCommentary).not.toHaveBeenCalled();
     const [, patch] = h.updateMediaAsset.mock.calls[0];
-    expect(patch.status).toBe("completed");
-    expect(patch.commentary).toBeNull();
+    expect(patch.status).toBe("failed");
+    expect(patch.error).toMatch(/owner/i);
   });
 });
 

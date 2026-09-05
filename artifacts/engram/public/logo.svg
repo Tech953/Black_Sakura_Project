@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" role="img" aria-labelledby="title">
+  <title id="title">ENGRAM</title>
+  <path fill="#22d3ee" d="m30 4 26 15v30L30 64 4 49V19L30 4Zm0 9.2L12 23.6v20.8L30 54.8l18-10.4V23.6L30 13.2Z"/>
+  <path fill="#f8fafc" d="M25 25h10v14H25z"/>
+  <text x="72" y="43" fill="#f8fafc" font-family="Rajdhani, sans-serif" font-size="37" font-weight="700" letter-spacing="6">ENGRAM</text>
+</svg>

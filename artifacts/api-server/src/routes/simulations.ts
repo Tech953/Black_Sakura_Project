@@ -17,12 +17,10 @@ import {
   openOperatorSimulation,
   SimulationTransitionError,
 } from "../lib/simulations";
-import { db } from "@workspace/db";
-import { engramsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
 import { loadSpaces, loadPresenceForEngram } from "../lib/hub-store";
 import { loadControls } from "../lib/controls-store";
 import { ARCHIVAL_READ_ONLY_ERROR, isArchivalEngram } from "../lib/archival";
+import { loadOwnedEngram } from "../lib/account-bootstrap";
 
 const router = Router();
 
@@ -63,7 +61,15 @@ router.get("/simulations", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (
+    parsed.data.engramId != null &&
+    !(await loadOwnedEngram(parsed.data.engramId, req.userId!))
+  ) {
+    res.status(404).json({ error: "Engram not found" });
+    return;
+  }
   const rows = await loadSimulations({
+    ownerId: req.userId!,
     engramId: parsed.data.engramId,
     status: parsed.data.status as SimulationStatus | undefined,
   });
@@ -76,7 +82,7 @@ router.get("/simulations/:id/steps", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const sim = await loadSimulationById(parsed.data.id);
+  const sim = await loadSimulationById(parsed.data.id, req.userId!);
   if (!sim) {
     res.status(404).json({ error: "Simulation not found" });
     return;
@@ -100,7 +106,7 @@ router.post("/simulations", async (req, res) => {
     res.status(400).json({ error: "engramId (integer) and premise (non-empty string) are required" });
     return;
   }
-  const [engram] = await db.select().from(engramsTable).where(eq(engramsTable.id, engramId));
+  const engram = await loadOwnedEngram(engramId, req.userId!);
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
     return;
@@ -109,13 +115,13 @@ router.post("/simulations", async (req, res) => {
     res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
-  const spaces = await loadSpaces();
+  const spaces = await loadSpaces(req.userId!);
   const chamber = spaces.find((s) => s.kind === "simulation_chamber");
   if (!chamber) {
     res.status(409).json({ error: "No simulation chamber space exists" });
     return;
   }
-  const presence = await loadPresenceForEngram(engram.id);
+  const presence = await loadPresenceForEngram(engram.id, req.userId!);
   if (!presence || presence.spaceId !== chamber.id || presence.status !== "active") {
     res.status(409).json({
       error: `${engram.name} must be present in the simulation chamber ("${chamber.name}") to run a simulation — move them there first`,
@@ -123,7 +129,7 @@ router.post("/simulations", async (req, res) => {
     return;
   }
   try {
-    const controls = await loadControls();
+    const controls = await loadControls(req.userId!);
     const sim = await openOperatorSimulation({ engram, chamber, premise, maxSteps, controls });
     // First beat immediately (best-effort, in the background) so the operator
     // doesn't wait for the next engine tick.
@@ -146,7 +152,7 @@ router.post("/simulations/:id/control", async (req, res) => {
     res.status(400).json({ error: "Invalid request" });
     return;
   }
-  const sim = await loadSimulationById(parsedParams.data.id);
+  const sim = await loadSimulationById(parsedParams.data.id, req.userId!);
   if (!sim) {
     res.status(404).json({ error: "Simulation not found" });
     return;

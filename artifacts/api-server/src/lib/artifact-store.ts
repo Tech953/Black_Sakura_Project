@@ -17,6 +17,7 @@ import {
   gte,
   inArray,
   lt,
+  ne,
   notExists,
 } from "drizzle-orm";
 import { publishEvent } from "./events";
@@ -24,8 +25,10 @@ import {
   ARCHIVAL_READ_ONLY_ERROR,
   artifactTouchesArchive,
 } from "./archival";
+import { SYSTEM_OWNER_ID } from "@workspace/db/schema";
 
 export interface CreateArtifactInput {
+  ownerId: string;
   engramId: number;
   conversationId?: number | null;
   trigger: ArtifactTrigger;
@@ -53,6 +56,7 @@ export async function createArtifactJob(
   const [row] = await db
     .insert(engramArtifactsTable)
     .values({
+      ownerId: input.ownerId,
       engramId: input.engramId,
       conversationId: input.conversationId ?? null,
       trigger: input.trigger,
@@ -64,6 +68,7 @@ export async function createArtifactJob(
     .returning();
   publishEvent({
     type: "artifact.created",
+    ownerId: row.ownerId,
     engramId: row.engramId,
     conversationId: row.conversationId,
     data: row,
@@ -74,12 +79,13 @@ export async function createArtifactJob(
 /** List generated artifacts (metadata only — never the bytes), newest first. */
 export async function loadArtifacts(
   filter: {
+    ownerId: string;
     engramId?: number;
     status?: ArtifactJobStatus;
     kind?: ArtifactKind;
-  } = {},
+  },
 ): Promise<EngramArtifact[]> {
-  const conds = [];
+  const conds = [eq(engramArtifactsTable.ownerId, filter.ownerId)];
   if (filter.engramId !== undefined)
     conds.push(eq(engramArtifactsTable.engramId, filter.engramId));
   if (filter.status !== undefined)
@@ -95,17 +101,19 @@ export async function loadArtifacts(
 
 export async function loadArtifactById(
   id: number,
+  ownerId?: string,
 ): Promise<EngramArtifact | undefined> {
   const [row] = await db
     .select()
     .from(engramArtifactsTable)
-    .where(eq(engramArtifactsTable.id, id));
+    .where(ownerId ? and(eq(engramArtifactsTable.id, id), eq(engramArtifactsTable.ownerId, ownerId)) : eq(engramArtifactsTable.id, id));
   return row;
 }
 
 /** Load the raw bytes + MIME/filename for one artifact (used only by the /raw route). */
 export async function loadArtifactBlob(
   artifactId: number,
+  ownerId?: string,
 ): Promise<{ data: Buffer; mimeType: string; filename: string } | undefined> {
   const [row] = await db
     .select({
@@ -118,7 +126,7 @@ export async function loadArtifactBlob(
       engramArtifactsTable,
       eq(engramArtifactsTable.id, engramArtifactBlobsTable.artifactId),
     )
-    .where(eq(engramArtifactBlobsTable.artifactId, artifactId));
+    .where(ownerId ? and(eq(engramArtifactBlobsTable.artifactId, artifactId), eq(engramArtifactsTable.ownerId, ownerId)) : eq(engramArtifactBlobsTable.artifactId, artifactId));
   if (!row) return undefined;
   // node-postgres returns bytea as a Buffer; PGlite (desktop) returns a Uint8Array.
   // Normalize to Buffer so the /raw route's res.send + Content-Length behave the
@@ -168,6 +176,7 @@ export async function claimNextPendingArtifact(): Promise<
       .where(
         and(
           eq(engramArtifactsTable.status, "pending"),
+          ne(engramArtifactsTable.ownerId, SYSTEM_OWNER_ID),
           notExists(directArchivalOwner),
           notExists(archivalConversationOwner),
         ),
@@ -187,6 +196,7 @@ export async function claimNextPendingArtifact(): Promise<
   if (claimed) {
     publishEvent({
       type: "artifact.updated",
+      ownerId: claimed.ownerId,
       engramId: claimed.engramId,
       conversationId: claimed.conversationId,
       data: claimed,
@@ -232,6 +242,7 @@ export async function recoverStuckArtifacts(
     .where(
       and(
         eq(engramArtifactsTable.status, "processing"),
+          ne(engramArtifactsTable.ownerId, SYSTEM_OWNER_ID),
         lt(engramArtifactsTable.startedAt, cutoff),
         notExists(directArchivalOwner),
         notExists(archivalConversationOwner),
@@ -313,6 +324,7 @@ export async function completeArtifact(input: {
   if (completed) {
     publishEvent({
       type: "artifact.completed",
+      ownerId: completed.ownerId,
       engramId: completed.engramId,
       conversationId: completed.conversationId,
       data: completed,

@@ -43,13 +43,16 @@ import {
   mediaBlobsTable,
   mediaObservationsTable,
   messages,
+  SYSTEM_OWNER_ID,
 } from "@workspace/db";
 import { seedFullRezzArchive } from "@workspace/db/seed";
 import { asc, eq } from "drizzle-orm";
 import { ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 import artifactsRouter from "./artifacts";
 import engramsRouter from "./engrams";
-import worldModelRouter from "./engram-world-model";
+import worldModelRouter, {
+  REBECCA_ADAPTIVE_SOURCE_READ_ONLY_ERROR,
+} from "./engram-world-model";
 import hubRouter from "./hub";
 import mediaRouter from "./media";
 import openaiRouter from "./openai";
@@ -396,6 +399,7 @@ beforeAll(async () => {
   const app = express();
   app.use(express.json());
   app.use((req: Request, _res: ExpressResponse, next: NextFunction) => {
+    req.userId = SYSTEM_OWNER_ID;
     (req as Request & { log: unknown }).log = {
       info: () => {},
       warn: () => {},
@@ -681,5 +685,69 @@ describe.sequential("Full Rezz archival route guards", () => {
 
     expect(await snapshotArchiveState()).toEqual(before);
     expect(h.llmCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe.sequential("Rebecca adaptive source-authority route guards", () => {
+  const trustedSource =
+    "seed:rebecca-adaptive:v1:primary-dialogue:edgerunners-dialogue-asr:abrasive-humor-direct-loyalty";
+
+  it("rejects attempts to forge the reserved source namespace", async () => {
+    const response = await jsonRequest(
+      `/api/engrams/${fixture.liveEngramId}/world-model`,
+      "POST",
+      {
+        provenance: "remembered",
+        content: "forged authority",
+        confidence: 1,
+        scope: "private",
+        source: "seed:rebecca-adaptive:v1:primary-dialogue:fake:fake",
+      },
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: REBECCA_ADAPTIVE_SOURCE_READ_ONLY_ERROR,
+    });
+  });
+
+  it("rejects update, relabel, and deletion of seed-managed authority memories", async () => {
+    const [entry] = await db
+      .insert(engramWorldModelTable)
+      .values({
+        engramId: fixture.liveEngramId,
+        provenance: "remembered",
+        content: "canonical seed-managed content",
+        confidence: 0.82,
+        scope: "private",
+        source: trustedSource,
+      })
+      .returning();
+
+    for (const [method, body] of [
+      ["PATCH", { content: "rewritten" }],
+      ["PATCH", { source: "manual" }],
+      ["DELETE", undefined],
+    ] as const) {
+      const response = await jsonRequest(
+        `/api/engrams/${fixture.liveEngramId}/world-model/${entry.id}`,
+        method,
+        body,
+      );
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: REBECCA_ADAPTIVE_SOURCE_READ_ONLY_ERROR,
+      });
+    }
+
+    const [after] = await db
+      .select()
+      .from(engramWorldModelTable)
+      .where(eq(engramWorldModelTable.id, entry.id));
+    expect(after).toMatchObject({
+      provenance: "remembered",
+      content: "canonical seed-managed content",
+      confidence: 0.82,
+      source: trustedSource,
+    });
   });
 });

@@ -4,7 +4,13 @@
   "files": [],
   "references": [
     {
+      "path": "./lib/rebecca-source-registry"
+    },
+    {
       "path": "./lib/db"
+    },
+    {
+      "path": "./lib/engram-core"
     },
     {
       "path": "./lib/i18n"

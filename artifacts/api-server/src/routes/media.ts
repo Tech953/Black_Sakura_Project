@@ -1,9 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { db } from "@workspace/db";
-import { engramsTable } from "@workspace/db/schema";
 import type { MediaAsset, EngramWorldModelEntry, MediaJobStatus } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import {
   ListMediaQueryParams,
   GetMediaAssetParams,
@@ -21,8 +19,13 @@ import {
   deleteMediaAsset,
 } from "../lib/media-store";
 import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
+import { loadOwnedConversation, loadOwnedEngram } from "../lib/account-bootstrap";
 
 const router = Router();
+
+async function isOwnedAsset(asset: MediaAsset, ownerId: string): Promise<boolean> {
+  return asset.ownerId === ownerId;
+}
 
 /** Hard cap on a single upload's size. Defaults to 25 MiB; overridable via env. */
 const MEDIA_MAX_BYTES = Number(process.env["MEDIA_MAX_BYTES"]) || 25 * 1024 * 1024;
@@ -105,10 +108,7 @@ router.post("/media", (req, res) => {
     }
 
     try {
-      const [engram] = await db
-        .select({ id: engramsTable.id, isArchival: engramsTable.isArchival })
-        .from(engramsTable)
-        .where(eq(engramsTable.id, engramId));
+      const engram = await loadOwnedEngram(engramId, req.userId!);
       if (!engram) {
         res.status(404).json({ error: "Engram not found" });
         return;
@@ -118,6 +118,7 @@ router.post("/media", (req, res) => {
         return;
       }
       const asset = await createMediaAsset({
+        ownerId: req.userId!,
         engramId,
         filename: file.originalname || "upload",
         mimeType: file.mimetype,
@@ -138,11 +139,17 @@ router.get("/media", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (parsed.data.engramId != null && !(await loadOwnedEngram(parsed.data.engramId, req.userId!))) {
+    res.status(404).json({ error: "Engram not found" });
+    return;
+  }
   const rows = await loadMediaAssets({
+    ownerId: req.userId!,
     engramId: parsed.data.engramId,
     status: parsed.data.status as MediaJobStatus | undefined,
   });
-  res.json(rows.map(serializeAsset));
+  const owned = await Promise.all(rows.map(async (asset) => (await isOwnedAsset(asset, req.userId!)) ? asset : null));
+  res.json(owned.filter((asset): asset is MediaAsset => asset !== null).map(serializeAsset));
 });
 
 router.get("/media/:id", async (req, res) => {
@@ -151,8 +158,8 @@ router.get("/media/:id", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const asset = await loadMediaAssetById(parsed.data.id);
-  if (!asset) {
+  const asset = await loadMediaAssetById(parsed.data.id, req.userId!);
+  if (!asset || !(await isOwnedAsset(asset, req.userId!))) {
     res.status(404).json({ error: "Media asset not found" });
     return;
   }
@@ -173,7 +180,12 @@ router.get("/media/:id/raw", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const blob = await loadMediaBlob(parsed.data.id);
+  const asset = await loadMediaAssetById(parsed.data.id, req.userId!);
+  if (!asset || !(await isOwnedAsset(asset, req.userId!))) {
+    res.status(404).json({ error: "Media bytes not found" });
+    return;
+  }
+  const blob = await loadMediaBlob(parsed.data.id, req.userId!);
   if (!blob) {
     res.status(404).json({ error: "Media bytes not found" });
     return;
@@ -190,8 +202,8 @@ router.post("/media/:id/retry", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const asset = await loadMediaAssetById(parsed.data.id);
-  if (!asset) {
+  const asset = await loadMediaAssetById(parsed.data.id, req.userId!);
+  if (!asset || !(await isOwnedAsset(asset, req.userId!))) {
     res.status(404).json({ error: "Media asset not found" });
     return;
   }
@@ -221,8 +233,12 @@ router.delete("/media/:id", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const existing = await loadMediaAssetById(parsed.data.id);
-  if (existing && (await isArchivalEngram(existing.engramId))) {
+  const existing = await loadMediaAssetById(parsed.data.id, req.userId!);
+  if (!existing || !(await isOwnedAsset(existing, req.userId!))) {
+    res.status(404).json({ error: "Media asset not found" });
+    return;
+  }
+  if (await isArchivalEngram(existing.engramId)) {
     res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
