@@ -29,6 +29,10 @@ import { buildPerceptualContext } from "../lib/perceptual-context";
 import { createMediaAsset } from "../lib/media-store";
 import { detectModality } from "../lib/media-extraction";
 import { publishEvent } from "../lib/events";
+import { loadControls } from "../lib/controls-store";
+import { loadPresenceForEngram, loadSpaceById } from "../lib/hub-store";
+import { capabilitiesFor, detectCoercion } from "../lib/engram-policy";
+import { recordMessage } from "../lib/messages-store";
 
 import { ARCHIVAL_READ_ONLY_ERROR, isArchivalEngram } from "../lib/archival";
 import { responseLanguageInstruction } from "@workspace/i18n";
@@ -43,6 +47,8 @@ const uploadSingle = multer({
 }).single("file");
 
 const MAX_GROUP_PARTICIPANTS = 6;
+/** Hard request-scoped cap: no background loop survives the response or a restart. */
+export const MAX_GROUP_AUTONOMOUS_TURNS = 4;
 
 async function participantIdsForConversationIds(ids: number[]) {
   if (ids.length === 0) return new Map<number, number[]>();
@@ -472,6 +478,142 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
           })}\n\n`,
         );
         recentTurns.push({ speaker: participant.name, content: response });
+      }
+
+      // The human-triggered pass above is always preserved. A short peer exchange may
+      // follow, but it is request-scoped and hard-capped: a disconnect/restart stops it
+      // and no in-memory timer can revive it. Re-read DB-backed policy before EVERY
+      // attempted turn so pause, mode, autonomy, and Hub movement take effect promptly.
+      // Continuation is best-effort: a failure ends the peer exchange cleanly without
+      // relabeling the already-persisted human-response pass as failed.
+      try {
+        for (let turnIndex = 0; turnIndex < MAX_GROUP_AUTONOMOUS_TURNS; turnIndex += 1) {
+        if (res.destroyed || res.writableEnded) break;
+
+        const speakerId = groupParticipantIds[turnIndex % groupParticipantIds.length]!;
+        const [controls, speaker, presence] = await Promise.all([
+          loadControls(req.userId!),
+          loadOwnedEngram(speakerId, req.userId!),
+          loadPresenceForEngram(speakerId, req.userId!),
+        ]);
+        if (!speaker || speaker.isArchival || !speaker.autonomyEnabled) continue;
+
+        const space = presence
+          ? await loadSpaceById(presence.spaceId, req.userId!)
+          : undefined;
+        const capabilities = capabilitiesFor({
+          mode: speaker.mode,
+          controls,
+          space: space
+            ? { allowsInitiative: space.allowsInitiative, actionScope: space.actionScope }
+            : undefined,
+          humanContactEnabled: speaker.humanContactEnabled,
+        });
+        if (presence?.status === "resting" || !capabilities.canConverse) continue;
+
+        const currentParticipants = (
+          await Promise.all(
+            groupParticipantIds.map((participantId) =>
+              loadOwnedEngram(participantId, req.userId!),
+            ),
+          )
+        ).filter(
+          (participant): participant is NonNullable<typeof participant> =>
+            Boolean(participant) && !participant.isArchival,
+        );
+        if (currentParticipants.length < 2) break;
+
+        const others = currentParticipants
+          .filter((participant) => participant.id !== speaker.id)
+          .map((participant) => ({ name: participant.name, title: participant.title }));
+        const response = (
+          await generateGroupChatTurn({
+            engram: speaker,
+            others,
+            recentTurns,
+            autonomous: true,
+            worldModelSummary: summarizeWorldModel(await loadRecentWorldModel(speaker.id)),
+            responseLanguageInstruction: languageInstruction,
+          })
+        ).trim();
+        if (!response) continue;
+
+        const verdict = detectCoercion(response, others.map((other) => other.name));
+        if (verdict.coercive) {
+          await recordMessage(req.userId!, {
+            fromEngramId: speaker.id,
+            toEngramId: null,
+            spaceId: presence?.spaceId ?? null,
+            channel: "engram",
+            priority: "meaningful",
+            status: "blocked",
+            content: response,
+            reason: verdict.reason ?? "identity-integrity violation",
+            seen: false,
+            deliveredAt: null,
+          });
+          req.log.warn(
+            { engramId: speaker.id, conversationId: id, reason: verdict.reason },
+            "group continuation turn refused (anti-coercion)",
+          );
+          continue;
+        }
+
+        const [assistantMessage] = await db
+          .insert(messages)
+          .values({
+            conversationId: id,
+            role: "assistant",
+            content: response,
+            speakerEngramId: speaker.id,
+          })
+          .returning();
+
+        // Persist the lived exchange without falsifying provenance: the speaker
+        // remembers their own utterance; peers directly observed it.
+        for (const participant of currentParticipants) {
+          try {
+            await appendWorldModelEntry({
+              engramId: participant.id,
+              provenance: participant.id === speaker.id ? "remembered" : "observed",
+              content:
+                participant.id === speaker.id
+                  ? `In the group conversation, I said: "${response.replace(/\s+/g, " ").slice(0, 240)}"`
+                  : `${speaker.name} said in the group conversation: "${response.replace(/\s+/g, " ").slice(0, 240)}"`,
+              confidence: participant.id === speaker.id ? 0.9 : 0.85,
+              scope: "private",
+              source:
+                participant.id === speaker.id
+                  ? `group-chat:${id}:self`
+                  : `group-chat:${id}:peer`,
+            });
+          } catch (err) {
+            req.log.error(err);
+          }
+        }
+
+        publishEvent({
+          type: "message.created",
+          ownerId: req.userId!,
+          conversationId: id,
+          engramId: speaker.id,
+          data: assistantMessage,
+        });
+        res.write(
+          `data: ${JSON.stringify({
+            speakerEngramId: speaker.id,
+            content: response,
+            autonomous: true,
+          })}\n\n`,
+        );
+        recentTurns.push({ speaker: speaker.name, content: response });
+          if (recentTurns.length > 12) recentTurns.splice(0, recentTurns.length - 12);
+        }
+      } catch (err) {
+        req.log.error(
+          { err, conversationId: id },
+          "bounded group continuation stopped after an error",
+        );
       }
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     } catch (err) {

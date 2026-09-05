@@ -528,6 +528,7 @@ export async function createConversation(opts: {
     personaName: opts.personaName ?? undefined,
     customEngram: opts.customEngram ?? undefined,
     engramId: opts.engramId ?? undefined,
+    engramIds: opts.engramId != null ? [opts.engramId] : [],
     createdAt: t,
   };
 }
@@ -553,6 +554,8 @@ export async function getConversation(id: number): Promise<Record<string, unknow
       typeof conv.customEngram === "string" ? conv.customEngram : undefined,
     engramId:
       typeof conv.engramId === "number" ? conv.engramId : undefined,
+    engramIds:
+      typeof conv.engramId === "number" ? [conv.engramId] : [],
     messages: msgs,
   };
 }

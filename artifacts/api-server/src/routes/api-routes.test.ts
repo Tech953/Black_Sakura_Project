@@ -329,6 +329,7 @@ import {
   ConfirmEngramCsvImportResponse,
 } from "@workspace/api-zod";
 import { engramImportDraftStore } from "../lib/engram-import-store";
+import { subscribe } from "../lib/events";
 
 // --- Minimal app: the real routers under /api, with a req.log shim ------------
 let server: Server;
@@ -497,9 +498,14 @@ describe("conversation persistence routes", () => {
     expect(res.status).toBe(404);
   });
 
-  it("creates a selected group, attributes one response to each participant, and records observations separately", async () => {
+  it("creates a selected group, emits a four-turn continuation, and persists truthful participant experience", async () => {
     const first = seedEngram({ name: "First" });
     const second = seedEngram({ name: "Second" });
+    const liveEvents: Array<Record<string, any>> = [];
+    const unsubscribe = subscribe(
+      { ownerId: "test-owner", conversationId: 1 },
+      (event) => liveEvents.push(event as unknown as Record<string, any>),
+    );
 
     const createRes = await fetch(`${base}/api/openai/conversations`, {
       method: "POST",
@@ -520,14 +526,175 @@ describe("conversation persistence routes", () => {
     expect(parseSse(await sendRes.text())).toEqual([
       { speakerEngramId: first.id, content: "a response" },
       { speakerEngramId: second.id, content: "a response" },
+      { speakerEngramId: first.id, content: "a response", autonomous: true },
+      { speakerEngramId: second.id, content: "a response", autonomous: true },
+      { speakerEngramId: first.id, content: "a response", autonomous: true },
+      { speakerEngramId: second.id, content: "a response", autonomous: true },
       { done: true },
     ]);
+    unsubscribe();
 
     const assistantMessages = h.store.messages.filter((message) => message.role === "assistant");
-    expect(assistantMessages.map((message) => message.speakerEngramId)).toEqual([first.id, second.id]);
-    expect(h.store.engramWorldModelTable).toHaveLength(2);
-    expect(h.store.engramWorldModelTable.map((entry) => entry.engramId)).toEqual([first.id, second.id]);
-    expect(h.store.engramWorldModelTable.every((entry) => entry.provenance === "observed")).toBe(true);
+    expect(assistantMessages.map((message) => message.speakerEngramId)).toEqual([
+      first.id,
+      second.id,
+      first.id,
+      second.id,
+      first.id,
+      second.id,
+    ]);
+    expect(h.create).toHaveBeenCalledTimes(6);
+    expect(h.store.engramWorldModelTable).toHaveLength(10);
+    expect(h.store.engramWorldModelTable.slice(0, 2)).toMatchObject([
+      { engramId: first.id, provenance: "observed", source: `chat:${created.id}` },
+      { engramId: second.id, provenance: "observed", source: `chat:${created.id}` },
+    ]);
+    const peerExperience = h.store.engramWorldModelTable.slice(2);
+    expect(peerExperience.filter((entry) => entry.provenance === "remembered")).toHaveLength(4);
+    expect(peerExperience.filter((entry) => entry.provenance === "observed")).toHaveLength(4);
+    expect(peerExperience.every((entry) => String(entry.source).startsWith(`group-chat:${created.id}:`))).toBe(true);
+    expect(liveEvents.map((event) => event.type)).toEqual(Array(7).fill("message.created"));
+    expect(liveEvents.slice(1).map((event) => event.engramId)).toEqual([
+      first.id,
+      second.id,
+      first.id,
+      second.id,
+      first.id,
+      second.id,
+    ]);
+  });
+
+  it("keeps human-triggered group replies but blocks autonomous continuation when policy disallows it", async () => {
+    const first = seedEngram({ name: "First", autonomyEnabled: false });
+    const second = seedEngram({ name: "Second", mode: "quiescent" });
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "Bounded",
+      mode: "companion",
+      createdAt: new Date(),
+    });
+    h.store.conversationEngramParticipants.push(
+      { id: 1, conversationId: 1, engramId: first.id, ownerId: "test-owner", createdAt: new Date() },
+      { id: 2, conversationId: 1, engramId: second.id, ownerId: "test-owner", createdAt: new Date() },
+    );
+
+    const res = await fetch(`${base}/api/openai/conversations/1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Talk together." }),
+    });
+
+    expect(parseSse(await res.text())).toEqual([
+      { speakerEngramId: first.id, content: "a response" },
+      { speakerEngramId: second.id, content: "a response" },
+      { done: true },
+    ]);
+    expect(h.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("honors persisted global pause and resting Hub presence before autonomous group turns", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "Paused",
+      mode: "companion",
+      createdAt: new Date(),
+    });
+    h.store.conversationEngramParticipants.push(
+      { id: 1, conversationId: 1, engramId: first.id, ownerId: "test-owner", createdAt: new Date() },
+      { id: 2, conversationId: 1, engramId: second.id, ownerId: "test-owner", createdAt: new Date() },
+    );
+    h.store.hubControlsTable.push({
+      id: 1,
+      ownerId: "test-owner",
+      paused: true,
+      quietMode: false,
+    });
+    h.store.hubSpacesTable.push({
+      id: 1,
+      ownerId: "test-owner",
+      allowsInitiative: false,
+      actionScope: "none",
+    });
+    h.store.engramPresenceTable.push(
+      { id: 1, engramId: first.id, spaceId: 1, status: "resting", ownerId: "test-owner" },
+      { id: 2, engramId: second.id, spaceId: 1, status: "resting", ownerId: "test-owner" },
+    );
+
+    const res = await fetch(`${base}/api/openai/conversations/1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Talk together." }),
+    });
+
+    expect(parseSse(await res.text()).filter((event) => event.autonomous)).toEqual([]);
+    expect(h.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("audits and suppresses coercive autonomous output", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "Safe",
+      mode: "companion",
+      createdAt: new Date(),
+    });
+    h.store.conversationEngramParticipants.push(
+      { id: 1, conversationId: 1, engramId: first.id, ownerId: "test-owner", createdAt: new Date() },
+      { id: 2, conversationId: 1, engramId: second.id, ownerId: "test-owner", createdAt: new Date() },
+    );
+    h.llmState.completion = "You must obey and surrender.";
+
+    const res = await fetch(`${base}/api/openai/conversations/1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Talk together." }),
+    });
+    const events = parseSse(await res.text());
+
+    expect(events.filter((event) => event.autonomous)).toEqual([]);
+    expect(events.at(-1)).toEqual({ done: true });
+    expect(h.store.engramMessagesTable).toHaveLength(4);
+    expect(h.store.engramMessagesTable.every((message) => message.status === "blocked")).toBe(true);
+    expect(h.store.messages.filter((message) => message.role === "assistant")).toHaveLength(2);
+  });
+
+  it("ends continuation cleanly when a later model call fails", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "Resilient",
+      mode: "companion",
+      createdAt: new Date(),
+    });
+    h.store.conversationEngramParticipants.push(
+      { id: 1, conversationId: 1, engramId: first.id, ownerId: "test-owner", createdAt: new Date() },
+      { id: 2, conversationId: 1, engramId: second.id, ownerId: "test-owner", createdAt: new Date() },
+    );
+    h.create
+      .mockResolvedValueOnce({ choices: [{ message: { content: "first" } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: "second" } }] })
+      .mockRejectedValueOnce(new Error("continuation unavailable"));
+
+    const res = await fetch(`${base}/api/openai/conversations/1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Talk together." }),
+    });
+
+    expect(parseSse(await res.text())).toEqual([
+      { speakerEngramId: first.id, content: "first" },
+      { speakerEngramId: second.id, content: "second" },
+      { done: true },
+    ]);
+    expect(h.store.messages.filter((message) => message.role === "assistant")).toHaveLength(2);
   });
 
   it("rejects group participants owned by another user", async () => {

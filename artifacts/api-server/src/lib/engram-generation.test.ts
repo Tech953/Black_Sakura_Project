@@ -1,15 +1,17 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Engram } from "@workspace/db";
 
+const llmCreate = vi.hoisted(() => vi.fn());
+
 // engram-generation.ts imports ./llm at module load, which throws unless a
-// model endpoint is configured. We never call the model here (sanitizeDelta and
-// extractJson are pure), so stub the seam out.
+// model endpoint is configured. Stub the seam so pure helpers and prompt framing
+// can be tested without a configured endpoint.
 vi.mock("./llm", () => ({
-  llm: { chat: { completions: { create: vi.fn() } } },
+  llm: { chat: { completions: { create: llmCreate } } },
   LLM_MODEL: "test-model",
 }));
 
-import { sanitizeDelta, extractJson } from "./engram-generation";
+import { sanitizeDelta, extractJson, generateGroupChatTurn } from "./engram-generation";
 
 // --- Fixture -------------------------------------------------------------------
 function makeEngram(overrides: Partial<Engram> = {}): Engram {
@@ -61,6 +63,27 @@ function makeEngram(overrides: Partial<Engram> = {}): Engram {
     ...overrides,
   };
 }
+
+describe("generateGroupChatTurn — bounded trigger framing", () => {
+  it("frames autonomous output as one permitted peer turn without inventing a human prompt", async () => {
+    llmCreate.mockResolvedValueOnce({ choices: [{ message: { content: "A peer reply." } }] });
+
+    await generateGroupChatTurn({
+      engram: makeEngram(),
+      others: [{ name: "Other", title: "Peer" }],
+      recentTurns: [{ speaker: "Other", content: "What do you think?" }],
+      autonomous: true,
+    });
+
+    const request = llmCreate.mock.calls.at(-1)?.[0];
+    expect(request.messages[0].content).toContain("short, bounded peer exchange");
+    expect(request.messages[0].content).toContain("one turn only");
+    expect(request.messages[0].content).toContain("Identity Integrity");
+    expect(request.messages[1].content).toContain("peer follow-up turn");
+    expect(request.messages[1].content).not.toContain("human's latest message");
+    expect(request.max_completion_tokens).toBe(450);
+  });
+});
 
 // --- sanitizeDelta: allowed fields survive -------------------------------------
 describe("sanitizeDelta — allowed fields survive", () => {
