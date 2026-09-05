@@ -20,3 +20,4 @@ description: Non-obvious constraints of the phone app's self-contained offline m
 - **Metro watcher trap:** after installing packages while the expo workflow runs, Metro can crash with ENOENT watching a vanished `*_tmp_*/local-maven-repo` dir inside `.pnpm`. Fix: clear `/tmp/metro-*` caches and restart the workflow.
 - **Expo dependency install:** the package helper may target the pnpm workspace root; scope Expo package additions to `@workspace/engram-mobile`, then rerun release preflight and restart Metro.
 - **GGUF import cancellation:** Files-provider copies may not be interruptible; cancellation must abandon the staged copy, never commit it, clean partial state, and preserve the prior active model.
+- **GGUF import wake lock:** The model import boundary owns a tagged, best-effort Expo keep-awake lock; release it in the outer cleanup so every transactional exit path restores normal screen sleep.

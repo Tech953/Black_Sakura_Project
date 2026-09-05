@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => {
     resumeDownload: undefined as (() => Promise<{ status: number }>) | undefined,
     pause: vi.fn(async () => {}),
     savable: vi.fn(() => ({ resumeData: "resume-token" })),
+    activateKeepAwake: vi.fn(async () => {}),
+    deactivateKeepAwake: vi.fn(async () => {}),
     move: vi.fn(async ({ from, to }: { from: string; to: string }) => {
       if (to.endsWith("custom-model.gguf.part")) {
         state.customPartBytes = state.sourceBytes;
@@ -141,6 +143,11 @@ vi.mock("expo-file-system/legacy", () => ({
   readAsStringAsync: vi.fn(async () => mocks.state.headerBase64),
 }));
 
+vi.mock("expo-keep-awake", () => ({
+  activateKeepAwakeAsync: mocks.state.activateKeepAwake,
+  deactivateKeepAwake: mocks.state.deactivateKeepAwake,
+}));
+
 import {
   CUSTOM_MODEL_PATH,
   MODEL_BYTES,
@@ -170,6 +177,8 @@ describe("offline model download failure harness", () => {
     mocks.state.resumeDownload = undefined;
     mocks.state.pause.mockClear();
     mocks.state.savable.mockClear();
+    mocks.state.activateKeepAwake.mockClear();
+    mocks.state.deactivateKeepAwake.mockClear();
     mocks.state.move.mockClear();
     mocks.state.copy.mockClear();
   });
@@ -247,6 +256,8 @@ describe("offline model download failure harness", () => {
     );
 
     expect(mocks.state.copy).toHaveBeenCalledTimes(1);
+    expect(mocks.state.activateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
+    expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
     expect(progress).toEqual([0, 0.75, 1]);
     await expect(getModelStatus()).resolves.toMatchObject({
       state: "ready",
@@ -255,6 +266,20 @@ describe("offline model download failure harness", () => {
       bytes: mocks.state.sourceBytes,
     });
     expect(CUSTOM_MODEL_PATH).toContain("/models/custom-model.gguf");
+  });
+
+  it("does not block a safe import when wake-lock activation is unavailable", async () => {
+    mocks.state.activateKeepAwake.mockRejectedValueOnce(new Error("wake lock unavailable"));
+
+    await expect(
+      importCustomModel(
+        "file:///picked-model.gguf",
+        "model-without-wakelock.gguf",
+        mocks.state.sourceBytes,
+      ),
+    ).resolves.toMatchObject({ filename: "model-without-wakelock.gguf" });
+    expect(mocks.state.copy).toHaveBeenCalledTimes(1);
+    expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
   });
 
   it("reports selected model size and app-private storage headroom before copying", async () => {
@@ -288,6 +313,8 @@ describe("offline model download failure harness", () => {
       ),
     ).rejects.toThrow("Not enough storage");
     expect(mocks.state.copy).not.toHaveBeenCalled();
+    expect(mocks.state.activateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
+    expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
   });
 
   it("rejects a non-GGUF file before copying it", async () => {
@@ -299,6 +326,7 @@ describe("offline model download failure harness", () => {
       ),
     ).rejects.toThrow(".gguf");
     expect(mocks.state.copy).not.toHaveBeenCalled();
+    expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
   });
 
   it("restores the previous custom model when activation validation fails", async () => {
@@ -331,6 +359,7 @@ describe("offline model download failure harness", () => {
       source: "custom",
       filename: "previous.gguf",
     });
+    expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
   });
 
   it("abandons a copy on cancellation and preserves the previous model", async () => {
@@ -363,6 +392,7 @@ describe("offline model download failure harness", () => {
       code: "MODEL_IMPORT_CANCELLED",
     });
     expect(mocks.state.customPartBytes).toBe(0);
+    expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
     await expect(getModelStatus()).resolves.toMatchObject({
       state: "ready",
       source: "custom",

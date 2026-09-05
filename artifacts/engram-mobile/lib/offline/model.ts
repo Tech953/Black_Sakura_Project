@@ -1,5 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
+import {
+  activateKeepAwakeAsync,
+  deactivateKeepAwake,
+} from "expo-keep-awake";
 
 /**
  * On-device model manager: downloads, verifies, and stores the GGUF chat model
@@ -19,6 +23,7 @@ export const CUSTOM_MODEL_PATH = `${MODEL_DIR}/custom-model.gguf`;
 const CUSTOM_PARTIAL_PATH = `${CUSTOM_MODEL_PATH}.part`;
 const CUSTOM_BACKUP_PATH = `${CUSTOM_MODEL_PATH}.previous`;
 const CUSTOM_METADATA_KEY = "engram.customModel.metadata";
+const GGUF_IMPORT_WAKE_TAG = "engram-gguf-import";
 const MIN_GGUF_BYTES = 1024 * 1024;
 export const MODEL_IMPORT_SAFETY_MULTIPLIER = 1.1;
 const GGUF_MAGIC = "GGUF";
@@ -387,6 +392,9 @@ export async function importCustomModel(
   activeImport = control;
   const filename = safeFilename(originalFilename);
   try {
+    // Keep the device awake only for the transactional import. Both calls are
+    // best-effort so a platform wake-lock failure never prevents a safe import.
+    await activateKeepAwakeAsync(GGUF_IMPORT_WAKE_TAG).catch(() => {});
     if (!filename.toLowerCase().endsWith(".gguf")) {
       throw new Error("Choose a file with the .gguf extension.");
     }
@@ -468,6 +476,7 @@ export async function importCustomModel(
       await FileSystem.deleteAsync(CUSTOM_PARTIAL_PATH, { idempotent: true });
     }
   } finally {
+    await deactivateKeepAwake(GGUF_IMPORT_WAKE_TAG).catch(() => {});
     if (activeImport === control) activeImport = null;
   }
 }
