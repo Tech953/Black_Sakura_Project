@@ -22,6 +22,7 @@
 - [i18n architecture](i18n-architecture.md) — English JSONs are the only authored source; regenerate locales after string changes; reply-language allowlist; mobile async hydration; no mobile RTL.
 - [Mobile web and preview authentication](mobile-web-and-preview-auth.md) — Expo web needs wa-sqlite wasm asset handling, and preview API calls need a Clerk bearer fallback plus honest HTTP errors.
 - [ENGRAM chat SSE pattern](engram-chat-sse.md) — streaming chat uses raw fetch, not generated hooks.
+- [Group chat web flow](group-chat-web-flow.md) — keep the created/loaded conversation locally authoritative until the list query refreshes.
 - [ENGRAM DB table names](engram-db-table-names.md) — actual Drizzle table export names to use in route imports.
 - [Database seeding](seeding.md) — how reference/lookup data gets into the DB (no auto-seed exists).
 - [Schema apply dual path](schema-apply-dual-path.md) — a schema change must be both pushed AND generated; drizzle-kit generate out-path bug.

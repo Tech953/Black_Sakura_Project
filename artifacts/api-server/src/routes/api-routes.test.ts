@@ -334,6 +334,7 @@ import { subscribe } from "../lib/events";
 // --- Minimal app: the real routers under /api, with a req.log shim ------------
 let server: Server;
 let base = "";
+const diagnosticLogs: string[] = [];
 
 function buildApp(): Express {
   const app = express();
@@ -341,8 +342,14 @@ function buildApp(): Express {
   app.use((req: Request, _res: Response, next: NextFunction) => {
     (req as Request & { userId: string }).userId = "test-owner";
     (req as Request & { log: unknown }).log = {
-      info: () => {},
-      warn: () => {},
+      info: (...args: unknown[]) => {
+        const message = [...args].reverse().find((arg: unknown) => typeof arg === "string");
+        if (typeof message === "string") diagnosticLogs.push(message);
+      },
+      warn: (...args: unknown[]) => {
+        const message = [...args].reverse().find((arg: unknown) => typeof arg === "string");
+        if (typeof message === "string") diagnosticLogs.push(message);
+      },
       error: () => {},
     } as unknown as Request["log"];
     next();
@@ -436,6 +443,7 @@ function resetStore() {
 
 beforeEach(() => {
   resetStore();
+  diagnosticLogs.length = 0;
   vi.spyOn(Math, "random").mockReturnValue(0.5);
 });
 
@@ -562,6 +570,18 @@ describe("conversation persistence routes", () => {
       first.id,
       second.id,
     ]);
+
+    const reloadRes = await fetch(`${base}/api/openai/conversations/${created.id}`);
+    expect(reloadRes.status).toBe(200);
+    const reloaded = (await reloadRes.json()) as { messages: Array<Record<string, unknown>> };
+    expect(reloaded.messages.filter((message) => message.role === "assistant").map((message) => message.speakerEngramId)).toEqual([
+      first.id,
+      second.id,
+      first.id,
+      second.id,
+      first.id,
+      second.id,
+    ]);
   });
 
   it("keeps human-triggered group replies but blocks autonomous continuation when policy disallows it", async () => {
@@ -591,6 +611,12 @@ describe("conversation persistence routes", () => {
       { done: true },
     ]);
     expect(h.create).toHaveBeenCalledTimes(2);
+    expect(diagnosticLogs).toEqual(
+      expect.arrayContaining([
+        "group continuation skipped participant with autonomy disabled",
+        "group continuation skipped participant",
+      ]),
+    );
   });
 
   it("honors persisted global pause and resting Hub presence before autonomous group turns", async () => {

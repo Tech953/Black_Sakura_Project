@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users } from "lucide-react";
+import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -130,6 +130,10 @@ export default function Chat() {
   const { toast } = useToast();
 
   const [activeId, setActiveId] = useState<number | null>(null);
+  // Keep the conversation that is actually open locally. The list query is
+  // invalidated after creation and may still contain the previous snapshot when
+  // the user sends the first message in a new group.
+  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [convMode, setConvMode] = useState<ChatMode>("companion");
   const [input, setInput] = useState("");
@@ -195,6 +199,7 @@ export default function Chat() {
     setMessages(data.messages ?? []);
     setAttachments([]);
     setActiveId(id);
+    setActiveConversation(conv);
     setConvMode((conv.mode as ChatMode) ?? "companion");
     setCustomEngram(conv.customEngram ?? "");
     setSelectedEngramIds(conv.engramIds ?? (conv.engramId != null ? [conv.engramId] : []));
@@ -275,6 +280,16 @@ export default function Chat() {
     setShowNewDialog(false);
     setNewTitle("");
     setConvSheetOpen(false);
+    setActiveConversation({
+      id: result.id,
+      title: result.title,
+      mode: result.mode,
+      personaName: result.personaName,
+      customEngram: result.customEngram,
+      engramId: result.engramId,
+      engramIds: result.engramIds ?? [],
+      createdAt: String(result.createdAt),
+    });
     await loadConversation(result.id);
   }
 
@@ -290,9 +305,50 @@ export default function Chat() {
     queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
     if (activeId === id) {
       setActiveId(null);
+      setActiveConversation(null);
       setMessages([]);
     }
     toast({ title: t("toastConversationDeleted") });
+  }
+
+  function handleDownload() {
+    if (!activeConv || messages.length === 0) return;
+
+    const speakerName = (speakerEngramId?: number | null) => {
+      if (speakerEngramId == null) return t("engramFallback");
+      return (engrams ?? []).find((engram) => engram.id === speakerEngramId)?.name ?? t("engramFallback");
+    };
+    const date = new Date().toISOString();
+    const transcript = [
+      `# ${activeConv.title}`,
+      "",
+      `_${t("downloadedOn")}: ${date}_`,
+      "",
+      ...messages
+        .filter((message) => message.content.trim().length > 0)
+        .map((message) => {
+          const heading =
+            message.role === "user"
+              ? t("you")
+              : message.role === "context"
+                ? t("perceivedContext")
+                : message.speakerEngramId != null
+                  ? speakerName(message.speakerEngramId)
+                  : activeEngram?.name ?? "PYRI";
+          return `## ${heading}\n\n${message.content}`;
+        }),
+    ].join("\n\n");
+    const blob = new Blob([transcript], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeTitle = activeConv.title.trim().replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+    link.href = url;
+    link.download = `${safeTitle || "engram-chat"}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast({ title: t("toastConversationDownloaded") });
   }
 
   async function handleSend() {
@@ -412,7 +468,8 @@ export default function Chat() {
     reader.readAsText(file);
   }
 
-  const activeConv = (convList ?? []).find((c: Conversation) => c.id === activeId);
+  const activeConv =
+    activeConversation ?? (convList ?? []).find((c: Conversation) => c.id === activeId);
   const modeInfo = MODES.find((m) => m.id === (activeConv?.mode ?? convMode));
   const activeEngram = (engrams ?? []).find((e) => e.id === activeConv?.engramId);
   const activeGroupEngrams = (engrams ?? []).filter((e) => (activeConv?.engramIds ?? []).includes(e.id));
@@ -657,6 +714,17 @@ export default function Chat() {
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${liveConnected ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"}`} />
                   {t("live")}
                 </span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="w-7 h-7 text-muted-foreground/60 hover:text-primary"
+                  onClick={handleDownload}
+                  disabled={messages.length === 0 || streaming}
+                  title={t("downloadConversation")}
+                  aria-label={t("downloadConversation")}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </Button>
                 {activeEngram?.isArchival && (
                   <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-wider border-amber-400/40 text-amber-400/90">
                     {t("common:archivalBadge")}
