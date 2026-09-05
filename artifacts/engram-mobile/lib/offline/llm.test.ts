@@ -3,13 +3,14 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   initLlama: vi.fn(),
   getModelStatus: vi.fn(),
+  getActiveModelPath: vi.fn(),
 }));
 
 vi.mock("react-native", () => ({ Platform: { OS: "android" } }));
 vi.mock("./native", () => ({ loadLlamaModule: () => ({ initLlama: mocks.initLlama }) }));
 vi.mock("./model", () => ({
-  MODEL_PATH: "file:///models/test.gguf",
   getModelStatus: mocks.getModelStatus,
+  getActiveModelPath: mocks.getActiveModelPath,
 }));
 
 import {
@@ -80,7 +81,9 @@ describe("offline llama lifecycle failure harness", () => {
     vi.useRealTimers();
     mocks.initLlama.mockReset();
     mocks.getModelStatus.mockReset();
+    mocks.getActiveModelPath.mockReset();
     mocks.getModelStatus.mockResolvedValue({ state: "ready", bytes: 1 });
+    mocks.getActiveModelPath.mockResolvedValue("file:///models/test.gguf");
   });
 
   afterEach(async () => {

@@ -1,7 +1,6 @@
 import { Platform } from "react-native";
 
-import { MODEL_PATH } from "./model";
-import { getModelStatus } from "./model";
+import { getActiveModelPath, getModelStatus } from "./model";
 import { loadLlamaModule, type LlamaModule } from "./native";
 import {
   OFFLINE_LIMITS,
@@ -65,8 +64,9 @@ async function ensureContext(): Promise<LlamaContext> {
   }
   if (!contextPromise) {
     const { initLlama } = loadLlama();
+    const modelPath = await getActiveModelPath();
     contextPromise = initLlama({
-      model: MODEL_PATH.replace(/^file:\/\//, ""),
+      model: modelPath.replace(/^file:\/\//, ""),
       n_ctx: OFFLINE_LIMITS.modelContextTokens,
       n_batch: 256,
       n_gpu_layers: 0,
@@ -77,6 +77,13 @@ async function ensureContext(): Promise<LlamaContext> {
     });
   }
   return contextPromise;
+}
+
+/** Load the active model once to prove it is compatible with llama.rn. */
+export async function validateActiveModel(): Promise<void> {
+  await runExclusive(async () => {
+    await ensureContext();
+  });
 }
 
 /** Free the model context (e.g. when offline mode is turned off). */
