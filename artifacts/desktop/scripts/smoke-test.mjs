@@ -118,6 +118,27 @@ for (const asset of ["pglite.wasm", "pglite.data"]) {
 }
 log("pglite.wasm + pglite.data present next to the server bundle");
 
+const llamaServer = path.join(
+  resources,
+  "llama",
+  "bin",
+  process.platform === "win32" ? "llama-server.exe" : "llama-server",
+);
+if (!existsSync(llamaServer)) {
+  fail(`packaged custom-GGUF runtime missing: ${llamaServer}`);
+}
+log("trusted llama.cpp runtime present for managed custom GGUFs");
+
+if (
+  process.env.EXPECT_SLIM_LLM === "1" &&
+  existsSync(path.join(resources, "llama", "model.gguf"))
+) {
+  fail("slim package unexpectedly contains the multi-GB default GGUF");
+}
+if (process.env.EXPECT_SLIM_LLM === "1") {
+  log("slim package omits the default GGUF");
+}
+
 // ---------------------------------------------------------------------------
 // 2 + 3. Launch the packaged app and assert it actually comes up.
 // ---------------------------------------------------------------------------

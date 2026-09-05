@@ -6,20 +6,44 @@ import {
   safeStorage,
   shell,
   dialog,
+  type OpenDialogOptions,
 } from "electron";
 import { autoUpdater } from "electron-updater";
 import { spawn, type ChildProcess } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:net";
-import { stopProcess, installDownloadedUpdate } from "./lifecycle";
+import {
+  stopProcess,
+  installDownloadedUpdate,
+  stopDesktopWork,
+} from "./lifecycle";
 import {
   readFileSync,
   writeFileSync,
   existsSync,
   mkdirSync,
+  renameSync,
+  rmSync,
 } from "node:fs";
 import path from "node:path";
 import http from "node:http";
 import os from "node:os";
+import {
+  CustomGgufStore,
+  type CustomGgufMetadata,
+  type GgufImportProgress,
+} from "./custom-gguf";
+import { buildLlamaCommand } from "./llama-command";
+import { activateSettings } from "./settings-activation";
+import {
+  normalizeCustomGgufMetadata,
+  normalizeDesktopMode,
+} from "./desktop-settings";
+import type {
+  CustomModelMetadataView,
+  GgufImportStatus,
+  SettingsPayload,
+} from "./desktop-bridge";
 
 // ---------------------------------------------------------------------------
 // Paths. In a packaged app, bundled resources live under process.resourcesPath
@@ -67,6 +91,7 @@ function bundledModelAvailable(): boolean {
 let serverProcess: ChildProcess | null = null;
 let llamaProcess: ChildProcess | null = null;
 let llamaPort = 0;
+let llamaModelAlias = "bundled";
 let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let currentPort = 0;
@@ -118,9 +143,10 @@ function userDataPath(...segments: string[]): string {
 // re-entered on the next launch.
 // ---------------------------------------------------------------------------
 interface Settings {
-  mode: "bundled" | "offline" | "online";
+  mode: "bundled" | "custom" | "offline" | "online";
   /** Listen on all interfaces so the mobile app can connect over LAN. */
   allowLan?: boolean;
+  custom?: CustomGgufMetadata;
   offline: { baseUrl: string; model: string };
   online: {
     baseUrl: string;
@@ -133,6 +159,57 @@ interface Settings {
 // is never persisted in plaintext. Cleared on quit; the user re-enters it next
 // launch. When the keychain IS available the key lives in settings.apiKeyEnc.
 let sessionApiKey: string | null = null;
+let customStoreInstance: CustomGgufStore | null = null;
+let customRuntimeFingerprint: string | null = null;
+let customRuntimeError: string | null = null;
+
+type PendingGgufSelection = {
+  sourcePath: string;
+  filename: string;
+  expiresAt: number;
+};
+
+type RunningGgufImport = {
+  controller: AbortController;
+  promise: Promise<void>;
+};
+
+const GGUF_SELECTION_TTL_MS = 10 * 60 * 1000;
+const pendingGgufSelections = new Map<string, PendingGgufSelection>();
+const runningGgufImports = new Map<string, RunningGgufImport>();
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function safeGgufError(error: unknown, sourcePath?: string): string {
+  const message = errorMessage(error);
+  return sourcePath ? message.split(sourcePath).join("[selected GGUF]") : message;
+}
+
+function customMetadataView(
+  metadata: CustomGgufMetadata,
+): CustomModelMetadataView {
+  return {
+    filename: metadata.originalFilename,
+    byteSize: metadata.byteSize,
+    sha256: metadata.sha256,
+    ggufVersion: metadata.ggufVersion,
+    importedAt: metadata.importedAt,
+  };
+}
+
+function sendGgufImportStatus(status: GgufImportStatus): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.webContents.send("gguf:import-status", status);
+  }
+}
+
+async function cancelAllGgufImports(): Promise<void> {
+  const imports = [...runningGgufImports.values()];
+  for (const entry of imports) entry.controller.abort();
+  await Promise.allSettled(imports.map((entry) => entry.promise));
+}
 
 const DEFAULT_SETTINGS: Settings = {
   // "bundled" uses the built-in llama.cpp server + model shipped with the app
@@ -143,16 +220,27 @@ const DEFAULT_SETTINGS: Settings = {
   online: { baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini" },
 };
 
-function normalizeMode(mode: unknown): Settings["mode"] {
-  if (mode === "online") return "online";
-  if (mode === "offline") return "offline";
-  return "bundled";
+function customGgufStore(): CustomGgufStore {
+  customStoreInstance ??= new CustomGgufStore(
+    userDataPath("models", "custom"),
+  );
+  return customStoreInstance;
+}
+
+function managedCustomPath(metadata: CustomGgufMetadata): string {
+  return path.join(customGgufStore().root, metadata.path);
 }
 
 /** The mode actually used at runtime: bundled degrades to offline when this
  * build ships no model (e.g. a dev run without staged resources). */
 function effectiveMode(settings: Settings): Settings["mode"] {
   if (settings.mode === "bundled" && !bundledModelAvailable()) return "offline";
+  if (
+    settings.mode === "custom" &&
+    (!settings.custom || !existsSync(managedCustomPath(settings.custom)))
+  ) {
+    return "offline";
+  }
   return settings.mode;
 }
 
@@ -165,8 +253,9 @@ function loadSettings(): Settings {
     const raw = readFileSync(settingsFile(), "utf8");
     const parsed = JSON.parse(raw) as Partial<Settings>;
     return {
-      mode: normalizeMode(parsed.mode),
+      mode: normalizeDesktopMode(parsed.mode),
       allowLan: parsed.allowLan === true,
+      custom: normalizeCustomGgufMetadata(parsed.custom),
       offline: { ...DEFAULT_SETTINGS.offline, ...(parsed.offline ?? {}) },
       online: { ...DEFAULT_SETTINGS.online, ...(parsed.online ?? {}) },
     };
@@ -177,7 +266,16 @@ function loadSettings(): Settings {
 
 function saveSettings(settings: Settings): void {
   mkdirSync(path.dirname(settingsFile()), { recursive: true });
-  writeFileSync(settingsFile(), JSON.stringify(settings, null, 2), "utf8");
+  const temporary = `${settingsFile()}.${process.pid}.tmp`;
+  try {
+    writeFileSync(temporary, JSON.stringify(settings, null, 2), {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+    renameSync(temporary, settingsFile());
+  } finally {
+    rmSync(temporary, { force: true });
+  }
 }
 
 function resolveApiKey(settings: Settings): string {
@@ -199,8 +297,13 @@ function buildServerEnv(
 ): NodeJS.ProcessEnv {
   const mode = effectiveMode(settings);
   const active =
-    mode === "bundled" && llamaProcess && llamaPort > 0
-      ? { baseUrl: `http://127.0.0.1:${llamaPort}/v1`, model: "bundled" }
+    (mode === "bundled" || mode === "custom") &&
+    llamaProcess &&
+    llamaPort > 0
+      ? {
+          baseUrl: `http://127.0.0.1:${llamaPort}/v1`,
+          model: llamaModelAlias,
+        }
       : mode === "online"
         ? settings.online
         : settings.offline;
@@ -305,7 +408,7 @@ function waitForLlamaHealth(port: number, timeoutMs = 300000): Promise<void> {
     };
     const retry = (): void => {
       if (Date.now() - start > timeoutMs) {
-        reject(new Error("Bundled model server did not become ready in time."));
+        reject(new Error("Local model server did not become ready in time."));
       } else {
         setTimeout(attempt, 1000);
       }
@@ -314,25 +417,42 @@ function waitForLlamaHealth(port: number, timeoutMs = 300000): Promise<void> {
   });
 }
 
-async function startLlama(): Promise<void> {
+async function startLlama(settings: Settings): Promise<void> {
+  const mode = effectiveMode(settings);
+  let modelPath = llamaModel;
+  let verifiedCustom:
+    | Awaited<ReturnType<CustomGgufStore["verifyForLaunch"]>>
+    | undefined;
+  llamaModelAlias = "bundled";
+  if (mode === "custom") {
+    if (!settings.custom) {
+      throw new Error("No imported custom GGUF model is configured.");
+    }
+    customRuntimeError = null;
+    verifiedCustom = await customGgufStore().verifyForLaunch(settings.custom);
+    modelPath = verifiedCustom.path;
+    llamaModelAlias = `custom-${settings.custom.sha256.slice(0, 12)}`;
+  }
   llamaPort = await findFreePort();
+  const command = buildLlamaCommand({
+    executablePath: llamaBin,
+    modelPath,
+    port: llamaPort,
+    context: 8192,
+  });
+  if (verifiedCustom) {
+    // The model store is owner-only. Recheck the exact file identity as the
+    // final operation before shell-free spawn to close the verification gap as
+    // tightly as cross-platform pathname-based llama.cpp launching permits.
+    await customGgufStore().assertLaunchIdentity(verifiedCustom);
+  }
   const proc = spawn(
     llamaBin,
-    [
-      "-m",
-      llamaModel,
-      "--host",
-      "127.0.0.1",
-      "--port",
-      String(llamaPort),
-      "-c",
-      "8192",
-      "--no-webui",
-    ],
+    command.args,
     {
       // cwd = bin dir so the llama.cpp shared libraries/DLLs next to the
       // executable resolve on every platform.
-      cwd: path.dirname(llamaBin),
+      cwd: command.cwd,
       env: process.env,
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -350,19 +470,25 @@ async function startLlama(): Promise<void> {
   let settled = false;
   const spawnFailure = new Promise<never>((_, reject) => {
     proc.on("error", (err) => {
-      if (llamaProcess === proc) llamaProcess = null;
+      if (llamaProcess === proc) {
+        llamaProcess = null;
+        customRuntimeFingerprint = null;
+      }
       if (!settled) {
         settled = true;
-        reject(new Error(`Bundled model server failed to start: ${err.message}`));
+        reject(new Error(`Local model server failed to start: ${err.message}`));
       }
     });
     proc.on("exit", (code, signal) => {
-      if (llamaProcess === proc) llamaProcess = null;
+      if (llamaProcess === proc) {
+        llamaProcess = null;
+        customRuntimeFingerprint = null;
+      }
       if (!settled) {
         settled = true;
         reject(
           new Error(
-            `Bundled model server exited before becoming ready (code=${code}, signal=${signal}).`,
+            `Local model server exited before becoming ready (code=${code}, signal=${signal}).`,
           ),
         );
       } else if (!quitting) {
@@ -376,6 +502,10 @@ async function startLlama(): Promise<void> {
   try {
     await Promise.race([waitForLlamaHealth(llamaPort), spawnFailure]);
     settled = true;
+    if (mode === "custom" && settings.custom) {
+      customRuntimeFingerprint = settings.custom.sha256;
+      customRuntimeError = null;
+    }
   } catch (err) {
     settled = true;
     await stopLlama();
@@ -387,28 +517,34 @@ function stopLlama(): Promise<void> {
   const proc = llamaProcess;
   if (!proc) return Promise.resolve();
   llamaProcess = null;
+  customRuntimeFingerprint = null;
   return stopProcess(proc);
 }
 
-async function startServer(): Promise<void> {
+async function startServer(
+  settings = loadSettings(),
+  options: { strictLocalModel?: boolean } = {},
+): Promise<void> {
   if (!existsSync(serverEntry)) {
     throw new Error(
       `Server bundle not found at ${serverEntry}. Run the desktop build (pnpm --filter @workspace/desktop run build) first.`,
     );
   }
-  const settings = loadSettings();
   mkdirSync(userDataPath("db"), { recursive: true });
   // Bundled mode: bring up the built-in model server first so its port is
   // known when the api-server env is built. A llama startup failure never
   // blocks the app — buildServerEnv degrades to the external local-server
   // settings when no llama process is live, so the UI still opens and the
   // user can pick another mode.
-  if (effectiveMode(settings) === "bundled" && !llamaProcess) {
+  const mode = effectiveMode(settings);
+  if ((mode === "bundled" || mode === "custom") && !llamaProcess) {
     try {
-      await startLlama();
+      await startLlama(settings);
     } catch (err) {
+      if (mode === "custom") customRuntimeError = errorMessage(err);
       // eslint-disable-next-line no-console
-      console.error("[desktop] bundled model unavailable, falling back:", err);
+      console.error("[desktop] local model unavailable, falling back:", err);
+      if (options.strictLocalModel) throw err;
     }
   }
   currentPort = await findFreePort();
@@ -447,14 +583,33 @@ function stopServer(): Promise<void> {
   return stopProcess(proc);
 }
 
-async function restartServer(): Promise<void> {
-  await stopServer();
-  // Stop the bundled model server too so a mode switch away from "bundled"
-  // releases its memory; startServer re-spawns it when still needed.
-  await stopLlama();
-  await startServer();
+async function activateDesktopSettings(
+  previous: Settings,
+  candidate: Settings,
+): Promise<void> {
+  await activateSettings(previous, candidate, {
+    stop: () =>
+      stopDesktopWork({
+        stopImports: async () => {},
+        stopServer,
+        stopLlama,
+      }),
+    start: (settings) =>
+      startServer(settings, {
+        strictLocalModel:
+          effectiveMode(settings) === "bundled" ||
+          effectiveMode(settings) === "custom",
+      }),
+    persist: async (settings) => saveSettings(settings),
+  });
   if (mainWindow && !mainWindow.isDestroyed()) {
-    await mainWindow.loadURL(`http://127.0.0.1:${currentPort}/`);
+    // Window refresh is presentation only. The provider is already healthy and
+    // committed, so a navigation failure must never roll back or delete it.
+    void mainWindow
+      .loadURL(`http://127.0.0.1:${currentPort}/`)
+      .catch((error) =>
+        console.error("[desktop] main window reload failed:", error),
+      );
   }
 }
 
@@ -486,15 +641,136 @@ function createMainWindow(): void {
   });
 }
 
+async function getCustomModelView(settings: Settings) {
+  const storageLocation = customGgufStore().root;
+  if (!settings.custom) {
+    return { storageLocation, status: "none" as const };
+  }
+
+  const metadata = customMetadataView(settings.custom);
+  if (
+    customRuntimeFingerprint === settings.custom.sha256 &&
+    llamaProcess &&
+    effectiveMode(settings) === "custom"
+  ) {
+    return { storageLocation, status: "active" as const, metadata };
+  }
+
+  try {
+    await customGgufStore().verifyBeforeUse(settings.custom);
+    if (customRuntimeError) {
+      return {
+        storageLocation,
+        status: "error" as const,
+        error: customRuntimeError,
+        metadata,
+      };
+    }
+    return { storageLocation, status: "available" as const, metadata };
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code)
+        : "";
+    return {
+      storageLocation,
+      status: code === "ENOENT" ? ("missing" as const) : ("corrupt" as const),
+      error: errorMessage(error),
+      metadata,
+    };
+  }
+}
+
+async function runGgufImport(
+  operationId: string,
+  selection: PendingGgufSelection,
+  controller: AbortController,
+): Promise<void> {
+  let imported: CustomGgufMetadata | undefined;
+  try {
+    imported = await customGgufStore().importModel(selection.sourcePath, {
+      signal: controller.signal,
+      onProgress: (progress: GgufImportProgress) => {
+        sendGgufImportStatus({
+          operationId,
+          state: "copying",
+          ...progress,
+        });
+      },
+    });
+
+    sendGgufImportStatus({ operationId, state: "activating" });
+    const previous = loadSettings();
+    const candidate: Settings = {
+      ...previous,
+      mode: "custom",
+      custom: imported,
+    };
+
+    try {
+      await activateDesktopSettings(previous, candidate);
+    } catch (error) {
+      customRuntimeError = errorMessage(error);
+      if (previous.mode !== "custom") {
+        // Keep a validated first import discoverable for explicit retry/removal,
+        // while the previous provider remains active.
+        saveSettings({ ...previous, custom: imported });
+      } else if (previous.custom?.sha256 !== imported.sha256) {
+        // A failed replacement must leave the old active model authoritative.
+        await customGgufStore().discard(imported).catch(() => undefined);
+      }
+      sendGgufImportStatus({
+        operationId,
+        state: "error",
+        error: errorMessage(error),
+        imported: previous.mode !== "custom",
+      });
+      return;
+    }
+
+    if (
+      previous.custom &&
+      previous.custom.sha256 !== imported.sha256
+    ) {
+      await customGgufStore().discard(previous.custom).catch((error) => {
+        // The replacement is already active; cleanup can be retried manually.
+        // eslint-disable-next-line no-console
+        console.error("[desktop] old custom model cleanup failed:", error);
+      });
+    }
+    sendGgufImportStatus({
+      operationId,
+      state: "completed",
+      model: customMetadataView(imported),
+    });
+  } catch (error) {
+    const cancelled =
+      controller.signal.aborted ||
+      (error instanceof Error && error.name === "AbortError");
+    sendGgufImportStatus({
+      operationId,
+      state: cancelled ? "cancelled" : "error",
+      error: cancelled
+        ? undefined
+        : safeGgufError(error, selection.sourcePath),
+      imported: false,
+    });
+  } finally {
+    runningGgufImports.delete(operationId);
+  }
+}
+
 function openSettingsWindow(): void {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.focus();
     return;
   }
   settingsWindow = new BrowserWindow({
-    width: 560,
-    height: 640,
-    resizable: false,
+    width: 640,
+    height: 820,
+    minWidth: 560,
+    minHeight: 680,
+    resizable: true,
     minimizable: false,
     maximizable: false,
     parent: mainWindow ?? undefined,
@@ -576,7 +852,7 @@ function buildMenu(): void {
 // ---------------------------------------------------------------------------
 // IPC: settings get/save/close.
 // ---------------------------------------------------------------------------
-ipcMain.handle("settings:get", () => {
+ipcMain.handle("settings:get", async () => {
   const settings = loadSettings();
   return {
     mode: settings.mode,
@@ -594,34 +870,54 @@ ipcMain.handle("settings:get", () => {
     },
     hasApiKey: Boolean(settings.online.apiKeyEnc) || Boolean(sessionApiKey),
     encryptionAvailable: safeStorage.isEncryptionAvailable(),
+    customModel: await getCustomModelView(settings),
   };
 });
 
 ipcMain.handle(
   "settings:save",
-  async (_event, payload: {
-    mode: "bundled" | "offline" | "online";
-    allowLan?: boolean;
-    offline: { baseUrl: string; model: string };
-    online: { baseUrl: string; model: string; apiKey: string };
-  }) => {
+  async (_event, payload: SettingsPayload) => {
     try {
+      if (runningGgufImports.size > 0) {
+        throw new Error("Wait for the GGUF import to finish or cancel it first.");
+      }
+      if (
+        !payload ||
+        !["bundled", "custom", "offline", "online"].includes(payload.mode) ||
+        !payload.offline ||
+        !payload.online
+      ) {
+        throw new Error("Invalid settings payload.");
+      }
       const previous = loadSettings();
       const next: Settings = {
-        mode: normalizeMode(payload.mode),
+        mode: normalizeDesktopMode(payload.mode),
         allowLan: payload.allowLan === true,
+        custom: previous.custom,
         offline: {
-          baseUrl: payload.offline.baseUrl.trim() || DEFAULT_SETTINGS.offline.baseUrl,
-          model: payload.offline.model.trim() || DEFAULT_SETTINGS.offline.model,
+          baseUrl:
+            String(payload.offline.baseUrl ?? "").trim().slice(0, 2048) ||
+            DEFAULT_SETTINGS.offline.baseUrl,
+          model:
+            String(payload.offline.model ?? "").trim().slice(0, 512) ||
+            DEFAULT_SETTINGS.offline.model,
         },
         online: {
-          baseUrl: payload.online.baseUrl.trim() || DEFAULT_SETTINGS.online.baseUrl,
-          model: payload.online.model.trim() || DEFAULT_SETTINGS.online.model,
+          baseUrl:
+            String(payload.online.baseUrl ?? "").trim().slice(0, 2048) ||
+            DEFAULT_SETTINGS.online.baseUrl,
+          model:
+            String(payload.online.model ?? "").trim().slice(0, 512) ||
+            DEFAULT_SETTINGS.online.model,
           apiKeyEnc: previous.online.apiKeyEnc,
         },
       };
+      if (next.mode === "custom" && !next.custom) {
+        throw new Error("Import a GGUF model before selecting Custom GGUF.");
+      }
 
-      const newKey = payload.online.apiKey;
+      const previousSessionApiKey = sessionApiKey;
+      const newKey = String(payload.online.apiKey ?? "").slice(0, 8192);
       if (typeof newKey === "string" && newKey.length > 0) {
         if (safeStorage.isEncryptionAvailable()) {
           next.online.apiKeyEnc = safeStorage
@@ -636,8 +932,12 @@ ipcMain.handle(
         }
       }
 
-      saveSettings(next);
-      await restartServer();
+      try {
+        await activateDesktopSettings(previous, next);
+      } catch (error) {
+        sessionApiKey = previousSessionApiKey;
+        throw error;
+      }
       if (settingsWindow && !settingsWindow.isDestroyed()) {
         settingsWindow.close();
       }
@@ -647,6 +947,125 @@ ipcMain.handle(
     }
   },
 );
+
+ipcMain.handle("gguf:choose", async () => {
+  let sourcePath: string | undefined;
+  try {
+    if (runningGgufImports.size > 0) {
+      throw new Error("A GGUF import is already running.");
+    }
+    for (const [id, selection] of pendingGgufSelections) {
+      if (selection.expiresAt < Date.now()) pendingGgufSelections.delete(id);
+    }
+    const options: OpenDialogOptions = {
+      title: "Choose a GGUF model",
+      buttonLabel: "Choose model",
+      properties: ["openFile"],
+      filters: [{ name: "GGUF model", extensions: ["gguf"] }],
+    };
+    const result =
+      settingsWindow && !settingsWindow.isDestroyed()
+        ? await dialog.showOpenDialog(settingsWindow, options)
+        : await dialog.showOpenDialog(options);
+    if (result.canceled || result.filePaths.length !== 1) {
+      return { ok: false, cancelled: true };
+    }
+
+    sourcePath = result.filePaths[0]!;
+    const inspection = await customGgufStore().inspectForImport(sourcePath);
+    const selectionId = randomUUID();
+    pendingGgufSelections.set(selectionId, {
+      sourcePath,
+      filename: path.basename(sourcePath),
+      expiresAt: Date.now() + GGUF_SELECTION_TTL_MS,
+    });
+    return {
+      ok: true,
+      selection: {
+        selectionId,
+        filename: path.basename(sourcePath),
+        ...inspection,
+      },
+    };
+  } catch (error) {
+    return { ok: false, error: safeGgufError(error, sourcePath) };
+  }
+});
+
+ipcMain.handle("gguf:import", (_event, selectionId: unknown) => {
+  try {
+    if (
+      typeof selectionId !== "string" ||
+      selectionId.length > 128
+    ) {
+      throw new Error("Invalid GGUF selection.");
+    }
+    if (runningGgufImports.size > 0) {
+      throw new Error("A GGUF import is already running.");
+    }
+    const selection = pendingGgufSelections.get(selectionId);
+    pendingGgufSelections.delete(selectionId);
+    if (!selection || selection.expiresAt < Date.now()) {
+      throw new Error("That GGUF selection expired. Choose the file again.");
+    }
+
+    const operationId = randomUUID();
+    const controller = new AbortController();
+    const entry: RunningGgufImport = {
+      controller,
+      promise: Promise.resolve(),
+    };
+    runningGgufImports.set(operationId, entry);
+    entry.promise = runGgufImport(operationId, selection, controller);
+    return { ok: true, operationId };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+});
+
+ipcMain.handle("gguf:cancel", (_event, operationId: unknown) => {
+  if (typeof operationId !== "string" || operationId.length > 128) {
+    return { ok: false, error: "Invalid GGUF import." };
+  }
+  const entry = runningGgufImports.get(operationId);
+  if (!entry) return { ok: false, error: "That GGUF import is no longer running." };
+  entry.controller.abort();
+  return { ok: true };
+});
+
+ipcMain.handle("gguf:remove", async () => {
+  try {
+    if (runningGgufImports.size > 0) {
+      throw new Error("Wait for the GGUF import to finish or cancel it first.");
+    }
+    const previous = loadSettings();
+    if (!previous.custom) return { ok: true };
+
+    let deactivated = previous;
+    if (previous.mode === "custom") {
+      deactivated = {
+        ...previous,
+        mode: bundledModelAvailable() ? "bundled" : "offline",
+      };
+      await activateDesktopSettings(previous, deactivated);
+    }
+
+    try {
+      await customGgufStore().discard(previous.custom);
+    } catch (error) {
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? String((error as { code?: unknown }).code)
+          : "";
+      if (code !== "ENOENT") throw error;
+    }
+    saveSettings({ ...deactivated, custom: undefined });
+    customRuntimeError = null;
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+});
 
 ipcMain.handle("settings:close", () => {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
@@ -777,10 +1196,12 @@ function setupAutoUpdates(): void {
             // Stop BOTH children: the api-server (holds the PGlite DB open)
             // and the bundled llama-server (multi-GB resident process that
             // would otherwise survive the update swap as an orphan).
-            stopServer: async () => {
-              await stopServer();
-              await stopLlama();
-            },
+            stopServer: () =>
+              stopDesktopWork({
+                stopImports: cancelAllGgufImports,
+                stopServer,
+                stopLlama,
+              }),
             quitAndInstall: () => autoUpdater.quitAndInstall(),
             setAutoInstallOnAppQuit: (value) => {
               autoUpdater.autoInstallOnAppQuit = value;
@@ -844,6 +1265,7 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     buildMenu();
     try {
+      await customGgufStore().cleanStalePartials();
       await startServer();
       createMainWindow();
       setupAutoUpdates();
@@ -865,11 +1287,17 @@ if (!gotLock) {
   });
 
   app.on("before-quit", (event) => {
-    if ((serverProcess || llamaProcess) && !quitting) {
+    if (
+      (serverProcess || llamaProcess || runningGgufImports.size > 0) &&
+      !quitting
+    ) {
       event.preventDefault();
       quitting = true;
-      void stopServer()
-        .then(() => stopLlama())
+      void stopDesktopWork({
+        stopImports: cancelAllGgufImports,
+        stopServer,
+        stopLlama,
+      })
         .finally(() => app.quit());
     }
   });

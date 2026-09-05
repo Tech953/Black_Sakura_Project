@@ -64,3 +64,13 @@ export async function installDownloadedUpdate(deps: {
     deps.quitAndInstall();
   }
 }
+
+export async function stopDesktopWork(deps: {
+  stopImports: () => Promise<void>;
+  stopServer: () => Promise<void>;
+  stopLlama: () => Promise<void>;
+}): Promise<void> {
+  await deps.stopImports();
+  await deps.stopServer();
+  await deps.stopLlama();
+}

@@ -99,6 +99,7 @@ jobs:
           # offline-capable through Ollama/LM Studio/local OpenAI-compatible
           # servers; Linux/macOS retain the optional bundled-model behavior.
           DESKTOP_BUNDLE_LLM: ${{ matrix.platform == 'win' && '0' || '1' }}
+          DESKTOP_REQUIRE_LLAMA_RUNTIME: "1"
         run: pnpm --filter @workspace/desktop run build
 
       - name: Package installer (${{ matrix.platform }})
@@ -163,6 +164,8 @@ jobs:
       # Linux the Electron GUI needs a virtual display (xvfb).
       - name: Smoke test packaged app
         shell: bash
+        env:
+          EXPECT_SLIM_LLM: ${{ matrix.platform == 'win' && '1' || '0' }}
         run: |
           if [ "${{ matrix.platform }}" = "linux" ]; then
             sudo apt-get update

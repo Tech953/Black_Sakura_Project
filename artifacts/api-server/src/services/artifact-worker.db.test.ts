@@ -7,6 +7,12 @@ import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 const h = vi.hoisted(() => {
   process.env.ENGRAM_DB_DRIVER = "pglite";
   delete process.env.PGLITE_DATA_DIR;
+  class GenerationUnavailableError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = "GenerationUnavailableError";
+    }
+  }
   const create = vi.fn(async () => ({
     choices: [
       {
@@ -23,10 +29,26 @@ const h = vi.hoisted(() => {
       },
     ],
   }));
-  return { create, llm: { chat: { completions: { create } } } };
+  const unavailable = async () => {
+    throw new GenerationUnavailableError(
+      "No online generation provider is configured.",
+    );
+  };
+  return {
+    create,
+    llm: { chat: { completions: { create } } },
+    generateImage: vi.fn(unavailable),
+    generateVideo: vi.fn(unavailable),
+    GenerationUnavailableError,
+  };
 });
 
 vi.mock("../lib/llm", () => ({ llm: h.llm, LLM_MODEL: "test-model" }));
+vi.mock("../lib/generation-client", () => ({
+  generateImage: h.generateImage,
+  generateVideo: h.generateVideo,
+  GenerationUnavailableError: h.GenerationUnavailableError,
+}));
 
 import {
   db,
@@ -51,6 +73,8 @@ const ready = ensureDatabaseReady({ seed: false });
 beforeEach(async () => {
   await ready;
   h.create.mockClear();
+  h.generateImage.mockClear();
+  h.generateVideo.mockClear();
   await db.delete(engramArtifactBlobsTable);
   await db.delete(engramArtifactsTable);
   await db.delete(engramsTable);
@@ -160,7 +184,7 @@ describe("artifact worker — local PDF generation end-to-end", () => {
 
     const done = await loadArtifactById(job.id);
     expect(done?.status).toBe("failed");
-    expect(done?.error).toMatch(/not configured/i);
+    expect(done?.error).toMatch(/no online generation provider is configured/i);
     expect(await loadArtifactBlob(job.id)).toBeUndefined();
   });
 

@@ -3,6 +3,7 @@ import { EventEmitter } from "node:events";
 import {
   stopProcess,
   installDownloadedUpdate,
+  stopDesktopWork,
   STOP_TIMEOUT_MS,
   type StoppableProcess,
 } from "./lifecycle";
@@ -153,5 +154,23 @@ describe("installDownloadedUpdate (DB-safe auto-update path)", () => {
 
     // Even though stop rejected, the install still fired (finally block).
     expect(quitAndInstall).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("stopDesktopWork", () => {
+  it("cancels model imports before stopping the API and llama runtime", async () => {
+    const order: string[] = [];
+    await stopDesktopWork({
+      stopImports: async () => {
+        order.push("imports");
+      },
+      stopServer: async () => {
+        order.push("server");
+      },
+      stopLlama: async () => {
+        order.push("llama");
+      },
+    });
+    expect(order).toEqual(["imports", "server", "llama"]);
   });
 });

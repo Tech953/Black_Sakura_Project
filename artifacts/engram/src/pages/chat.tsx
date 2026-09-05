@@ -496,9 +496,17 @@ export default function Chat() {
                 const listEngram = (engrams ?? []).find((e) => e.id === c.engramId);
                 const modeGlyph = listEngram?.symbol ?? MODES.find((m) => m.id === c.mode)?.glyph ?? "◈";
                 return (
-                  <button
+                  <div
                     key={c.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => loadConversation(c.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        loadConversation(c.id);
+                      }
+                    }}
                     className={`w-full text-left px-3 py-2.5 border-l-2 transition-all group flex items-start gap-2 ${activeId === c.id ? "border-primary bg-primary/10" : "border-transparent hover:bg-white/5 hover:border-white/20"}`}
                   >
                     <span className="text-primary/60 text-sm mt-0.5">{modeGlyph}</span>
@@ -512,7 +520,7 @@ export default function Chat() {
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
-                  </button>
+                  </div>
                 );
               })
             )}

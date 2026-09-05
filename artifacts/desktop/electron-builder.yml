@@ -59,10 +59,8 @@ extraResources:
   # executables that notarization would otherwise reject).
   - from: resources/bin
     to: bin
-  # Optional local LLM (llama.cpp server + model) staged by
-  # prepare-resources.mjs when enabled and the .llama cache is present. Windows
-  # release builds omit it to stay under the browser-download size limit and use
-  # the app's external local-server/cloud fallback instead.
+  # Trusted llama.cpp server plus an optional default model. Slim Windows builds
+  # omit only model.gguf; the fixed server remains so app-managed custom GGUFs run.
   - from: resources/llama
     to: llama
 

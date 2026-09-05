@@ -8,6 +8,7 @@ import {
   realpathSync,
   statSync,
   copyFileSync,
+  readFileSync,
 } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,7 +19,16 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const desktopDir = path.join(here, ".."); // artifacts/desktop
 const repoRoot = path.join(desktopDir, "..", ".."); // workspace root
 const resources = path.join(desktopDir, "resources");
+const PINNED_LLAMA_VERSION = "b10242";
+const PINNED_LLAMA_ARCHIVE_SHA256 = {
+  "linux-x64": "fb13c9fa97a605c6bba16a99b2f54eff6874d58bdbe5b94ece6e358eaa270088",
+  "linux-arm64": "c79ae4262304cdab2698201b1bba01648fcff8f8aada237b64797bc97ebe452d",
+  "darwin-x64": "d7ccf0251ff9087ee4f4c0ea6c8c7f4f3575aa187b2c2e755d2d4c5d234490ba",
+  "darwin-arm64": "fd93f5c97086b434d17855eaaf95ba56758ade7a4af3a4ad74714bb70784c8b9",
+  "win32-x64": "a9b8966b2ed82d33a87cafb4149a1b40de48a701a0ec431f2d8f5b994827a758",
+};
 const bundleLlmSetting = process.env.DESKTOP_BUNDLE_LLM ?? "1";
+const requireLlamaRuntime = process.env.DESKTOP_REQUIRE_LLAMA_RUNTIME === "1";
 
 if (bundleLlmSetting !== "0" && bundleLlmSetting !== "1") {
   throw new Error(
@@ -159,20 +169,16 @@ cpSync(ffprobeSrc, ffprobeOut);
 chmodSync(ffmpegOut, 0o755);
 chmodSync(ffprobeOut, 0o755);
 
-// 6. Optional bundled local LLM (llama.cpp server + GGUF model) so chat/analysis/
-//    simulation run fully offline with zero setup. Staged from the repo-root
-//    `.llama/` cache (gitignored). Targets pkgTarget (see above). Windows release
-//    builds set DESKTOP_BUNDLE_LLM=0 to stay browser-downloadable; those builds
-//    retain offline operation through Ollama/LM Studio/local OpenAI-compatible
-//    servers and can also use the configured cloud provider.
-//    If the cache is missing, the build still succeeds WITHOUT a bundled
-//    model — the app then falls back to the external-local-server mode.
+// 6. Trusted llama.cpp runtime and optional default model. The fixed runtime is
+//    needed for user-imported GGUFs even in slim builds; DESKTOP_BUNDLE_LLM=0
+//    omits only the multi-GB default model. Release CI pins and verifies the
+//    runtime archive before this staging step.
 const llamaCache = path.join(repoRoot, ".llama");
 const llamaTarget = pkgTarget;
 const LLAMA_MODEL_FILE = "Qwen3-4B-Instruct-2507-Q4_K_M.gguf";
 const modelSrc = path.join(llamaCache, LLAMA_MODEL_FILE);
 
-function stageLlama() {
+function stageLlama(includeDefaultModel) {
   const llamaOut = path.join(resources, "llama");
   const binOutDir = path.join(llamaOut, "bin");
   // Always create the dir so the electron-builder extraResources entry never
@@ -181,23 +187,55 @@ function stageLlama() {
 
   let binSrcDir = null;
   if (llamaTarget === "win32") {
-    // Unzipped contents of the llama.cpp win-cpu-x64 release.
-    const winDir = path.join(llamaCache, "win-x64");
+    // Unzipped contents of the pinned llama.cpp win-cpu-x64 release.
+    const winDir = path.join(
+      llamaCache,
+      `llama-${PINNED_LLAMA_VERSION}-win-x64`,
+    );
     if (existsSync(winDir)) binSrcDir = winDir;
   } else {
-    // Linux/macOS release layout: a single dir with llama-server + shared libs.
-    const dirs = existsSync(llamaCache)
-      ? readdirSync(llamaCache).filter((d) => /^llama-b\d+$/.test(d))
-      : [];
-    if (dirs.length > 0) binSrcDir = path.join(llamaCache, dirs[0]);
+    // Linux/macOS release layout: the exact pinned version directory.
+    const pinnedDir = path.join(
+      llamaCache,
+      `llama-${PINNED_LLAMA_VERSION}`,
+    );
+    if (existsSync(pinnedDir)) binSrcDir = pinnedDir;
   }
 
-  if (!binSrcDir || !existsSync(modelSrc)) {
-    console.warn(
-      `[desktop] no bundled LLM staged (cache ${llamaCache} incomplete for target ${llamaTarget}); ` +
-        "the app will fall back to external local-server mode.",
-    );
-    return;
+  if (!binSrcDir) {
+    const message =
+      `[desktop] llama.cpp runtime cache is incomplete for target ${llamaTarget}; ` +
+      "custom GGUF mode will be unavailable.";
+    if (requireLlamaRuntime) throw new Error(message);
+    console.warn(message);
+    return false;
+  }
+  if (requireLlamaRuntime) {
+    const markerPath = path.join(binSrcDir, ".engram-verified-runtime.json");
+    let marker;
+    try {
+      marker = JSON.parse(readFileSync(markerPath, "utf8"));
+    } catch {
+      throw new Error(
+        `[desktop] pinned llama.cpp verification marker missing at ${markerPath}.`,
+      );
+    }
+    const expectedArchitecture = process.env.LLAMA_ARCH || process.arch;
+    const expectedArchiveSha256 =
+      PINNED_LLAMA_ARCHIVE_SHA256[
+        `${llamaTarget}-${expectedArchitecture}`
+      ];
+    if (
+      !expectedArchiveSha256 ||
+      marker.version !== PINNED_LLAMA_VERSION ||
+      marker.platform !== llamaTarget ||
+      marker.architecture !== expectedArchitecture ||
+      marker.archiveSha256 !== expectedArchiveSha256
+    ) {
+      throw new Error(
+        `[desktop] llama.cpp verification marker does not match ${llamaTarget}-${expectedArchitecture} ${PINNED_LLAMA_VERSION}.`,
+      );
+    }
   }
 
   mkdirSync(binOutDir, { recursive: true });
@@ -223,25 +261,38 @@ function stageLlama() {
     }
     copyFileSync(real, path.join(binOutDir, entry));
   }
-  cpSync(modelSrc, path.join(llamaOut, "model.gguf"));
+  const stagedServer = path.join(
+    binOutDir,
+    llamaTarget === "win32" ? "llama-server.exe" : "llama-server",
+  );
+  if (!existsSync(stagedServer)) {
+    const message = `[desktop] staged llama.cpp runtime has no llama-server for ${llamaTarget}.`;
+    if (requireLlamaRuntime) throw new Error(message);
+    console.warn(message);
+    return false;
+  }
+  if (includeDefaultModel && existsSync(modelSrc)) {
+    cpSync(modelSrc, path.join(llamaOut, "model.gguf"));
+  } else if (includeDefaultModel) {
+    console.warn(
+      `[desktop] default GGUF missing at ${modelSrc}; only the trusted llama.cpp runtime was staged.`,
+    );
+  }
   if (llamaTarget !== "win32") {
     const serverBin = path.join(binOutDir, "llama-server");
     if (existsSync(serverBin)) chmodSync(serverBin, 0o755);
   }
   console.log(
-    `[desktop] bundled LLM staged (${llamaTarget}) -> ${llamaOut}`,
+    `[desktop] llama.cpp runtime staged (${llamaTarget}, default model: ${includeDefaultModel && existsSync(modelSrc) ? "yes" : "no"}) -> ${llamaOut}`,
   );
+  return true;
 }
 
-if (bundleLlm) {
-  stageLlama();
-} else {
-  // Keep the directory present because electron-builder copies it via an
-  // unconditional extraResources entry.
-  mkdirSync(path.join(resources, "llama"), { recursive: true });
+stageLlama(bundleLlm);
+if (!bundleLlm) {
   console.log(
-    "[desktop] bundled LLM intentionally omitted (DESKTOP_BUNDLE_LLM=0); " +
-      "the app will use external local-server or cloud mode.",
+    "[desktop] default GGUF intentionally omitted (DESKTOP_BUNDLE_LLM=0); " +
+      "the packaged llama.cpp runtime remains available for managed custom GGUFs.",
   );
 }
 
