@@ -9,30 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
-
-function NativeTabLayout() {
-  const { t } = useTranslation("mobile");
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "cpu", selected: "cpu.fill" }} />
-        <Label>{t("tabs.personas")}</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="feed">
-        <Icon sf={{ default: "dot.radiowaves.left.and.right", selected: "dot.radiowaves.left.and.right" }} />
-        <Label>{t("tabs.feed")}</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="chat">
-        <Icon sf={{ default: "bubble.left", selected: "bubble.left.fill" }} />
-        <Label>{t("tabs.chat")}</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="inquiry">
-        <Icon sf={{ default: "questionmark.circle", selected: "questionmark.circle.fill" }} />
-        <Label>{t("tabs.inquiry")}</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
+import { isRtlLanguage } from "@/lib/layout-direction";
 
 type FeatherName = React.ComponentProps<typeof Feather>["name"];
 
@@ -41,15 +18,35 @@ const TABS: {
   labelKey: string;
   feather: FeatherName;
   sf: string;
+  sfSelected: string;
 }[] = [
-  { name: "index", labelKey: "tabs.personas", feather: "cpu", sf: "cpu" },
-  { name: "feed", labelKey: "tabs.feed", feather: "radio", sf: "dot.radiowaves.left.and.right" },
-  { name: "chat", labelKey: "tabs.chat", feather: "message-circle", sf: "bubble.left" },
-  { name: "inquiry", labelKey: "tabs.inquiry", feather: "help-circle", sf: "questionmark.circle" },
+  { name: "index", labelKey: "tabs.personas", feather: "cpu", sf: "cpu", sfSelected: "cpu.fill" },
+  { name: "feed", labelKey: "tabs.feed", feather: "radio", sf: "dot.radiowaves.left.and.right", sfSelected: "dot.radiowaves.left.and.right" },
+  { name: "chat", labelKey: "tabs.chat", feather: "message-circle", sf: "bubble.left", sfSelected: "bubble.left.fill" },
+  { name: "inquiry", labelKey: "tabs.inquiry", feather: "help-circle", sf: "questionmark.circle", sfSelected: "questionmark.circle.fill" },
 ];
 
+function NativeTabLayout() {
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
+  // Native tab bars already mirror under I18nManager. React Native Web does
+  // not consistently reorder Expo Router tab items from document.dir alone.
+  const tabs = rtl && Platform.OS === "web" ? [...TABS].reverse() : TABS;
+  return (
+    <NativeTabs>
+      {tabs.map((tab) => (
+        <NativeTabs.Trigger key={tab.name} name={tab.name}>
+          <Icon sf={{ default: tab.sf as never, selected: tab.sfSelected as never }} />
+          <Label>{t(tab.labelKey)}</Label>
+        </NativeTabs.Trigger>
+      ))}
+    </NativeTabs>
+  );
+}
+
 function ClassicTabLayout() {
-  const { t } = useTranslation("mobile");
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -66,6 +63,7 @@ function ClassicTabLayout() {
           fontFamily: "Rajdhani_600SemiBold",
           fontSize: 11,
           letterSpacing: 0.5,
+          ...(rtl ? { fontFamily: undefined, letterSpacing: 0 } : {}),
         },
         tabBarStyle: {
           position: "absolute",
@@ -92,7 +90,7 @@ function ClassicTabLayout() {
           ),
       }}
     >
-      {TABS.map((tab) => (
+      {(rtl && isWeb ? [...TABS].reverse() : TABS).map((tab) => (
         <Tabs.Screen
           key={tab.name}
           name={tab.name}

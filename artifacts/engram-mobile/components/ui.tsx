@@ -11,6 +11,8 @@ import {
 } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { useTranslation } from "react-i18next";
+import { isRtlLanguage } from "@/lib/layout-direction";
 
 export function MonoLabel({
   children,
@@ -22,6 +24,8 @@ export function MonoLabel({
   style?: TextStyle;
 }) {
   const colors = useColors();
+  const { i18n } = useTranslation();
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   return (
     <Text
       style={[
@@ -31,6 +35,15 @@ export function MonoLabel({
           letterSpacing: 1.5,
           textTransform: "uppercase",
           color: color ?? colors.mutedForeground,
+          ...(rtl
+            ? {
+                fontFamily: undefined,
+                letterSpacing: 0,
+                textTransform: "none" as const,
+                writingDirection: "rtl" as const,
+                textAlign: "right" as const,
+              }
+            : null),
         },
         style,
       ]}
@@ -48,6 +61,8 @@ export function Chip({
   tone?: "muted" | "primary" | "accent" | "violet" | "success";
 }) {
   const colors = useColors();
+  const { i18n } = useTranslation();
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const toneColor =
     tone === "primary"
       ? colors.primary
@@ -72,6 +87,14 @@ export function Chip({
           letterSpacing: 1,
           textTransform: "uppercase",
           color: toneColor,
+          ...(rtl
+            ? {
+                fontFamily: undefined,
+                letterSpacing: 0,
+                textTransform: "none" as const,
+                writingDirection: "rtl" as const,
+              }
+            : null),
         }}
       >
         {label}
@@ -88,13 +111,19 @@ export function ScoreBar({
   color?: string;
 }) {
   const colors = useColors();
+  const { i18n } = useTranslation();
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const pct = Math.max(0, Math.min(1, value)) * 100;
   return (
     <View style={[styles.barTrack, { backgroundColor: colors.muted }]}>
       <View
         style={[
           styles.barFill,
-          { width: `${pct}%`, backgroundColor: color ?? colors.primary },
+          {
+            width: `${pct}%`,
+            backgroundColor: color ?? colors.primary,
+            alignSelf: rtl ? "flex-end" : "flex-start",
+          },
         ]}
       />
     </View>
