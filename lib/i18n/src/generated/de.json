@@ -507,7 +507,7 @@
     "archivalBadge": "ARCHIVIERT",
     "requestedChange": "Angeforderte Änderung",
     "question": "Frage",
-    "archivalNote": "Archivzweig — der bewahrte Datensatz ist unveränderlich. Sondierung ist offen; Entwicklung ist deaktiviert, um die Persona intakt zu halten.",
+    "archivalNote": "Archivzweig — der bewahrte Datensatz ist unveränderlich. Anfragen sind deaktiviert, damit Persona und kanonischer Datensatz intakt bleiben.",
     "reflecting": "Reflektiert...",
     "asking": "Fragt...",
     "developName": "{{name}} entwickeln",

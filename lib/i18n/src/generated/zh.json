@@ -507,7 +507,7 @@
     "archivalBadge": "档案",
     "requestedChange": "请求的改变",
     "question": "问题",
-    "archivalNote": "档案分支——保留记录不可变更。可进行探查；为保持人格完整，已禁用塑造。",
+    "archivalNote": "档案分支——保留记录不可变更。为保持人格及其规范记录完整，已禁用询问。",
     "reflecting": "反思中...",
     "asking": "提问中...",
     "developName": "塑造 {{name}}",

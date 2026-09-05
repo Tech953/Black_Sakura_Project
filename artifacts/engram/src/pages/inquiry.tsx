@@ -179,7 +179,10 @@ export default function Inquiry() {
   });
 
   function handleSubmit() {
-    if (!selected || !question.trim()) return;
+    // Archival branches are immutable, including their inquiry history. Keep
+    // the client aligned with the server guard instead of submitting a request
+    // that will always return 403.
+    if (!selected || selected.isArchival || !question.trim()) return;
     create.mutate(
       { id: selected.id, data: { kind, question: question.trim(), language: resolveReplyLanguage() } },
       {
@@ -303,7 +306,7 @@ export default function Inquiry() {
                   {t("archivalNote")}
                 </p>
               )}
-              <Button onClick={handleSubmit} disabled={create.isPending || !question.trim() || (selected.isArchival && kind === "develop")}
+              <Button onClick={handleSubmit} disabled={create.isPending || !question.trim() || selected.isArchival}
                 className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground" data-testid="button-submit-inquiry">
                 {create.isPending
                   ? kind === "develop" ? t("reflecting") : t("asking")

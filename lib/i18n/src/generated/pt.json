@@ -507,7 +507,7 @@
     "archivalBadge": "ARQUIVO",
     "requestedChange": "Mudança Solicitada",
     "question": "Pergunta",
-    "archivalNote": "Ramo de arquivo — o registro preservado é imutável. Sondagem liberada; desenvolvimento desativado para manter a persona intacta.",
+    "archivalNote": "Ramo de arquivo — o registro preservado é imutável. As consultas estão desativadas para manter intactos a persona e seu registro canônico.",
     "reflecting": "Refletindo...",
     "asking": "Perguntando...",
     "developName": "Desenvolver {{name}}",

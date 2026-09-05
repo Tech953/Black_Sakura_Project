@@ -507,7 +507,7 @@
     "archivalBadge": "ARCHIVIO",
     "requestedChange": "Cambiamento richiesto",
     "question": "Domanda",
-    "archivalNote": "Ramo d'archivio — il record conservato è immutabile. La sonda è aperta; lo sviluppo è disabilitato per mantenere intatta la persona.",
+    "archivalNote": "Ramo d'archivio — il record conservato è immutabile. Le richieste sono disabilitate per mantenere intatti la persona e il suo record canonico.",
     "reflecting": "Riflette...",
     "asking": "Chiede...",
     "developName": "Sviluppa {{name}}",
