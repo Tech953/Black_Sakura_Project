@@ -8,38 +8,24 @@
  * Usage: pnpm --filter @workspace/scripts run generate:locales [langs...]
  *   (no args = all languages; args like "es fr" restrict the run)
  */
-import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
 import { LANGUAGES } from "@workspace/i18n";
+import {
+  DEFAULT_GENERATED_LOCALE_DIR,
+  keysMatch,
+  loadEnglish,
+  type Tree,
+} from "./locale-key-tree.js";
 
-const EN_DIR = path.resolve("../lib/i18n/src/en");
-const OUT_DIR = path.resolve("../lib/i18n/src/generated");
+const OUT_DIR = DEFAULT_GENERATED_LOCALE_DIR;
 
 const baseURL = process.env.LLM_BASE_URL ?? process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
 const apiKey = process.env.LLM_API_KEY ?? process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "local";
 const MODEL = process.env.LLM_MODEL ?? "gpt-5.4";
 if (!baseURL) throw new Error("No LLM endpoint configured");
 const client = new OpenAI({ baseURL, apiKey });
-
-type Tree = Record<string, unknown>;
-
-function loadEnglish(): Record<string, Tree> {
-  const out: Record<string, Tree> = {};
-  for (const f of readdirSync(EN_DIR).filter((f) => f.endsWith(".json"))) {
-    out[f.replace(/\.json$/, "")] = JSON.parse(readFileSync(path.join(EN_DIR, f), "utf8"));
-  }
-  return out;
-}
-
-function keysMatch(a: unknown, b: unknown): boolean {
-  if (typeof a !== typeof b) return false;
-  if (typeof a !== "object" || a === null || b === null) return true;
-  const ka = Object.keys(a as Tree).sort();
-  const kb = Object.keys(b as Tree).sort();
-  if (ka.join("\u0000") !== kb.join("\u0000")) return false;
-  return ka.every((k) => keysMatch((a as Tree)[k], (b as Tree)[k]));
-}
 
 async function translateNamespace(ns: string, tree: Tree, lang: { code: string; englishName: string }): Promise<Tree> {
   if (Object.keys(tree).length === 0) return {};
