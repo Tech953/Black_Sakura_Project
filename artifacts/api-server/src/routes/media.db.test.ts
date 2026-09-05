@@ -17,6 +17,8 @@ vi.hoisted(() => {
   process.env["MEDIA_MAX_BYTES"] = "1024";
 });
 
+const TEST_OWNER_ID = "media-route-test-owner";
+
 import {
   db,
   ensureDatabaseReady,
@@ -43,6 +45,10 @@ let base: string;
 beforeAll(async () => {
   await ready;
   const app = express();
+  app.use((req, _res, next) => {
+    (req as typeof req & { userId: string }).userId = TEST_OWNER_ID;
+    next();
+  });
   // Stub the pino-http logger the routes use in error branches.
   app.use((req, _res, next) => {
     (req as unknown as { log: unknown }).log = {
@@ -85,6 +91,7 @@ async function insertEngram(): Promise<number> {
     .insert(engramsTable)
     .values({
       slug: `upload-engram-${engramSeq}`,
+      ownerId: TEST_OWNER_ID,
       name: `Upload Engram ${engramSeq}`,
       title: "Test",
       symbol: "T",

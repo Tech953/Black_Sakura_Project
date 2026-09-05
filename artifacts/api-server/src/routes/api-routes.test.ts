@@ -81,6 +81,10 @@ const h = vi.hoisted(() => {
       (col: { __col: string }, arr: unknown[]) =>
       (row: Row) =>
         arr.some((v) => norm(v) === norm(row[col.__col])),
+    ne:
+      (col: { __col: string }, val: unknown) =>
+      (row: Row) =>
+        norm(row[col.__col]) !== norm(val),
     and:
       (...preds: Array<(row: Row) => boolean>) =>
       (row: Row) =>
@@ -98,6 +102,7 @@ const h = vi.hoisted(() => {
     let pred: ((row: Row) => boolean) | null = null;
     let order: { col: string; dir: "asc" | "desc" } | null = null;
     let lim: number | null = null;
+    let joined = false;
     const run = () => {
       let out = rows.slice();
       if (pred) out = out.filter(pred);
@@ -111,11 +116,18 @@ const h = vi.hoisted(() => {
         });
       }
       if (lim != null) out = out.slice(0, lim);
+      if (joined && rows === store.engramPresenceTable) {
+        out = out.map((presence) => ({ presence }));
+      }
       return out;
     };
     const chain = {
       from(t: unknown) {
         rows = store[tableName(t)];
+        return chain;
+      },
+      innerJoin() {
+        joined = true;
         return chain;
       },
       where(p: (row: Row) => boolean) {
@@ -227,6 +239,7 @@ const h = vi.hoisted(() => {
 
   const db: Record<string, (...args: never[]) => unknown> = {
     select: () => selectChain(),
+    selectDistinct: () => selectChain(),
     insert: (t: unknown) => insertBuilder(t),
     update: (t: unknown) => updateBuilder(t),
     delete: (t: unknown) => deleteBuilder(t),
@@ -323,6 +336,7 @@ function buildApp(): Express {
   const app = express();
   app.use(express.json());
   app.use((req: Request, _res: Response, next: NextFunction) => {
+    (req as Request & { userId: string }).userId = "test-owner";
     (req as Request & { log: unknown }).log = {
       info: () => {},
       warn: () => {},
@@ -355,6 +369,7 @@ function seedEngram(overrides: Record<string, unknown> = {}) {
   const id = ++h.seq.engramsTable;
   const row = {
     id,
+    ownerId: "test-owner",
     slug: "testra",
     name: "Testra",
     title: "Test Construct",
@@ -488,7 +503,7 @@ describe("chat message streaming", () => {
   it("streams a PYRI reply as SSE and persists the assistant message", async () => {
     h.llmState.streamChunks = ["Hel", "lo!"];
     const conv = h.store.conversations;
-    conv.push({ id: 1, title: "c", mode: "companion", createdAt: new Date() });
+    conv.push({ id: 1, ownerId: "test-owner", title: "c", mode: "companion", createdAt: new Date() });
     h.seq.conversations = 1;
 
     const res = await fetch(`${base}/api/openai/conversations/1/messages`, {
@@ -516,6 +531,7 @@ describe("chat message streaming", () => {
     const engram = seedEngram();
     h.store.conversations.push({
       id: 1,
+      ownerId: "test-owner",
       title: "with engram",
       mode: "companion",
       engramId: engram.id,
@@ -542,6 +558,7 @@ describe("chat message streaming", () => {
     const engram = seedEngram();
     h.store.conversations.push({
       id: 1,
+      ownerId: "test-owner",
       title: "with engram",
       mode: "companion",
       engramId: engram.id,
@@ -577,7 +594,7 @@ describe("chat message streaming", () => {
   });
 
   it("injects a GLOBAL recent-media view into the default PYRI chat prompt", async () => {
-    h.store.conversations.push({ id: 1, title: "pyri", mode: "companion", createdAt: new Date() });
+    h.store.conversations.push({ id: 1, ownerId: "test-owner", title: "pyri", mode: "companion", createdAt: new Date() });
     h.seq.conversations = 1;
     // A completed asset uploaded anywhere (no engram, no conversation) must still reach PYRI.
     h.store.mediaAssetsTable.push({
@@ -608,7 +625,7 @@ describe("chat message streaming", () => {
   });
 
   it("replays a persisted `context` message to the model as a system note", async () => {
-    h.store.conversations.push({ id: 1, title: "pyri", mode: "companion", createdAt: new Date() });
+    h.store.conversations.push({ id: 1, ownerId: "test-owner", title: "pyri", mode: "companion", createdAt: new Date() });
     h.seq.conversations = 1;
     h.store.messages.push({
       id: 1,
@@ -638,7 +655,7 @@ describe("chat message streaming", () => {
   });
 
   it("wraps an untrusted `context` body in anti-injection framing on replay", async () => {
-    h.store.conversations.push({ id: 1, title: "pyri", mode: "companion", createdAt: new Date() });
+    h.store.conversations.push({ id: 1, ownerId: "test-owner", title: "pyri", mode: "companion", createdAt: new Date() });
     h.seq.conversations = 1;
     // A hostile media-derived transcript that tries to hijack the model.
     const hostile =
@@ -679,7 +696,7 @@ describe("chat message streaming", () => {
 
   it("emits an SSE error frame when generation fails (still 200, still ends)", async () => {
     h.llmState.throwOnCreate = true;
-    h.store.conversations.push({ id: 1, title: "c", mode: "companion", createdAt: new Date() });
+    h.store.conversations.push({ id: 1, ownerId: "test-owner", title: "c", mode: "companion", createdAt: new Date() });
     h.seq.conversations = 1;
 
     const res = await fetch(`${base}/api/openai/conversations/1/messages`, {

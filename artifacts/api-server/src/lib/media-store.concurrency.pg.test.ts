@@ -71,6 +71,7 @@ async function insertAsset(status: MediaJobStatus): Promise<number> {
   const [row] = await db
     .insert(mediaAssetsTable)
     .values({
+      ownerId: "media-concurrency-test-owner",
       engramId: null,
       conversationId: null,
       filename: "asset.txt",
