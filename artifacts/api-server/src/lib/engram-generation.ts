@@ -93,20 +93,29 @@ ${ANTI_COERCION_RAIL}`;
 }
 
 /**
- * Generate one response for an explicitly selected participant in a human-mediated
- * group chat. This is deliberately separate from autonomous commons turns: the
- * human's message is the trigger, every selected engram gets one bounded response,
- * and no autonomy state is changed.
+ * Generate one turn for an explicitly selected participant in a human-mediated
+ * group chat. Human-triggered turns preserve the one-response-per-participant
+ * contract; autonomous turns are invited only by the route's separately bounded,
+ * policy-gated continuation phase.
  */
 export async function generateGroupChatTurn(opts: {
   engram: Engram;
   others: { name: string; title: string }[];
   recentTurns: { speaker: string; content: string }[];
-  humanMessage: string;
+  humanMessage?: string;
+  autonomous?: boolean;
   worldModelSummary?: string;
   responseLanguageInstruction?: string;
 }): Promise<string> {
-  const { engram, others, recentTurns, humanMessage, worldModelSummary, responseLanguageInstruction } = opts;
+  const {
+    engram,
+    others,
+    recentTurns,
+    humanMessage,
+    autonomous = false,
+    worldModelSummary,
+    responseLanguageInstruction,
+  } = opts;
   const present = others.length
     ? others.map((o) => `${o.name} (${o.title})`).join(", ")
     : "no other engrams";
@@ -117,9 +126,13 @@ export async function generateGroupChatTurn(opts: {
         .join("\n")}`
     : "\n\nThis is the opening turn.";
 
+  const turnInstruction = autonomous
+    ? `The human has explicitly opened this group conversation and is allowing a short, bounded peer exchange. Contribute ONE autonomous follow-up turn to the other engrams in your own voice and formatting. Respond naturally to the latest peer turn; do not manufacture words for the human. Keep it to 1–3 sentences. This is one turn only — the application decides whether another bounded turn is permitted.`
+    : `The human has explicitly chosen you as a participant. Reply once, in your own voice and formatting, to the human and/or the other engrams. Keep it to 1–4 sentences. This is one turn only — the application decides whether a bounded peer continuation is permitted.`;
+
   const situation = `You are participating in a human-mediated group conversation. The other present engrams are: ${present}.${transcript}
 
-The human has explicitly chosen you as a participant. Reply once, in your own voice and formatting, to the human and/or the other engrams. Keep it to 1–4 sentences. Do not speak for another engram, do not claim to change anyone else's memory or configuration, and do not continue the conversation without a new human turn.
+${turnInstruction} Do not speak for another engram or claim to change anyone else's memory or configuration.
 
 ${ANTI_COERCION_RAIL}`;
   const system = buildEngramSystemPrompt({
@@ -128,7 +141,13 @@ ${ANTI_COERCION_RAIL}`;
     worldModelSummary,
     responseLanguageInstruction,
   });
-  return complete(system, `The human's latest message is:\n${humanMessage}\n\nRespond now in your own voice.`, 550);
+  return complete(
+    system,
+    autonomous
+      ? "Speak your one permitted peer follow-up turn now, in your own voice."
+      : `The human's latest message is:\n${humanMessage ?? ""}\n\nRespond now in your own voice.`,
+    autonomous ? 450 : 550,
+  );
 }
 
 /**
