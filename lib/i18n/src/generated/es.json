@@ -844,13 +844,18 @@
     "subtitle": "Preferencias del operador para este terminal",
     "languageSection": "Idioma",
     "uiLanguage": "Idioma de la interfaz",
-    "uiLanguageHint": "Menús, etiquetas y páginas en toda la app.",
+    "uiLanguageHint": "Menús, etiquetas y páginas de toda la app.",
     "replyLanguage": "Idioma de respuesta del engram",
-    "replyLanguageHint": "El idioma en que responden los engrams y PYRI en chat y consultas.",
+    "replyLanguageHint": "El idioma en que responden los engrams y PYRI durante el chat y las consultas.",
     "replyMatchUi": "Igualar idioma de la interfaz",
-    "replyAuto": "Automático — coincidir con el idioma en que escribo",
+    "replyAuto": "Automático — igualar el idioma en que escribo",
     "rtlNote": "El diseño de derecha a izquierda se aplica al árabe.",
-    "saved": "Ajustes guardados"
+    "saved": "Ajustes guardados",
+    "ggufSection": "IA local",
+    "ggufTitle": "Modelos GGUF personalizados",
+    "ggufBody": "Usa tu propio modelo .gguf con el motor local administrado de ENGRAM. La app de escritorio copia el modelo al almacenamiento protegido de la app, lo verifica antes de iniciar y lo mantiene disponible tras las actualizaciones.",
+    "ggufDesktopOnly": "La importación de GGUF personalizados se realiza en la app de escritorio de ENGRAM. La app web puede conectarse a un servidor local, pero un navegador no puede iniciar ni administrar el motor de escritorio.",
+    "ggufDownloadAction": "Obtener la app de escritorio"
   },
   "simulations": {
     "title": "CÁMARAS DE SIMULACIÓN",

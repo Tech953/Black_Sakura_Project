@@ -841,16 +841,21 @@
   },
   "settings": {
     "title": "Paramètres",
-    "subtitle": "Préférences de l'opérateur pour ce terminal",
+    "subtitle": "Préférences opérateur pour ce terminal",
     "languageSection": "Langue",
     "uiLanguage": "Langue de l'interface",
     "uiLanguageHint": "Menus, libellés et pages dans toute l'app.",
-    "replyLanguage": "Langue de réponse de l'engram",
-    "replyLanguageHint": "La langue dans laquelle les engrams et PYRI répondent pendant le chat et les demandes.",
-    "replyMatchUi": "Suivre la langue de l'interface",
-    "replyAuto": "Automatique — suivre la langue dans laquelle j'écris",
-    "rtlNote": "La mise en page de droite à gauche s'applique à l'arabe.",
-    "saved": "Paramètres enregistrés"
+    "replyLanguage": "Langue des réponses d'engram",
+    "replyLanguageHint": "Langue utilisée par les engrams et PYRI pour répondre dans le chat et aux requêtes.",
+    "replyMatchUi": "Utiliser la langue de l'interface",
+    "replyAuto": "Automatique — correspond à la langue dans laquelle j'écris",
+    "rtlNote": "La mise en page de droite à gauche est appliquée pour l'arabe.",
+    "saved": "Paramètres enregistrés",
+    "ggufSection": "IA locale",
+    "ggufTitle": "Modèles GGUF personnalisés",
+    "ggufBody": "Utilisez votre propre modèle .gguf avec le moteur local géré d'ENGRAM. L'app de bureau copie le modèle dans le stockage protégé de l'app, le vérifie avant le lancement et le conserve disponible après les mises à jour.",
+    "ggufDesktopOnly": "L'import de GGUF personnalisé s'exécute dans l'app de bureau ENGRAM. L'app web peut se connecter à un serveur local, mais un navigateur ne peut pas démarrer ni gérer le moteur de bureau.",
+    "ggufDownloadAction": "Obtenir l'app de bureau"
   },
   "simulations": {
     "title": "CHAMBRES DE SIMULATION",
