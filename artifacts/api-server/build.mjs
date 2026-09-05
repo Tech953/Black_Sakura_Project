@@ -64,8 +64,12 @@ async function buildAll() {
       "@aws-sdk/*",
       "@azure/*",
       "@opentelemetry/*",
-      "@google-cloud/*",
-      "@google/*",
+      // The desktop package ships the API as a standalone bundle and only
+      // provides PGlite as an external runtime dependency. Keep Google Cloud
+      // packages inside that bundle; externalizing them makes the packaged
+      // child process fail before it can serve /api/healthz because the
+      // desktop resources intentionally do not include a full node_modules
+      // tree.
       "googleapis",
       "firebase-admin",
       "@parcel/watcher",
