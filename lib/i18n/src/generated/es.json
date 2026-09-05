@@ -507,7 +507,7 @@
     "archivalBadge": "ARCHIVO",
     "requestedChange": "Cambio solicitado",
     "question": "Pregunta",
-    "archivalNote": "Rama de archivo — el registro preservado es inmutable. El sondeo está abierto; el desarrollo está deshabilitado para mantener la persona intacta.",
+    "archivalNote": "Rama de archivo — el registro preservado es inmutable. Las consultas están deshabilitadas para mantener intactos la persona y su registro canónico.",
     "reflecting": "Reflexionando...",
     "asking": "Preguntando...",
     "developName": "Desarrollar {{name}}",

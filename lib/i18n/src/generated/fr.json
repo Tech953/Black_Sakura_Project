@@ -507,7 +507,7 @@
     "archivalBadge": "ARCHIVAL",
     "requestedChange": "Changement demandé",
     "question": "Question",
-    "archivalNote": "Branche archivale — l’enregistrement conservé est immuable. Le sondage est ouvert ; le développement est désactivé pour préserver la persona.",
+    "archivalNote": "Branche archivale — l’enregistrement conservé est immuable. Les requêtes sont désactivées pour préserver la persona et son enregistrement canonique.",
     "reflecting": "Réflexion...",
     "asking": "Interrogation...",
     "developName": "Développer {{name}}",

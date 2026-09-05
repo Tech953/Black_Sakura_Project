@@ -22,7 +22,7 @@
   "archivalBadge": "ARCHIVAL",
   "requestedChange": "Requested Change",
   "question": "Question",
-  "archivalNote": "Archival branch — the preserved record is immutable. Probing is open; development is disabled to keep the persona intact.",
+  "archivalNote": "Archival branch — the preserved record is immutable. Inquiry is disabled to keep the persona and its canonical record intact.",
   "reflecting": "Reflecting...",
   "asking": "Asking...",
   "developName": "Develop {{name}}",

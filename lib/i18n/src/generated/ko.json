@@ -507,7 +507,7 @@
     "archivalBadge": "아카이브",
     "requestedChange": "요청된 변경",
     "question": "질문",
-    "archivalNote": "아카이브 분기 — 보존된 기록은 불변입니다. 탐문은 가능하지만, 페르소나 보존을 위해 개발은 비활성화됩니다.",
+    "archivalNote": "아카이브 분기 — 보존된 기록은 불변입니다. 페르소나와 정본 기록을 보존하기 위해 문의가 비활성화됩니다.",
     "reflecting": "성찰 중...",
     "asking": "질문 중...",
     "developName": "{{name}} 개발",

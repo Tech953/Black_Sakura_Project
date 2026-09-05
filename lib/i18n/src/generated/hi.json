@@ -507,7 +507,7 @@
     "archivalBadge": "अभिलेखीय",
     "requestedChange": "अनुरोधित बदलाव",
     "question": "प्रश्न",
-    "archivalNote": "अभिलेखीय शाखा — संरक्षित रिकॉर्ड अपरिवर्तनीय है। probing खुली है; persona को अक्षुण्ण रखने के लिए development अक्षम है।",
+    "archivalNote": "अभिलेखीय शाखा — संरक्षित रिकॉर्ड अपरिवर्तनीय है। persona और उसके canonical रिकॉर्ड को सुरक्षित रखने के लिए inquiries अक्षम हैं।",
     "reflecting": "विचार कर रही है...",
     "asking": "पूछा जा रहा है...",
     "developName": "{{name}} को विकसित करें",

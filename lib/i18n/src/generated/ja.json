@@ -507,7 +507,7 @@
     "archivalBadge": "ARCHIVAL",
     "requestedChange": "依頼した変更",
     "question": "質問",
-    "archivalNote": "アーカイブ分岐 — 保存記録は不変です。Probeは可能ですが、ペルソナ保持のためDevelopは無効です。",
+    "archivalNote": "アーカイブ分岐 — 保存記録は不変です。ペルソナと正規記録を保つため、問い合わせは無効です。",
     "reflecting": "内省中...",
     "asking": "問い合わせ中...",
     "developName": "{{name}}をDevelop",
