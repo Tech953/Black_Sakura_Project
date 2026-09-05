@@ -24,6 +24,7 @@ import {
   mkdirSync,
   renameSync,
   rmSync,
+  statSync,
 } from "node:fs";
 import path from "node:path";
 import http from "node:http";
@@ -39,9 +40,21 @@ import {
   normalizeCustomGgufMetadata,
   normalizeDesktopMode,
 } from "./desktop-settings";
+import {
+  OFFLINE_MODEL,
+  downloadOfflineModel,
+  hasOfflineModelSync,
+  offlineModelPartialPath,
+  offlineModelPath,
+  offlineModelStorageLocation,
+  removeOfflineModel,
+  verifyOfflineModel,
+} from "./offline-model";
 import type {
   CustomModelMetadataView,
   GgufImportStatus,
+  OfflineModelDownloadStatus,
+  OfflineModelView,
   SettingsPayload,
 } from "./desktop-bridge";
 
@@ -100,7 +113,18 @@ const packagedSmokeGguf = packagedSmokeEnabled
   : undefined;
 
 function bundledModelAvailable(): boolean {
+  return (
+    existsSync(llamaBin) &&
+    (existsSync(llamaModel) || hasOfflineModelSync(offlineModelRoot()))
+  );
+}
+
+function packagedBundledModelAvailable(): boolean {
   return existsSync(llamaBin) && existsSync(llamaModel);
+}
+
+function offlineModelRoot(): string {
+  return userDataPath("models", "offline");
 }
 
 let serverProcess: ChildProcess | null = null;
@@ -189,9 +213,24 @@ type RunningGgufImport = {
   promise: Promise<void>;
 };
 
+type RunningOfflineModelDownload = {
+  controller: AbortController;
+  promise: Promise<void>;
+};
+
 const GGUF_SELECTION_TTL_MS = 10 * 60 * 1000;
 const pendingGgufSelections = new Map<string, PendingGgufSelection>();
 const runningGgufImports = new Map<string, RunningGgufImport>();
+const runningOfflineModelDownloads = new Map<
+  string,
+  RunningOfflineModelDownload
+>();
+
+function hasRunningModelOperation(): boolean {
+  return (
+    runningGgufImports.size > 0 || runningOfflineModelDownloads.size > 0
+  );
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -220,10 +259,19 @@ function sendGgufImportStatus(status: GgufImportStatus): void {
   }
 }
 
-async function cancelAllGgufImports(): Promise<void> {
-  const imports = [...runningGgufImports.values()];
-  for (const entry of imports) entry.controller.abort();
-  await Promise.allSettled(imports.map((entry) => entry.promise));
+function sendOfflineModelStatus(status: OfflineModelDownloadStatus): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.webContents.send("offline-model:status", status);
+  }
+}
+
+async function cancelAllDesktopDownloads(): Promise<void> {
+  const operations = [
+    ...runningGgufImports.values(),
+    ...runningOfflineModelDownloads.values(),
+  ];
+  for (const entry of operations) entry.controller.abort();
+  await Promise.allSettled(operations.map((entry) => entry.promise));
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -258,8 +306,8 @@ function managedCustomPath(metadata: CustomGgufMetadata): string {
   return path.join(customGgufStore().root, metadata.path);
 }
 
-/** The mode actually used at runtime: bundled degrades to offline when this
- * build ships no model (e.g. a dev run without staged resources). */
+/** The mode actually used at runtime: bundled degrades to offline only until
+ * the packaged or user-downloaded model is available. */
 function effectiveMode(settings: Settings): Settings["mode"] {
   if (settings.mode === "bundled" && !bundledModelAvailable()) return "offline";
   if (
@@ -459,6 +507,10 @@ async function startLlama(settings: Settings): Promise<void> {
     verifiedCustom = await customGgufStore().verifyForLaunch(settings.custom);
     modelPath = verifiedCustom.path;
     llamaModelAlias = `custom-${settings.custom.sha256.slice(0, 12)}`;
+  } else if (mode === "bundled" && !packagedBundledModelAvailable()) {
+    const verifiedDownloaded = await verifyOfflineModel(offlineModelRoot());
+    modelPath = verifiedDownloaded.path;
+    llamaModelAlias = `downloaded-${OFFLINE_MODEL.sha256.slice(0, 12)}`;
   }
   llamaPort = await findFreePort();
   if (packagedSmokeEnabled) {
@@ -765,6 +817,95 @@ async function getCustomModelView(settings: Settings) {
   }
 }
 
+async function getOfflineModelView(settings: Settings): Promise<OfflineModelView> {
+  const root = offlineModelRoot();
+  let downloadedBytes = 0;
+  try {
+    downloadedBytes = statSync(offlineModelPath(root)).size;
+  } catch {
+    try {
+      downloadedBytes = statSync(offlineModelPartialPath(root)).size;
+    } catch {
+      downloadedBytes = 0;
+    }
+  }
+
+  const usingDownloadedModel =
+    settings.mode === "bundled" &&
+    !packagedBundledModelAvailable() &&
+    Boolean(llamaProcess) &&
+    llamaModelAlias.startsWith("downloaded-");
+  let status: OfflineModelView["status"] =
+    downloadedBytes === 0 ? "none" : "downloading";
+  let error: string | undefined;
+  try {
+    if (hasOfflineModelSync(root)) {
+      status = usingDownloadedModel ? "active" : "available";
+    } else if (downloadedBytes > 0) {
+      status = "partial";
+      error = "A partial download is available and can be resumed.";
+    }
+  } catch (viewError) {
+    status = "error";
+    error = errorMessage(viewError);
+  }
+  return {
+    filename: OFFLINE_MODEL.filename,
+    expectedBytes: OFFLINE_MODEL.expectedBytes,
+    expectedSha256: OFFLINE_MODEL.sha256,
+    storageLocation: offlineModelStorageLocation(root),
+    status,
+    downloadedBytes,
+    ...(error ? { error } : {}),
+  };
+}
+
+async function runOfflineModelDownload(
+  operationId: string,
+  controller: AbortController,
+): Promise<void> {
+  let downloaded = false;
+  try {
+    const verified = await downloadOfflineModel(offlineModelRoot(), {
+      signal: controller.signal,
+      onProgress: (progress) => {
+        sendOfflineModelStatus({
+          operationId,
+          state: "downloading",
+          downloadedBytes: progress.downloadedBytes,
+          totalBytes: progress.totalBytes,
+          fraction: progress.fraction,
+        });
+      },
+    });
+    downloaded = true;
+    sendOfflineModelStatus({ operationId, state: "verifying" });
+    await verifyOfflineModel(offlineModelRoot());
+
+    sendOfflineModelStatus({ operationId, state: "activating" });
+    const previous = loadSettings();
+    await activateDesktopSettings(previous, { ...previous, mode: "bundled" });
+    sendOfflineModelStatus({
+      operationId,
+      state: "completed",
+      downloadedBytes: verified.size,
+      totalBytes: OFFLINE_MODEL.expectedBytes,
+    });
+  } catch (error) {
+    const cancelled =
+      controller.signal.aborted ||
+      (error instanceof Error && error.name === "AbortError");
+    sendOfflineModelStatus({
+      operationId,
+      state: cancelled ? "cancelled" : "error",
+      error: cancelled ? undefined : errorMessage(error),
+      downloaded,
+    });
+  } finally {
+    runningOfflineModelDownloads.delete(operationId);
+  }
+}
+
 async function runGgufImport(
   operationId: string,
   selection: PendingGgufSelection,
@@ -941,6 +1082,7 @@ ipcMain.handle("settings:get", async () => {
   return {
     mode: settings.mode,
     bundledAvailable: bundledModelAvailable(),
+      bundledModelIncluded: packagedBundledModelAvailable(),
     allowLan: settings.allowLan === true,
     // LAN addresses the mobile app can use when LAN access is on.
     lanAddresses: Object.values(os.networkInterfaces())
@@ -955,6 +1097,7 @@ ipcMain.handle("settings:get", async () => {
     hasApiKey: Boolean(settings.online.apiKeyEnc) || Boolean(sessionApiKey),
     encryptionAvailable: safeStorage.isEncryptionAvailable(),
     customModel: await getCustomModelView(settings),
+      offlineModel: await getOfflineModelView(settings),
   };
 });
 
@@ -962,7 +1105,7 @@ ipcMain.handle(
   "settings:save",
   async (_event, payload: SettingsPayload) => {
     try {
-      if (runningGgufImports.size > 0) {
+      if (hasRunningModelOperation()) {
         throw new Error("Wait for the GGUF import to finish or cancel it first.");
       }
       if (
@@ -1035,7 +1178,7 @@ ipcMain.handle(
 ipcMain.handle("gguf:choose", async () => {
   let sourcePath: string | undefined;
   try {
-    if (runningGgufImports.size > 0) {
+    if (hasRunningModelOperation()) {
       throw new Error("A GGUF import is already running.");
     }
     for (const [id, selection] of pendingGgufSelections) {
@@ -1084,7 +1227,7 @@ ipcMain.handle("gguf:import", (_event, selectionId: unknown) => {
     ) {
       throw new Error("Invalid GGUF selection.");
     }
-    if (runningGgufImports.size > 0) {
+    if (hasRunningModelOperation()) {
       throw new Error("A GGUF import is already running.");
     }
     const selection = pendingGgufSelections.get(selectionId);
@@ -1119,7 +1262,7 @@ ipcMain.handle("gguf:cancel", (_event, operationId: unknown) => {
 
 ipcMain.handle("gguf:remove", async () => {
   try {
-    if (runningGgufImports.size > 0) {
+    if (hasRunningModelOperation()) {
       throw new Error("Wait for the GGUF import to finish or cancel it first.");
     }
     const previous = loadSettings();
@@ -1145,6 +1288,58 @@ ipcMain.handle("gguf:remove", async () => {
     }
     saveSettings({ ...deactivated, custom: undefined });
     customRuntimeError = null;
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+});
+
+ipcMain.handle("offline-model:download", () => {
+  try {
+    if (runningOfflineModelDownloads.size > 0) {
+      throw new Error("An offline model download is already running.");
+    }
+    const operationId = randomUUID();
+    const controller = new AbortController();
+    const entry: RunningOfflineModelDownload = {
+      controller,
+      promise: Promise.resolve(),
+    };
+    runningOfflineModelDownloads.set(operationId, entry);
+    entry.promise = runOfflineModelDownload(operationId, controller);
+    return { ok: true, operationId };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+});
+
+ipcMain.handle("offline-model:cancel", (_event, operationId: unknown) => {
+  if (typeof operationId !== "string" || operationId.length > 128) {
+    return { ok: false, error: "Invalid offline model download." };
+  }
+  const entry = runningOfflineModelDownloads.get(operationId);
+  if (!entry) {
+    return { ok: false, error: "That offline model download is no longer running." };
+  }
+  entry.controller.abort();
+  return { ok: true };
+});
+
+ipcMain.handle("offline-model:remove", async () => {
+  try {
+    if (runningOfflineModelDownloads.size > 0) {
+      throw new Error("Wait for the offline model download to finish or cancel it first.");
+    }
+    const previous = loadSettings();
+    const usingDownloadedModel =
+      previous.mode === "bundled" &&
+      !packagedBundledModelAvailable() &&
+      Boolean(llamaProcess) &&
+      llamaModelAlias.startsWith("downloaded-");
+    if (usingDownloadedModel) {
+      await activateDesktopSettings(previous, { ...previous, mode: "offline" });
+    }
+    await removeOfflineModel(offlineModelRoot());
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };
@@ -1282,7 +1477,7 @@ function setupAutoUpdates(): void {
             // would otherwise survive the update swap as an orphan).
             stopServer: () =>
               stopDesktopWork({
-                stopImports: cancelAllGgufImports,
+                stopImports: cancelAllDesktopDownloads,
                 stopServer,
                 stopLlama,
               }),
@@ -1353,6 +1548,12 @@ if (!gotLock) {
       await preparePackagedSmokeCustomGguf();
       await startServer();
       createMainWindow();
+      if (packagedSmokeEnabled) {
+        // Headless Linux Electron does not dispatch the menu accelerator used
+        // by the smoke test consistently. Open Settings through the same
+        // production function after the dashboard has had time to mount.
+        setTimeout(openSettingsWindow, 1500);
+      }
       setupAutoUpdates();
     } catch (error) {
       dialog.showErrorBox(
@@ -1373,13 +1574,13 @@ if (!gotLock) {
 
   app.on("before-quit", (event) => {
     if (
-      (serverProcess || llamaProcess || runningGgufImports.size > 0) &&
+      (serverProcess || llamaProcess || hasRunningModelOperation()) &&
       !quitting
     ) {
       event.preventDefault();
       quitting = true;
       void stopDesktopWork({
-        stopImports: cancelAllGgufImports,
+        stopImports: cancelAllDesktopDownloads,
         stopServer,
         stopLlama,
       })

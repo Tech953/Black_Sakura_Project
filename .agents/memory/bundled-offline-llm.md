@@ -11,6 +11,7 @@ The desktop app's "bundled" LLM mode spawns a llama.cpp `llama-server` shipped i
 - Only `llama-server(.exe)` + shared libs are staged — release archives contain a dozen CLI tools that bloat size and widen macOS signing surface. llama-server must be listed in `mac.binaries` for notarization.
 - Spawn with `cwd` = the bin dir or DLL/.so resolution fails. On NixOS workspace testing, `LD_LIBRARY_PATH` must point at a gcc-lib store path for `libgomp.so.1`.
 - Lifecycle: llama startup is transactional (spawn error/early exit rejects → kill + fall back to offline settings); it must be stopped on quit AND in the auto-update install path, or a multi-GB orphan survives the update.
+- Slim builds may download the pinned default GGUF into app userData; verify the complete file before launch, keep cancellation partials resumable, and never place the managed model under installed resources.
 - Model load takes 1–3 min; wait on llama `/health` == ok BEFORE starting the api-server, else engine ticks log 503 "Loading model".
 - User GGUFs live in owner-only app user-data storage, never resources. Copy, fingerprint, and verify them before launch; stop the API before llama changes; persist provider/model settings only after llama and the restarted API are healthy, otherwise restore the prior runtime.
 - LAN access for the mobile app is opt-in (`allowLan` setting → HOST 0.0.0.0); llama itself always binds loopback. Mobile has a persisted AsyncStorage server-URL override (origin-only http(s), normalized), applied before splash-hide so first queries hit the right server.
@@ -21,4 +22,5 @@ The desktop app's "bundled" LLM mode spawns a llama.cpp `llama-server` shipped i
 
 ## Cross-platform packaging lessons
 - llama.cpp Linux releases ship soname symlink chains (`libX.so -> .so.0 -> .so.0.N`); naive recursive/dereferencing copies choke on them — resolve to the real file when staging.
+- The Windows llama runtime archive is a ZIP; cross-platform staging must use a ZIP extractor rather than GNU tar, even when the archive hash is valid.
 - When cross-packaging a Windows desktop build from Linux, EVERY platform-specific binary (llama server, ffmpeg, ffprobe) must be the Windows one, named `.exe`; a build that silently falls back to host-OS binaries ships a broken app. Fail the build if a target binary can't be sourced.

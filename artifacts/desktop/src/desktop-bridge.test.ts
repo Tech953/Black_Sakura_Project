@@ -22,15 +22,19 @@ describe("desktop renderer bridge", () => {
     const { ipc } = fakeIpc();
     expect(Object.keys(createEngramDesktopBridge(ipc)).sort()).toEqual([
       "cancelGgufImport",
+      "cancelOfflineModelDownload",
       "checkForUpdates",
       "chooseGguf",
       "close",
+      "downloadOfflineModel",
       "getAppInfo",
       "getSettings",
       "importGguf",
       "onGgufImportStatus",
+      "onOfflineModelStatus",
       "onUpdateStatus",
       "removeGguf",
+      "removeOfflineModel",
       "saveSettings",
     ]);
   });

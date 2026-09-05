@@ -102,11 +102,12 @@ if (!existsSync(archive) || (await sha256(archive)) !== asset.sha256) {
 
 rmSync(destination, { recursive: true, force: true });
 mkdirSync(platform === "win32" ? destination : cache, { recursive: true });
+const extractor = platform === "win32" ? "unzip" : "tar";
 const extractArgs =
   platform === "win32"
-    ? ["-xf", archive, "-C", destination]
+    ? ["-q", archive, "-d", destination]
     : ["-xzf", archive, "-C", cache];
-const extracted = spawnSync("tar", extractArgs, {
+const extracted = spawnSync(extractor, extractArgs, {
   stdio: "inherit",
   shell: false,
 });

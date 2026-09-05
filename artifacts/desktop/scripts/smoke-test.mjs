@@ -221,9 +221,16 @@ async function main() {
     // selection, verified it immediately before launch, and started the
     // loopback fixture runtime. Assert the selected custom model is live from
     // the packaged Settings IPC surface as the final end-to-end proof.
-    const settingsPromise = app.waitForEvent("window", { timeout: RENDER_TIMEOUT_MS });
+    const settingsPromise = app
+      .waitForEvent("window", { timeout: 5_000 })
+      .catch(() => null);
     await window.keyboard.press(process.platform === "darwin" ? "Meta+," : "Control+,");
-    const settings = await settingsPromise;
+    const settings =
+      (await settingsPromise) ??
+      app.windows().find((candidate) => candidate !== window);
+    if (!settings) {
+      throw new Error("Settings window did not open from the application menu.");
+    }
     await settings.waitForLoadState("domcontentloaded");
     const customStatus = await settings.evaluate(async () => {
       const value = await window.engram.getSettings();
