@@ -11,7 +11,7 @@ import {
   expressionsTable,
   engramsTable,
 } from "@workspace/db/schema";
-import { and, eq, desc, asc, inArray } from "drizzle-orm";
+import { and, eq, desc, asc, inArray, isNull, isNotNull } from "drizzle-orm";
 import { llm, LLM_MODEL } from "../lib/llm";
 import { generateGroupChatTurn } from "../lib/engram-generation";
 import {
@@ -19,6 +19,9 @@ import {
   SendOpenaiMessageBody,
   GetOpenaiConversationParams,
   DeleteOpenaiConversationParams,
+  ListOpenaiConversationsQueryParams,
+  ArchiveOpenaiConversationParams,
+  ArchiveOpenaiConversationBody,
   ListOpenaiMessagesParams,
   SendOpenaiMessageParams,
 } from "@workspace/api-zod";
@@ -100,10 +103,21 @@ function serializeChatMediaAsset(a: MediaAsset) {
 }
 
 router.get("/openai/conversations", async (req, res) => {
+  const parsedQuery = ListOpenaiConversationsQueryParams.safeParse(req.query);
+  if (!parsedQuery.success) {
+    res.status(400).json({ error: parsedQuery.error.message });
+    return;
+  }
+  const archived = parsedQuery.data.archived;
   const rows = await db
     .select()
     .from(conversations)
-    .where(eq(conversations.ownerId, req.userId!))
+    .where(
+      and(
+        eq(conversations.ownerId, req.userId!),
+        archived ? isNotNull(conversations.archivedAt) : isNull(conversations.archivedAt),
+      ),
+    )
     .orderBy(desc(conversations.createdAt));
   const participantIds = await participantIdsForConversationIds(rows.map((row) => row.id));
   res.json(rows.map((row) => withParticipantIds(row, participantIds.get(row.id))));
@@ -163,6 +177,7 @@ router.post("/openai/conversations", async (req, res) => {
         personaName,
         customEngram,
         engramId,
+        archivedAt: null,
       })
       .returning();
     if (uniqueGroupIds.length > 0) {
@@ -197,6 +212,42 @@ router.get("/openai/conversations/:id", async (req, res) => {
     .where(eq(messages.conversationId, id))
     .orderBy(messages.createdAt);
   res.json({ ...withParticipantIds(conv, await participantIdsForConversation(id)), messages: msgs });
+});
+
+router.patch("/openai/conversations/:id/archive", async (req, res) => {
+  const parsedParams = ArchiveOpenaiConversationParams.safeParse({ id: Number(req.params.id) });
+  const parsedBody = ArchiveOpenaiConversationBody.safeParse(req.body);
+  if (!parsedParams.success || !parsedBody.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+  const { id } = parsedParams.data;
+  const conv = await loadOwnedConversation(id, req.userId!);
+  if (!conv) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+  if (conv.engramId != null) {
+    const engram = await loadOwnedEngram(conv.engramId, req.userId!);
+    if (engram?.isArchival) {
+      res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
+  }
+  const groupParticipantIds = await participantIdsForConversation(id);
+  if (groupParticipantIds.length > 0) {
+    const groupEngrams = await Promise.all(groupParticipantIds.map((participantId) => loadOwnedEngram(participantId, req.userId!)));
+    if (groupEngrams.some((engram) => engram?.isArchival)) {
+      res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
+  }
+  const [updated] = await db
+    .update(conversations)
+    .set({ archivedAt: parsedBody.data.archived ? new Date() : null })
+    .where(and(eq(conversations.id, id), eq(conversations.ownerId, req.userId!)))
+    .returning();
+  res.json(withParticipantIds(updated, groupParticipantIds));
 });
 
 router.delete("/openai/conversations/:id", async (req, res) => {
@@ -267,6 +318,10 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
   const conv = await loadOwnedConversation(id, req.userId!);
   if (!conv) {
     res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+  if (conv.archivedAt) {
+    res.status(409).json({ error: "Restore this conversation before sending a message." });
     return;
   }
 

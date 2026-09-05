@@ -2,8 +2,17 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useAuth } from "@clerk/react";
-import { useListOpenaiConversations, useCreateOpenaiConversation, useDeleteOpenaiConversation, useListEngrams, getListOpenaiConversationsQueryKey } from "@workspace/api-client-react";
+import {
+  useListOpenaiConversations,
+  useCreateOpenaiConversation,
+  useDeleteOpenaiConversation,
+  useArchiveOpenaiConversation,
+  useListEngrams,
+  getListOpenaiConversationsQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,12 +21,23 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users, Download } from "lucide-react";
+import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users, Download, Archive, ArchiveRestore } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useEventStream, type EngramEvent } from "@/hooks/use-event-stream";
 import { resolveReplyLanguage } from "@/i18n";
+import {
+  buildMarkdownTranscript,
+  buildPlainTextTranscript,
+  buildTranscriptEntries,
+} from "@/lib/chat-export";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -84,6 +104,7 @@ interface Message {
   role: "user" | "assistant" | "context";
   content: string;
   speakerEngramId?: number | null;
+  createdAt?: string;
   streaming?: boolean;
 }
 
@@ -107,6 +128,7 @@ interface Conversation {
   engramId?: number | null;
   engramIds?: number[];
   createdAt: string;
+  archivedAt?: string | null;
 }
 
 const MODES: { id: ChatMode; labelKey: string; glyph: string; descKey: string }[] = [
@@ -122,9 +144,11 @@ const MODES: { id: ChatMode; labelKey: string; glyph: string; descKey: string }[
 export default function Chat() {
   const { t } = useTranslation("chat");
   const { getToken } = useAuth();
-  const { data: convList, isLoading: loadingList } = useListOpenaiConversations();
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: convList, isLoading: loadingList } = useListOpenaiConversations({ archived: showArchived });
   const createConv = useCreateOpenaiConversation();
   const deleteConv = useDeleteOpenaiConversation();
+  const archiveConv = useArchiveOpenaiConversation();
   const { data: engrams } = useListEngrams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -195,6 +219,7 @@ export default function Chat() {
       engramId: data.engramId,
       engramIds: data.engramIds ?? (data.engramId != null ? [data.engramId] : []),
       createdAt: data.createdAt,
+      archivedAt: data.archivedAt ?? null,
     };
     setMessages(data.messages ?? []);
     setAttachments([]);
@@ -289,6 +314,7 @@ export default function Chat() {
       engramId: result.engramId,
       engramIds: result.engramIds ?? [],
       createdAt: String(result.createdAt),
+      archivedAt: result.archivedAt ?? null,
     });
     await loadConversation(result.id);
   }
@@ -311,44 +337,127 @@ export default function Chat() {
     toast({ title: t("toastConversationDeleted") });
   }
 
-  function handleDownload() {
+  async function handleArchive(id: number, archived: boolean, e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      const updated = await archiveConv.mutateAsync({ id, data: { archived } });
+      queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey({ archived: false }) });
+      queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey({ archived: true }) });
+      if (activeId === id) {
+        setActiveConversation((current) => current ? { ...current, archivedAt: updated.archivedAt } : current);
+      }
+      toast({ title: archived ? t("toastConversationArchived") : t("toastConversationRestored") });
+    } catch (error) {
+      const description = error instanceof Error ? error.message : t("toastCouldNotReachApi");
+      toast({ title: t("toastArchiveFailed"), description, variant: "destructive" });
+    }
+  }
+
+  function saveBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleDownload(format: "md" | "txt" | "pdf" | "docx") {
     if (!activeConv || messages.length === 0) return;
 
     const speakerName = (speakerEngramId?: number | null) => {
       if (speakerEngramId == null) return t("engramFallback");
       return (engrams ?? []).find((engram) => engram.id === speakerEngramId)?.name ?? t("engramFallback");
     };
-    const date = new Date().toISOString();
-    const transcript = [
-      `# ${activeConv.title}`,
-      "",
-      `_${t("downloadedOn")}: ${date}_`,
-      "",
-      ...messages
-        .filter((message) => message.content.trim().length > 0)
-        .map((message) => {
-          const heading =
-            message.role === "user"
-              ? t("you")
-              : message.role === "context"
-                ? t("perceivedContext")
-                : message.speakerEngramId != null
-                  ? speakerName(message.speakerEngramId)
-                  : activeEngram?.name ?? "PYRI";
-          return `## ${heading}\n\n${message.content}`;
-        }),
-    ].join("\n\n");
-    const blob = new Blob([transcript], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const exportedAt = new Date().toISOString();
+    const entries = buildTranscriptEntries(messages, {
+      you: t("you"),
+      perceivedContext: t("perceivedContext"),
+      engramFallback: t("engramFallback"),
+      speakerName,
+      defaultAssistant: activeEngram?.name ?? "PYRI",
+    });
     const safeTitle = activeConv.title.trim().replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
-    link.href = url;
-    link.download = `${safeTitle || "engram-chat"}.md`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    toast({ title: t("toastConversationDownloaded") });
+    const filename = safeTitle || "engram-chat";
+    try {
+      if (format === "md" || format === "txt") {
+        const textInput = {
+          title: activeConv.title,
+          downloadedOn: t("downloadedOn"),
+          exportedAt,
+          conversationCreated: t("conversationCreated"),
+          createdAt: activeConv.createdAt,
+          entries,
+        };
+        const transcript = format === "md"
+          ? buildMarkdownTranscript(textInput)
+          : buildPlainTextTranscript(textInput);
+        saveBlob(new Blob([transcript], { type: format === "md" ? "text/markdown;charset=utf-8" : "text/plain;charset=utf-8" }), `${filename}.${format}`);
+      } else if (format === "docx") {
+        const children = [
+          new Paragraph({ text: activeConv.title, heading: HeadingLevel.TITLE }),
+          new Paragraph({ text: `${t("downloadedOn")}: ${exportedAt}` }),
+          new Paragraph({ text: `${t("conversationCreated")}: ${new Date(activeConv.createdAt).toISOString() }` }),
+          ...entries.flatMap((entry) => [
+            new Paragraph({ text: entry.heading, heading: HeadingLevel.HEADING_2 }),
+            ...(entry.timestamp ? [new Paragraph({ children: [new TextRun({ text: entry.timestamp, italics: true })] })] : []),
+            new Paragraph({ text: entry.content }),
+          ]),
+        ];
+        saveBlob(await Packer.toBlob(new Document({ sections: [{ children }] })), `${filename}.docx`);
+      } else {
+        const pdf = await PDFDocument.create();
+        const regular = await pdf.embedFont(StandardFonts.Helvetica);
+        const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+        let page = pdf.addPage([612, 792]);
+        let y = 744;
+        const drawLines = (text: string, size: number, font = regular, color = rgb(0.1, 0.1, 0.1)) => {
+          const maxChars = Math.max(35, Math.floor(96 * (10 / size)));
+          const lines = text.split(/\r?\n/).flatMap((line) => {
+            if (!line) return [""];
+            const words = line.split(/\s+/);
+            const wrapped: string[] = [];
+            let current = "";
+            for (const word of words) {
+              if ((current + " " + word).trim().length > maxChars && current) {
+                wrapped.push(current);
+                current = word;
+              } else {
+                current = `${current} ${word}`.trim();
+              }
+            }
+            if (current) wrapped.push(current);
+            return wrapped;
+          });
+          for (const line of lines) {
+            if (y < 48) {
+              page = pdf.addPage([612, 792]);
+              y = 744;
+            }
+            page.drawText(line.replace(/[^\x20-\x7E]/g, "?"), { x: 48, y, size, font, color });
+            y -= size + 5;
+          }
+          y -= 5;
+        };
+        drawLines(activeConv.title, 18, bold, rgb(0.05, 0.3, 0.45));
+        drawLines(`${t("downloadedOn")}: ${exportedAt}`, 9);
+        drawLines(`${t("conversationCreated")}: ${new Date(activeConv.createdAt).toISOString()}`, 9);
+        for (const entry of entries) {
+          drawLines(entry.heading, 12, bold, rgb(0.05, 0.3, 0.45));
+          if (entry.timestamp) drawLines(entry.timestamp, 9);
+          drawLines(entry.content, 10);
+        }
+        const pdfBytes = await pdf.save();
+        const pdfBuffer = new ArrayBuffer(pdfBytes.byteLength);
+        new Uint8Array(pdfBuffer).set(pdfBytes);
+        saveBlob(new Blob([pdfBuffer], { type: "application/pdf" }), `${filename}.pdf`);
+      }
+      toast({ title: t("toastConversationDownloaded") });
+    } catch {
+      toast({ title: t("toastDownloadFailed"), variant: "destructive" });
+    }
   }
 
   async function handleSend() {
@@ -508,10 +617,20 @@ export default function Chat() {
     <div className="flex flex-col h-full bg-card/20 backdrop-blur-sm">
         <div className="p-4 border-b border-border/50 flex items-center justify-between">
           <div>
-            <h2 className="font-mono text-xs uppercase tracking-widest text-primary">{t("conversations")}</h2>
+            <h2 className="font-mono text-xs uppercase tracking-widest text-primary">{showArchived ? t("archivedConversations") : t("conversations")}</h2>
             <p className="font-mono text-[9px] text-muted-foreground/50 mt-0.5">{t("lpemDialogueInterface")}</p>
           </div>
-          <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setShowArchived((current) => !current)}
+              className="w-7 h-7 flex items-center justify-center text-muted-foreground/60 hover:text-primary transition-colors"
+              title={showArchived ? t("showActiveConversations") : t("showArchivedConversations")}
+              aria-label={showArchived ? t("showActiveConversations") : t("showArchivedConversations")}
+            >
+              {showArchived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+            </button>
+            {!showArchived && <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
             <DialogTrigger asChild>
                <Button
                  size="icon"
@@ -615,7 +734,8 @@ export default function Chat() {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>}
+          </div>
         </div>
 
         <ScrollArea className="flex-1">
@@ -656,12 +776,22 @@ export default function Chat() {
                       <p className={`font-mono text-xs truncate ${activeId === c.id ? "text-primary" : "text-foreground/80"}`}>{c.title}</p>
                       <p className="font-mono text-[9px] text-muted-foreground/50 uppercase mt-0.5 truncate">{modeLabel}</p>
                     </div>
-                    <button
-                      onClick={(e) => handleDelete(c.id, e)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-rose-400 shrink-0"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                     <button
+                       onClick={(e) => handleArchive(c.id, !showArchived, e)}
+                       className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary shrink-0"
+                       title={showArchived ? t("restoreConversation") : t("archiveConversation")}
+                       aria-label={showArchived ? t("restoreConversation") : t("archiveConversation")}
+                     >
+                       {showArchived ? <ArchiveRestore className="w-3 h-3" /> : <Archive className="w-3 h-3" />}
+                     </button>
+                     <button
+                       onClick={(e) => handleDelete(c.id, e)}
+                       className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-rose-400 shrink-0"
+                       title={t("deleteConversation")}
+                       aria-label={t("deleteConversation")}
+                     >
+                       <Trash2 className="w-3 h-3" />
+                     </button>
                   </div>
                 );
               })
@@ -714,17 +844,38 @@ export default function Chat() {
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${liveConnected ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"}`} />
                   {t("live")}
                 </span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="w-7 h-7 text-muted-foreground/60 hover:text-primary"
-                  onClick={handleDownload}
-                  disabled={messages.length === 0 || streaming}
-                  title={t("downloadConversation")}
-                  aria-label={t("downloadConversation")}
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="w-7 h-7 text-muted-foreground/60 hover:text-primary"
+                      disabled={messages.length === 0 || streaming}
+                      title={t("downloadConversation")}
+                      aria-label={t("downloadConversation")}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="font-mono text-xs">
+                    <DropdownMenuItem onSelect={() => void handleDownload("md")}>{t("downloadMarkdown")}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => void handleDownload("txt")}>{t("downloadText")}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => void handleDownload("pdf")}>{t("downloadPdf")}</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => void handleDownload("docx")}>{t("downloadDocx")}</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {activeConv.archivedAt && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="w-7 h-7 text-primary/70 hover:text-primary"
+                    onClick={(event) => handleArchive(activeConv.id, false, event)}
+                    title={t("restoreConversation")}
+                    aria-label={t("restoreConversation")}
+                  >
+                    <ArchiveRestore className="w-3.5 h-3.5" />
+                  </Button>
+                )}
                 {activeEngram?.isArchival && (
                   <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-wider border-amber-400/40 text-amber-400/90">
                     {t("common:archivalBadge")}
@@ -899,7 +1050,7 @@ export default function Chat() {
                     ? t("messagePyriPlaceholder", { mode: convMode })
                     : t("selectConversationFirst")
               }
-              disabled={!activeId || streaming}
+              disabled={!activeId || streaming || Boolean(activeConv?.archivedAt)}
               className="flex-1 font-mono text-sm border-border/50 bg-card/30 resize-none min-h-[44px] max-h-32 py-3 placeholder:text-muted-foreground/30"
               rows={1}
             />
@@ -915,7 +1066,7 @@ export default function Chat() {
             ) : (
               <Button
                 size="icon"
-                disabled={!activeId || !input.trim()}
+                disabled={!activeId || !input.trim() || Boolean(activeConv?.archivedAt)}
                 onClick={handleSend}
                 className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-11 w-11"
               >
@@ -924,7 +1075,7 @@ export default function Chat() {
             )}
           </div>
           <p className="font-mono text-[9px] text-muted-foreground/30 text-center mt-2">
-            {t("inputHint", {
+            {activeConv?.archivedAt ? t("archivedConversationReadOnly") : t("inputHint", {
               name: isActiveGroup
                 ? activeGroupEngrams.map((e) => e.name).join(", ")
                 : activeEngram ? activeEngram.name : "PYRI",

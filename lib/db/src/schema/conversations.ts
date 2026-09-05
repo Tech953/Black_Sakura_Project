@@ -14,7 +14,11 @@ export const conversations = pgTable("conversations", {
     onDelete: "set null",
   }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [index("conversations_owner_idx").on(table.ownerId)]);
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+}, (table) => [
+  index("conversations_owner_idx").on(table.ownerId),
+  index("conversations_owner_archived_idx").on(table.ownerId, table.archivedAt),
+]);
 
 /** Explicit, user-selected participants for human-mediated group conversations. */
 export const conversationEngramParticipants = pgTable(

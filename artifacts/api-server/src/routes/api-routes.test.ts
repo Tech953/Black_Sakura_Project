@@ -82,6 +82,14 @@ const h = vi.hoisted(() => {
       (col: { __col: string }, arr: unknown[]) =>
       (row: Row) =>
         arr.some((v) => norm(v) === norm(row[col.__col])),
+    isNull:
+      (col: { __col: string }) =>
+      (row: Row) =>
+        row[col.__col] == null,
+    isNotNull:
+      (col: { __col: string }) =>
+      (row: Row) =>
+        row[col.__col] != null,
     ne:
       (col: { __col: string }, val: unknown) =>
       (row: Row) =>
@@ -499,6 +507,46 @@ describe("conversation persistence routes", () => {
       body: JSON.stringify({ mode: "companion" }), // missing title
     });
     expect(res.status).toBe(400);
+  });
+
+  it("archives and restores a conversation without deleting its transcript", async () => {
+    const createRes = await fetch(`${base}/api/openai/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Archive me", mode: "companion" }),
+    });
+    const created = (await createRes.json()) as { id: number };
+
+    const archiveRes = await fetch(`${base}/api/openai/conversations/${created.id}/archive`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: true }),
+    });
+    expect(archiveRes.status).toBe(200);
+    const archived = (await archiveRes.json()) as Record<string, unknown>;
+    expect(archived.archivedAt).toBeTruthy();
+
+    const activeList = await (await fetch(`${base}/api/openai/conversations`)).json();
+    expect(activeList).toEqual([]);
+    const archivedList = await (await fetch(`${base}/api/openai/conversations?archived=true`)).json();
+    expect(archivedList).toHaveLength(1);
+
+    const blockedSend = await fetch(`${base}/api/openai/conversations/${created.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "This must wait" }),
+    });
+    expect(blockedSend.status).toBe(409);
+
+    const restoreRes = await fetch(`${base}/api/openai/conversations/${created.id}/archive`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: false }),
+    });
+    expect(restoreRes.status).toBe(200);
+    const restored = (await restoreRes.json()) as Record<string, unknown>;
+    expect(restored.archivedAt).toBeNull();
+    expect((await (await fetch(`${base}/api/openai/conversations`)).json())).toHaveLength(1);
   });
 
   it("returns 404 for a missing conversation", async () => {

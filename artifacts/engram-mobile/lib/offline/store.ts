@@ -530,6 +530,7 @@ export async function createConversation(opts: {
     engramId: opts.engramId ?? undefined,
     engramIds: opts.engramId != null ? [opts.engramId] : [],
     createdAt: t,
+    archivedAt: null,
   };
 }
 
@@ -556,6 +557,7 @@ export async function getConversation(id: number): Promise<Record<string, unknow
       typeof conv.engramId === "number" ? conv.engramId : undefined,
     engramIds:
       typeof conv.engramId === "number" ? [conv.engramId] : [],
+    archivedAt: null,
     messages: msgs,
   };
 }

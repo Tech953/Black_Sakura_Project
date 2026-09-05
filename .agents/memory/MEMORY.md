@@ -26,6 +26,7 @@
 - [ENGRAM DB table names](engram-db-table-names.md) — actual Drizzle table export names to use in route imports.
 - [Database seeding](seeding.md) — how reference/lookup data gets into the DB (no auto-seed exists).
 - [Schema apply dual path](schema-apply-dual-path.md) — a schema change must be both pushed AND generated; drizzle-kit generate out-path bug.
+- [Orval and Zod generation pin](orval-codegen-zod-pin.md) — keep API codegen on the Zod-3-compatible Orval version or generated validators use zod.int().
 - [OpenAPI codegen param collisions](openapi-codegen-collisions.md) — an op with BOTH a path param and query params breaks Orval codegen here; how to avoid it.
 - [Orval codegen gotchas](orval-codegen-gotchas.md) — non-obvious constraints when using the OpenAPI→Orval hooks/Zod codegen.
 - [ENGRAM AI lib template fixes](engram-ai-lib-fixes.md) — two fixes to make the Replit OpenAI integration template libs typecheck cleanly.

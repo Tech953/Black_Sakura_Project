@@ -404,6 +404,14 @@ paths:
       operationId: listOpenaiConversations
       tags: [openai]
       summary: List all conversations
+      parameters:
+        - name: archived
+          in: query
+          required: false
+          description: When true, list archived conversations; otherwise list active conversations.
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           description: List of conversations
@@ -468,6 +476,43 @@ paths:
       responses:
         "204":
           description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
+  /openai/conversations/{id}/archive:
+    patch:
+      operationId: archiveOpenaiConversation
+      tags: [openai]
+      summary: Archive or restore a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenaiConversationArchiveInput"
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiConversation"
+        "403":
+          description: Conversation is read-only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
         "404":
           description: Not found
           content:
@@ -2231,12 +2276,23 @@ components:
         createdAt:
           type: string
           format: date-time
+        archivedAt:
+          type: ["string", "null"]
+          format: date-time
       required:
         - id
         - title
         - mode
         - engramIds
         - createdAt
+        - archivedAt
+    OpenaiConversationArchiveInput:
+      type: object
+      properties:
+        archived:
+          type: boolean
+      required:
+        - archived
     OpenaiMessage:
       type: object
       properties:
@@ -2316,6 +2372,9 @@ components:
         createdAt:
           type: string
           format: date-time
+        archivedAt:
+          type: ["string", "null"]
+          format: date-time
         messages:
           type: array
           items:
@@ -2325,6 +2384,7 @@ components:
         - title
         - mode
         - createdAt
+        - archivedAt
         - messages
     OpenaiError:
       type: object

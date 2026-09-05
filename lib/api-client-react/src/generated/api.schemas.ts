@@ -418,8 +418,15 @@ export interface OpenaiConversation {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  /** Explicit participants for a human-mediated group conversation. */
   engramIds: number[];
   createdAt: string;
+  /** @nullable */
+  archivedAt: string | null;
+}
+
+export interface OpenaiConversationArchiveInput {
+  archived: boolean;
 }
 
 export interface OpenaiMessage {
@@ -437,6 +444,11 @@ export interface OpenaiConversationInput {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  /**
+     * Select 2–6 non-archival engrams for a human-mediated group conversation.
+     * @minItems 2
+     * @maxItems 6
+     */
   engramIds?: number[];
 }
 
@@ -453,8 +465,10 @@ export interface OpenaiConversationWithMessages {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
-  engramIds: number[];
+  engramIds?: number[];
   createdAt: string;
+  /** @nullable */
+  archivedAt: string | null;
   messages: OpenaiMessage[];
 }
 
@@ -1239,6 +1253,13 @@ export const ListMemoriesLayer = {
   reflective: 'reflective',
   procedural: 'procedural',
 } as const;
+
+export type ListOpenaiConversationsParams = {
+/**
+ * When true, list archived conversations; otherwise list active conversations.
+ */
+archived?: boolean;
+};
 
 export type ListHubActivityParams = {
 spaceId?: number;
