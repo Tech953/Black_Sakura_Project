@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { reloadAppAsync } from "expo";
+import * as DocumentPicker from "expo-document-picker";
 import { Stack, useRouter } from "expo-router";
 import { useClerk } from "@clerk/expo";
 import React, { useCallback, useEffect, useState } from "react";
@@ -31,12 +32,13 @@ import {
   MODEL_BYTES,
   MODEL_NAME,
   cancelDownload,
-  deleteModel,
+  deleteActiveModel,
   downloadModel,
   getModelStatus,
+  importCustomModel,
   type ModelStatus,
 } from "@/lib/offline/model";
-import { releaseLlm } from "@/lib/offline/llm";
+import { releaseLlm, validateActiveModel } from "@/lib/offline/llm";
 import { syncOfflineData } from "@/lib/offline/sync";
 import { queryClient } from "@/lib/query-client";
 import i18n, {
@@ -66,6 +68,8 @@ export default function ServerSettingsScreen() {
   const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
   const [offlineMsg, setOfflineMsg] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -174,10 +178,50 @@ export default function ServerSettingsScreen() {
     await setOfflineMode(false);
     setOffline(false);
     await releaseLlm().catch(() => {});
-    await deleteModel();
+    await deleteActiveModel();
     refreshModel();
     setOfflineMsg(t("settings.modelDeleted"));
   }, [refreshModel, t]);
+
+  const onImport = useCallback(async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["application/octet-stream", "application/*"],
+      copyToCacheDirectory: false,
+      multiple: false,
+    });
+    if (result.canceled || result.assets.length === 0) return;
+
+    const asset = result.assets[0];
+    setOfflineMsg(null);
+    setImporting(true);
+    setImportProgress(0);
+    await releaseLlm().catch(() => {});
+    try {
+      await importCustomModel(
+        asset.uri,
+        asset.name,
+        asset.size,
+        (fraction) => setImportProgress(fraction),
+        async () => {
+          setImportProgress(0.9);
+          setOfflineMsg(t("settings.validatingModel"));
+          await validateActiveModel();
+        },
+      );
+      if (!offline) await releaseLlm().catch(() => {});
+      setOfflineMsg(t("settings.modelImportReady"));
+    } catch (err) {
+      setOfflineMsg(
+        err instanceof Error
+          ? err.message
+          : t("settings.modelImportFailed"),
+      );
+    } finally {
+      setImporting(false);
+      setImportProgress(0);
+      refreshModel();
+    }
+  }, [offline, refreshModel, t]);
 
   const onSignOut = useCallback(() => {
     Alert.alert(
@@ -240,6 +284,12 @@ export default function ServerSettingsScreen() {
     setValue("");
     setStatus(t("settings.usingDefault"));
   };
+
+  const activeModel =
+    modelStatus?.state === "ready" ? modelStatus : null;
+  const activeModelName = activeModel?.filename ?? MODEL_NAME;
+  const activeModelBytes = activeModel?.bytes ?? MODEL_BYTES;
+  const showBundledDownload = modelStatus?.bundledAvailable !== true;
 
   return (
     <ScrollView
@@ -433,8 +483,8 @@ export default function ServerSettingsScreen() {
           </Text>
           <Text style={[styles.sub, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
             {t("settings.offlineHint", {
-              model: MODEL_NAME,
-              size: gb(MODEL_BYTES),
+              model: activeModelName,
+              size: gb(activeModelBytes),
             })}
           </Text>
 
@@ -453,19 +503,86 @@ export default function ServerSettingsScreen() {
             )}
           </View>
 
-          {modelStatus?.state === "ready" ? (
+          {importing ? (
             <>
-              <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground, marginTop: 12 }]}>
-                {t("settings.modelInstalled", { size: gb(modelStatus.bytes) })}
-              </Text>
-              <Pressable
-                onPress={onDeleteModel}
-                style={[styles.button, { borderColor: colors.border, marginTop: 12 }]}
+              <View
+                testID="gguf-import-progress"
+                style={[
+                  styles.progressTrack,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
               >
-                <Text style={[styles.buttonText, { color: colors.foreground }]}>
-                  {t("settings.deleteModel")}
-                </Text>
-              </Pressable>
+                <View
+                  style={[
+                    styles.progressFill,
+                    rtl && styles.rtlProgressFill,
+                    {
+                      backgroundColor: colors.primary,
+                      width: `${Math.round(importProgress * 100)}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.status,
+                  rtl && styles.rtlText,
+                  { color: colors.mutedForeground, marginTop: 8 },
+                ]}
+              >
+                {offlineMsg ?? t("settings.importing", {
+                  percent: Math.round(importProgress * 100),
+                })}
+              </Text>
+            </>
+          ) : activeModel ? (
+            <>
+              <Text
+                testID="active-gguf-model"
+                style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground, marginTop: 12 }]}
+              >
+                {activeModel.source === "custom"
+                  ? t("settings.customModelInstalled", {
+                      filename: activeModel.filename,
+                      size: gb(activeModel.bytes),
+                    })
+                  : t("settings.modelInstalled", { size: gb(activeModel.bytes) })}
+              </Text>
+              <View style={styles.row}>
+                <Pressable
+                  testID={activeModel.source === "custom" ? "replace-gguf" : "import-gguf"}
+                  onPress={onImport}
+                  style={[styles.button, { borderColor: colors.border }]}
+                >
+                  <Text style={[styles.buttonText, { color: colors.foreground }]}>
+                    {activeModel.source === "custom"
+                      ? t("settings.replaceModel")
+                      : t("settings.importModel")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  testID="remove-active-model"
+                  onPress={onDeleteModel}
+                  style={[styles.button, { borderColor: colors.border }]}
+                >
+                  <Text style={[styles.buttonText, { color: colors.foreground }]}>
+                    {t("settings.deleteModel")}
+                  </Text>
+                </Pressable>
+              </View>
+              {showBundledDownload ? (
+                <Pressable
+                  onPress={onDownload}
+                  style={[
+                    styles.button,
+                    { backgroundColor: colors.primary, borderColor: colors.primary, marginTop: 12 },
+                  ]}
+                >
+                  <Text style={[styles.buttonText, { color: colors.background }]}>
+                    {t("settings.downloadModel")}
+                  </Text>
+                </Pressable>
+              ) : null}
             </>
           ) : downloading ? (
             <>
@@ -491,19 +608,32 @@ export default function ServerSettingsScreen() {
               </Pressable>
             </>
           ) : (
-            <Pressable
-              onPress={onDownload}
-              style={[
-                styles.button,
-                { backgroundColor: colors.primary, borderColor: colors.primary, marginTop: 16 },
-              ]}
-            >
-              <Text style={[styles.buttonText, { color: colors.background }]}>
-                {modelStatus?.state === "partial"
-                  ? t("settings.resumeDownload", { size: gb(modelStatus.bytes) })
-                  : t("settings.downloadModel")}
-              </Text>
-            </Pressable>
+            <>
+              <View style={styles.row}>
+                <Pressable
+                  onPress={onDownload}
+                  style={[
+                    styles.button,
+                    { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ]}
+                >
+                  <Text style={[styles.buttonText, { color: colors.background }]}>
+                    {modelStatus?.state === "partial" && modelStatus.source === "bundled"
+                      ? t("settings.resumeDownload", { size: gb(modelStatus.bytes) })
+                      : t("settings.downloadModel")}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  testID="import-gguf"
+                  onPress={onImport}
+                  style={[styles.button, { borderColor: colors.border }]}
+                >
+                  <Text style={[styles.buttonText, { color: colors.foreground }]}>
+                    {t("settings.importModel")}
+                  </Text>
+                </Pressable>
+              </View>
+            </>
           )}
 
           {offlineMsg ? (

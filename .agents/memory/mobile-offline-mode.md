@@ -18,3 +18,4 @@ description: Non-obvious constraints of the phone app's self-contained offline m
 - **Optional conversation context is durable:** API-supported persona/custom-context fields must be persisted in local SQLite with idempotent upgrade columns, not accepted and silently discarded.
 - **Expo download resume:** `createDownloadResumable` + a `.part` file alone cannot resume; you must persist `savable().resumeData` (AsyncStorage) and reconstruct `DownloadResumable` with it, accepting HTTP 206.
 - **Metro watcher trap:** after installing packages while the expo workflow runs, Metro can crash with ENOENT watching a vanished `*_tmp_*/local-maven-repo` dir inside `.pnpm`. Fix: clear `/tmp/metro-*` caches and restart the workflow.
+- **Expo dependency install:** the package helper may target the pnpm workspace root; scope Expo package additions to `@workspace/engram-mobile`, then rerun release preflight and restart Metro.
