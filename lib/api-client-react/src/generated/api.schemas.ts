@@ -9,6 +9,195 @@ export interface HealthStatus {
   status: string;
 }
 
+export type OfflineSyncMessageRole = typeof OfflineSyncMessageRole[keyof typeof OfflineSyncMessageRole];
+
+
+export const OfflineSyncMessageRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export interface OfflineSyncMessage {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  role: OfflineSyncMessageRole;
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  content: string;
+  createdAt: string;
+}
+
+export interface OfflineSyncConversation {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  title: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  mode: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  engramSlug: string | null;
+  createdAt: string;
+  /** @maxItems 100 */
+  messages: OfflineSyncMessage[];
+}
+
+export interface OfflineSyncInquiry {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  engramSlug: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  kind: string;
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  question: string;
+  /** @maxLength 40000 */
+  response: string;
+  createdAt: string;
+}
+
+export interface OfflineSyncTransmission {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  engramSlug: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  kind: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  drive: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 40000
+     */
+  content: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  mood: string | null;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  importanceScore: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  confidenceScore: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  noveltyScore: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  overallScore: number;
+  wasDelivered: boolean;
+  seen: boolean;
+  createdAt: string;
+}
+
+export interface OfflineSyncObservedEntry {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  engramSlug: string;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  conversationSyncId: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  content: string;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  confidence: number;
+  createdAt: string;
+}
+
+export interface OfflineSyncInput {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  deviceId: string;
+  /** @maxItems 100 */
+  conversations: OfflineSyncConversation[];
+  /** @maxItems 100 */
+  inquiries: OfflineSyncInquiry[];
+  /** @maxItems 100 */
+  transmissions: OfflineSyncTransmission[];
+  /** @maxItems 100 */
+  observedEntries: OfflineSyncObservedEntry[];
+}
+
+export interface OfflineSyncCounts {
+  conversations: number;
+  messages: number;
+  inquiries: number;
+  transmissions: number;
+  observedEntries: number;
+}
+
+export interface OfflineSyncResult {
+  syncedIds: string[];
+  imported: OfflineSyncCounts;
+}
+
 export interface PersonalityProfile {
   id: number;
   curiosity: number;

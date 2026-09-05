@@ -20,6 +20,7 @@ import mediaRouter from "./media";
 import artifactsRouter from "./artifacts";
 import eventsRouter from "./events";
 import downloadRouter from "./download";
+import offlineSyncRouter from "./offline-sync";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(mediaRouter);
 router.use(artifactsRouter);
 router.use(eventsRouter);
 router.use(downloadRouter);
+router.use(offlineSyncRouter);
 
 export default router;

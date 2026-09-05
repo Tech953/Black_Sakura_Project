@@ -34,6 +34,8 @@ import {
   type ModelStatus,
 } from "@/lib/offline/model";
 import { releaseLlm } from "@/lib/offline/llm";
+import { syncOfflineData } from "@/lib/offline/sync";
+import { queryClient } from "@/lib/query-client";
 import i18n, {
   getReplyLanguageSetting,
   setReplyLanguageSetting,
@@ -60,6 +62,7 @@ export default function ServerSettingsScreen() {
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [offlineMsg, setOfflineMsg] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   // Language state
   const [uiLang, setUiLang] = useState(i18n.language);
@@ -127,8 +130,29 @@ export default function ServerSettingsScreen() {
       }
       setOffline(on);
       await setOfflineMode(on);
-      if (!on) await releaseLlm().catch(() => {});
-      setOfflineMsg(on ? t("settings.offlineActive") : t("settings.backOnline"));
+      if (on) {
+        setOfflineMsg(t("settings.offlineActive"));
+        return;
+      }
+
+      await releaseLlm().catch(() => {});
+      setSyncing(true);
+      setOfflineMsg(t("settings.syncingHistory"));
+      try {
+        const result = await syncOfflineData();
+        queryClient.clear();
+        setOfflineMsg(
+          result.syncedRows > 0
+            ? t("settings.syncedHistory", { count: result.syncedRows })
+            : t("settings.backOnline"),
+        );
+      } catch {
+        // The local rows intentionally remain pending. A later offline->online
+        // transition retries the same stable IDs without creating duplicates.
+        setOfflineMsg(t("settings.syncPending"));
+      } finally {
+        setSyncing(false);
+      }
     },
     [modelStatus, t],
   );
@@ -384,11 +408,15 @@ export default function ServerSettingsScreen() {
             <Text style={[styles.buttonText, { color: colors.foreground }]}>
               {t("settings.useOfflineMode")}
             </Text>
-            <Switch
-              value={offline}
-              onValueChange={onToggleOffline}
-              trackColor={{ true: colors.primary }}
-            />
+            {syncing ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <Switch
+                value={offline}
+                onValueChange={onToggleOffline}
+                trackColor={{ true: colors.primary }}
+              />
+            )}
           </View>
 
           {modelStatus?.state === "ready" ? (
