@@ -271,6 +271,9 @@ jobs:
       # Generate the native android/ project from app.json (gitignored output).
       # --no-install: deps already installed at the workspace root.
       # --clean: regenerate from a fresh template each run.
+      - name: Verify mobile release dependencies
+        run: pnpm --filter @workspace/engram-mobile run release:preflight
+
       - name: Expo prebuild (android)
         run: pnpm --filter @workspace/engram-mobile exec expo prebuild --platform android --no-install --clean
 
@@ -317,6 +320,9 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Verify packaged llama native libraries
+        run: pnpm --filter @workspace/engram-mobile run release:verify-apk
 
       # Fail loudly if secrets were provided but the APK is not signed with
       # the EXPECTED release certificate. The SHA-256 fingerprint below is the
