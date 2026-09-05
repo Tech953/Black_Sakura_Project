@@ -35,4 +35,5 @@
 - [PDF generation & install quirks](pdf-and-install-quirks.md) — generating/verifying PDFs without Chromium, plus a package-install fallback.
 - [pdfkit footer / pagination](pdfkit-footer-pagination.md) — why pdfkit text below the bottom margin with `width` set appends blank pages.
 - [Responsive portaled dialogs](responsive-portaled-dialog.md) — mobile/desktop variants sharing a Radix Dialog/Sheet must branch via a JS breakpoint hook, not CSS hidden.
+- [Android nested-route dismissal](android-nested-route-dismissal.md) — dismiss nested Expo Router screens to the root route instead of assuming Android back-stack state.
 - [Validation gate reviews cumulative diff](validation-gate-cumulative-diff.md) — mark_task_complete's code-review sees ALL merged work, so it can reject on unrelated pre-existing failures; verify isolation and skip with a reason.
