@@ -6,7 +6,7 @@ description: How to build the Expo release APK locally (no CI), and the Babel/He
 ## Setup
 - Java: install `jdk17` via system deps. Android SDK lives at `.android-sdk/` in the repo root (gitignored): cmdline-tools latest, platform-tools, platforms;android-35, build-tools;35.0.0, licenses accepted. `android/local.properties` points `sdk.dir` there.
 - Generate the android project with `npx expo prebuild --platform android --clean --no-install` in the mobile package.
-- A release build can exceed five minutes when Metro's cache is cold and native CMake targets rebuild; use a durable background Gradle task and monitor its log to completion instead of treating a shell timeout as a build failure. Gradle's cache carries progress across runs.
+- A release build can exceed five minutes when Metro's cache is cold and native CMake targets rebuild; use a durable background Gradle task and monitor its log to completion instead of treating a shell timeout as a build failure. Gradle's cache carries progress across runs. With Gradle 8.14/Kotlin 2.1, use at least 640 MB metaspace and one local worker; the old 384 MB/two-worker limit can mark app Kotlin compilation failed while parallel release tasks exhaust metaspace.
 - Output: `android/app/build/outputs/apk/release/app-release.apk` (debug-signed, sideloadable, not update-safe without a keystore).
 
 ## The Hermes/Babel trap (why a plain build fails)
