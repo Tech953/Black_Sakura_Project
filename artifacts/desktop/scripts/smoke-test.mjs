@@ -20,7 +20,15 @@
 // returns 200 and this script exits non-zero, failing the job.
 
 import { _electron as electron } from "playwright-core";
-import { existsSync, readdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  readdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { createHash } from "node:crypto";
+import { createServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +52,56 @@ function createTinyGgufFixture(directory) {
   bytes.writeUInt32LE(3, 4);
   writeFileSync(fixture, bytes, { mode: 0o600 });
   return fixture;
+}
+
+async function serveOfflineModelFixture(fixture) {
+  const bytes = readFileSync(fixture);
+  const server = createServer((req, res) => {
+    if (req.url !== "/offline-model.gguf") {
+      res.writeHead(404).end();
+      return;
+    }
+    const range = req.headers.range;
+    const match = range?.match(/^bytes=(\d+)-(\d*)$/);
+    if (match) {
+      const start = Number(match[1]);
+      const requestedEnd = match[2] ? Number(match[2]) : bytes.length - 1;
+      const end = Math.min(requestedEnd, bytes.length - 1);
+      if (start >= bytes.length || end < start) {
+        res.writeHead(416, { "Content-Range": `bytes */${bytes.length}` }).end();
+        return;
+      }
+      res.writeHead(206, {
+        "Accept-Ranges": "bytes",
+        "Content-Length": end - start + 1,
+        "Content-Range": `bytes ${start}-${end}/${bytes.length}`,
+        "Content-Type": "application/octet-stream",
+      });
+      res.end(bytes.subarray(start, end + 1));
+      return;
+    }
+    res.writeHead(200, {
+      "Accept-Ranges": "bytes",
+      "Content-Length": bytes.length,
+      "Content-Type": "application/octet-stream",
+    });
+    res.end(bytes);
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    await new Promise((resolve) => server.close(resolve));
+    throw new Error("offline-model fixture server did not expose a TCP address");
+  }
+  return {
+    server,
+    url: `http://127.0.0.1:${address.port}/offline-model.gguf`,
+    bytes: bytes.length,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+  };
 }
 
 function log(msg) {
@@ -158,6 +216,7 @@ if (process.env.EXPECT_SLIM_LLM === "1") {
 async function main() {
   const userDataDir = mkdtempSync(path.join(os.tmpdir(), "engram-smoke-"));
   const ggufFixture = createTinyGgufFixture(userDataDir);
+  const offlineFixture = await serveOfflineModelFixture(ggufFixture);
   const args = [`--user-data-dir=${userDataDir}`];
   // CI Linux runs under xvfb as a privileged user with no GPU; these switches
   // keep Electron from refusing to start. They are no-ops on the runtime paths
@@ -177,6 +236,10 @@ async function main() {
       GITHUB_ACTIONS: "true",
       ENGRAM_PACKAGED_GGUF_SMOKE: "1",
       ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
+      ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
+      ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
+      ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
+      ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256: offlineFixture.sha256,
     },
   });
 
@@ -249,7 +312,111 @@ async function main() {
     }
     log("custom GGUF import, selection, verification, and launch path active");
 
-    log("PASS: packaged app launches, server is healthy, dashboard and custom GGUF path load");
+    const cancelledStatus = await settings.evaluate(async () => {
+      const downloadStarted = new Promise((resolve) => {
+        const unsubscribe = window.engram.onOfflineModelStatus((status) => {
+          if (status.state === "downloading") {
+            unsubscribe();
+            resolve(status);
+          }
+        });
+      });
+      const result = await window.engram.downloadOfflineModel();
+      if (!result.ok || !result.operationId) {
+        throw new Error(result.error ?? "offline-model cancellation download failed");
+      }
+      await downloadStarted;
+      const cancelled = await window.engram.cancelOfflineModelDownload(result.operationId);
+      if (!cancelled.ok) {
+        throw new Error(cancelled.error ?? "offline-model cancellation failed");
+      }
+      // The cancel IPC acknowledges the AbortController immediately; allow the
+      // async downloader's finally block to release its operation slot before
+      // the retry below.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      return { operationId: result.operationId, cancelled: true };
+    });
+    if (!cancelledStatus.cancelled) {
+      throw new Error(`offline model cancellation was not acknowledged: ${JSON.stringify(cancelledStatus)}`);
+    }
+    log("offline model cancellation was acknowledged through IPC");
+
+    await settings.evaluate(async () => {
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        const result = await window.engram.downloadOfflineModel();
+        if (result.ok) return;
+        if (!result.error?.toLowerCase().includes("already running")) {
+          throw new Error(result.error ?? "offline-model download failed");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      throw new Error("offline-model retry remained blocked by the cancelled operation");
+    });
+    const downloadedStatus = await settings.evaluate(async () => {
+      const deadline = Date.now() + 60_000;
+      let latest;
+      while (Date.now() < deadline) {
+        const value = await window.engram.getSettings();
+        latest = {
+          mode: value.mode,
+          status: value.offlineModel.status,
+          downloadedBytes: value.offlineModel.downloadedBytes,
+          error: value.offlineModel.error,
+          storageLocation: value.offlineModel.storageLocation,
+        };
+        if (value.offlineModel.status === "active") {
+          return latest;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error(`downloaded offline model did not become active: ${JSON.stringify(latest)}`);
+    });
+    if (
+      downloadedStatus.mode !== "bundled" ||
+      downloadedStatus.status !== "active" ||
+      downloadedStatus.downloadedBytes !== offlineFixture.bytes ||
+      !downloadedStatus.storageLocation.includes(userDataDir)
+    ) {
+      throw new Error(`offline model download/activation was not active in userData: ${JSON.stringify(downloadedStatus)}`);
+    }
+    log("offline model downloaded, verified, activated, and stored below Electron userData");
+
+    const removedStatus = await settings.evaluate(async () => {
+      let result;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        result = await window.engram.removeOfflineModel();
+        if (result.ok) break;
+        if (!result.error?.toLowerCase().includes("download to finish")) {
+          throw new Error(result.error ?? "offline-model removal failed");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      if (!result?.ok) {
+        throw new Error(result?.error ?? "offline-model removal remained blocked");
+      }
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        const value = await window.engram.getSettings();
+        if (value.offlineModel.status !== "active") {
+          return {
+            mode: value.mode,
+            status: value.offlineModel.status,
+            downloadedBytes: value.offlineModel.downloadedBytes,
+          };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error("removed offline model remained active");
+    });
+    if (
+      removedStatus.status === "active" ||
+      removedStatus.downloadedBytes !== 0
+    ) {
+      throw new Error(`offline model removal was not complete: ${JSON.stringify(removedStatus)}`);
+    }
+    log("offline model cancellation-safe lifecycle completed through IPC");
+
+    log("PASS: packaged app launches, server is healthy, dashboard, custom GGUF, and offline-model paths load");
   } finally {
     try {
       await app.close();
@@ -257,6 +424,7 @@ async function main() {
       const proc = app.process();
       if (proc && !proc.killed) proc.kill("SIGKILL");
     }
+    await new Promise((resolve) => offlineFixture.server.close(resolve));
   }
 }
 

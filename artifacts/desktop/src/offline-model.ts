@@ -29,6 +29,35 @@ export const OFFLINE_MODEL = {
   sha256: "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
 } as const;
 
+/**
+ * Packaged smoke tests may substitute a tiny local fixture so the complete
+ * post-install flow is tested without downloading the release model. The
+ * override is opt-in and unavailable to normal users.
+ */
+export function offlineModelSpec(): OfflineModelSpec {
+  if (process.env.ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE !== "1") {
+    return OFFLINE_MODEL;
+  }
+  const url = process.env.ENGRAM_PACKAGED_OFFLINE_MODEL_URL;
+  const expectedBytes = Number(process.env.ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES);
+  const sha256 = process.env.ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256;
+  if (
+    !url ||
+    !Number.isSafeInteger(expectedBytes) ||
+    expectedBytes <= 0 ||
+    !sha256 ||
+    !/^[a-f0-9]{64}$/.test(sha256)
+  ) {
+    throw new Error("Packaged offline-model fixture configuration is invalid.");
+  }
+  return {
+    ...OFFLINE_MODEL,
+    url,
+    expectedBytes,
+    sha256,
+  };
+}
+
 export interface OfflineModelSpec {
   filename: string;
   url: string;

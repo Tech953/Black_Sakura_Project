@@ -26,7 +26,18 @@ export async function loadControls(ownerId: string): Promise<HubControls> {
     .select()
     .from(hubControlsTable)
     .where(eq(hubControlsTable.ownerId, ownerId));
-  return row;
+  if (row) return row;
+
+  // A failed/rolled-back first-write must never take down the engine or the
+  // group-chat policy gate. These are the schema defaults, represented as a
+  // transient row until the next successful write can materialize them.
+  return {
+    id: 0,
+    ownerId,
+    paused: false,
+    quietMode: false,
+    updatedAt: new Date(),
+  };
 }
 
 /** Update one or both global-control flags and stamp updatedAt. */
