@@ -9,7 +9,9 @@
     "seed:engrams": "tsx ./src/seed-engrams.ts",
     "seed:hub": "tsx ./src/seed-hub.ts",
     "seed:full-rezz": "tsx ./src/seed-full-rezz.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm run check:locales",
+    "test:locales": "tsx --test ./src/locale-key-tree.test.ts",
+    "check:locales": "tsx ./src/check-locales.ts",
     "generate:locales": "tsx ./src/generate-locales.ts"
   },
   "dependencies": {
