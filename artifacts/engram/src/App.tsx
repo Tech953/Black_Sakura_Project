@@ -56,6 +56,26 @@ const clerkPubKey = publishableKeyFromHost(
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const browserTestMode =
+  import.meta.env.DEV && import.meta.env.VITE_BROWSER_TEST === "true";
+
+// Only used by the local Chromium regression harness. The DEV guard above keeps
+// this fixture out of production bundles and real authentication flows.
+const browserTestInitialState = {
+  sessionClaims: { sub: "browser-test-user" },
+  sessionId: "browser-test-session",
+  sessionStatus: "active",
+  session: undefined,
+  actor: undefined,
+  userId: "browser-test-user",
+  user: undefined,
+  orgId: undefined,
+  orgRole: undefined,
+  orgSlug: undefined,
+  orgPermissions: [],
+  organization: undefined,
+  factorVerificationAge: [0, 0] as [number, number],
+} as any;
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -169,6 +189,7 @@ function HomeRedirect() {
 }
 
 function ProtectedDashboard({ children }: { children: ReactNode }) {
+  if (browserTestMode) return <>{children}</>;
   return (
     <>
       <Show when="signed-in">{children}</Show>
@@ -271,6 +292,7 @@ function ClerkProviderWithRoutes() {
   return (
     <ClerkProvider
       publishableKey={clerkPubKey}
+      initialState={browserTestMode ? browserTestInitialState : undefined}
       proxyUrl={clerkProxyUrl}
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
