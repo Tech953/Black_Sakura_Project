@@ -171,14 +171,14 @@
   },
   "download": {
     "title": "PYRI HERUNTERLADEN",
-    "subtitle": "Native Desktop-App (läuft komplett offline) — jeder Installer wird direkt von dieser App bereitgestellt",
+    "subtitleSlim": "Native Desktop-App — verbinde ein lokales Modell für private, komplett offline KI",
     "latestVersion": "Neueste v{{version}}",
     "autoUpdateHeadline": "Einmal installieren — die Desktop-App hält sich selbst aktuell.",
-    "autoUpdateBody": "Bei jedem Start prüft sie auf eine neuere Version und aktualisiert sich online still im Hintergrund. Die Android-APK wird per Sideload installiert — hol dir hier jederzeit den neuesten Build zum Aktualisieren.",
+    "autoUpdateBody": "Bei jedem Start prüft sie auf eine neuere Version und aktualisiert sich online lautlos im Hintergrund. Die Android-APK wird per Sideload installiert — hol dir hier die neueste Version, wann immer du aktualisieren willst.",
     "osMacName": "macOS",
     "osMacNote": "Apple Silicon & Intel (.dmg)",
     "osWinName": "Windows",
-    "osWinNote": "Windows 10/11 — Installer (.exe, Auto-Updates) oder portabel (.zip)",
+    "osWinSlimNote": "Windows 10/11 — schlanker Installer oder portable ZIP; nutze Ollama oder LM Studio für offline KI",
     "osLinuxName": "Linux",
     "osLinuxNote": "AppImage (portabel) oder .deb (Debian/Ubuntu)",
     "osAndroidName": "Android",
@@ -188,10 +188,10 @@
     "downloadExt": "{{ext}} herunterladen",
     "installApk": "APK installieren",
     "errorReach": "Der Download-Dienst ist gerade nicht erreichbar. Du kannst alle Installer direkt auf der GitHub-Releases-Seite ansehen.",
-    "noInstallers": "Es sind noch keine Installer veröffentlicht. Installer (.dmg/.exe/.AppImage/.deb/.apk) müssen auf ihrem Ziel-OS gebaut werden — diese App kann sie nicht selbst bauen. Sobald ein Build in den downloads/-Ordner des Deploys committed oder an ein GitHub Release angehängt wird, erscheint er hier automatisch und bleibt aktuell.",
+    "noInstallers": "Es sind noch keine Installer veröffentlicht. Installer (.dmg/.exe/.AppImage/.deb/.apk) müssen auf ihrem Ziel-OS gebaut werden — diese App kann sie nicht selbst bauen. Sobald ein Build im downloads/-Ordner des Deployments <0>committet</0> oder an ein GitHub Release angehängt wird, erscheint er hier automatisch und bleibt aktuell.",
     "openReleases": "Releases öffnen",
-    "servedNote": "Jeder Installer wird direkt von dieser App bereitgestellt — falls vorhanden gebündelt, sonst von der neuesten Release weitergeleitet.",
-    "allVersions": "Alle Versionen & Release-Notes"
+    "servedNote": "Jeder Installer wird direkt von dieser App bereitgestellt — falls vorhanden gebündelt, sonst aus dem neuesten Release weitergeleitet.",
+    "allVersions": "Alle Versionen & Release Notes"
   },
   "environment": {
     "never": "nie",

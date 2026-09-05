@@ -8,7 +8,7 @@
 #   ./scripts/build-installers.sh --android    # only the Android APK
 #
 # What it produces in downloads/ (older siblings of the same kind are removed):
-#   ENGRAM-<desktopVersion>-x64.zip   (electron-builder Windows portable zip)
+#   ENGRAM-<desktopVersion>-x64.zip   (slim Windows portable zip, < 300 MiB)
 #   ENGRAM-android-<appVersion>.apk   (Gradle release APK, stable-key signed)
 #
 # Notes:
@@ -58,10 +58,17 @@ fi
 if [ "$DO_DESKTOP" = 1 ]; then
   DESKTOP_VERSION="$(json_version "$DESKTOP_DIR/package.json")"
   echo "==> Desktop: building Windows portable zip (v$DESKTOP_VERSION)"
-  # Cross-packaging from Linux: stage the WINDOWS llama.cpp binaries (exe/dlls),
-  # not the host's — otherwise the bundled offline LLM can't run on Windows.
-  LLAMA_TARGET=win32 pnpm --filter @workspace/desktop run build
+  # The browser-downloadable Windows build intentionally omits the ~2.4 GB GGUF.
+  # It remains offline-capable through Ollama, LM Studio, or another local
+  # OpenAI-compatible server. Keep LLAMA_TARGET=win32 so every other native
+  # resource (notably ffmpeg/ffprobe) is still staged for Windows.
+  LLAMA_TARGET=win32 DESKTOP_BUNDLE_LLM=0 pnpm --filter @workspace/desktop run build
+  [ ! -f "$DESKTOP_DIR/resources/llama/model.gguf" ] || {
+    echo "ERROR: slim desktop build unexpectedly staged model.gguf" >&2
+    exit 1
+  }
   # zip-only: the NSIS .exe target needs wine and is CI-only.
+  rm -f "$DESKTOP_DIR"/release/*.zip
   pnpm --filter @workspace/desktop exec electron-builder --win zip --publish never
 
   ZIP_SRC="$DESKTOP_DIR/release/ENGRAM-$DESKTOP_VERSION-x64.zip"
@@ -71,10 +78,16 @@ if [ "$DO_DESKTOP" = 1 ]; then
     ZIP_SRC="$(ls -t "$DESKTOP_DIR"/release/*.zip 2>/dev/null | head -1 || true)"
   fi
   [ -n "$ZIP_SRC" ] && [ -f "$ZIP_SRC" ] || { echo "ERROR: no desktop zip produced in $DESKTOP_DIR/release" >&2; exit 1; }
+  ZIP_BYTES="$(node -e 'process.stdout.write(String(require("fs").statSync(process.argv[1]).size))' "$ZIP_SRC")"
+  MAX_ZIP_BYTES=$((300 * 1024 * 1024))
+  if [ "$ZIP_BYTES" -ge "$MAX_ZIP_BYTES" ]; then
+    echo "ERROR: desktop zip is $ZIP_BYTES bytes; slim release limit is $MAX_ZIP_BYTES bytes (300 MiB)." >&2
+    exit 1
+  fi
 
   find "$DOWNLOADS_DIR" -maxdepth 1 -name '*.zip' -delete
   cp "$ZIP_SRC" "$DOWNLOADS_DIR/$(basename "$ZIP_SRC")"
-  echo "==> Desktop: refreshed $DOWNLOADS_DIR/$(basename "$ZIP_SRC")"
+  echo "==> Desktop: refreshed $DOWNLOADS_DIR/$(basename "$ZIP_SRC") ($ZIP_BYTES bytes)"
 fi
 
 # ---------------------------------------------------------------- android ----

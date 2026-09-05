@@ -94,6 +94,11 @@ jobs:
         run: pnpm --filter @workspace/engram run build
 
       - name: Build desktop main + stage resources
+        env:
+          # Keep Windows installers browser-downloadable. The app remains
+          # offline-capable through Ollama/LM Studio/local OpenAI-compatible
+          # servers; Linux/macOS retain the optional bundled-model behavior.
+          DESKTOP_BUNDLE_LLM: ${{ matrix.platform == 'win' && '0' || '1' }}
         run: pnpm --filter @workspace/desktop run build
 
       - name: Package installer (${{ matrix.platform }})
@@ -128,6 +133,27 @@ jobs:
         #     workflow-artifact upload below runs, so manual builds never create
         #     an accidental Release.
         run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --publish ${{ github.ref_type == 'tag' && 'always' || 'never' }}
+
+      - name: Enforce slim Windows download size
+        if: matrix.platform == 'win'
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require("fs");
+          const path = require("path");
+          const releaseDir = "artifacts/desktop/release";
+          const limit = 300 * 1024 * 1024;
+          const zips = fs.readdirSync(releaseDir).filter((name) => name.endsWith(".zip"));
+          if (zips.length === 0) throw new Error("No Windows portable zip was produced");
+          for (const name of zips) {
+            const file = path.join(releaseDir, name);
+            const bytes = fs.statSync(file).size;
+            console.log(`${name}: ${bytes} bytes`);
+            if (bytes >= limit) {
+              throw new Error(`${name} exceeds the 300 MiB slim-release limit`);
+            }
+          }
+          NODE
 
       # Confirm the packaged app actually LAUNCHES, not just that an installer was
       # produced. Launches the unpacked build via Playwright's Electron driver and

@@ -70,7 +70,7 @@ type DownloadLink = {
 
 const OS_META: Record<Os, { nameKey: string; icon: typeof Apple; noteKey: string }> = {
   mac: { nameKey: "osMacName", icon: Apple, noteKey: "osMacNote" },
-  win: { nameKey: "osWinName", icon: MonitorDown, noteKey: "osWinNote" },
+  win: { nameKey: "osWinName", icon: MonitorDown, noteKey: "osWinSlimNote" },
   linux: { nameKey: "osLinuxName", icon: TerminalIcon, noteKey: "osLinuxNote" },
   android: { nameKey: "osAndroidName", icon: Smartphone, noteKey: "osAndroidNote" },
 };
@@ -183,7 +183,7 @@ export default function DownloadPage() {
             {t("title")}
           </h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            {t("subtitle")}
+            {t("subtitleSlim")}
           </p>
         </div>
         <div className="flex items-center gap-3 font-mono text-xs">
