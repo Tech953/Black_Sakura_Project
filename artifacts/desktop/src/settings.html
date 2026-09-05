@@ -51,7 +51,7 @@
         font-size: 13px;
       }
       input:focus { outline: none; border-color: var(--cyan); }
-      .mode-row { display: flex; gap: 18px; margin-bottom: 4px; }
+      .mode-row { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-bottom: 4px; }
       .mode-row label { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 14px; cursor: pointer; }
       .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
       .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
@@ -67,13 +67,48 @@
         font-size: 12px;
       }
       button.primary { background: var(--cyan); color: #04161a; border-color: var(--cyan); font-weight: 600; }
-      button:hover { border-color: var(--cyan); }
+      button:hover:not(:disabled) { border-color: var(--cyan); }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
       .hidden { display: none; }
       #status { color: var(--muted); font-size: 12px; min-height: 16px; }
       .about-row { display: flex; align-items: baseline; gap: 12px; padding: 4px 0; }
       .about-label { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; width: 72px; flex-shrink: 0; }
       .about-value { color: var(--text); font-family: "JetBrains Mono", monospace; font-size: 13px; }
       .update-actions { margin-top: 12px; }
+
+      /* Custom panel styles */
+      .panel-box {
+        background: #060a10;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 12px;
+        margin-top: 12px;
+      }
+      .data-grid {
+        display: grid;
+        grid-template-columns: 80px 1fr;
+        gap: 6px 12px;
+        margin: 8px 0;
+        font-size: 13px;
+        align-items: baseline;
+      }
+      .data-grid .lbl { color: var(--muted); }
+      .data-grid .val { color: var(--text); font-family: "JetBrains Mono", monospace; word-break: break-all; }
+      .progress-track {
+        background: var(--bg);
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+        margin: 10px 0;
+        border: 1px solid var(--border);
+      }
+      .progress-fill {
+        background: var(--cyan);
+        height: 100%;
+        width: 0%;
+        transition: width 0.1s linear;
+      }
+      .error-text { color: #f87171; font-weight: 500; margin-top: 8px; font-size: 12px; }
     </style>
   </head>
   <body>
@@ -84,6 +119,7 @@
       <legend>Mode</legend>
       <div class="mode-row">
         <label><input type="radio" name="mode" value="bundled" /> Built-in (no setup)</label>
+        <label><input type="radio" name="mode" value="custom" /> Custom (GGUF)</label>
         <label><input type="radio" name="mode" value="offline" /> Local server</label>
         <label><input type="radio" name="mode" value="online" /> Online (cloud)</label>
       </div>
@@ -92,6 +128,61 @@
     <fieldset id="bundled-panel">
       <legend>Built-in — bundled model</legend>
       <p class="hint" id="bundled-hint">Runs the AI model that ships inside this app. Chat, analysis, simulation and emulation all work fully offline with no setup, no account, and no internet connection.</p>
+    </fieldset>
+
+    <fieldset id="custom-panel" class="hidden">
+      <legend>Custom — Managed GGUF</legend>
+      <p class="hint">Imported models are copied into ENGRAM storage and survive app updates. Compatibility is checked by starting the packaged engine.</p>
+
+      <div id="custom-idle-view" class="panel-box">
+        <div id="custom-model-details" class="hidden">
+           <div class="data-grid">
+             <div class="lbl">Status</div><div class="val" id="cm-status"></div>
+             <div class="lbl">File</div><div class="val" id="cm-file"></div>
+             <div class="lbl">Size</div><div class="val" id="cm-size"></div>
+             <div class="lbl">GGUF v</div><div class="val" id="cm-version"></div>
+             <div class="lbl">SHA256</div><div class="val" id="cm-sha"></div>
+             <div class="lbl">Imported</div><div class="val" id="cm-date"></div>
+             <div class="lbl">Storage</div><div class="val" id="cm-storage" style="font-size:11px; color:var(--muted);"></div>
+           </div>
+        </div>
+        <div id="custom-no-model" class="hidden">
+           <p style="margin:0 0 10px 0; color:var(--muted)">No custom model imported.</p>
+        </div>
+        <div class="actions" style="margin-top:12px; justify-content: flex-start;">
+          <button id="btn-choose-gguf" type="button">Import GGUF...</button>
+          <button id="btn-remove-gguf" type="button" class="hidden">Remove Model</button>
+        </div>
+         <div id="cm-error" class="error-text hidden"></div>
+      </div>
+
+      <div id="custom-selection-view" class="panel-box hidden">
+        <p style="margin:0 0 8px 0; color:var(--cyan); font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:0.05em;">Ready to Import</p>
+        <div class="data-grid">
+          <div class="lbl">File</div><div class="val" id="cs-file"></div>
+          <div class="lbl">Size</div><div class="val" id="cs-size"></div>
+          <div class="lbl">GGUF v</div><div class="val" id="cs-version"></div>
+          <div class="lbl">Required</div><div class="val" id="cs-req"></div>
+          <div class="lbl">Free Space</div><div class="val" id="cs-free"></div>
+        </div>
+        <div class="actions" style="margin-top:16px; justify-content: flex-start;">
+          <button id="btn-import-gguf" type="button" class="primary">Import &amp; Activate</button>
+          <button id="btn-cancel-selection" type="button">Cancel</button>
+        </div>
+      </div>
+
+      <div id="custom-progress-view" class="panel-box hidden">
+        <div style="display:flex; justify-content:space-between; font-size:12px; align-items:baseline;">
+          <span id="cp-state" style="color:var(--cyan)">Copying...</span>
+          <span id="cp-bytes" style="font-family:'JetBrains Mono',monospace; color:var(--muted)">0 / 0</span>
+        </div>
+        <div class="progress-track">
+          <div id="cp-fill" class="progress-fill"></div>
+        </div>
+        <div class="actions" style="margin-top:12px; justify-content: flex-start;">
+          <button id="btn-cancel-import" type="button">Cancel</button>
+        </div>
+      </div>
     </fieldset>
 
     <fieldset id="offline-panel">
@@ -147,13 +238,95 @@
 
     <script>
       const $ = (id) => document.getElementById(id);
+
+      let currentSelectionId = null;
+      let currentOperationId = null;
+      let bundledAvailable = false;
+
+      function formatBytes(bytes) {
+        if (typeof bytes !== 'number' || isNaN(bytes) || bytes === 0) return "0 B";
+        const k = 1024, sizes = ["B", "KB", "MB", "GB", "TB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      }
+
+      function setUiLock(locked) {
+        document.querySelectorAll('input[name="mode"]').forEach(el => {
+          el.disabled = locked || (el.value === "bundled" && !bundledAvailable);
+        });
+        $("save").disabled = locked;
+        $("cancel").disabled = locked;
+        $("offline-base").disabled = locked;
+        $("offline-model").disabled = locked;
+        $("online-base").disabled = locked;
+        $("online-model").disabled = locked;
+        $("online-key").disabled = locked;
+        $("allow-lan").disabled = locked;
+      }
+
+      function renderCustomModel(cm) {
+         if (!cm) return;
+         const isNone = cm.status === "none";
+         const customRadio = document.querySelector('input[name="mode"][value="custom"]');
+         customRadio.disabled = false;
+
+         if (isNone) {
+           $("custom-no-model").classList.remove("hidden");
+           $("custom-model-details").classList.add("hidden");
+           $("btn-choose-gguf").textContent = "Import GGUF...";
+           $("btn-remove-gguf").classList.add("hidden");
+         } else {
+           $("custom-no-model").classList.add("hidden");
+           $("custom-model-details").classList.remove("hidden");
+
+           $("cm-status").textContent = cm.status.toUpperCase();
+           $("cm-status").style.color = (cm.status === "active" || cm.status === "available") ? "var(--cyan)" : "#f87171";
+
+           $("cm-storage").textContent = cm.storageLocation || "Unknown";
+
+           if (cm.metadata) {
+             $("cm-file").textContent = cm.metadata.filename;
+             $("cm-size").textContent = formatBytes(cm.metadata.byteSize);
+             $("cm-version").textContent = cm.metadata.ggufVersion;
+             $("cm-sha").textContent = cm.metadata.sha256 ? cm.metadata.sha256.substring(0, 12) + "..." : "N/A";
+             $("cm-date").textContent = new Date(cm.metadata.importedAt).toLocaleString();
+           } else {
+             $("cm-file").textContent = "N/A";
+             $("cm-size").textContent = "N/A";
+             $("cm-version").textContent = "N/A";
+             $("cm-sha").textContent = "N/A";
+             $("cm-date").textContent = "N/A";
+           }
+
+           if (cm.error) {
+             $("cm-error").textContent = cm.error + " (Select Custom mode and click Save & Restart to retry)";
+             $("cm-error").classList.remove("hidden");
+           } else {
+             $("cm-error").classList.add("hidden");
+           }
+
+           $("btn-choose-gguf").textContent = "Replace GGUF...";
+           $("btn-remove-gguf").classList.remove("hidden");
+         }
+      }
+
       function applyMode(mode) {
         $("bundled-panel").classList.toggle("hidden", mode !== "bundled");
+        $("custom-panel").classList.toggle("hidden", mode !== "custom");
         $("offline-panel").classList.toggle("hidden", mode !== "offline");
         $("online-panel").classList.toggle("hidden", mode !== "online");
       }
+
       async function init() {
         const s = await window.engram.getSettings();
+        bundledAvailable = s.bundledAvailable;
+        if (s.customModel) {
+          renderCustomModel(s.customModel);
+          if (s.mode === "custom" && s.customModel.status === "none") {
+            s.mode = "offline";
+          }
+        }
+
         if (!s.bundledAvailable) {
           const radio = document.querySelector('input[name="mode"][value="bundled"]');
           radio.disabled = true;
@@ -161,23 +334,138 @@
             "This slim build does not include a bundled model. Choose Local server to stay offline with Ollama, LM Studio, or another OpenAI-compatible endpoint.";
           if (s.mode === "bundled") s.mode = "offline";
         }
-        document.querySelector(`input[name="mode"][value="${s.mode}"]`).checked = true;
+
+        const currentRadio = document.querySelector(`input[name="mode"][value="${s.mode}"]`);
+        if (currentRadio) currentRadio.checked = true;
+
         $("allow-lan").checked = s.allowLan === true;
         $("lan-addresses").textContent = (s.lanAddresses || []).join("   ");
-        $("offline-base").value = s.offline.baseUrl;
-        $("offline-model").value = s.offline.model;
-        $("online-base").value = s.online.baseUrl;
-        $("online-model").value = s.online.model;
+        $("offline-base").value = s.offline?.baseUrl || "";
+        $("offline-model").value = s.offline?.model || "";
+        $("online-base").value = s.online?.baseUrl || "";
+        $("online-model").value = s.online?.model || "";
         $("key-hint").textContent =
           (s.hasApiKey ? "A key is set. " : "No key set yet. ") +
           (s.encryptionAvailable
             ? "Keys are encrypted with your OS keychain and saved securely."
             : "OS keychain unavailable — the key is kept for this session only and is never written to disk, so you'll re-enter it next launch.");
         applyMode(s.mode);
+
+        // Register custom model progress listener once
+        window.engram.onGgufImportStatus((status) => {
+           if (status.state === "copying") {
+             currentOperationId = status.operationId;
+             $("cp-state").textContent = "Copying...";
+             $("cp-bytes").textContent = `${formatBytes(status.copiedBytes)} / ${formatBytes(status.totalBytes)}`;
+             $("cp-fill").style.width = `${Math.min(100, Math.max(0, status.fraction * 100))}%`;
+             $("btn-cancel-import").disabled = false;
+           } else if (status.state === "activating") {
+             $("cp-state").textContent = "Activating (checking compatibility)...";
+             $("cp-bytes").textContent = "";
+             $("cp-fill").style.width = "100%";
+             $("btn-cancel-import").disabled = true;
+           } else if (status.state === "completed") {
+             setUiLock(false);
+             currentOperationId = null;
+             $("custom-progress-view").classList.add("hidden");
+             $("custom-idle-view").classList.remove("hidden");
+             document.querySelector('input[name="mode"][value="custom"]').checked = true;
+             applyMode("custom");
+             window.engram.getSettings().then(st => renderCustomModel(st.customModel));
+           } else if (status.state === "cancelled" || status.state === "error") {
+             setUiLock(false);
+             currentOperationId = null;
+             $("custom-progress-view").classList.add("hidden");
+             $("custom-idle-view").classList.remove("hidden");
+             window.engram.getSettings().then(st => {
+               renderCustomModel(st.customModel);
+               if (status.state === "error") {
+                  $("cm-error").textContent = "Import error: " + (status.error || "unknown");
+                  $("cm-error").classList.remove("hidden");
+               }
+             });
+           }
+        });
       }
+
       document.querySelectorAll('input[name="mode"]').forEach((el) =>
         el.addEventListener("change", (e) => applyMode(e.target.value)),
       );
+
+      // Custom model button handlers
+      $("btn-choose-gguf").addEventListener("click", async () => {
+         $("cm-error").classList.add("hidden");
+         const res = await window.engram.chooseGguf();
+         if (res.ok && res.selection) {
+           currentSelectionId = res.selection.selectionId;
+           $("cs-file").textContent = res.selection.filename;
+           $("cs-size").textContent = formatBytes(res.selection.byteSize);
+           $("cs-version").textContent = res.selection.ggufVersion;
+           $("cs-req").textContent = formatBytes(res.selection.requiredSpaceBytes);
+           $("cs-free").textContent = formatBytes(res.selection.freeSpaceBytes);
+
+           $("custom-idle-view").classList.add("hidden");
+           $("custom-selection-view").classList.remove("hidden");
+         } else if (!res.ok && !res.cancelled && res.error) {
+           $("cm-error").textContent = "Selection error: " + res.error;
+           $("cm-error").classList.remove("hidden");
+         }
+      });
+
+      $("btn-cancel-selection").addEventListener("click", () => {
+         currentSelectionId = null;
+         $("custom-selection-view").classList.add("hidden");
+         $("custom-idle-view").classList.remove("hidden");
+      });
+
+      $("btn-remove-gguf").addEventListener("click", async () => {
+         if (!window.confirm("Remove this managed GGUF from ENGRAM storage? This reclaims its disk space and cannot be undone.")) return;
+         $("cm-error").classList.add("hidden");
+         const res = await window.engram.removeGguf();
+         if (res.ok) {
+           const s = await window.engram.getSettings();
+           renderCustomModel(s.customModel);
+           const customChecked = document.querySelector('input[name="mode"]:checked').value === "custom";
+           if (s.customModel.status === "none" && customChecked) {
+             document.querySelector('input[name="mode"][value="offline"]').checked = true;
+             applyMode("offline");
+           }
+         } else {
+           $("cm-error").textContent = "Remove error: " + (res.error || "unknown");
+           $("cm-error").classList.remove("hidden");
+         }
+      });
+
+      $("btn-import-gguf").addEventListener("click", async () => {
+         if (!currentSelectionId) return;
+         $("custom-selection-view").classList.add("hidden");
+         $("custom-progress-view").classList.remove("hidden");
+         setUiLock(true);
+         $("btn-cancel-import").disabled = false;
+         $("cp-state").textContent = "Starting import...";
+         $("cp-bytes").textContent = "";
+         $("cp-fill").style.width = "0%";
+
+         const res = await window.engram.importGguf(currentSelectionId);
+         if (!res.ok) {
+           setUiLock(false);
+           $("custom-progress-view").classList.add("hidden");
+           $("custom-idle-view").classList.remove("hidden");
+           $("cm-error").textContent = "Import failed: " + (res.error || "unknown");
+           $("cm-error").classList.remove("hidden");
+          } else {
+            currentOperationId = res.operationId;
+            currentSelectionId = null;
+         }
+      });
+
+      $("btn-cancel-import").addEventListener("click", async () => {
+        if (currentOperationId) {
+          $("btn-cancel-import").disabled = true;
+          await window.engram.cancelGgufImport(currentOperationId);
+        }
+      });
+
       function renderUpdateStatus(info, status) {
         const el = $("update-status");
         const btn = $("check-updates");
