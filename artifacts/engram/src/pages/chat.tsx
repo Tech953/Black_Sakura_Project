@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -83,6 +83,7 @@ interface Message {
   id?: number;
   role: "user" | "assistant" | "context";
   content: string;
+  speakerEngramId?: number | null;
   streaming?: boolean;
 }
 
@@ -104,6 +105,7 @@ interface Conversation {
   personaName?: string | null;
   customEngram?: string | null;
   engramId?: number | null;
+  engramIds?: number[];
   createdAt: string;
 }
 
@@ -133,7 +135,7 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [customEngram, setCustomEngram] = useState("");
-  const [engramId, setEngramId] = useState<number | null>(null);
+  const [selectedEngramIds, setSelectedEngramIds] = useState<number[]>([]);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [convSheetOpen, setConvSheetOpen] = useState(false);
@@ -180,13 +182,22 @@ export default function Chat() {
     const resp = await authFetch(`${BASE}/api/openai/conversations/${id}`);
     if (!resp.ok) return;
     const data = await resp.json();
-    const conv: Conversation = { id: data.id, title: data.title, mode: data.mode, personaName: data.personaName, customEngram: data.customEngram, engramId: data.engramId, createdAt: data.createdAt };
+    const conv: Conversation = {
+      id: data.id,
+      title: data.title,
+      mode: data.mode,
+      personaName: data.personaName,
+      customEngram: data.customEngram,
+      engramId: data.engramId,
+      engramIds: data.engramIds ?? (data.engramId != null ? [data.engramId] : []),
+      createdAt: data.createdAt,
+    };
     setMessages(data.messages ?? []);
     setAttachments([]);
     setActiveId(id);
     setConvMode((conv.mode as ChatMode) ?? "companion");
     setCustomEngram(conv.customEngram ?? "");
-    setEngramId(conv.engramId ?? null);
+    setSelectedEngramIds(conv.engramIds ?? (conv.engramId != null ? [conv.engramId] : []));
     setConvSheetOpen(false);
     scrollToBottom();
   }, [authFetch]);
@@ -250,12 +261,14 @@ export default function Chat() {
 
   async function handleNewConversation() {
     if (!newTitle.trim()) return;
+    const isGroup = selectedEngramIds.length >= 2;
     const result = await createConv.mutateAsync({
       data: {
         title: newTitle.trim(),
-        mode: engramId !== null ? "companion" : convMode,
-        customEngram: engramId === null && convMode === "custom" ? customEngram : undefined,
-        engramId: engramId ?? undefined,
+        mode: selectedEngramIds.length > 0 ? "companion" : convMode,
+        customEngram: selectedEngramIds.length === 0 && convMode === "custom" ? customEngram : undefined,
+        engramId: selectedEngramIds.length === 1 ? selectedEngramIds[0] : undefined,
+        engramIds: isGroup ? selectedEngramIds : undefined,
       },
     });
     queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
@@ -263,6 +276,12 @@ export default function Chat() {
     setNewTitle("");
     setConvSheetOpen(false);
     await loadConversation(result.id);
+  }
+
+  function toggleEngram(id: number) {
+    setSelectedEngramIds((prev) =>
+      prev.includes(id) ? prev.filter((participantId) => participantId !== id) : [...prev, id],
+    );
   }
 
   async function handleDelete(id: number, e: React.MouseEvent) {
@@ -279,11 +298,15 @@ export default function Chat() {
   async function handleSend() {
     if (!input.trim() || streaming || !activeId) return;
     const userMsg = input.trim();
+    const groupParticipantIds = activeConv?.engramIds ?? [];
+    const isGroup = groupParticipantIds.length >= 2;
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
     setStreaming(true);
     const assistantIdx = messages.length + 1;
-    setMessages((prev) => [...prev, { role: "assistant", content: "", streaming: true }]);
+    if (!isGroup) {
+      setMessages((prev) => [...prev, { role: "assistant", content: "", streaming: true }]);
+    }
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -325,24 +348,37 @@ export default function Chat() {
               break;
             }
             if (payload.content) {
-              accumulated += payload.content;
-              setMessages((prev) => {
-                const next = [...prev];
-                const idx = next.findIndex((m, i) => i === assistantIdx);
-                if (idx !== -1) next[idx] = { ...next[idx], content: accumulated };
-                return next;
-              });
+              if (payload.speakerEngramId != null) {
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    role: "assistant",
+                    content: payload.content,
+                    speakerEngramId: payload.speakerEngramId,
+                  },
+                ]);
+              } else {
+                accumulated += payload.content;
+                setMessages((prev) => {
+                  const next = [...prev];
+                  const idx = next.findIndex((m, i) => i === assistantIdx);
+                  if (idx !== -1) next[idx] = { ...next[idx], content: accumulated };
+                  return next;
+                });
+              }
             }
           } catch {}
         }
       }
 
-      setMessages((prev) => {
-        const next = [...prev];
-        const idx = next.findIndex((m, i) => i === assistantIdx);
-        if (idx !== -1) next[idx] = { role: "assistant", content: accumulated };
-        return next;
-      });
+      if (!isGroup) {
+        setMessages((prev) => {
+          const next = [...prev];
+          const idx = next.findIndex((m, i) => i === assistantIdx);
+          if (idx !== -1) next[idx] = { role: "assistant", content: accumulated };
+          return next;
+        });
+      }
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
         toast({
@@ -379,6 +415,9 @@ export default function Chat() {
   const activeConv = (convList ?? []).find((c: Conversation) => c.id === activeId);
   const modeInfo = MODES.find((m) => m.id === (activeConv?.mode ?? convMode));
   const activeEngram = (engrams ?? []).find((e) => e.id === activeConv?.engramId);
+  const activeGroupEngrams = (engrams ?? []).filter((e) => (activeConv?.engramIds ?? []).includes(e.id));
+  const isActiveGroup = activeGroupEngrams.length >= 2;
+  const engramById = new Map((engrams ?? []).map((e) => [e.id, e]));
 
   // Live push: subscribe scoped to this conversation + its engram. Server filters so we
   // only receive global events plus those matching our engramId/conversationId.
@@ -417,7 +456,15 @@ export default function Chat() {
           </div>
           <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
             <DialogTrigger asChild>
-              <Button size="icon" variant="ghost" className="w-7 h-7 text-primary hover:bg-primary/10">
+               <Button
+                 size="icon"
+                 variant="ghost"
+                 className="w-7 h-7 text-primary hover:bg-primary/10"
+                 onClick={() => {
+                   setSelectedEngramIds([]);
+                   setNewTitle("");
+                 }}
+               >
                 <Plus className="w-4 h-4" />
               </Button>
             </DialogTrigger>
@@ -437,8 +484,8 @@ export default function Chat() {
                     <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider mb-2 block">{t("talkTo")}</label>
                     <div className="grid grid-cols-2 gap-1.5">
                       <button
-                        onClick={() => setEngramId(null)}
-                        className={`flex items-center gap-2 px-2.5 py-2 border font-mono text-xs transition-colors ${engramId === null ? "border-primary/50 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
+                        onClick={() => setSelectedEngramIds([])}
+                        className={`flex items-center gap-2 px-2.5 py-2 border font-mono text-xs transition-colors ${selectedEngramIds.length === 0 ? "border-primary/50 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
                       >
                         <span>◈</span>
                         <span className="uppercase tracking-wider text-[10px]">PYRI</span>
@@ -446,18 +493,27 @@ export default function Chat() {
                       {(engrams ?? []).filter((e) => !e.isArchival).map((e) => (
                         <button
                           key={e.id}
-                          onClick={() => setEngramId(e.id)}
-                          className={`flex items-center gap-2 px-2.5 py-2 border font-mono text-xs transition-colors ${engramId === e.id ? "border-primary/50 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
+                          onClick={() => toggleEngram(e.id)}
+                          className={`flex items-center gap-2 px-2.5 py-2 border font-mono text-xs transition-colors ${selectedEngramIds.includes(e.id) ? "border-primary/50 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
                         >
                           <span>{e.symbol}</span>
                           <span className="uppercase tracking-wider text-[10px]">{e.name}</span>
                         </button>
                       ))}
                     </div>
-                    <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">{t("talkToHint")}</p>
+                    <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">
+                      {selectedEngramIds.length >= 2
+                        ? t("groupChatHint", { count: selectedEngramIds.length })
+                        : t("talkToHint")}
+                    </p>
+                    {selectedEngramIds.length >= 2 && (
+                      <div className="mt-2 border border-primary/20 bg-primary/5 px-2.5 py-2 font-mono text-[9px] leading-relaxed text-primary/70">
+                        {t("groupConsentNotice")}
+                      </div>
+                    )}
                   </div>
                 )}
-                {engramId === null && (
+                {selectedEngramIds.length === 0 && (
                   <>
                     <div>
                       <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider mb-2 block">{t("lpemMode")}</label>
@@ -517,7 +573,13 @@ export default function Chat() {
             ) : (
               (convList as Conversation[]).map((c) => {
                 const listEngram = (engrams ?? []).find((e) => e.id === c.engramId);
-                const modeGlyph = listEngram?.symbol ?? MODES.find((m) => m.id === c.mode)?.glyph ?? "◈";
+                const listParticipants = (engrams ?? []).filter((e) => (c.engramIds ?? []).includes(e.id));
+                const modeGlyph = listParticipants.length > 1
+                  ? "◉"
+                  : listEngram?.symbol ?? MODES.find((m) => m.id === c.mode)?.glyph ?? "◈";
+                const modeLabel = listParticipants.length > 1
+                  ? listParticipants.map((e) => e.name).join(" · ")
+                  : listEngram?.name ?? c.mode;
                 return (
                   <div
                     key={c.id}
@@ -535,7 +597,7 @@ export default function Chat() {
                     <span className="text-primary/60 text-sm mt-0.5">{modeGlyph}</span>
                     <div className="flex-1 min-w-0">
                       <p className={`font-mono text-xs truncate ${activeId === c.id ? "text-primary" : "text-foreground/80"}`}>{c.title}</p>
-                      <p className="font-mono text-[9px] text-muted-foreground/50 uppercase mt-0.5">{listEngram?.name ?? c.mode}</p>
+                      <p className="font-mono text-[9px] text-muted-foreground/50 uppercase mt-0.5 truncate">{modeLabel}</p>
                     </div>
                     <button
                       onClick={(e) => handleDelete(c.id, e)}
@@ -583,7 +645,9 @@ export default function Chat() {
           )}
           {activeConv ? (
             <>
-              <span className="text-primary text-base">{activeEngram ? activeEngram.symbol : modeInfo?.glyph}</span>
+              <span className="text-primary text-base">
+                {isActiveGroup ? <Users className="w-4 h-4" /> : activeEngram ? activeEngram.symbol : modeInfo?.glyph}
+              </span>
               <span className="font-mono text-xs text-foreground/80 truncate">{activeConv.title}</span>
               <div className="ml-auto flex items-center gap-2 shrink-0">
                 <span
@@ -599,7 +663,7 @@ export default function Chat() {
                   </Badge>
                 )}
                 <Badge variant="outline" className="font-mono text-[9px] uppercase tracking-wider border-primary/30 text-primary/70">
-                  {activeEngram ? activeEngram.name : activeConv.mode}
+                  {isActiveGroup ? activeGroupEngrams.map((e) => e.name).join(" · ") : activeEngram ? activeEngram.name : activeConv.mode}
                 </Badge>
               </div>
             </>
@@ -666,7 +730,15 @@ export default function Chat() {
                 <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] md:max-w-[78%] ${msg.role === "user" ? "order-1" : ""}`}>
                     <div className={`font-mono text-[9px] uppercase tracking-widest mb-1 ${msg.role === "user" ? "text-right text-muted-foreground/50" : "text-primary/50"}`}>
-                      {msg.role === "user" ? t("you") : activeEngram ? `${activeEngram.name.toUpperCase()} · ${activeEngram.symbol}` : `PYRI · ${modeInfo?.glyph ?? "◈"}`}
+                      {msg.role === "user"
+                        ? t("you")
+                        : msg.speakerEngramId != null
+                          ? `${engramById.get(msg.speakerEngramId)?.name?.toUpperCase() ?? t("engramFallback")} · ${engramById.get(msg.speakerEngramId)?.symbol ?? "◈"}`
+                          : activeEngram
+                            ? `${activeEngram.name.toUpperCase()} · ${activeEngram.symbol}`
+                            : isActiveGroup
+                              ? t("groupReply")
+                              : `PYRI · ${modeInfo?.glyph ?? "◈"}`}
                     </div>
                     <div className={`px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user"
@@ -700,7 +772,7 @@ export default function Chat() {
             setDragOver(false);
             if (!activeId || streaming) return;
             const file = e.dataTransfer.files?.[0];
-            if (file && !activeEngram?.isArchival) uploadFile(file);
+            if (file && !activeGroupEngrams.some((e) => e.isArchival) && !activeEngram?.isArchival) uploadFile(file);
           }}
         >
           {attachments.length > 0 && (
@@ -741,7 +813,7 @@ export default function Chat() {
             <Button
               size="icon"
               variant="outline"
-              disabled={!activeId || uploading || streaming || activeEngram?.isArchival}
+              disabled={!activeId || uploading || streaming || activeEngram?.isArchival || activeGroupEngrams.some((e) => e.isArchival)}
               onClick={() => fileInputRef.current?.click()}
               className="shrink-0 border-border/50 text-primary/70 hover:bg-primary/10 h-11 w-11"
               aria-label={t("attachMedia")}
@@ -753,7 +825,7 @@ export default function Chat() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                activeEngram?.isArchival
+                activeEngram?.isArchival || activeGroupEngrams.some((e) => e.isArchival)
                   ? t("archivalPlaceholder")
                   : activeId
                     ? t("messagePyriPlaceholder", { mode: convMode })
@@ -784,7 +856,11 @@ export default function Chat() {
             )}
           </div>
           <p className="font-mono text-[9px] text-muted-foreground/30 text-center mt-2">
-            {t("inputHint", { name: activeEngram ? activeEngram.name : "PYRI" })}
+            {t("inputHint", {
+              name: isActiveGroup
+                ? activeGroupEngrams.map((e) => e.name).join(", ")
+                : activeEngram ? activeEngram.name : "PYRI",
+            })}
           </p>
         </div>
       </div>

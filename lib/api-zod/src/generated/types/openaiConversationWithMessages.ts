@@ -14,6 +14,7 @@ export interface OpenaiConversationWithMessages {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  engramIds: number[];
   createdAt: Date;
   messages: OpenaiMessage[];
 }

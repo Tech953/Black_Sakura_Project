@@ -13,6 +13,7 @@ const h = vi.hoisted(() => {
   type Row = Record<string, unknown>;
   const TABLE_NAMES = [
     "conversations",
+    "conversationEngramParticipants",
     "messages",
     "personalityTable",
     "personasTable",
@@ -94,9 +95,10 @@ const h = vi.hoisted(() => {
       (row: Row) =>
         preds.some((p) => (typeof p === "function" ? p(row) : false)),
     desc: (col: { __col: string }) => ({ __order: "desc" as const, col }),
+    asc: (col: { __col: string }) => ({ __order: "asc" as const, col }),
   };
 
-  type OrderSpec = { __order: "desc"; col: { __col: string } };
+  type OrderSpec = { __order: "desc" | "asc"; col: { __col: string } };
   function selectChain() {
     let rows: Row[] = [];
     let pred: ((row: Row) => boolean) | null = null;
@@ -136,8 +138,8 @@ const h = vi.hoisted(() => {
       },
       orderBy(spec: OrderSpec | { __col: string }) {
         order =
-          spec && (spec as OrderSpec).__order === "desc"
-            ? { col: (spec as OrderSpec).col.__col, dir: "desc" }
+            spec && (spec as OrderSpec).__order === "desc"
+              ? { col: (spec as OrderSpec).col.__col, dir: "desc" }
             : { col: (spec as { __col: string }).__col, dir: "asc" };
         return chain;
       },
@@ -493,6 +495,73 @@ describe("conversation persistence routes", () => {
   it("returns 404 for a missing conversation", async () => {
     const res = await fetch(`${base}/api/openai/conversations/9999`);
     expect(res.status).toBe(404);
+  });
+
+  it("creates a selected group, attributes one response to each participant, and records observations separately", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+
+    const createRes = await fetch(`${base}/api/openai/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Shared room", mode: "companion", engramIds: [first.id, second.id] }),
+    });
+    expect(createRes.status).toBe(201);
+    const created = (await createRes.json()) as Record<string, any>;
+    expect(created.engramIds).toEqual([first.id, second.id]);
+    expect(h.store.conversationEngramParticipants).toHaveLength(2);
+
+    const sendRes = await fetch(`${base}/api/openai/conversations/${created.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "What do you both think?" }),
+    });
+    expect(sendRes.status).toBe(200);
+    expect(parseSse(await sendRes.text())).toEqual([
+      { speakerEngramId: first.id, content: "a response" },
+      { speakerEngramId: second.id, content: "a response" },
+      { done: true },
+    ]);
+
+    const assistantMessages = h.store.messages.filter((message) => message.role === "assistant");
+    expect(assistantMessages.map((message) => message.speakerEngramId)).toEqual([first.id, second.id]);
+    expect(h.store.engramWorldModelTable).toHaveLength(2);
+    expect(h.store.engramWorldModelTable.map((entry) => entry.engramId)).toEqual([first.id, second.id]);
+    expect(h.store.engramWorldModelTable.every((entry) => entry.provenance === "observed")).toBe(true);
+  });
+
+  it("rejects group participants owned by another user", async () => {
+    const own = seedEngram();
+    const foreign = seedEngram({ ownerId: "someone-else" });
+
+    const res = await fetch(`${base}/api/openai/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Not shared", mode: "companion", engramIds: [own.id, foreign.id] }),
+    });
+    expect(res.status).toBe(404);
+    expect(h.store.conversations).toHaveLength(0);
+    expect(h.store.conversationEngramParticipants).toHaveLength(0);
+  });
+
+  it("rejects archival participants and invalid group sizes", async () => {
+    const archival = seedEngram({ isArchival: true });
+    const active = seedEngram();
+    const archivalRes = await fetch(`${base}/api/openai/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Read only", mode: "companion", engramIds: [archival.id, active.id] }),
+    });
+    expect(archivalRes.status).toBe(403);
+
+    resetStore();
+    const seven = Array.from({ length: 7 }, () => seedEngram().id);
+    const tooManyRes = await fetch(`${base}/api/openai/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Too many", mode: "companion", engramIds: seven }),
+    });
+    expect(tooManyRes.status).toBe(400);
   });
 });
 

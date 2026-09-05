@@ -526,6 +526,7 @@ export const ListOpenaiConversationsResponseItem = zod.object({
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()),
   "createdAt": zod.coerce.date()
 })
 export const ListOpenaiConversationsResponse = zod.array(ListOpenaiConversationsResponseItem)
@@ -539,7 +540,8 @@ export const CreateOpenaiConversationBody = zod.object({
   "mode": zod.string(),
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
-  "engramId": zod.number().optional()
+  "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()).min(2).max(6).optional()
 })
 
 export const CreateOpenaiConversationResponse = zod.object({
@@ -549,6 +551,7 @@ export const CreateOpenaiConversationResponse = zod.object({
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()),
   "createdAt": zod.coerce.date()
 })
 
@@ -573,6 +576,7 @@ export const GetOpenaiConversationResponse = zod.object({
   "conversationId": zod.number(),
   "role": zod.string(),
   "content": zod.string(),
+  "speakerEngramId": zod.number().nullable().optional(),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -600,6 +604,7 @@ export const ListOpenaiMessagesResponseItem = zod.object({
   "conversationId": zod.number(),
   "role": zod.string(),
   "content": zod.string(),
+  "speakerEngramId": zod.number().nullable().optional(),
   "createdAt": zod.coerce.date()
 })
 export const ListOpenaiMessagesResponse = zod.array(ListOpenaiMessagesResponseItem)

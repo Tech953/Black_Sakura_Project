@@ -13,5 +13,6 @@ export interface OpenaiConversation {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  engramIds: number[];
   createdAt: Date;
 }

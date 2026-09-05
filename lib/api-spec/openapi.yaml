@@ -2223,6 +2223,11 @@ components:
           type: string
         engramId:
           type: integer
+        engramIds:
+          type: array
+          items:
+            type: integer
+          description: Explicit participants for a human-mediated group conversation.
         createdAt:
           type: string
           format: date-time
@@ -2230,6 +2235,7 @@ components:
         - id
         - title
         - mode
+        - engramIds
         - createdAt
     OpenaiMessage:
       type: object
@@ -2242,6 +2248,9 @@ components:
           type: string
         content:
           type: string
+        speakerEngramId:
+          type: integer
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -2264,6 +2273,14 @@ components:
           type: string
         engramId:
           type: integer
+        engramIds:
+          type: array
+          minItems: 2
+          maxItems: 6
+          uniqueItems: true
+          items:
+            type: integer
+          description: Select 2–6 non-archival engrams for a human-mediated group conversation.
       required:
         - title
         - mode
@@ -2292,6 +2309,10 @@ components:
           type: string
         engramId:
           type: integer
+        engramIds:
+          type: array
+          items:
+            type: integer
         createdAt:
           type: string
           format: date-time

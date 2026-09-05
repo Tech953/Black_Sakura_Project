@@ -13,6 +13,12 @@ When you edit `lib/db/src/schema/*.ts`, run **both**:
 
 **Gotcha — drizzle-kit generate corrupts an absolute `out`:** generate prepends `./` to `out`, so an absolute `out` (e.g. `path.join(__dirname, "./drizzle")`) resolves wrong and fails with ENOENT on the meta snapshot. `out` in `drizzle.config.ts` must be **relative** (`out: "drizzle"`) — `pnpm --filter` always runs with cwd at the package, so a relative path is stable. `push` is unaffected by this (it never reads the meta/snapshot files), which is why push works while generate breaks.
 
+**Development database quirk:** the current managed PostgreSQL instance can fail during `drizzle-kit push` schema introspection with `type "serial" does not exist`, even after an additive migration has partially applied. Treat this as a push-tool/introspection failure, not evidence that the generated SQL is invalid: inspect `information_schema`, complete only the missing additive DDL through the database tool, and verify the new columns/constraints before continuing.
+
+**Why:** the failed introspection can leave the new table present but later migration statements unapplied, which makes the application appear healthy until it exercises the new relation or column.
+
+**How to apply:** use the checked-in migration for fresh PGlite/desktop databases; for an already-partially-updated development database, use idempotent `ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, and guarded constraint creation, then verify the schema.
+
 **How to apply:** after any schema edit, push for dev, generate for desktop, then verify a fresh migrate with an in-memory PGlite (`@electric-sql/pglite` + `drizzle-orm/pglite/migrator` `migrate(db, { migrationsFolder })`) if the change is risky. Commit `0001_*.sql`, its `meta/0001_snapshot.json`, and the updated `_journal.json` together.
 
 ## Run ad-hoc migration checks from the database package

@@ -64,6 +64,13 @@
       "when": 1788583053202,
       "tag": "0008_tiny_prism",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788616170409,
+      "tag": "0009_striped_thaddeus_ross",
+      "breakpoints": true
     }
   ]
 }

@@ -418,6 +418,7 @@ export interface OpenaiConversation {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  engramIds: number[];
   createdAt: string;
 }
 
@@ -426,6 +427,7 @@ export interface OpenaiMessage {
   conversationId: number;
   role: string;
   content: string;
+  speakerEngramId?: number | null;
   createdAt: string;
 }
 
@@ -435,6 +437,7 @@ export interface OpenaiConversationInput {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  engramIds?: number[];
 }
 
 export interface OpenaiMessageInput {
@@ -450,6 +453,7 @@ export interface OpenaiConversationWithMessages {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  engramIds: number[];
   createdAt: string;
   messages: OpenaiMessage[];
 }

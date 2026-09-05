@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, index, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { engramsTable } from "./engrams";
@@ -15,6 +15,26 @@ export const conversations = pgTable("conversations", {
   }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("conversations_owner_idx").on(table.ownerId)]);
+
+/** Explicit, user-selected participants for human-mediated group conversations. */
+export const conversationEngramParticipants = pgTable(
+  "conversation_engram_participants",
+  {
+    conversationId: integer("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    engramId: integer("engram_id")
+      .notNull()
+      .references(() => engramsTable.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.conversationId, table.engramId] }),
+    index("conversation_engram_participants_owner_idx").on(table.ownerId),
+    index("conversation_engram_participants_engram_idx").on(table.engramId),
+  ],
+);
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({
   id: true,
