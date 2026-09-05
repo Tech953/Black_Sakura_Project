@@ -23,6 +23,12 @@ export async function sendOfflineMessage(opts: {
 
   const persona = await store.getEngramPersona(engramId);
   if (!persona) throw new Error("Engram not found");
+  if (
+    persona.isArchival === true ||
+    (await store.isArchivalConversation(conversationId))
+  ) {
+    throw new Error(store.OFFLINE_ARCHIVAL_READ_ONLY_ERROR);
+  }
   const engram = persona as unknown as Engram;
 
   const worldModelSummary = summarizeWorldModel(await store.loadRecentWorldModel(engramId));

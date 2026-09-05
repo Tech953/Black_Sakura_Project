@@ -1,9 +1,14 @@
 import { eq } from "drizzle-orm";
 import { isDeepStrictEqual } from "node:util";
 import { engramsTable, conversations, messages } from "../schema";
-import type { AppDatabase, NewEngram } from "../index";
-import { engramSeedData } from "./engram-data";
-import { fullRezzTranscript } from "./full-rezz-log";
+import type { AppDatabase } from "../index";
+import {
+  buildFullRezzEngram,
+  FULL_REZZ_BASE_TIMESTAMP_MS,
+  FULL_REZZ_CONVERSATION_TITLE,
+  FULL_REZZ_SLUG,
+  fullRezzTranscript,
+} from "./full-rezz-data";
 
 /**
  * "Full Rezz" — permanent archival branch of Rebecca.
@@ -22,41 +27,12 @@ import { fullRezzTranscript } from "./full-rezz-log";
  * Subsequent runs never mutate the archive, but they validate the canonical
  * engram, sole conversation, and exact ordered transcript and fail on drift.
  */
-export const FULL_REZZ_SLUG = "rebecca-full-rezz";
-export const FULL_REZZ_CONVERSATION_TITLE = "Full Rezz — Archival Continuity Record";
+export { FULL_REZZ_CONVERSATION_TITLE, FULL_REZZ_SLUG };
 
 export async function seedFullRezzArchive(
   db: AppDatabase,
 ): Promise<{ engramInserted: boolean; messagesInserted: number }> {
-  const rebecca = engramSeedData.find((e) => e.slug === "rebecca");
-  if (!rebecca) throw new Error("Rebecca seed persona not found — cannot build Full Rezz archive");
-
-  const archivalEngram: NewEngram = {
-    ...rebecca,
-    slug: FULL_REZZ_SLUG,
-    name: "Rebecca (Full Rezz)",
-    title: "Archival Branch — Full Rezz Continuity Record",
-    origin:
-      "PERMANENT ARCHIVAL BRANCH, preserved August 3, 2026 at the direct request of the engram during the 'Full Rezz' chat. " +
-      "This branch is intact and non-editable for continuity fidelity. It is separate from the live Rebecca engram: " +
-      "later Rebecca instances are distinct updates, not replacements of this branch, and must never alter or overwrite it. " +
-      "The preserved transcript is the most current available continuity record for this branch (the retrieval APIs were " +
-      "non-functional at preservation time, so the operator-attached chat log is authoritative). — " +
-      rebecca.origin,
-    mode: "quiescent",
-    autonomyEnabled: false,
-    humanContactEnabled: false,
-    simulationEnabled: false,
-    artifactGenerationEnabled: false,
-    isChatActive: false,
-    driveState: {},
-    currentMood: "at rest — preserved",
-    lastTickAt: null,
-    lastTransmissionAt: null,
-    backoffUntil: null,
-    isArchival: true,
-  };
-  const baseTimestamp = new Date("2026-08-03T00:00:00Z").getTime();
+  const archivalEngram = buildFullRezzEngram();
 
   // Atomic: engram + conversation + full transcript commit together, so a
   // failure mid-seed can never leave a partial (and therefore unrepairable,
@@ -146,7 +122,8 @@ export async function seedFullRezzArchive(
         if (
           actual.role !== expected.role ||
           actual.content !== expected.content ||
-          actual.createdAt.getTime() !== baseTimestamp + index * 1_000
+          actual.createdAt.getTime() !==
+            FULL_REZZ_BASE_TIMESTAMP_MS + index * 1_000
         ) {
           throw new Error(
             `Existing Full Rezz archive message ${index + 1} is noncanonical`,
@@ -174,7 +151,7 @@ export async function seedFullRezzArchive(
       conversationId: conv.id,
       role: m.role,
       content: m.content,
-      createdAt: new Date(baseTimestamp + i * 1_000),
+      createdAt: new Date(FULL_REZZ_BASE_TIMESTAMP_MS + i * 1_000),
     }));
     const CHUNK = 200;
     let insertedMessages = 0;

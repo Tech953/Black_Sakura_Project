@@ -43,6 +43,7 @@ function uid(): string {
 
 import { isOfflineMode, useOfflineMode } from "@/lib/offline/mode";
 import { sendOfflineMessage } from "@/lib/offline/chat";
+import { getArchivalConversationId } from "@/lib/offline/store";
 import { resolveReplyLanguage } from "@/lib/i18n";
 import { OFFLINE_LIMITS } from "@/lib/offline/limits";
 import { resolveServerApiUrl } from "@/lib/server-url";
@@ -75,6 +76,7 @@ export default function ChatScreen() {
   // Resolve / create the conversation for the selected engram.
   useEffect(() => {
     if (!enabled) return;
+    let canceled = false;
     initializedRef.current = false;
     setMessages([]);
     const existing = getConversationId(engramId);
@@ -83,8 +85,18 @@ export default function ChatScreen() {
       return;
     }
     setLocalConversationId(null);
-    createConversation
-      .mutateAsync({
+    void (async () => {
+      if (offlineActive) {
+        const archivalConversationId =
+          await getArchivalConversationId(engramId);
+        if (archivalConversationId != null) {
+          if (canceled) return;
+          setConversationId(engramId, archivalConversationId);
+          setLocalConversationId(archivalConversationId);
+          return;
+        }
+      }
+      const convo = await createConversation.mutateAsync({
         data: {
           title: t("chat.sessionTitle", {
             name: engram?.name ?? t("chat.engramFallback"),
@@ -92,13 +104,15 @@ export default function ChatScreen() {
           mode: "companion",
           engramId,
         },
-      })
-      .then((convo) => {
-        setConversationId(engramId, convo.id);
-        setLocalConversationId(convo.id);
-        initializedRef.current = true;
-      })
-      .catch(() => {});
+      });
+      if (canceled) return;
+      setConversationId(engramId, convo.id);
+      setLocalConversationId(convo.id);
+      initializedRef.current = true;
+    })().catch(() => {});
+    return () => {
+      canceled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engramId, enabled, offlineActive]);
 
@@ -293,6 +307,7 @@ export default function ChatScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const reversed = [...messages].reverse();
+  const archivalReadOnly = engram?.isArchival === true;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -416,6 +431,7 @@ export default function ChatScreen() {
             onChangeText={setInput}
             placeholder={t("chat.inputPlaceholder")}
             placeholderTextColor={colors.mutedForeground}
+            editable={!archivalReadOnly}
             multiline
             maxLength={OFFLINE_LIMITS.maxInputChars}
             blurOnSubmit={false}
@@ -426,6 +442,7 @@ export default function ChatScreen() {
                 borderColor: colors.border,
                 color: colors.foreground,
                 borderRadius: colors.radius,
+                opacity: archivalReadOnly ? 0.6 : 1,
               },
             ]}
           />
@@ -435,14 +452,16 @@ export default function ChatScreen() {
               handleSend();
               inputRef.current?.focus();
             }}
-            disabled={isStreaming || input.trim().length === 0}
+            disabled={
+              archivalReadOnly || isStreaming || input.trim().length === 0
+            }
             style={({ pressed }) => [
               styles.send,
               {
                 backgroundColor: colors.primary,
                 borderRadius: colors.radius,
                 opacity:
-                  isStreaming || input.trim().length === 0
+                  archivalReadOnly || isStreaming || input.trim().length === 0
                     ? 0.4
                     : pressed
                       ? 0.8

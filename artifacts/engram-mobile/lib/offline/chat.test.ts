@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getEngramPersona: vi.fn(),
   loadRecentWorldModel: vi.fn(),
   listMessages: vi.fn(),
+  isArchivalConversation: vi.fn(),
   appendMessage: vi.fn(),
   removeLastMessage: vi.fn(),
   appendObservedEntry: vi.fn(),
@@ -15,6 +16,8 @@ vi.mock("./store", () => ({
   getEngramPersona: mocks.getEngramPersona,
   loadRecentWorldModel: mocks.loadRecentWorldModel,
   listMessages: mocks.listMessages,
+  isArchivalConversation: mocks.isArchivalConversation,
+  OFFLINE_ARCHIVAL_READ_ONLY_ERROR: "archive is read-only",
   appendMessage: mocks.appendMessage,
   removeLastMessage: mocks.removeLastMessage,
   appendObservedEntry: mocks.appendObservedEntry,
@@ -46,6 +49,7 @@ describe("offline chat persistence failure harness", () => {
     mocks.getEngramPersona.mockReset().mockResolvedValue(persona);
     mocks.loadRecentWorldModel.mockReset().mockResolvedValue([]);
     mocks.listMessages.mockReset().mockResolvedValue([]);
+    mocks.isArchivalConversation.mockReset().mockResolvedValue(false);
     mocks.appendMessage.mockReset().mockResolvedValue(undefined);
     mocks.removeLastMessage.mockReset().mockResolvedValue(undefined);
     mocks.appendObservedEntry.mockReset().mockResolvedValue(undefined);
@@ -120,5 +124,35 @@ describe("offline chat persistence failure harness", () => {
         content: 'They said: "persist after success"',
       }),
     );
+  });
+
+  it("rejects direct and mixed-reference archival chat before generation", async () => {
+    mocks.getEngramPersona.mockResolvedValueOnce({
+      ...persona,
+      isArchival: true,
+    });
+    await expect(
+      sendOfflineMessage({
+        conversationId: 14,
+        engramId: 7,
+        content: "do not append",
+        onToken: vi.fn(),
+      }),
+    ).rejects.toThrow("archive is read-only");
+
+    mocks.getEngramPersona.mockResolvedValueOnce(persona);
+    mocks.isArchivalConversation.mockResolvedValueOnce(true);
+    await expect(
+      sendOfflineMessage({
+        conversationId: 15,
+        engramId: 7,
+        content: "do not append through a live owner",
+        onToken: vi.fn(),
+      }),
+    ).rejects.toThrow("archive is read-only");
+
+    expect(mocks.completeStream).not.toHaveBeenCalled();
+    expect(mocks.appendMessage).not.toHaveBeenCalled();
+    expect(mocks.appendObservedEntry).not.toHaveBeenCalled();
   });
 });

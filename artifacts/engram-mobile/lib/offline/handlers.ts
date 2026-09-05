@@ -24,6 +24,13 @@ function notFound(msg: string): { status: number; body: unknown } {
   return { status: 404, body: { error: msg } };
 }
 
+function archivalReadOnly(): { status: number; body: unknown } {
+  return {
+    status: 403,
+    body: { error: store.OFFLINE_ARCHIVAL_READ_ONLY_ERROR },
+  };
+}
+
 async function personaAsEngram(id: number): Promise<Engram | null> {
   const persona = await store.getEngramPersona(id);
   return persona ? (persona as unknown as Engram) : null;
@@ -47,6 +54,7 @@ async function handleInquiry(
   }
   const engram = await personaAsEngram(engramId);
   if (!engram) return notFound("Engram not found");
+  if (engram.isArchival) return archivalReadOnly();
 
   // Mirrors the server's probe prompt. Offline "develop" answers in character
   // but applies no config delta (tuning requires the server's bounded pipeline).
@@ -75,6 +83,7 @@ async function handleInquiry(
 async function handleTransmit(engramId: number): Promise<{ status: number; body: unknown }> {
   const engram = await personaAsEngram(engramId);
   if (!engram) return notFound("Engram not found");
+  if (engram.isArchival) return archivalReadOnly();
 
   const drives = engram.drives ?? [];
   const drive = drives.length
@@ -145,7 +154,11 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
   }
 
   if ((m = url.match(/^\/api\/engrams\/(\d+)\/activate$/)) && method === "POST") {
-    const engram = await store.activateEngram(Number(m[1]));
+    const engramId = Number(m[1]);
+    const existing = await store.getEngram(engramId);
+    if (!existing) return notFound("Engram not found");
+    if (existing.isArchival === true) return archivalReadOnly();
+    const engram = await store.activateEngram(engramId);
     return engram ? ok(engram) : notFound("Engram not found");
   }
 
@@ -189,7 +202,9 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
       return { status: 400, body: { error: "Invalid mark-seen body" } };
     }
     const ids = candidateIds as number[] | undefined;
-    const marked = await store.markTransmissionsSeen(Number(m[1]), ids);
+    const engramId = Number(m[1]);
+    if (await store.isArchivalEngram(engramId)) return archivalReadOnly();
+    const marked = await store.markTransmissionsSeen(engramId, ids);
     return ok({ marked });
   }
 
@@ -217,6 +232,12 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
           !Number.isFinite(conversation.engramId)))
     ) {
       return { status: 400, body: { error: "Invalid conversation body" } };
+    }
+    if (
+      typeof conversation.engramId === "number" &&
+      (await store.isArchivalEngram(conversation.engramId))
+    ) {
+      return archivalReadOnly();
     }
     return ok(
       await store.createConversation({
