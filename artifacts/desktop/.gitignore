@@ -3,3 +3,4 @@ resources/
 release/
 node_modules/
 *.tsbuildinfo
+.ci-smoke/
