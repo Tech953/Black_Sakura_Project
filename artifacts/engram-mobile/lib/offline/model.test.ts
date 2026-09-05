@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
     sourceExists: true,
     sourceBytes: 2_000_000,
     headerBase64: "R0dVRgMAAAA=",
+    copyGate: undefined as Promise<void> | undefined,
     partBytes: 0,
     freshDownload: undefined as (() => Promise<{ status: number }>) | undefined,
     resumeDownload: undefined as (() => Promise<{ status: number }>) | undefined,
@@ -39,6 +40,7 @@ const mocks = vi.hoisted(() => {
       }
     }),
     copy: vi.fn(async () => {
+      if (state.copyGate) await state.copyGate;
       state.customPartBytes = state.sourceBytes;
     }),
   };
@@ -142,6 +144,7 @@ import {
   CUSTOM_MODEL_PATH,
   MODEL_BYTES,
   cancelDownload,
+  cancelCustomModelImport,
   downloadModel,
   getModelStatus,
   importCustomModel,
@@ -158,6 +161,7 @@ describe("offline model download failure harness", () => {
     mocks.state.sourceExists = true;
     mocks.state.sourceBytes = 2_000_000;
     mocks.state.headerBase64 = "R0dVRgMAAAA=";
+    mocks.state.copyGate = undefined;
     mocks.state.partBytes = 0;
     mocks.state.freshDownload = undefined;
     mocks.state.resumeDownload = undefined;
@@ -291,5 +295,43 @@ describe("offline model download failure harness", () => {
       source: "custom",
       filename: "previous.gguf",
     });
+  });
+
+  it("abandons a copy on cancellation and preserves the previous model", async () => {
+    let finishCopy!: () => void;
+    mocks.state.customExists = true;
+    mocks.state.customBytes = mocks.state.sourceBytes;
+    mocks.storage.set(
+      "engram.customModel.metadata",
+      JSON.stringify({
+        filename: "previous.gguf",
+        byteSize: mocks.state.sourceBytes,
+        ggufVersion: 3,
+        importedAt: "2026-01-01T00:00:00.000Z",
+      }),
+    );
+    mocks.state.copyGate = new Promise<void>((resolve) => {
+      finishCopy = resolve;
+    });
+
+    const pending = importCustomModel(
+      "file:///picked-model.gguf",
+      "replacement.gguf",
+      mocks.state.sourceBytes,
+    );
+    await vi.waitFor(() => expect(mocks.state.copy).toHaveBeenCalled());
+    expect(cancelCustomModelImport()).toBe(true);
+    finishCopy();
+
+    await expect(pending).rejects.toMatchObject({
+      code: "MODEL_IMPORT_CANCELLED",
+    });
+    expect(mocks.state.customPartBytes).toBe(0);
+    await expect(getModelStatus()).resolves.toMatchObject({
+      state: "ready",
+      source: "custom",
+      filename: "previous.gguf",
+    });
+    expect(cancelCustomModelImport()).toBe(false);
   });
 });

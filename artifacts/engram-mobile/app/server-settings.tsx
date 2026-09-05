@@ -32,10 +32,12 @@ import {
   MODEL_BYTES,
   MODEL_NAME,
   cancelDownload,
+  cancelCustomModelImport,
   deleteActiveModel,
   downloadModel,
   getModelStatus,
   importCustomModel,
+  ModelImportCancelledError,
   type ModelStatus,
 } from "@/lib/offline/model";
 import { releaseLlm, validateActiveModel } from "@/lib/offline/llm";
@@ -211,8 +213,11 @@ export default function ServerSettingsScreen() {
       if (!offline) await releaseLlm().catch(() => {});
       setOfflineMsg(t("settings.modelImportReady"));
     } catch (err) {
+      await releaseLlm().catch(() => {});
       setOfflineMsg(
-        err instanceof Error
+        err instanceof ModelImportCancelledError
+          ? t("settings.importCancelled")
+          : err instanceof Error
           ? err.message
           : t("settings.modelImportFailed"),
       );
@@ -222,6 +227,12 @@ export default function ServerSettingsScreen() {
       refreshModel();
     }
   }, [offline, refreshModel, t]);
+
+  const onCancelImport = useCallback(() => {
+    if (cancelCustomModelImport()) {
+      setOfflineMsg(t("settings.cancellingImport"));
+    }
+  }, [t]);
 
   const onSignOut = useCallback(() => {
     Alert.alert(
@@ -534,6 +545,15 @@ export default function ServerSettingsScreen() {
                   percent: Math.round(importProgress * 100),
                 })}
               </Text>
+              <Pressable
+                testID="cancel-gguf-import"
+                onPress={onCancelImport}
+                style={[styles.button, { borderColor: colors.border, marginTop: 12 }]}
+              >
+                <Text style={[styles.buttonText, { color: colors.foreground }]}>
+                  {t("settings.cancelImport")}
+                </Text>
+              </Pressable>
             </>
           ) : activeModel ? (
             <>
