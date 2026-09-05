@@ -22,7 +22,7 @@ import { engramsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { loadSpaces, loadPresenceForEngram } from "../lib/hub-store";
 import { loadControls } from "../lib/controls-store";
-import { ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
+import { ARCHIVAL_READ_ONLY_ERROR, isArchivalEngram } from "../lib/archival";
 
 const router = Router();
 
@@ -149,6 +149,10 @@ router.post("/simulations/:id/control", async (req, res) => {
   const sim = await loadSimulationById(parsedParams.data.id);
   if (!sim) {
     res.status(404).json({ error: "Simulation not found" });
+    return;
+  }
+  if (await isArchivalEngram(sim.engramId)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
   try {
