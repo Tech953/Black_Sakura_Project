@@ -51,3 +51,15 @@ export async function setServerUrlOverride(url: string | null): Promise<void> {
 export async function resolveServerUrl(): Promise<string> {
   return (await getServerUrlOverride()) ?? DEFAULT_SERVER_URL;
 }
+
+/**
+ * Resolve an API URL from the latest persisted server setting.
+ *
+ * Call this when the request is made rather than caching its result so a server
+ * address changed in Settings takes effect for the very next request.
+ */
+export async function resolveServerApiUrl(apiPath: string): Promise<string> {
+  const baseUrl = await resolveServerUrl();
+  const path = apiPath.startsWith("/") ? apiPath : `/${apiPath}`;
+  return `${baseUrl}${path}`;
+}

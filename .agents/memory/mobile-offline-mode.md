@@ -6,6 +6,7 @@ description: Non-obvious constraints of the phone app's self-contained offline m
 # Mobile on-device offline mode
 
 - **Single choke point:** all generated hooks route through `customFetch`; offline mode registers a `setLocalHandler` seam there that intercepts relative-path requests before base-URL resolution. Chat SSE is the one exception — it streams from the local llama.rn model directly.
+- **Custom server URLs:** generated online requests follow Settings through `setBaseUrl`; raw online streams must resolve the persisted server URL when each request starts, never from a module-level build-domain constant. Otherwise a new desktop/LAN address does not take effect until restart.
 - **Safety single-sourcing:** persona prompts + HARD_SAFETY + the intimacy≤1 expression filter live in `@workspace/engram-core`; the api-server keeps re-export shims. Never fork prompt logic into the mobile app — offline must stay verbatim-identical to the server's safety boundary.
 - **Why:** the task's critical constraint was that intimate expressions can never reach any chat prompt, online or offline; two copies would drift.
 - **Backend-scoped client state:** conversation IDs are meaningless across backends. The conversation map keys are mode-prefixed (`off:<engramId>`), and the react-query cache is cleared on mode toggle. Any new client-side ID cache must follow the same rule.
