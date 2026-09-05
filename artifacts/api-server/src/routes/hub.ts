@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { engramsTable } from "@workspace/db/schema";
 import type { HubSpace, EngramPresence, HubActivity } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   MoveEngramPresenceParams,
   MoveEngramPresenceBody,
@@ -74,13 +74,13 @@ function serializeControls(c: HubControls) {
   };
 }
 
-router.get("/hub/spaces", async (_req, res) => {
-  const spaces = await loadSpaces();
+router.get("/hub/spaces", async (req, res) => {
+  const spaces = await loadSpaces(req.userId!);
   res.json(spaces.map(serializeSpace));
 });
 
-router.get("/hub/presence", async (_req, res) => {
-  const presence = await loadPresence();
+router.get("/hub/presence", async (req, res) => {
+  const presence = await loadPresence(req.userId!);
   res.json(presence.map(serializePresence));
 });
 
@@ -93,25 +93,26 @@ router.put("/hub/presence/:engramId", async (req, res) => {
   }
 
   const [engram] = await db
-    .select({ id: engramsTable.id, name: engramsTable.name })
+    .select({ id: engramsTable.id, name: engramsTable.name, isArchival: engramsTable.isArchival })
     .from(engramsTable)
-    .where(eq(engramsTable.id, parsedParams.data.engramId));
+    .where(and(eq(engramsTable.id, parsedParams.data.engramId), eq(engramsTable.ownerId, req.userId!)));
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
-  if (await isArchivalEngram(engram.id)) {
+  if (engram.isArchival) {
     res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
 
-  const targetSpace = await loadSpaceById(parsedBody.data.spaceId);
+  const targetSpace = await loadSpaceById(parsedBody.data.spaceId, req.userId!);
   if (!targetSpace) {
     res.status(404).json({ error: "Space not found" });
     return;
   }
 
   const presence = await movePresence({
+    ownerId: req.userId!,
     engram,
     targetSpace,
     note: parsedBody.data.note ?? null,
@@ -119,6 +120,7 @@ router.put("/hub/presence/:engramId", async (req, res) => {
   const serialized = serializePresence(presence);
   publishEvent({
     type: "presence.changed",
+    ownerId: req.userId!,
     engramId: presence.engramId,
     data: { presence: serialized, spaceName: targetSpace.name, engramName: engram.name },
   });
@@ -131,15 +133,22 @@ router.get("/hub/activity", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const rows = await loadActivity({
+  if (
+    parsed.data.spaceId !== undefined &&
+    !(await loadSpaceById(parsed.data.spaceId, req.userId!))
+  ) {
+    res.status(404).json({ error: "Space not found" });
+    return;
+  }
+  const rows = await loadActivity(req.userId!, {
     spaceId: parsed.data.spaceId,
     limit: parsed.data.limit,
   });
   res.json(rows.map(serializeActivity));
 });
 
-router.get("/hub/controls", async (_req, res) => {
-  const controls = await loadControls();
+router.get("/hub/controls", async (req, res) => {
+  const controls = await loadControls(req.userId!);
   res.json(serializeControls(controls));
 });
 
@@ -149,7 +158,7 @@ router.put("/hub/controls", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const controls = await updateControls({
+  const controls = await updateControls(req.userId!, {
     paused: parsed.data.paused,
     quietMode: parsed.data.quietMode,
   });

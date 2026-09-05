@@ -10,16 +10,18 @@ import {
 } from "@workspace/db/schema";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { appendWorldModelEntry } from "./world-model-store";
+import { SYSTEM_OWNER_ID } from "@workspace/db/schema";
 
 /** A simulation is "active" (occupying its engram's single slot) until it ends. */
 const NON_ENDED: SimulationStatus[] = ["proposed", "running", "paused"];
 
 /** List simulations, newest first, optionally filtered by engram and/or status. */
 export async function loadSimulations(opts: {
+  ownerId: string;
   engramId?: number;
   status?: SimulationStatus;
-} = {}): Promise<EngramSimulation[]> {
-  const filters = [];
+}): Promise<EngramSimulation[]> {
+  const filters = [eq(engramSimulationsTable.ownerId, opts.ownerId)];
   if (typeof opts.engramId === "number")
     filters.push(eq(engramSimulationsTable.engramId, opts.engramId));
   if (opts.status) filters.push(eq(engramSimulationsTable.status, opts.status));
@@ -33,11 +35,12 @@ export async function loadSimulations(opts: {
 
 export async function loadSimulationById(
   id: number,
+  ownerId: string,
 ): Promise<EngramSimulation | undefined> {
   const [row] = await db
     .select()
     .from(engramSimulationsTable)
-    .where(eq(engramSimulationsTable.id, id));
+    .where(and(eq(engramSimulationsTable.id, id), eq(engramSimulationsTable.ownerId, ownerId)));
   return row;
 }
 
@@ -68,7 +71,12 @@ export async function loadRunningSimulations(): Promise<EngramSimulation[]> {
   return db
     .select()
     .from(engramSimulationsTable)
-    .where(eq(engramSimulationsTable.status, "running"))
+    .where(
+      and(
+        eq(engramSimulationsTable.status, "running"),
+        ne(engramSimulationsTable.ownerId, SYSTEM_OWNER_ID),
+      ),
+    )
     .orderBy(asc(engramSimulationsTable.lastSteppedAt));
 }
 
@@ -99,6 +107,7 @@ export async function createSimulation(
 /** Patch a simulation row, always stamping updatedAt. Never touches step/world-model rows. */
 export async function updateSimulation(
   id: number,
+  ownerId: string,
   patch: Partial<{
     status: SimulationStatus;
     currentStep: number;
@@ -112,7 +121,7 @@ export async function updateSimulation(
   const [row] = await db
     .update(engramSimulationsTable)
     .set({ ...patch, updatedAt: new Date() })
-    .where(eq(engramSimulationsTable.id, id))
+    .where(and(eq(engramSimulationsTable.id, id), eq(engramSimulationsTable.ownerId, ownerId)))
     .returning();
   return row;
 }
@@ -126,6 +135,7 @@ export async function updateSimulation(
  */
 export async function claimSimulationStep(
   id: number,
+  ownerId: string,
   expectedCurrentStep: number,
   now: Date,
 ): Promise<EngramSimulation | null> {
@@ -139,6 +149,7 @@ export async function claimSimulationStep(
     .where(
       and(
         eq(engramSimulationsTable.id, id),
+        eq(engramSimulationsTable.ownerId, ownerId),
         eq(engramSimulationsTable.currentStep, expectedCurrentStep),
         eq(engramSimulationsTable.status, "running"),
       ),

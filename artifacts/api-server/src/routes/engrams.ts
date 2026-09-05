@@ -67,8 +67,10 @@ function uniqueEngramSlug(name: string, takenSlugs: string[]): string {
   return slug;
 }
 
-async function loadEngram(id: number): Promise<Engram | undefined> {
-  const [row] = await db.select().from(engramsTable).where(eq(engramsTable.id, id));
+async function loadEngram(id: number, ownerId: string): Promise<Engram | undefined> {
+  const [row] = await db.select().from(engramsTable).where(
+    and(eq(engramsTable.id, id), eq(engramsTable.ownerId, ownerId)),
+  );
   return row;
 }
 
@@ -86,14 +88,14 @@ function rejectIfArchival(engram: Engram, res: Parameters<Parameters<typeof rout
   return true;
 }
 
-router.get("/engrams", async (_req, res) => {
-  const rows = await db.select().from(engramsTable).orderBy(engramsTable.id);
+router.get("/engrams", async (req, res) => {
+  const rows = await db.select().from(engramsTable).where(eq(engramsTable.ownerId, req.userId!)).orderBy(engramsTable.id);
   res.json(rows);
 });
 
 // Must be registered before "/engrams/:id" so "tick" is not parsed as an id.
-router.post("/engrams/tick", async (_req, res) => {
-  const result = await runTick({ force: true });
+router.post("/engrams/tick", async (req, res) => {
+  const result = await runTick({ force: true, ownerId: req.userId! });
   res.json(result);
 });
 
@@ -114,15 +116,24 @@ router.post("/engrams/synthesize", async (req, res) => {
     ? body.sourceEngramIds.filter((x): x is number => typeof x === "number")
     : [];
 
-  const existing = await db.select().from(engramsTable);
+  const existing = await db.select().from(engramsTable).where(eq(engramsTable.ownerId, req.userId!));
 
   // Gather grounded archive material: observed/remembered world-model entries,
   // optionally restricted to specific source engrams.
+  // World-model rows derive their ownership from the engram. Resolve all
+  // requested IDs against the caller first; foreign IDs deliberately behave as
+  // absent and can never contribute prompt material.
+  const allowedIds = existing.map((engram) => engram.id);
+  if (sourceEngramIds.some((id) => !allowedIds.includes(id))) {
+    res.status(404).json({ error: "Engram not found" });
+    return;
+  }
   const conditions = [
     inArray(engramWorldModelTable.provenance, ["observed", "remembered"]),
-    ...(sourceEngramIds.length
-      ? [inArray(engramWorldModelTable.engramId, sourceEngramIds)]
-      : []),
+    inArray(
+      engramWorldModelTable.engramId,
+      sourceEngramIds.length ? sourceEngramIds : allowedIds,
+    ),
   ];
   const entries = await db
     .select()
@@ -163,6 +174,7 @@ router.post("/engrams/synthesize", async (req, res) => {
   const [row] = await db
     .insert(engramsTable)
     .values({
+      ownerId: req.userId!,
       slug,
       name: synthesized.name,
       title: synthesized.title,
@@ -319,7 +331,7 @@ router.post("/engrams/import-csv/confirm", async (req, res) => {
 
   try {
     const row = await db.transaction(async (tx) => {
-      const existing = await tx.select().from(engramsTable);
+      const existing = await tx.select().from(engramsTable).where(eq(engramsTable.ownerId, req.userId!));
       const slug = uniqueEngramSlug(
         confirmed.name,
         existing.map((engram) => engram.slug),
@@ -327,6 +339,7 @@ router.post("/engrams/import-csv/confirm", async (req, res) => {
       const [created] = await tx
         .insert(engramsTable)
         .values({
+          ownerId: req.userId!,
           slug,
           name: confirmed.name,
           title: confirmed.title,
@@ -385,8 +398,8 @@ router.post("/engrams/import-csv/confirm", async (req, res) => {
 });
 
 // Must be registered before "/engrams/:id" so "state" is not parsed as an id.
-router.get("/engrams/state", async (_req, res) => {
-  const rows = await db.select().from(engramsTable).orderBy(engramsTable.id);
+router.get("/engrams/state", async (req, res) => {
+  const rows = await db.select().from(engramsTable).where(eq(engramsTable.ownerId, req.userId!)).orderBy(engramsTable.id);
   const now = Date.now();
   const states = rows.map((e) => {
     const driveState = e.driveState ?? {};
@@ -429,7 +442,7 @@ router.get("/engrams/:id", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const engram = await loadEngram(parsed.data.id);
+  const engram = await loadEngram(parsed.data.id, req.userId!);
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
     return;
@@ -444,7 +457,7 @@ router.patch("/engrams/:id", async (req, res) => {
     res.status(400).json({ error: "Invalid request" });
     return;
   }
-  const engram = await loadEngram(parsedParams.data.id);
+  const engram = await loadEngram(parsedParams.data.id, req.userId!);
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
     return;
@@ -484,13 +497,13 @@ router.post("/engrams/:id/activate", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const engram = await loadEngram(parsed.data.id);
+  const engram = await loadEngram(parsed.data.id, req.userId!);
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
   if (rejectIfArchival(engram, res)) return;
-  await db.update(engramsTable).set({ isChatActive: false }).where(eq(engramsTable.isChatActive, true));
+  await db.update(engramsTable).set({ isChatActive: false }).where(and(eq(engramsTable.isChatActive, true), eq(engramsTable.ownerId, req.userId!)));
   const [updated] = await db
     .update(engramsTable)
     .set({ isChatActive: true, updatedAt: new Date() })
@@ -505,7 +518,7 @@ router.post("/engrams/:id/transmit", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const engram = await loadEngram(parsed.data.id);
+  const engram = await loadEngram(parsed.data.id, req.userId!);
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
     return;
@@ -526,6 +539,8 @@ router.get("/engrams/:id/transmissions", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const engram = await loadEngram(parsed.data.id, req.userId!);
+  if (!engram) return void res.status(404).json({ error: "Engram not found" });
   const rows = await db
     .select()
     .from(engramTransmissionsTable)
@@ -543,8 +558,12 @@ router.post("/engrams/:id/transmissions/mark-seen", async (req, res) => {
     return;
   }
   const { id } = parsedParams.data;
-  const engram = await loadEngram(id);
-  if (engram && rejectIfArchival(engram, res)) return;
+  const engram = await loadEngram(id, req.userId!);
+  if (!engram) {
+    res.status(404).json({ error: "Engram not found" });
+    return;
+  }
+  if (rejectIfArchival(engram, res)) return;
   const ids = parsedBody.data.ids;
   const filter =
     ids && ids.length > 0
@@ -565,6 +584,8 @@ router.get("/engrams/:id/inquiries", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const engram = await loadEngram(parsed.data.id, req.userId!);
+  if (!engram) return void res.status(404).json({ error: "Engram not found" });
   const rows = await db
     .select()
     .from(engramInquiriesTable)
@@ -580,7 +601,7 @@ router.post("/engrams/:id/inquiries", async (req, res) => {
     res.status(400).json({ error: "Invalid request" });
     return;
   }
-  const engram = await loadEngram(parsedParams.data.id);
+  const engram = await loadEngram(parsedParams.data.id, req.userId!);
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
     return;

@@ -11,6 +11,7 @@ import { z } from "zod/v4";
 import { engramsTable } from "./engrams";
 import { hubSpacesTable } from "./hub-spaces";
 import { engramWorldModelTable } from "./engram-world-model";
+import { SYSTEM_OWNER_ID } from "./accounts";
 
 /**
  * Lifecycle of a bounded simulation an engram runs inside a simulation chamber:
@@ -41,6 +42,8 @@ export const engramSimulationsTable = pgTable(
   "engram_simulations",
   {
     id: serial("id").primaryKey(),
+    /** Account that owns this durable job; copied from its engram at creation. */
+    ownerId: text("owner_id").notNull().default(SYSTEM_OWNER_ID),
     engramId: integer("engram_id")
       .notNull()
       .references(() => engramsTable.id, { onDelete: "cascade" }),
@@ -69,6 +72,7 @@ export const engramSimulationsTable = pgTable(
   },
   (t) => [
     index("engram_simulations_engram_idx").on(t.engramId),
+    index("engram_simulations_owner_idx").on(t.ownerId),
     index("engram_simulations_status_idx").on(t.status),
   ],
 );

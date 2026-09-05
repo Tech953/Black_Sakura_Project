@@ -11,6 +11,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { engramsTable } from "./engrams";
 import { conversations } from "./conversations";
+import { SYSTEM_OWNER_ID } from "./accounts";
 
 /**
  * What an engram can GENERATE as a file. This is the OUTPUT mirror of the media
@@ -74,6 +75,8 @@ export const engramArtifactsTable = pgTable(
   "engram_artifacts",
   {
     id: serial("id").primaryKey(),
+    /** Account that owns this durable job; copied from its engram at creation. */
+    ownerId: text("owner_id").notNull().default(SYSTEM_OWNER_ID),
     engramId: integer("engram_id")
       .notNull()
       .references(() => engramsTable.id, { onDelete: "cascade" }),
@@ -110,6 +113,7 @@ export const engramArtifactsTable = pgTable(
   },
   (t) => [
     index("engram_artifacts_engram_idx").on(t.engramId),
+    index("engram_artifacts_owner_idx").on(t.ownerId),
     index("engram_artifacts_status_idx").on(t.status),
     index("engram_artifacts_conversation_idx").on(t.conversationId),
   ],

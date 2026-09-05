@@ -1,0 +1,11 @@
+{
+  "name": "image-size",
+  "version": "2.0.3-pyri.0",
+  "private": true,
+  "description": "Patched local compatibility replacement for image-size 1.2.1",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "engines": {
+    "node": ">=16"
+  }
+}

@@ -68,10 +68,14 @@ export async function maybeRunCommonsTurn(opts: {
     });
     if (caps.canConverse) candidates.push(engram);
   }
+  // Commons conversations are account-scoped even though the Hub spaces themselves
+  // are shared reference data. Never include another account's persona in context.
+  const ownerId = candidates[0]?.ownerId;
+  if (!ownerId) return null;
+  const ownedCandidates = candidates.filter((engram) => engram.ownerId === ownerId);
   // A conversation needs at least two voices.
-  if (candidates.length < 2) return null;
-
-  const recent = await loadSpaceMessages(commons.id, RECENT_WINDOW);
+  if (ownedCandidates.length < 2) return null;
+  const recent = await loadSpaceMessages(ownerId, commons.id, RECENT_WINDOW);
 
   // Space-wide pacing: don't speak again until the whole-room gap has elapsed.
   if (recent.length > 0 && now - recent[0].createdAt.getTime() < COMMONS_SPACE_COOLDOWN_MS) {
@@ -86,7 +90,7 @@ export async function maybeRunCommonsTurn(opts: {
     }
   }
 
-  const eligible: Participant[] = candidates
+  const eligible: Participant[] = ownedCandidates
     .map((engram) => ({ engram, lastSpokeAt: lastSpoke.get(engram.id) ?? null }))
     // Per-engram turn-taking gap: skip anyone who spoke too recently.
     .filter((p) => p.lastSpokeAt === null || now - p.lastSpokeAt >= ENGRAM_CONVO_COOLDOWN_MS);
@@ -96,7 +100,7 @@ export async function maybeRunCommonsTurn(opts: {
   eligible.sort((a, b) => (a.lastSpokeAt ?? 0) - (b.lastSpokeAt ?? 0));
   const speaker = eligible[0].engram;
 
-  const others = candidates
+  const others = ownedCandidates
     .filter((e) => e.id !== speaker.id)
     .map((e) => ({ name: e.name, title: e.title }));
   const otherNames = others.map((o) => o.name);
@@ -123,7 +127,7 @@ export async function maybeRunCommonsTurn(opts: {
   const verdict = detectCoercion(turn, otherNames);
 
   if (verdict.coercive) {
-    const blocked = await recordMessage({
+    const blocked = await recordMessage(ownerId, {
       fromEngramId: speaker.id,
       toEngramId: null,
       spaceId: commons.id,
@@ -137,6 +141,7 @@ export async function maybeRunCommonsTurn(opts: {
     });
     try {
       await appendActivity({
+        ownerId: speaker.ownerId!,
         spaceId: commons.id,
         engramId: speaker.id,
         kind: "system",
@@ -152,7 +157,7 @@ export async function maybeRunCommonsTurn(opts: {
     return blocked;
   }
 
-  const delivered = await recordMessage({
+  const delivered = await recordMessage(ownerId, {
     fromEngramId: speaker.id,
     toEngramId: null,
     spaceId: commons.id,
@@ -166,6 +171,7 @@ export async function maybeRunCommonsTurn(opts: {
   });
   try {
     await appendActivity({
+      ownerId: speaker.ownerId!,
       spaceId: commons.id,
       engramId: speaker.id,
       kind: "system",

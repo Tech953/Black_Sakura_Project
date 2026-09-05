@@ -32,7 +32,13 @@ interface EngramContextValue {
 
 const EngramContext = createContext<EngramContextValue | undefined>(undefined);
 
-export function EngramProvider({ children }: { children: React.ReactNode }) {
+export function EngramProvider({
+  accountId,
+  children,
+}: {
+  accountId: string;
+  children: React.ReactNode;
+}) {
   const [selectedEngramId, setSelectedEngramIdState] = useState<number | null>(
     null,
   );
@@ -43,8 +49,8 @@ export function EngramProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const [storedSelected, storedMap] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_SELECTED),
-          AsyncStorage.getItem(STORAGE_CONVO_MAP),
+          AsyncStorage.getItem(`${STORAGE_SELECTED}.${accountId}`),
+          AsyncStorage.getItem(`${STORAGE_CONVO_MAP}.${accountId}`),
         ]);
         if (storedSelected != null) {
           const parsed = Number(storedSelected);
@@ -59,16 +65,16 @@ export function EngramProvider({ children }: { children: React.ReactNode }) {
         setHydrated(true);
       }
     })();
-  }, []);
+  }, [accountId]);
 
   const setSelectedEngramId = useCallback((id: number | null) => {
     setSelectedEngramIdState(id);
     if (id == null) {
-      AsyncStorage.removeItem(STORAGE_SELECTED).catch(() => {});
+      AsyncStorage.removeItem(`${STORAGE_SELECTED}.${accountId}`).catch(() => {});
     } else {
-      AsyncStorage.setItem(STORAGE_SELECTED, String(id)).catch(() => {});
+      AsyncStorage.setItem(`${STORAGE_SELECTED}.${accountId}`, String(id)).catch(() => {});
     }
-  }, []);
+  }, [accountId]);
 
   const getConversationId = useCallback(
     (engramId: number): number | null => conversationMap[convoKey(engramId)] ?? null,
@@ -79,13 +85,13 @@ export function EngramProvider({ children }: { children: React.ReactNode }) {
     (engramId: number, conversationId: number) => {
       setConversationMap((prev) => {
         const next = { ...prev, [convoKey(engramId)]: conversationId };
-        AsyncStorage.setItem(STORAGE_CONVO_MAP, JSON.stringify(next)).catch(
+          AsyncStorage.setItem(`${STORAGE_CONVO_MAP}.${accountId}`, JSON.stringify(next)).catch(
           () => {},
         );
         return next;
       });
     },
-    [],
+    [accountId],
   );
 
   const value = useMemo(

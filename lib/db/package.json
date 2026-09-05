@@ -8,6 +8,7 @@
     "./schema": "./src/schema/index.ts",
     "./seed": "./src/seed/index.ts",
     "./seed/engram-data": "./src/seed/engram-data.ts",
+    "./seed/rebecca-adaptive-data": "./src/seed/rebecca-adaptive-data.ts",
     "./seed/full-rezz-data": "./src/seed/full-rezz-data.ts"
   },
   "scripts": {
@@ -17,6 +18,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.3",
+    "@workspace/rebecca-source-registry": "workspace:*",
     "drizzle-orm": "catalog:",
     "drizzle-zod": "^0.8.3",
     "pg": "^8.22.0",

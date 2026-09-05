@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { engramMessagesTable } from "@workspace/db/schema";
+import { engramMessagesTable, engramsTable } from "@workspace/db/schema";
 import type {
   EngramMessage,
   EngramMessageChannel,
@@ -18,22 +18,20 @@ const CONTACTED_STATUSES = ["delivered", "queued", "digest"] as const;
  * vs human-directed). Limit is clamped to a sane ceiling.
  */
 export async function loadMessages(
+  ownerId: string,
   opts: { channel?: EngramMessageChannel; limit?: number } = {},
 ): Promise<EngramMessage[]> {
   const limit = Math.min(Math.max(opts.limit ?? MESSAGES_DEFAULT_LIMIT, 1), MESSAGES_MAX_LIMIT);
-  if (opts.channel) {
-    return db
-      .select()
-      .from(engramMessagesTable)
-      .where(eq(engramMessagesTable.channel, opts.channel))
-      .orderBy(desc(engramMessagesTable.createdAt))
-      .limit(limit);
-  }
-  return db
-    .select()
+  const conditions = [eq(engramsTable.ownerId, ownerId)];
+  if (opts.channel) conditions.push(eq(engramMessagesTable.channel, opts.channel));
+  const rows = await db
+    .select({ message: engramMessagesTable })
     .from(engramMessagesTable)
+    .innerJoin(engramsTable, eq(engramMessagesTable.fromEngramId, engramsTable.id))
+    .where(and(...conditions))
     .orderBy(desc(engramMessagesTable.createdAt))
     .limit(limit);
+  return rows.map((row) => row.message);
 }
 
 /**
@@ -42,24 +40,40 @@ export async function loadMessages(
  * to build the short transcript fed into the next conversation turn.
  */
 export async function loadSpaceMessages(
+  ownerId: string,
   spaceId: number,
   limit: number,
 ): Promise<EngramMessage[]> {
-  return db
-    .select()
+  const rows = await db
+    .select({ message: engramMessagesTable })
     .from(engramMessagesTable)
+    .innerJoin(engramsTable, eq(engramMessagesTable.fromEngramId, engramsTable.id))
     .where(
       and(
+        eq(engramsTable.ownerId, ownerId),
         eq(engramMessagesTable.spaceId, spaceId),
         eq(engramMessagesTable.channel, "engram"),
       ),
     )
     .orderBy(desc(engramMessagesTable.createdAt))
     .limit(Math.min(Math.max(limit, 1), MESSAGES_MAX_LIMIT));
+  return rows.map((row) => row.message);
 }
 
 /** Insert a single bus message (engram turn or human-contact attempt, including refusals). */
-export async function recordMessage(entry: NewEngramMessage): Promise<EngramMessage> {
+export async function recordMessage(ownerId: string, entry: NewEngramMessage): Promise<EngramMessage> {
+  const [source] = await db
+    .select({ id: engramsTable.id })
+    .from(engramsTable)
+    .where(and(eq(engramsTable.id, entry.fromEngramId), eq(engramsTable.ownerId, ownerId)));
+  if (!source) throw new Error("Engram not found");
+  if (entry.toEngramId != null) {
+    const [recipient] = await db
+      .select({ id: engramsTable.id })
+      .from(engramsTable)
+      .where(and(eq(engramsTable.id, entry.toEngramId), eq(engramsTable.ownerId, ownerId)));
+    if (!recipient) throw new Error("Engram not found");
+  }
   const [row] = await db.insert(engramMessagesTable).values(entry).returning();
   return row;
 }
@@ -69,7 +83,7 @@ export async function recordMessage(entry: NewEngramMessage): Promise<EngramMess
  * predicate keeps this scoped to the terminal: commons/audit messages can never
  * be flipped to seen through this path even if their ids are supplied.
  */
-export async function markMessagesSeen(ids: number[]): Promise<number> {
+export async function markMessagesSeen(ownerId: string, ids: number[]): Promise<number> {
   if (ids.length === 0) return 0;
   const rows = await db
     .update(engramMessagesTable)
@@ -78,6 +92,13 @@ export async function markMessagesSeen(ids: number[]): Promise<number> {
       and(
         inArray(engramMessagesTable.id, ids),
         eq(engramMessagesTable.channel, "human"),
+        inArray(
+          engramMessagesTable.fromEngramId,
+          db
+            .select({ id: engramsTable.id })
+            .from(engramsTable)
+            .where(eq(engramsTable.ownerId, ownerId)),
+        ),
       ),
     )
     .returning({ id: engramMessagesTable.id });
@@ -90,6 +111,7 @@ export async function markMessagesSeen(ids: number[]): Promise<number> {
  * Used by the rate-limit policy; pure decision logic lives in engram-policy.ts.
  */
 export async function recentHumanCounts(
+  ownerId: string,
   fromEngramId: number,
   now: Date = new Date(),
 ): Promise<{ hour: number; day: number }> {
@@ -102,6 +124,13 @@ export async function recentHumanCounts(
     .where(
       and(
         eq(engramMessagesTable.fromEngramId, fromEngramId),
+        inArray(
+          engramMessagesTable.fromEngramId,
+          db
+            .select({ id: engramsTable.id })
+            .from(engramsTable)
+            .where(and(eq(engramsTable.id, fromEngramId), eq(engramsTable.ownerId, ownerId))),
+        ),
         eq(engramMessagesTable.channel, "human"),
         inArray(engramMessagesTable.status, [...CONTACTED_STATUSES]),
         gte(engramMessagesTable.createdAt, dayAgo),

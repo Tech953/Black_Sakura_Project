@@ -17,6 +17,7 @@ export const mobileOfflineSyncReceiptsTable = pgTable(
   "mobile_offline_sync_receipts",
   {
     id: serial("id").primaryKey(),
+    ownerId: text("owner_id").notNull().default("__engram_system_template__"),
     deviceId: text("device_id").notNull(),
     syncId: text("sync_id").notNull(),
     kind: text("kind").notNull(),
@@ -27,6 +28,7 @@ export const mobileOfflineSyncReceiptsTable = pgTable(
   },
   (table) => [
     uniqueIndex("mobile_offline_sync_device_sync_unique").on(
+      table.ownerId,
       table.deviceId,
       table.syncId,
     ),

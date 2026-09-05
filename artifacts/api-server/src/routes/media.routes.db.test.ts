@@ -23,7 +23,7 @@ import {
   engramWorldModelTable,
   engramsTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   createMediaAsset,
   appendMediaObservation,
@@ -34,6 +34,7 @@ import mediaRouter from "./media";
 
 // Bring the in-memory schema up before any test runs (migrate only — no seed).
 const ready = ensureDatabaseReady({ seed: false });
+const TEST_OWNER_ID = "test_media_route_owner";
 
 // --- HTTP harness ---------------------------------------------------------------
 let server: Server;
@@ -41,9 +42,11 @@ let base: string;
 
 beforeAll(async () => {
   await ready;
+  await db.execute(sql`ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS owner_id text NOT NULL DEFAULT '__engram_system_template__'`);
   const app = express();
   // Stub the pino-http logger the routes use in error branches.
   app.use((req, _res, next) => {
+    req.userId = TEST_OWNER_ID;
     (req as unknown as { log: unknown }).log = {
       error: () => {},
       info: () => {},
@@ -68,6 +71,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await ready;
+  await db.execute(sql`ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS owner_id text NOT NULL DEFAULT '__engram_system_template__'`);
   // Children before parents (FKs): mapping + world-model rows reference assets/engrams.
   await db.delete(mediaObservationsTable);
   await db.delete(engramWorldModelTable);
@@ -82,6 +86,7 @@ async function insertEngram(): Promise<number> {
   const [row] = await db
     .insert(engramsTable)
     .values({
+      ownerId: TEST_OWNER_ID,
       slug: `route-test-engram-${engramSeq}`,
       name: `Route Test Engram ${engramSeq}`,
       title: "Test",
@@ -137,6 +142,7 @@ describe("DELETE /media/:id (real DB, real router, real store)", () => {
   it("removes the asset, its blob, and its mapping rows but PRESERVES the world-model entry", async () => {
     const engramId = await insertEngram();
     const asset = await createMediaAsset({
+      ownerId: TEST_OWNER_ID,
       engramId,
       filename: "scene.txt",
       mimeType: "text/plain",
@@ -193,6 +199,7 @@ describe("DELETE /media/:id (real DB, real router, real store)", () => {
   it("deleting a non-existent asset returns deleted:false and touches no world-model rows", async () => {
     const engramId = await insertEngram();
     const asset = await createMediaAsset({
+      ownerId: TEST_OWNER_ID,
       engramId,
       filename: "keep.txt",
       mimeType: "text/plain",
@@ -207,8 +214,8 @@ describe("DELETE /media/:id (real DB, real router, real store)", () => {
     });
 
     const res = await fetch(`${base}/media/999999`, { method: "DELETE" });
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ deleted: false });
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "Media asset not found" });
 
     // The unrelated asset and its memory are untouched.
     expect(await loadMediaAssetById(asset.id)).toBeDefined();
@@ -219,6 +226,7 @@ describe("DELETE /media/:id (real DB, real router, real store)", () => {
   it("400s on a non-numeric id without touching anything", async () => {
     const engramId = await insertEngram();
     const asset = await createMediaAsset({
+      ownerId: TEST_OWNER_ID,
       engramId,
       filename: "safe.txt",
       mimeType: "text/plain",

@@ -84,6 +84,21 @@ const llamaBin = path.join(
 );
 const llamaModel = path.join(resourcesDir, "llama", "model.gguf");
 
+// This is deliberately a CI-only packaged-smoke seam, not a user-facing
+// fallback. It lets the release check exercise the complete managed-GGUF
+// import/selection/verification/start path with a tiny syntactically-valid
+// fixture instead of distributing or downloading a real multi-GB model.
+// Normal packaged builds fail closed: neither variable has any effect unless
+// the app is running in GitHub Actions' CI environment.
+const packagedSmokeEnabled =
+  app.isPackaged &&
+  process.env.CI === "true" &&
+  process.env.GITHUB_ACTIONS === "true" &&
+  process.env.ENGRAM_PACKAGED_GGUF_SMOKE === "1";
+const packagedSmokeGguf = packagedSmokeEnabled
+  ? process.env.ENGRAM_PACKAGED_GGUF_FIXTURE
+  : undefined;
+
 function bundledModelAvailable(): boolean {
   return existsSync(llamaBin) && existsSync(llamaModel);
 }
@@ -225,6 +240,18 @@ function customGgufStore(): CustomGgufStore {
     userDataPath("models", "custom"),
   );
   return customStoreInstance;
+}
+
+async function preparePackagedSmokeCustomGguf(): Promise<void> {
+  if (!packagedSmokeGguf) return;
+  if (!path.isAbsolute(packagedSmokeGguf)) {
+    throw new Error("Packaged GGUF smoke fixture must be an absolute path.");
+  }
+  // Use the same store import and persisted selection used by the IPC flow.
+  // This is intentionally invoked only by the CI gate above.
+  const imported = await customGgufStore().importModel(packagedSmokeGguf);
+  const settings = loadSettings();
+  saveSettings({ ...settings, mode: "custom", custom: imported });
 }
 
 function managedCustomPath(metadata: CustomGgufMetadata): string {
@@ -434,6 +461,31 @@ async function startLlama(settings: Settings): Promise<void> {
     llamaModelAlias = `custom-${settings.custom.sha256.slice(0, 12)}`;
   }
   llamaPort = await findFreePort();
+  if (packagedSmokeEnabled) {
+    // A minimal loopback-only llama health endpoint is sufficient for the
+    // desktop's launch contract. It is never reachable in production because
+    // packagedSmokeEnabled is CI-gated above; custom GGUF verification still
+    // happened before this branch.
+    const fixtureRuntime = [
+      "const http=require('node:http');",
+      "const port=Number(process.argv[1]);",
+      "http.createServer((req,res)=>{",
+      "if(req.url==='/health'){res.writeHead(200,{'content-type':'application/json'});return res.end('{\"status\":\"ok\"}');}",
+      "res.writeHead(404);res.end();",
+      "}).listen(port,'127.0.0.1');",
+    ].join("");
+    const proc = spawn(process.execPath, ["-e", fixtureRuntime, String(llamaPort)], {
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    llamaProcess = proc;
+    await waitForLlamaHealth(llamaPort);
+    if (mode === "custom" && settings.custom) {
+      customRuntimeFingerprint = settings.custom.sha256;
+      customRuntimeError = null;
+    }
+    return;
+  }
   const command = buildLlamaCommand({
     executablePath: llamaBin,
     modelPath,
@@ -1266,6 +1318,7 @@ if (!gotLock) {
     buildMenu();
     try {
       await customGgufStore().cleanStalePartials();
+      await preparePackagedSmokeCustomGguf();
       await startServer();
       createMainWindow();
       setupAutoUpdates();

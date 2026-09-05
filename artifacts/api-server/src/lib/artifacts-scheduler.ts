@@ -116,6 +116,7 @@ export async function maybeRunArtifactGeneration(opts: {
 
   const { title, prompt } = buildDocumentBrief(engram);
   const job = await createArtifactJob({
+    ownerId: engram.ownerId!,
     engramId: engram.id,
     trigger: "autonomous",
     kind: "pdf",

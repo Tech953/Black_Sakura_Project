@@ -26,6 +26,7 @@ class OfflineSyncError extends Error {
 }
 
 router.post("/mobile/offline-sync", async (req, res) => {
+  const ownerId = req.userId!;
   const parsed = SyncOfflineHistoryBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -67,7 +68,7 @@ router.post("/mobile/offline-sync", async (req, res) => {
             isArchival: engramsTable.isArchival,
           })
           .from(engramsTable)
-          .where(eq(engramsTable.slug, slug))
+            .where(and(eq(engramsTable.slug, slug), eq(engramsTable.ownerId, ownerId)))
           .limit(1);
         if (!row) {
           throw new OfflineSyncError(400, `Unknown engram slug: ${slug}`);
@@ -85,9 +86,10 @@ router.post("/mobile/offline-sync", async (req, res) => {
       const claim = async (syncId: string, kind: string) => {
         const [created] = await tx
           .insert(mobileOfflineSyncReceiptsTable)
-          .values({ deviceId, syncId, kind })
+          .values({ ownerId, deviceId, syncId, kind })
           .onConflictDoNothing({
             target: [
+              mobileOfflineSyncReceiptsTable.ownerId,
               mobileOfflineSyncReceiptsTable.deviceId,
               mobileOfflineSyncReceiptsTable.syncId,
             ],
@@ -100,6 +102,7 @@ router.post("/mobile/offline-sync", async (req, res) => {
           .from(mobileOfflineSyncReceiptsTable)
           .where(
             and(
+              eq(mobileOfflineSyncReceiptsTable.ownerId, ownerId),
               eq(mobileOfflineSyncReceiptsTable.deviceId, deviceId),
               eq(mobileOfflineSyncReceiptsTable.syncId, syncId),
             ),
@@ -147,6 +150,7 @@ router.post("/mobile/offline-sync", async (req, res) => {
           const [created] = await tx
             .insert(conversations)
             .values({
+              ownerId,
               title: conversation.title ?? "Offline conversation",
               mode: conversation.mode,
               engramId: engram?.id ?? null,

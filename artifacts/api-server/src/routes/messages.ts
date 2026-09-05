@@ -31,7 +31,7 @@ router.get("/messages", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const rows = await loadMessages({
+  const rows = await loadMessages(req.userId!, {
     channel: parsed.data.channel as EngramMessageChannel | undefined,
     limit: parsed.data.limit,
   });
@@ -44,7 +44,7 @@ router.post("/messages/mark-seen", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const updated = await markMessagesSeen(parsed.data.ids);
+  const updated = await markMessagesSeen(req.userId!, parsed.data.ids);
   res.json({ updated });
 });
 

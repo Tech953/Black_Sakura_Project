@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { beliefsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { CreateBeliefBody, UpdateBeliefBody, UpdateBeliefParams, DeleteBeliefParams } from "@workspace/api-zod";
 
 const router = Router();
 
 router.get("/beliefs", async (req, res) => {
-  const rows = await db.select().from(beliefsTable).orderBy(beliefsTable.createdAt);
+  const rows = await db.select().from(beliefsTable).where(eq(beliefsTable.ownerId, req.userId!)).orderBy(beliefsTable.createdAt);
   res.json(rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString() })));
 });
 
@@ -19,6 +19,7 @@ router.post("/beliefs", async (req, res) => {
   }
   const today = new Date().toISOString().split("T")[0];
   const inserted = await db.insert(beliefsTable).values({
+    ownerId: req.userId!,
     ...parsed.data,
     lastReviewed: today,
   }).returning();
@@ -38,14 +39,14 @@ router.patch("/beliefs/:id", async (req, res) => {
     return;
   }
   const today = new Date().toISOString().split("T")[0];
-  const existing = await db.select().from(beliefsTable).where(eq(beliefsTable.id, paramsParsed.data.id)).limit(1);
+  const existing = await db.select().from(beliefsTable).where(and(eq(beliefsTable.id, paramsParsed.data.id), eq(beliefsTable.ownerId, req.userId!))).limit(1);
   if (!existing[0]) {
     res.status(404).json({ error: "Belief not found" });
     return;
   }
   const updated = await db.update(beliefsTable)
     .set({ ...bodyParsed.data, lastReviewed: today, revisionCount: existing[0].revisionCount + 1 })
-    .where(eq(beliefsTable.id, paramsParsed.data.id))
+    .where(and(eq(beliefsTable.id, paramsParsed.data.id), eq(beliefsTable.ownerId, req.userId!)))
     .returning();
   res.json({ ...updated[0], createdAt: updated[0].createdAt.toISOString() });
 });
@@ -56,7 +57,14 @@ router.delete("/beliefs/:id", async (req, res) => {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  await db.delete(beliefsTable).where(eq(beliefsTable.id, parsed.data.id));
+  const deleted = await db
+    .delete(beliefsTable)
+    .where(and(eq(beliefsTable.id, parsed.data.id), eq(beliefsTable.ownerId, req.userId!)))
+    .returning({ id: beliefsTable.id });
+  if (!deleted.length) {
+    res.status(404).json({ error: "Belief not found" });
+    return;
+  }
   res.status(204).send();
 });
 

@@ -1,7 +1,15 @@
 import * as SQLite from "expo-sqlite";
 
 import { engramSeedData, type NewEngram } from "@workspace/db/seed/engram-data";
-import type { WorldModelEntryView } from "@workspace/engram-core";
+import {
+  buildRebeccaAdaptiveMemorySource,
+  enrichRebeccaAdaptiveProfile,
+  REBECCA_ADAPTIVE_MEMORY_NODES,
+} from "@workspace/db/seed/rebecca-adaptive-data";
+import {
+  TRUSTED_REBECCA_ADAPTIVE_SOURCES,
+  type WorldModelEntryView,
+} from "@workspace/engram-core";
 import type { OfflineSyncInput } from "@workspace/api-client-react";
 
 /**
@@ -12,6 +20,41 @@ import type { OfflineSyncInput } from "@workspace/api-client-react";
  */
 let db: SQLite.SQLiteDatabase | null = null;
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+let dbPromiseAccountId: string | null = null;
+let dbAccountId: string | null = null;
+let accountId: string | null = null;
+
+/**
+ * Offline history is account-bound.  Switching Clerk accounts selects a
+ * distinct SQLite database, so neither pending sync rows nor local history can
+ * be read or uploaded by another account. The GGUF model remains device-wide;
+ * it contains no account history and can only be used after the auth gate.
+ */
+export async function setOfflineStoreAccount(nextAccountId: string): Promise<void> {
+  if (!nextAccountId) throw new Error("An authenticated account is required for offline data.");
+  if (accountId === nextAccountId) return;
+  const previous = db;
+  db = null;
+  dbAccountId = null;
+  dbPromise = null;
+  dbPromiseAccountId = null;
+  accountId = nextAccountId;
+  await previous?.closeAsync();
+}
+
+/** Account currently authorized to read or synchronize the local history. */
+export function getOfflineStoreAccountId(): string | null {
+  return accountId;
+}
+
+function databaseName(id: string | null = accountId): string {
+  if (!id) {
+    throw new Error("Offline data cannot be accessed before an account is selected.");
+  }
+  // Clerk user IDs are opaque identifiers. Keep filenames filesystem-safe
+  // without making the user ID part of a shared SQLite database.
+  return `engram-offline-${id.replace(/[^a-zA-Z0-9_-]/g, "_")}.db`;
+}
 
 const FULL_REZZ_SLUG_HINT = "rebecca-full-rezz";
 export const OFFLINE_ARCHIVAL_READ_ONLY_ERROR =
@@ -111,19 +154,43 @@ async function seedFullRezzArchive(
 }
 
 export async function getDb(): Promise<SQLite.SQLiteDatabase> {
-  if (db) return db;
-  if (!dbPromise) dbPromise = initializeDb();
+  // Existing unit tests exercise the SQLite adapter directly, outside the
+  // Clerk provider that selects an account in the app. This never runs in a
+  // shipped bundle and keeps those adapter tests explicit about their scope.
+  if (!accountId && process.env.NODE_ENV === "test") {
+    accountId = "__test_account__";
+  }
+  const selectedAccountId = accountId;
+  if (!selectedAccountId) {
+    throw new Error("Offline data cannot be accessed before an account is selected.");
+  }
+  if (db && dbAccountId === selectedAccountId) return db;
+  if (!dbPromise || dbPromiseAccountId !== selectedAccountId) {
+    dbPromise = initializeDb(selectedAccountId);
+    dbPromiseAccountId = selectedAccountId;
+  }
   try {
-    db = await dbPromise;
-    return db;
+    const opened = await dbPromise;
+    // Do not let a database that finished opening after an account change
+    // become the active store (or be returned to a stale sync operation).
+    if (accountId !== selectedAccountId) {
+      await opened.closeAsync();
+      throw new Error("Offline account changed while opening data.");
+    }
+    db = opened;
+    dbAccountId = selectedAccountId;
+    return opened;
   } catch (error) {
-    dbPromise = null;
+    if (dbPromiseAccountId === selectedAccountId) {
+      dbPromise = null;
+      dbPromiseAccountId = null;
+    }
     throw error;
   }
 }
 
-async function initializeDb(): Promise<SQLite.SQLiteDatabase> {
-  const opened = await SQLite.openDatabaseAsync("engram-offline.db");
+async function initializeDb(selectedAccountId: string): Promise<SQLite.SQLiteDatabase> {
+  const opened = await SQLite.openDatabaseAsync(databaseName(selectedAccountId));
   await opened.execAsync(`
     PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS engrams (
@@ -227,15 +294,83 @@ async function initializeDb(): Promise<SQLite.SQLiteDatabase> {
   // Seed personas once (keyed on slug, like the server's idempotent seed).
   const t = nowIso();
   for (const seed of engramSeedData) {
+    const seededProfile = enrichRebeccaAdaptiveProfile(seed);
     await opened.runAsync(
       `INSERT OR IGNORE INTO engrams (slug, data, currentMood, isChatActive, createdAt, updatedAt)
        VALUES (?, ?, ?, 0, ?, ?)`,
-      seed.slug,
-      JSON.stringify(seed),
-      (seed.currentMood as string | null) ?? null,
+      seededProfile.slug,
+      JSON.stringify(seededProfile),
+      (seededProfile.currentMood as string | null) ?? null,
       t,
       t,
     );
+  }
+  const existingRebecca = await opened.getFirstAsync<{
+    id: number;
+    data: string;
+  }>("SELECT id, data FROM engrams WHERE slug = ?", "rebecca");
+  if (existingRebecca?.data) {
+    const currentProfile = JSON.parse(existingRebecca.data) as NewEngram;
+    if (currentProfile.isArchival === true) {
+      throw new Error("Refusing to enrich an archival Rebecca record");
+    }
+    const enrichedProfile = enrichRebeccaAdaptiveProfile(currentProfile);
+    const serialized = JSON.stringify(enrichedProfile);
+    if (serialized !== existingRebecca.data) {
+      await opened.runAsync(
+        "UPDATE engrams SET data = ?, updatedAt = ? WHERE id = ?",
+        serialized,
+        t,
+        existingRebecca.id,
+      );
+    }
+    for (const node of REBECCA_ADAPTIVE_MEMORY_NODES) {
+      const source = buildRebeccaAdaptiveMemorySource(node);
+      const existingNodes = await opened.getAllAsync<{
+        provenance: string;
+        content: string;
+        confidence: number;
+        scope: string;
+        source: string;
+      }>(
+        `SELECT provenance, content, confidence, scope, source
+         FROM world_model
+         WHERE engramId = ? AND source = ?`,
+        existingRebecca.id,
+        source,
+      );
+      if (existingNodes.length > 1) {
+        throw new Error(
+          `Rebecca adaptive memory has duplicate seeded rows: ${source}`,
+        );
+      }
+      const [existingNode] = existingNodes;
+      if (existingNode) {
+        if (
+          existingNode.provenance !== node.provenance ||
+          existingNode.content !== node.content ||
+          existingNode.confidence !== node.confidence ||
+          existingNode.scope !== "private"
+        ) {
+          throw new Error(
+            `Rebecca adaptive memory has noncanonical seeded row: ${source}`,
+          );
+        }
+        continue;
+      }
+      await opened.runAsync(
+        `INSERT INTO world_model
+         (engramId, provenance, content, confidence, scope, source, createdAt, syncedAt)
+         VALUES (?, ?, ?, ?, 'private', ?, ?, ?)`,
+        existingRebecca.id,
+        node.provenance,
+        node.content,
+        node.confidence,
+        source,
+        t,
+        t,
+      );
+    }
   }
   await seedFullRezzArchive(opened);
   return opened;
@@ -615,10 +750,26 @@ export async function loadRecentWorldModel(
   limit = 40,
 ): Promise<WorldModelEntryView[]> {
   const d = await getDb();
-  return d.getAllAsync<WorldModelEntryView>(
-    "SELECT provenance, content, confidence, scope, source FROM world_model WHERE engramId = ? ORDER BY id DESC LIMIT ?",
+  type WorldModelPromptRow = WorldModelEntryView & { id: number };
+  const recent = await d.getAllAsync<WorldModelPromptRow>(
+    "SELECT id, provenance, content, confidence, scope, source FROM world_model WHERE engramId = ? ORDER BY id DESC LIMIT ?",
     engramId,
     limit,
+  );
+  const placeholders = TRUSTED_REBECCA_ADAPTIVE_SOURCES.map(() => "?").join(
+    ", ",
+  );
+  const adaptive = await d.getAllAsync<WorldModelPromptRow>(
+    `SELECT id, provenance, content, confidence, scope, source
+     FROM world_model
+     WHERE engramId = ? AND source IN (${placeholders})
+     ORDER BY id DESC`,
+    engramId,
+    ...TRUSTED_REBECCA_ADAPTIVE_SOURCES,
+  );
+  const recentIds = new Set(recent.map((entry) => entry.id));
+  return [...recent, ...adaptive.filter((entry) => !recentIds.has(entry.id))].map(
+    ({ id: _id, ...entry }) => entry,
   );
 }
 

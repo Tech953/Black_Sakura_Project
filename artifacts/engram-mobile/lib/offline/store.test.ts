@@ -12,6 +12,7 @@ vi.mock("@workspace/db/seed/engram-data", () => ({
 }));
 
 let getDb: typeof import("./store").getDb;
+let setOfflineStoreAccount: typeof import("./store").setOfflineStoreAccount;
 let buildPendingSyncBatch: typeof import("./store").buildPendingSyncBatch;
 let markSyncBatchComplete: typeof import("./store").markSyncBatchComplete;
 let markTransmissionsSeen: typeof import("./store").markTransmissionsSeen;
@@ -23,6 +24,7 @@ describe("offline SQLite failure harness", () => {
     mocks.openDatabaseAsync.mockReset();
     ({
       getDb,
+       setOfflineStoreAccount,
       buildPendingSyncBatch,
       markSyncBatchComplete,
       markTransmissionsSeen,
@@ -66,6 +68,33 @@ describe("offline SQLite failure harness", () => {
     finish();
     await expect(first).resolves.toBe(database);
     await expect(second).resolves.toBe(database);
+  });
+
+  it("uses a distinct database namespace after an account switch", async () => {
+    const first = {
+      closeAsync: vi.fn(async () => {}),
+      execAsync: vi.fn(async () => {}),
+      runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
+      getFirstAsync: vi.fn(async () => ({ id: 999 })),
+    };
+    const second = {
+      closeAsync: vi.fn(async () => {}),
+      execAsync: vi.fn(async () => {}),
+      runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
+      getFirstAsync: vi.fn(async () => ({ id: 999 })),
+    };
+    mocks.openDatabaseAsync.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+
+    await setOfflineStoreAccount("user_A");
+    await expect(getDb()).resolves.toBe(first);
+    await setOfflineStoreAccount("user_B");
+    await expect(getDb()).resolves.toBe(second);
+
+    expect(first.closeAsync).toHaveBeenCalledOnce();
+    expect(mocks.openDatabaseAsync.mock.calls.map(([name]) => name)).toEqual([
+      "engram-offline-user_A.db",
+      "engram-offline-user_B.db",
+    ]);
   });
 
   it("migrates optional conversation persona fields on existing installs", async () => {

@@ -5,7 +5,7 @@ import { Brain, Activity, Database, BookOpen, Users, Hash, FileCheck2, TrendingU
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
 const navItems = [
-  { href: "/", labelKey: "items.overview", icon: Activity },
+  { href: "/dashboard", labelKey: "items.overview", icon: Activity },
   { href: "/hub", labelKey: "items.hub", icon: Network },
   { href: "/commons", labelKey: "items.commons", icon: MessagesSquare },
   { href: "/simulations", labelKey: "items.simulations", icon: FlaskConical },
@@ -77,7 +77,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const isChat = location === "/chat";
-  const pageLabel = location === "/" ? "OVERVIEW" : location.replace("/", "").toUpperCase();
+  const pageLabel = location === "/dashboard" ? "OVERVIEW" : location.replace("/", "").toUpperCase();
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
@@ -120,7 +120,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         {!isChat && (
           <header className="hidden md:flex h-14 border-b border-border/50 items-center px-6 bg-background/50 backdrop-blur-sm z-10 shrink-0">
             <div className="font-mono text-xs text-primary/70 uppercase tracking-widest">
-              {location === "/" ? "/ OVERVIEW" : location.toUpperCase()}
+              {location === "/dashboard" ? "/ OVERVIEW" : location.toUpperCase()}
             </div>
           </header>
         )}

@@ -1,3 +1,4 @@
+export * from "./accounts";
 export * from "./personality";
 export * from "./memories";
 export * from "./journal";

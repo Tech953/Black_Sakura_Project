@@ -1,8 +1,5 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { conversations, engramsTable } from "@workspace/db/schema";
 import type { EngramArtifact, ArtifactKind } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import {
   ListArtifactsQueryParams,
   CreateArtifactBody,
@@ -24,6 +21,7 @@ import {
   artifactTouchesArchive,
   isArchivalEngram,
 } from "../lib/archival";
+import { loadOwnedConversation, loadOwnedEngram } from "../lib/account-bootstrap";
 
 const router = Router();
 
@@ -56,7 +54,15 @@ router.get("/artifacts", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (
+    parsed.data.engramId != null &&
+    !(await loadOwnedEngram(parsed.data.engramId, req.userId!))
+  ) {
+    res.status(404).json({ error: "Engram not found" });
+    return;
+  }
   const rows = await loadArtifacts({
+    ownerId: req.userId!,
     engramId: parsed.data.engramId,
     status: parsed.data.status as ArtifactJobStatus | undefined,
     kind: parsed.data.kind as ArtifactKind | undefined,
@@ -77,10 +83,7 @@ router.post("/artifacts", async (req, res) => {
   }
   const { engramId, kind, title, prompt, conversationId } = parsed.data;
   try {
-    const [engram] = await db
-      .select({ id: engramsTable.id, isArchival: engramsTable.isArchival })
-      .from(engramsTable)
-      .where(eq(engramsTable.id, engramId));
+    const engram = await loadOwnedEngram(engramId, req.userId!);
     if (!engram) {
       res.status(404).json({ error: "Engram not found" });
       return;
@@ -90,10 +93,7 @@ router.post("/artifacts", async (req, res) => {
       return;
     }
     if (conversationId != null) {
-      const [conversation] = await db
-        .select({ engramId: conversations.engramId })
-        .from(conversations)
-        .where(eq(conversations.id, conversationId));
+      const conversation = await loadOwnedConversation(conversationId, req.userId!);
       if (!conversation) {
         res.status(404).json({ error: "Conversation not found" });
         return;
@@ -110,6 +110,7 @@ router.post("/artifacts", async (req, res) => {
       }
     }
     const artifact = await createArtifactJob({
+      ownerId: req.userId!,
       engramId,
       conversationId: conversationId ?? null,
       trigger: "operator",
@@ -130,7 +131,7 @@ router.get("/artifacts/:id", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const artifact = await loadArtifactById(parsed.data.id);
+  const artifact = await loadArtifactById(parsed.data.id, req.userId!);
   if (!artifact) {
     res.status(404).json({ error: "Artifact not found" });
     return;
@@ -148,7 +149,7 @@ router.get("/artifacts/:id/raw", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const blob = await loadArtifactBlob(parsed.data.id);
+  const blob = await loadArtifactBlob(parsed.data.id, req.userId!);
   if (!blob) {
     res.status(404).json({ error: "Artifact bytes not found" });
     return;
@@ -168,7 +169,7 @@ router.post("/artifacts/:id/retry", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const artifact = await loadArtifactById(parsed.data.id);
+  const artifact = await loadArtifactById(parsed.data.id, req.userId!);
   if (!artifact) {
     res.status(404).json({ error: "Artifact not found" });
     return;
@@ -197,7 +198,7 @@ router.delete("/artifacts/:id", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const artifact = await loadArtifactById(parsed.data.id);
+  const artifact = await loadArtifactById(parsed.data.id, req.userId!);
   if (artifact && (await artifactTouchesArchive(artifact))) {
     res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;

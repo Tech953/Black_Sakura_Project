@@ -4,6 +4,8 @@ import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
+import { useAuth } from "@clerk/expo";
+import { Redirect } from "expo-router";
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
@@ -110,6 +112,9 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return null;
+  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
   if (isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
   }

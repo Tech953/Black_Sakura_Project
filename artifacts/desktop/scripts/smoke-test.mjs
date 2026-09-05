@@ -20,7 +20,7 @@
 // returns 200 and this script exits non-zero, failing the job.
 
 import { _electron as electron } from "playwright-core";
-import { existsSync, readdirSync, mkdtempSync } from "node:fs";
+import { existsSync, readdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,6 +32,19 @@ const releaseDir = path.join(desktopDir, "release");
 const LAUNCH_TIMEOUT_MS = 120_000;
 const RENDER_TIMEOUT_MS = 60_000;
 const WATCHDOG_MS = 180_000;
+
+function createTinyGgufFixture(directory) {
+  // The store's production minimum is 1 MiB. This is only a valid container
+  // header, never an inference-capable model; main.ts permits it exclusively
+  // behind its CI-only packaged-smoke gate and replaces llama-server with a
+  // loopback health stub after the real import/verification path completes.
+  const fixture = path.join(directory, "packaged-smoke.gguf");
+  const bytes = Buffer.alloc(1024 * 1024, 0);
+  bytes.write("GGUF", 0, "ascii");
+  bytes.writeUInt32LE(3, 4);
+  writeFileSync(fixture, bytes, { mode: 0o600 });
+  return fixture;
+}
 
 function log(msg) {
   console.log(`[smoke] ${msg}`);
@@ -144,6 +157,7 @@ if (process.env.EXPECT_SLIM_LLM === "1") {
 // ---------------------------------------------------------------------------
 async function main() {
   const userDataDir = mkdtempSync(path.join(os.tmpdir(), "engram-smoke-"));
+  const ggufFixture = createTinyGgufFixture(userDataDir);
   const args = [`--user-data-dir=${userDataDir}`];
   // CI Linux runs under xvfb as a privileged user with no GPU; these switches
   // keep Electron from refusing to start. They are no-ops on the runtime paths
@@ -157,6 +171,13 @@ async function main() {
     executablePath: exe,
     args,
     timeout: LAUNCH_TIMEOUT_MS,
+    env: {
+      ...process.env,
+      CI: "true",
+      GITHUB_ACTIONS: "true",
+      ENGRAM_PACKAGED_GGUF_SMOKE: "1",
+      ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
+    },
   });
 
   try {
@@ -196,7 +217,32 @@ async function main() {
     }
     log("/api/healthz -> 200 OK");
 
-    log("PASS: packaged app launches, server is healthy, dashboard loads");
+    // The startup seam imported through CustomGgufStore, persisted the custom
+    // selection, verified it immediately before launch, and started the
+    // loopback fixture runtime. Assert the selected custom model is live from
+    // the packaged Settings IPC surface as the final end-to-end proof.
+    const settingsPromise = app.waitForEvent("window", { timeout: RENDER_TIMEOUT_MS });
+    await window.keyboard.press(process.platform === "darwin" ? "Meta+," : "Control+,");
+    const settings = await settingsPromise;
+    await settings.waitForLoadState("domcontentloaded");
+    const customStatus = await settings.evaluate(async () => {
+      const value = await window.engram.getSettings();
+      return {
+        mode: value.mode,
+        status: value.customModel.status,
+        fingerprint: value.customModel.metadata?.sha256,
+      };
+    });
+    if (
+      customStatus.mode !== "custom" ||
+      customStatus.status !== "active" ||
+      !/^[a-f0-9]{64}$/.test(customStatus.fingerprint ?? "")
+    ) {
+      throw new Error(`custom GGUF import/selection/launch was not active: ${JSON.stringify(customStatus)}`);
+    }
+    log("custom GGUF import, selection, verification, and launch path active");
+
+    log("PASS: packaged app launches, server is healthy, dashboard and custom GGUF path load");
   } finally {
     try {
       await app.close();

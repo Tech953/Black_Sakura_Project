@@ -8,8 +8,19 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "node:path";
 import fs from "node:fs";
+import { clerkMiddleware } from "@clerk/express";
+import { publishableKeyFromHost } from "@clerk/shared/keys";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import {
+  CLERK_PROXY_PATH,
+  clerkProxyMiddleware,
+  getClerkProxyHost,
+} from "./middlewares/clerkProxyMiddleware";
+import {
+  configuredCorsOrigins,
+  isAllowedCorsOrigin,
+} from "./lib/cors-origin";
 
 const app: Express = express();
 
@@ -32,11 +43,33 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+const allowedCorsOrigins = configuredCorsOrigins();
+app.use(
+  cors((req, callback) => {
+    callback(null, {
+      credentials: true,
+      origin(origin, done) {
+        done(
+          null,
+          isAllowedCorsOrigin(origin, req.get("host"), allowedCorsOrigins),
+        );
+      },
+    });
+  }),
+);
 // Offline mobile reconciliation is intentionally bounded by its route schema,
 // but valid history batches can exceed Express's 100 KB default.
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use(
+  clerkMiddleware((req) => ({
+    publishableKey: publishableKeyFromHost(
+      getClerkProxyHost(req) ?? "",
+      process.env.CLERK_PUBLISHABLE_KEY,
+    ),
+  })),
+);
 
 app.use("/api", router);
 

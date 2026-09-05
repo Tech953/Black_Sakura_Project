@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { memoriesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { CreateMemoryBody, ListMemoriesQueryParams, DeleteMemoryParams } from "@workspace/api-zod";
 
 const router = Router();
@@ -12,9 +12,9 @@ router.get("/memories", async (req, res) => {
 
   let rows;
   if (layer) {
-    rows = await db.select().from(memoriesTable).where(eq(memoriesTable.layer, layer)).orderBy(memoriesTable.createdAt);
+    rows = await db.select().from(memoriesTable).where(and(eq(memoriesTable.ownerId, req.userId!), eq(memoriesTable.layer, layer))).orderBy(memoriesTable.createdAt);
   } else {
-    rows = await db.select().from(memoriesTable).orderBy(memoriesTable.createdAt);
+    rows = await db.select().from(memoriesTable).where(eq(memoriesTable.ownerId, req.userId!)).orderBy(memoriesTable.createdAt);
   }
   res.json(rows.map(r => ({
     ...r,
@@ -29,7 +29,7 @@ router.post("/memories", async (req, res) => {
     res.status(400).json({ error: "Invalid body" });
     return;
   }
-  const inserted = await db.insert(memoriesTable).values(parsed.data).returning();
+  const inserted = await db.insert(memoriesTable).values({ ...parsed.data, ownerId: req.userId! }).returning();
   const row = inserted[0];
   res.status(201).json({
     ...row,
@@ -44,7 +44,11 @@ router.delete("/memories/:id", async (req, res) => {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  await db.delete(memoriesTable).where(eq(memoriesTable.id, parsed.data.id));
+  const deleted = await db.delete(memoriesTable).where(and(eq(memoriesTable.id, parsed.data.id), eq(memoriesTable.ownerId, req.userId!))).returning({ id: memoriesTable.id });
+  if (!deleted.length) {
+    res.status(404).json({ error: "Memory not found" });
+    return;
+  }
   res.status(204).send();
 });
 

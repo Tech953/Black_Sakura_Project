@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   buildPendingSyncBatch: vi.fn(),
   markSyncBatchComplete: vi.fn(),
   syncBatchIds: vi.fn(),
+  getOfflineStoreAccountId: vi.fn(),
 }));
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
@@ -28,6 +29,7 @@ vi.mock("./store", () => ({
   buildPendingSyncBatch: mocks.buildPendingSyncBatch,
   markSyncBatchComplete: mocks.markSyncBatchComplete,
   syncBatchIds: mocks.syncBatchIds,
+  getOfflineStoreAccountId: mocks.getOfflineStoreAccountId,
 }));
 
 const pendingBatch = {
@@ -87,6 +89,7 @@ describe("offline reconnect synchronization", () => {
     for (const mock of Object.values(mocks)) mock.mockReset();
     mocks.storageGet.mockResolvedValue("device-1");
     mocks.resolveServerUrl.mockResolvedValue("https://engram.test");
+    mocks.getOfflineStoreAccountId.mockReturnValue("account-a");
     mocks.syncBatchIds.mockImplementation((batch) =>
       batch === pendingBatch ? ["conversation:7", "message:9"] : [],
     );

@@ -6,9 +6,11 @@ import {
   integer,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { SYSTEM_OWNER_ID } from "./accounts";
 
 /**
  * The kind of a Hub space. Each kind carries different default scope/logging
@@ -51,7 +53,9 @@ export const hubSpacesTable = pgTable(
   "hub_spaces",
   {
     id: serial("id").primaryKey(),
-    slug: text("slug").notNull().unique(),
+    /** Account that owns this Hub's private copy of the space template. */
+    ownerId: text("owner_id").notNull().default(SYSTEM_OWNER_ID),
+    slug: text("slug").notNull(),
     name: text("name").notNull(),
     /** One of HUB_SPACE_KINDS. */
     kind: text("kind").notNull(),
@@ -73,7 +77,10 @@ export const hubSpacesTable = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("hub_spaces_sort_idx").on(t.sortOrder)],
+  (t) => [
+    index("hub_spaces_owner_sort_idx").on(t.ownerId, t.sortOrder),
+    uniqueIndex("hub_spaces_owner_slug_unique").on(t.ownerId, t.slug),
+  ],
 );
 
 export const insertHubSpaceSchema = createInsertSchema(hubSpacesTable).omit({

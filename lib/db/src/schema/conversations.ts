@@ -1,10 +1,11 @@
-import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { engramsTable } from "./engrams";
 
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
+  ownerId: text("owner_id").notNull().default("__engram_system_template__"),
   title: text("title").notNull(),
   mode: text("mode").notNull().default("companion"),
   personaName: text("persona_name"),
@@ -13,7 +14,7 @@ export const conversations = pgTable("conversations", {
     onDelete: "set null",
   }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => [index("conversations_owner_idx").on(table.ownerId)]);
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({
   id: true,
