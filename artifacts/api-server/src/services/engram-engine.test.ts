@@ -29,9 +29,14 @@ const h = vi.hoisted(() => {
 
   function selectChain() {
     let table: unknown;
+    let joined = false;
     const chain = {
       from(t: unknown) {
         table = t;
+        return chain;
+      },
+      innerJoin() {
+        joined = true;
         return chain;
       },
       where() {
@@ -47,7 +52,7 @@ const h = vi.hoisted(() => {
         resolve: (v: unknown[]) => unknown,
         reject?: (e: unknown) => unknown,
       ) {
-        const data =
+        const rawData =
           table === engramsTable
             ? state.engrams
             : table === engramWorldModelTable
@@ -63,6 +68,10 @@ const h = vi.hoisted(() => {
                       : table === conversations
                         ? state.conversations
                         : state.recent;
+        const data =
+          joined && table === engramPresenceTable
+            ? state.presence.map((presence) => ({ presence }))
+            : rawData;
         return Promise.resolve(data).then(resolve, reject);
       },
     };
@@ -71,6 +80,29 @@ const h = vi.hoisted(() => {
 
   const db = {
     select: () => selectChain(),
+    selectDistinct: () => {
+      const chain = selectChain();
+      const originalThen = chain.then;
+      chain.then = (
+        resolve: (v: unknown[]) => unknown,
+        reject?: (e: unknown) => unknown,
+      ) =>
+        originalThen(
+          (rows) => {
+            const seen = new Set<unknown>();
+            return resolve(
+              rows.filter((row) => {
+                const ownerId = (row as { ownerId?: unknown }).ownerId;
+                if (seen.has(ownerId)) return false;
+                seen.add(ownerId);
+                return true;
+              }),
+            );
+          },
+          reject,
+        );
+      return chain;
+    },
     insert: (t: unknown) => ({
       values: (v: Record<string, unknown>) => ({
         returning: () => {
@@ -122,11 +154,13 @@ vi.mock("@workspace/db/schema", () => ({
   conversations: h.conversations,
   messages: h.messages,
   HUB_CONTROLS_ID: 1,
+  SYSTEM_OWNER_ID: "__engram_system_template__",
 }));
 vi.mock("drizzle-orm", () => ({
   and: () => ({}),
   desc: () => ({}),
   eq: () => ({}),
+  ne: () => ({}),
   gte: () => ({}),
   inArray: () => ({}),
 }));
@@ -152,6 +186,7 @@ import {
 function makeEngram(overrides: Partial<Engram> = {}): Engram {
   return {
     id: 1,
+    ownerId: "test-owner",
     slug: "test",
     isArchival: false,
     name: "Testra",

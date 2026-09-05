@@ -10,7 +10,11 @@ const h = vi.hoisted(() => {
   // Shrink the upload cap so the oversize (413) path is testable with a small
   // body. Read by media.ts at import time, so it must be set inside vi.hoisted.
   process.env["MEDIA_MAX_BYTES"] = "1024";
-  const state = { engram: { id: 3 } as { id: number } | undefined };
+  const state = {
+    engram: { id: 3, ownerId: "test-owner", isArchival: false } as
+      | { id: number; ownerId: string; isArchival: boolean }
+      | undefined,
+  };
   const db = {
     select: () => {
       const chain = {
@@ -18,7 +22,16 @@ const h = vi.hoisted(() => {
           return chain;
         },
         where() {
-          return Promise.resolve(state.engram ? [state.engram] : []);
+          return chain;
+        },
+        limit() {
+          return chain;
+        },
+        then(
+          resolve: (value: unknown[]) => unknown,
+          reject?: (error: unknown) => unknown,
+        ) {
+          return Promise.resolve(state.engram ? [state.engram] : []).then(resolve, reject);
         },
       };
       return chain;
@@ -57,6 +70,7 @@ function makeAsset(overrides: Record<string, unknown> = {}) {
   const now = new Date("2026-06-26T00:00:00Z");
   return {
     id: 7,
+    ownerId: "test-owner",
     engramId: 3,
     filename: "harbor.txt",
     mimeType: "text/plain",
@@ -94,6 +108,10 @@ let base: string;
 
 beforeAll(async () => {
   const app = express();
+  app.use((req, _res, next) => {
+    (req as unknown as { userId: string }).userId = "test-owner";
+    next();
+  });
   // Stub the pino-http logger the routes use in error branches.
   app.use((req, _res, next) => {
     (req as unknown as { log: unknown }).log = {
@@ -122,7 +140,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  h.state.engram = { id: 3 };
+  h.state.engram = { id: 3, ownerId: "test-owner", isArchival: false };
 });
 
 // --- GET /media (list) ---------------------------------------------------------
@@ -134,7 +152,11 @@ describe("GET /media", () => {
     const body = (await res.json()) as any;
     expect(Array.isArray(body)).toBe(true);
     expect(body[0]).toMatchObject({ id: 7, engramId: 3, status: "completed" });
-    expect(h.loadMediaAssets).toHaveBeenCalledWith({ engramId: 3, status: undefined });
+    expect(h.loadMediaAssets).toHaveBeenCalledWith({
+      ownerId: "test-owner",
+      engramId: 3,
+      status: undefined,
+    });
   });
 
   it("rejects an invalid status filter with 400", async () => {
@@ -176,6 +198,7 @@ describe("GET /media/:id", () => {
 // --- GET /media/:id/raw --------------------------------------------------------
 describe("GET /media/:id/raw", () => {
   it("streams the stored bytes with the stored content type", async () => {
+    h.loadMediaAssetById.mockResolvedValueOnce(makeAsset());
     h.loadMediaBlob.mockResolvedValueOnce({
       data: Buffer.from("hello bytes"),
       mimeType: "text/plain",
@@ -223,6 +246,7 @@ describe("POST /media/:id/retry", () => {
 // --- DELETE /media/:id ---------------------------------------------------------
 describe("DELETE /media/:id", () => {
   it("reports whether a row was deleted", async () => {
+    h.loadMediaAssetById.mockResolvedValueOnce(makeAsset());
     h.deleteMediaAsset.mockResolvedValueOnce(true);
     const res = await fetch(`${base}/media/7`, { method: "DELETE" });
     expect(res.status).toBe(200);

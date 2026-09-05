@@ -26,16 +26,26 @@ const h = vi.hoisted(() => {
     loadActiveSimulationForEngram: vi.fn(async () => null as EngramSimulation | null),
     loadRunningSimulations: vi.fn(async () => [] as EngramSimulation[]),
     loadSimulationSteps: vi.fn(async () => [] as { narrative: string }[]),
-    updateSimulation: vi.fn(async (id: number, patch: Record<string, unknown>) => ({
+     updateSimulation: vi.fn(
+       async (id: number, _ownerId: string, patch: Record<string, unknown>) => ({
+         id,
+         ...patch,
+       }),
+     ),
+     claimSimulationStep: vi.fn(
+       async (
+         id: number,
+         ownerId: string,
+         expectedCurrentStep: number,
+         now: Date,
+       ) => ({
       id,
-      ...patch,
-    })),
-    claimSimulationStep: vi.fn(async (id: number, expectedCurrentStep: number, now: Date) => ({
-      id,
+         ownerId,
       currentStep: expectedCurrentStep + 1,
       lastSteppedAt: now,
       status: "running",
-    })),
+       }),
+     ),
     generateSimulationPremise: vi.fn(async () => "What if the vault flooded?"),
     generateSimulationStep: vi.fn(async () => "The water rises another inch."),
     generateSimulationExitSummary: vi.fn(async () => "I learned the drains hold."),
@@ -85,6 +95,7 @@ const CHAMBER: HubSpace = {
 function makeEngram(overrides: Partial<Engram> = {}): Engram {
   return {
     id: 1,
+    ownerId: "test-owner",
     slug: "test",
     name: "Testra",
     title: "Test Construct",
@@ -102,6 +113,7 @@ function makeEngram(overrides: Partial<Engram> = {}): Engram {
 function makeSim(overrides: Partial<EngramSimulation> = {}): EngramSimulation {
   return {
     id: 7,
+    ownerId: "test-owner",
     engramId: 1,
     spaceId: CHAMBER.id,
     premise: "What if the vault flooded?",
@@ -168,7 +180,12 @@ describe("maybeRunSimulationStep — stepping", () => {
       expect.objectContaining({ stepNumber: 2, confidence: SIMULATION_STEP_CONFIDENCE }),
     );
     // The step counter is bumped atomically via the CAS claim, not a blind update.
-    expect(h.claimSimulationStep).toHaveBeenCalledWith(7, 1, expect.any(Date));
+    expect(h.claimSimulationStep).toHaveBeenCalledWith(
+      7,
+      "test-owner",
+      1,
+      expect.any(Date),
+    );
     expect(h.generateSimulationPremise).not.toHaveBeenCalled();
   });
 
@@ -200,7 +217,7 @@ describe("maybeRunSimulationStep — bounds", () => {
     expect(h.generateSimulationExitSummary).toHaveBeenCalledTimes(1);
     // Last update flips status to ended.
     const lastCall = h.updateSimulation.mock.calls.at(-1);
-    expect(lastCall?.[1]).toEqual(expect.objectContaining({ status: "ended" }));
+    expect(lastCall?.[2]).toEqual(expect.objectContaining({ status: "ended" }));
   });
 
   it("clamps the effective step ceiling to the hard cap of 10", async () => {
