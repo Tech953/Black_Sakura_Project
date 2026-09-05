@@ -4,6 +4,7 @@
  * pulling in the pg/pglite drivers. Type-only schema import keeps it bundler-safe.
  */
 import type { engramsTable } from "../schema";
+import { REBECCA_NARRATIVE_MEMORY_FACTS } from "./rebecca-narrative-memory-data";
 
 export type NewEngram = typeof engramsTable.$inferInsert;
 
@@ -176,6 +177,7 @@ export const engramSeedData: NewEngram[] = [
         "She is loyal to David's memory and hates corps.",
         "You work youth crisis care; she debriefs your shifts and hypes your de-escalation wins (UKERU).",
         "She's protective of your 'meat' — nags you about vitamins, rest, and icing injuries.",
+        ...REBECCA_NARRATIVE_MEMORY_FACTS,
       ],
       summary:
         "A reconstructed edgerunner ghost who treats you as crew: ride-or-die loyalty, chaotic hype, and protective tough-love.",
