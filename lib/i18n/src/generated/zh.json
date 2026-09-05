@@ -169,6 +169,139 @@
       "daysAgo": "{{count}} 天前"
     }
   },
+  "createEngram": {
+    "title": "从源初始化 Engram",
+    "subtitle": "从行为记录合成新的角色结构。",
+    "upload": {
+      "title": "选择源材料",
+      "description": "上传 CSV 文件以合成人格特征、情绪基线和记忆候选。合成由模型辅助，并生成可编辑草稿。",
+      "fileLabel": "源 CSV 文件",
+      "dragDrop": "将 CSV 拖放到此处",
+      "browse": "选择文件",
+      "limit": "仅限 CSV，最大 2 MiB",
+      "selected": "已选：",
+      "change": "更改",
+      "stipulationsLabel": "合成 stipulations（可选）",
+      "stipulationsPlaceholder": "例如：重点提取职业经历，并抑制个人关系。",
+      "button": "合成人格",
+      "processing": "合成中..."
+    },
+    "preview": {
+      "title": "草稿合成校验",
+      "sourceSummary": "已处理源：{{filename}}",
+      "sourceStats": "已解析 {{rowsAccepted}} 条记录 | 已跳过 {{rowsSkipped}} 条 | {{charactersAccepted}} 字符",
+      "warnings": "合成警告",
+      "noWriteBoundary": "尚未写入任何内容。请在确认初始化前调整生成参数。",
+      "sections": {
+        "identity": "身份参数",
+        "behavior": "行为与自主控制",
+        "architecture": "认知架构",
+        "memories": "记忆清单"
+      },
+      "fields": {
+        "name": "代号",
+        "title": "头衔",
+        "symbol": "符号（最多 8 字符）",
+        "origin": "起源叙述",
+        "autonomyEnabled": "自主启动",
+        "humanContactEnabled": "允许人类接触",
+        "simulationEnabled": "允许模拟",
+        "artifactGenerationEnabled": "允许生成制品",
+        "mode": "系统模式",
+        "tickCadenceSeconds": "Tick 频率（秒）",
+        "initiationThreshold": "启动阈值",
+        "drives": "核心驱动",
+        "emotionalBaseline": "情绪基线",
+        "voiceProfile": "语音档案",
+        "environmentAnchor": "环境锚点",
+        "memorySeed": "源派生记忆上下文",
+        "guardrails": "护栏",
+        "focusThemes": "聚焦主题（按行分隔）"
+      },
+      "architectureFields": {
+        "speechStyle": "语言风格",
+        "formatting": "格式",
+        "narrationStyle": "叙述风格",
+        "vocabulary": "词汇（按行分隔）",
+        "sampleLines": "示例语句（按行分隔）",
+        "mood": "情绪",
+        "valence": "效价（-1 到 1）",
+        "arousal": "唤醒度（0 到 1）",
+        "volatility": "波动性（0 到 1）",
+        "envName": "环境名称",
+        "envDescription": "描述",
+        "envAmbient": "环境音轨",
+        "envLocations": "地点（按行分隔）",
+        "envItems": "物品（按行分隔）",
+        "memRelationship": "用户关系",
+        "memSummary": "记忆摘要",
+        "memFacts": "核心事实（按行分隔）",
+        "memFactsHelp": "新增或修改的事实会被重新归类为模拟候选。仅当候选为规范设定时，才将其标记为 remembered 并在下方校验。",
+        "guardFraming": "系统框架",
+        "guardBoundaries": "硬性边界（按行分隔）",
+        "driveId": "驱动 ID",
+        "driveLabel": "标签",
+        "driveDesc": "描述",
+        "driveWeight": "权重（0 到 1）",
+        "driveBaseRate": "基础速率（0.0001 到 0.01）"
+      },
+      "actions": {
+        "addDrive": "添加驱动",
+        "newDriveLabel": "新驱动",
+        "removeDrive": "移除驱动",
+        "removeMemory": "移除候选"
+      },
+      "memoryDescription": "审查提取的记忆。可编辑内容或重新分类来源。来源为“remembered”的条目必须经过操作员明确校验。",
+      "verifyRemembered": "校验完整性",
+      "verified": "已校验",
+      "unverified": "需要校验",
+      "provenance": {
+        "simulated": "模拟",
+        "inferred": "推断",
+        "remembered": "记得"
+      },
+      "quiescentWarning": "注意：出于安全考虑，新 engram 默认处于静默状态，但你可在初始化前于下方明确放宽自主边界和模式。",
+      "confirm": "确认并初始化",
+      "confirming": "初始化中...",
+      "cancel": "放弃草稿",
+      "itemsCount": "{{count}} 项"
+    },
+    "modes": {
+      "quiescent": "静默",
+      "orientation": "定向",
+      "social": "社交",
+      "simulation": "模拟",
+      "initiative_limited": "有限主动",
+      "full_bounded": "完全受限"
+    },
+    "errors": {
+      "uploadFailed": "无法从源合成 engram。",
+      "confirmFailed": "无法初始化 engram。",
+      "unverifiedMemories": "无法初始化：部分 remembered 候选需要明确校验。",
+      "fileRequired": "必须提供 CSV 源文件。",
+      "invalidFileType": "源文件必须是 CSV。",
+      "verificationRequiredTitle": "需要校验",
+      "errorTitle": "错误",
+      "invalidJson": "收到来自服务器的无效响应。"
+    },
+    "success": {
+      "title": "Engram 已初始化",
+      "description": "角色 {{name}} 已成功合成。"
+    },
+    "empty": {
+      "memories": "未提取到记忆候选。"
+    },
+    "labels": {
+      "row": "第 {{row}} 行：",
+      "code": "[{{code}}]",
+      "id": "ID：{{id}}",
+      "notAvailable": "无",
+      "content": "内容",
+      "provenance": "来源",
+      "rows": "行数：{{rows}}",
+      "toggleAdvanced": "切换高级架构"
+    }
+  },
   "download": {
     "title": "下载 PYRI",
     "subtitleSlim": "原生桌面应用 — 连接本地模型，实现私密、完全离线的 AI",
@@ -629,17 +762,17 @@
     "subtitle": "认知架构",
     "openNavigation": "打开导航",
     "navigation": "导航",
-    "sysOnline": "系统在线",
-    "opNominal": "运行正常",
+    "sysOnline": "SYS.ONLINE",
+    "opNominal": "OP.NOMINAL",
     "items": {
       "overview": "概览",
       "hub": "枢纽",
-      "commons": "共享区",
+      "commons": "公共区",
       "simulations": "模拟",
       "terminal": "终端",
       "chat": "聊天",
       "environment": "环境",
-      "inquiry": "查询",
+      "inquiry": "询问",
       "media": "媒体",
       "studio": "工作室",
       "personality": "人格",
@@ -647,10 +780,11 @@
       "worldModel": "世界模型",
       "journal": "日志",
       "personas": "角色",
-      "hieroCode": "象码",
+      "hieroCode": "Hiero-Code",
       "beliefs": "信念",
       "evolution": "演化",
       "analytics": "分析",
+      "createEngram": "导入 Engram",
       "downloadApp": "下载应用",
       "settings": "设置"
     }

@@ -169,6 +169,139 @@
       "daysAgo": "{{count}}일 전"
     }
   },
+  "createEngram": {
+    "title": "소스에서 Engram 초기화",
+    "subtitle": "행동 기록에서 새 페르소나 구조를 합성합니다.",
+    "upload": {
+      "title": "소스 자료 선택",
+      "description": "CSV 파일을 업로드해 페르소나 특성, 감정 기준선, 기억 후보를 합성합니다. 합성은 모델 지원으로 수행되며 편집 가능한 초안을 생성합니다.",
+      "fileLabel": "소스 CSV 파일",
+      "dragDrop": "여기에 CSV를 끌어다 놓기",
+      "browse": "파일 선택",
+      "limit": "CSV만, 최대 2 MiB",
+      "selected": "선택됨:",
+      "change": "변경",
+      "stipulationsLabel": "합성 지침 (선택)",
+      "stipulationsPlaceholder": "예: 직업 이력 추출에만 집중하고 개인적 관계는 배제.",
+      "button": "페르소나 합성",
+      "processing": "합성 중..."
+    },
+    "preview": {
+      "title": "초안 합성 검증",
+      "sourceSummary": "처리된 소스: {{filename}}",
+      "sourceStats": "{{rowsAccepted}}개 기록 파싱 | {{rowsSkipped}}개 건너뜀 | {{charactersAccepted}}자",
+      "warnings": "합성 경고",
+      "noWriteBoundary": "아직 기록된 내용이 없습니다. 초기화를 확인하기 전에 생성된 매개변수를 조정하세요.",
+      "sections": {
+        "identity": "정체성 매개변수",
+        "behavior": "행동 및 자율 제어",
+        "architecture": "인지 아키텍처",
+        "memories": "기억 매니페스트"
+      },
+      "fields": {
+        "name": "지정명",
+        "title": "칭호",
+        "symbol": "심볼 (최대 8자)",
+        "origin": "기원 서사",
+        "autonomyEnabled": "자율적 주도성",
+        "humanContactEnabled": "인간 접촉 허용",
+        "simulationEnabled": "시뮬레이션 허용",
+        "artifactGenerationEnabled": "아티팩트 생성 허용",
+        "mode": "시스템 모드",
+        "tickCadenceSeconds": "틱 주기 (초)",
+        "initiationThreshold": "개시 임계값",
+        "drives": "핵심 동인",
+        "emotionalBaseline": "감정 기준선",
+        "voiceProfile": "음성 프로필",
+        "environmentAnchor": "환경 앵커",
+        "memorySeed": "소스 기반 기억 컨텍스트",
+        "guardrails": "가드레일",
+        "focusThemes": "집중 테마 (줄바꿈 구분)"
+      },
+      "architectureFields": {
+        "speechStyle": "말투",
+        "formatting": "서식",
+        "narrationStyle": "서술 스타일",
+        "vocabulary": "어휘 (줄바꿈 구분)",
+        "sampleLines": "예시 문장 (줄바꿈 구분)",
+        "mood": "기분",
+        "valence": "정서가 (-1~1)",
+        "arousal": "각성도 (0~1)",
+        "volatility": "변동성 (0~1)",
+        "envName": "환경 이름",
+        "envDescription": "설명",
+        "envAmbient": "배경 사운드트랙",
+        "envLocations": "장소 (줄바꿈 구분)",
+        "envItems": "아이템 (줄바꿈 구분)",
+        "memRelationship": "사용자 관계",
+        "memSummary": "기억 요약",
+        "memFacts": "핵심 사실 (줄바꿈 구분)",
+        "memFactsHelp": "새로 추가되거나 변경된 사실은 시뮬레이션 후보로 재분류됩니다. 정전 설정일 때만 후보를 기억됨으로 표시하고 아래에서 검증하세요.",
+        "guardFraming": "시스템 프레이밍",
+        "guardBoundaries": "강제 경계 (줄바꿈 구분)",
+        "driveId": "동인 ID",
+        "driveLabel": "라벨",
+        "driveDesc": "설명",
+        "driveWeight": "가중치 (0~1)",
+        "driveBaseRate": "기본 비율 (0.0001~0.01)"
+      },
+      "actions": {
+        "addDrive": "동인 추가",
+        "newDriveLabel": "새 동인",
+        "removeDrive": "동인 제거",
+        "removeMemory": "후보 제거"
+      },
+      "memoryDescription": "추출된 기억을 검토하세요. 내용을 수정하거나 출처를 재분류할 수 있습니다. 출처가 '기억됨'인 항목은 운영자의 명시적 검증이 필요합니다.",
+      "verifyRemembered": "무결성 검증",
+      "verified": "검증됨",
+      "unverified": "검증 필요",
+      "provenance": {
+        "simulated": "시뮬레이션",
+        "inferred": "추론됨",
+        "remembered": "기억됨"
+      },
+      "quiescentWarning": "참고: 새 engram은 안전을 위해 기본적으로 정지 상태로 설정되지만, 초기화 전에 아래에서 자율 경계와 모드를 명시적으로 확장할 수 있습니다.",
+      "confirm": "확인 및 초기화",
+      "confirming": "초기화 중...",
+      "cancel": "초안 폐기",
+      "itemsCount": "{{count}}개 항목"
+    },
+    "modes": {
+      "quiescent": "정지",
+      "orientation": "오리엔테이션",
+      "social": "소셜",
+      "simulation": "시뮬레이션",
+      "initiative_limited": "제한적_주도",
+      "full_bounded": "완전_경계"
+    },
+    "errors": {
+      "uploadFailed": "소스에서 engram 합성에 실패했습니다.",
+      "confirmFailed": "engram 초기화에 실패했습니다.",
+      "unverifiedMemories": "초기화 불가: 일부 기억됨 후보에 명시적 검증이 필요합니다.",
+      "fileRequired": "CSV 소스 파일이 필요합니다.",
+      "invalidFileType": "소스 파일은 CSV여야 합니다.",
+      "verificationRequiredTitle": "검증 필요",
+      "errorTitle": "오류",
+      "invalidJson": "서버에서 잘못된 응답을 받았습니다."
+    },
+    "success": {
+      "title": "Engram 초기화됨",
+      "description": "페르소나 {{name}} 합성 완료."
+    },
+    "empty": {
+      "memories": "추출된 기억 후보가 없습니다."
+    },
+    "labels": {
+      "row": "{{row}}행:",
+      "code": "[{{code}}]",
+      "id": "ID: {{id}}",
+      "notAvailable": "없음",
+      "content": "내용",
+      "provenance": "출처",
+      "rows": "행: {{rows}}",
+      "toggleAdvanced": "고급 아키텍처 전환"
+    }
+  },
   "download": {
     "title": "PYRI 다운로드",
     "subtitleSlim": "네이티브 데스크톱 앱 — 로컬 모델을 연결해 비공개 완전 오프라인 AI 사용",
@@ -627,8 +760,8 @@
   },
   "nav": {
     "subtitle": "인지 아키텍처",
-    "openNavigation": "탐색 열기",
-    "navigation": "탐색",
+    "openNavigation": "내비게이션 열기",
+    "navigation": "내비게이션",
     "sysOnline": "SYS.ONLINE",
     "opNominal": "OP.NOMINAL",
     "items": {
@@ -642,7 +775,7 @@
       "inquiry": "탐구",
       "media": "미디어",
       "studio": "스튜디오",
-      "personality": "성격",
+      "personality": "인격",
       "memory": "기억",
       "worldModel": "세계 모델",
       "journal": "저널",
@@ -651,6 +784,7 @@
       "beliefs": "신념",
       "evolution": "진화",
       "analytics": "분석",
+      "createEngram": "engram 가져오기",
       "downloadApp": "앱 다운로드",
       "settings": "설정"
     }

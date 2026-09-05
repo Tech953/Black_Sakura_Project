@@ -24,6 +24,7 @@ const navItems = [
   { href: "/beliefs", labelKey: "items.beliefs", icon: FileCheck2 },
   { href: "/evolution", labelKey: "items.evolution", icon: TrendingUp },
   { href: "/analytics", labelKey: "items.analytics", icon: BarChart3 },
+  { href: "/create-engram", labelKey: "items.createEngram", icon: FileCheck2 },
   { href: "/download", labelKey: "items.downloadApp", icon: Download },
   { href: "/settings", labelKey: "items.settings", icon: Settings },
 ];

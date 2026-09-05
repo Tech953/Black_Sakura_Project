@@ -169,6 +169,139 @@
       "daysAgo": "{{count}}दि पहले"
     }
   },
+  "createEngram": {
+    "title": "स्रोत से Engram प्रारंभ करें",
+    "subtitle": "व्यवहारिक अभिलेखों से नई पर्सोना संरचना संश्लेषित करें।",
+    "upload": {
+      "title": "स्रोत सामग्री चुनें",
+      "description": "पर्सोना गुण, भावनात्मक आधाररेखाएँ और स्मृति उम्मीदवार संश्लेषित करने के लिए CSV फ़ाइल अपलोड करें। संश्लेषण मॉडल-सहायित है और संपादनयोग्य मसौदा बनाता है।",
+      "fileLabel": "स्रोत CSV फ़ाइल",
+      "dragDrop": "CSV यहाँ ड्रैग और ड्रॉप करें",
+      "browse": "फ़ाइल चुनें",
+      "limit": "केवल CSV, अधिकतम 2 MiB",
+      "selected": "चयनित:",
+      "change": "बदलें",
+      "stipulationsLabel": "संश्लेषण शर्तें (वैकल्पिक)",
+      "stipulationsPlaceholder": "उदा., केवल पेशेवर इतिहास निकालने पर ध्यान दें और निजी संबंधों को दबाएँ।",
+      "button": "पर्सोना संश्लेषित करें",
+      "processing": "संश्लेषण हो रहा है..."
+    },
+    "preview": {
+      "title": "मसौदा संश्लेषण सत्यापन",
+      "sourceSummary": "स्रोत संसाधित: {{filename}}",
+      "sourceStats": "{{rowsAccepted}} अभिलेख पार्स | {{rowsSkipped}} छोड़े गए | {{charactersAccepted}} अक्षर",
+      "warnings": "संश्लेषण चेतावनियाँ",
+      "noWriteBoundary": "कोई लेखन नहीं किया गया है। प्रारंभ की पुष्टि से पहले जनरेट किए गए पैरामीटर समायोजित करें।",
+      "sections": {
+        "identity": "पहचान पैरामीटर",
+        "behavior": "व्यवहारिक और स्वायत्तता नियंत्रण",
+        "architecture": "संज्ञानात्मक आर्किटेक्चर",
+        "memories": "स्मृति मैनिफेस्ट"
+      },
+      "fields": {
+        "name": "नामांकन",
+        "title": "शीर्षक",
+        "symbol": "प्रतीक (अधिकतम 8 अक्षर)",
+        "origin": "उत्पत्ति नैरेटिव",
+        "autonomyEnabled": "स्वायत्त पहल",
+        "humanContactEnabled": "मानव संपर्क की अनुमति",
+        "simulationEnabled": "सिमुलेशन की अनुमति",
+        "artifactGenerationEnabled": "आर्टिफैक्ट जन की अनुमति",
+        "mode": "सिस्टम मोड",
+        "tickCadenceSeconds": "टिक कैडेंस (से)",
+        "initiationThreshold": "आरंभ सीमा",
+        "drives": "मुख्य ड्राइव",
+        "emotionalBaseline": "भावनात्मक आधाररेखा",
+        "voiceProfile": "वॉइस प्रोफ़ाइल",
+        "environmentAnchor": "पर्यावरण एंकर",
+        "memorySeed": "स्रोत-व्युत्पन्न स्मृति संदर्भ",
+        "guardrails": "गार्डरेल्स",
+        "focusThemes": "फोकस थीम्स (नई पंक्ति से अलग)"
+      },
+      "architectureFields": {
+        "speechStyle": "वाक् शैली",
+        "formatting": "फ़ॉर्मैटिंग",
+        "narrationStyle": "वर्णन शैली",
+        "vocabulary": "शब्दावली (नई पंक्ति से अलग)",
+        "sampleLines": "नमूना पंक्तियाँ (नई पंक्ति से अलग)",
+        "mood": "मूड",
+        "valence": "वैलेन्स (-1 से 1)",
+        "arousal": "उत्तेजना (0 से 1)",
+        "volatility": "अस्थिरता (0 से 1)",
+        "envName": "पर्यावरण नाम",
+        "envDescription": "विवरण",
+        "envAmbient": "एंबियंट साउंडट्रैक",
+        "envLocations": "स्थान (नई पंक्ति से अलग)",
+        "envItems": "आइटम्स (नई पंक्ति से अलग)",
+        "memRelationship": "उपयोगकर्ता संबंध",
+        "memSummary": "स्मृति सारांश",
+        "memFacts": "मुख्य तथ्य (नई पंक्ति से अलग)",
+        "memFactsHelp": "नए या बदले हुए तथ्यों को सिम्युलेटेड उम्मीदवारों के रूप में पुनर्वर्गीकृत किया जाता है। किसी उम्मीदवार को remembered चिह्नित करें और नीचे तभी सत्यापित करें जब वह canonical हो।",
+        "guardFraming": "सिस्टम फ्रेमिंग",
+        "guardBoundaries": "कठोर सीमाएँ (नई पंक्ति से अलग)",
+        "driveId": "ड्राइव ID",
+        "driveLabel": "लेबल",
+        "driveDesc": "विवरण",
+        "driveWeight": "वेट (0 से 1)",
+        "driveBaseRate": "बेस रेट (0.0001 से 0.01)"
+      },
+      "actions": {
+        "addDrive": "ड्राइव जोड़ें",
+        "newDriveLabel": "नई ड्राइव",
+        "removeDrive": "ड्राइव हटाएँ",
+        "removeMemory": "उम्मीदवार हटाएँ"
+      },
+      "memoryDescription": "निकाली गई स्मृतियों की समीक्षा करें। सामग्री संपादित करें या स्रोत-वर्ग बदलें। 'remembered' स्रोत वाली प्रविष्टियों के लिए स्पष्ट ऑपरेटर सत्यापन आवश्यक है।",
+      "verifyRemembered": "अखंडता सत्यापित करें",
+      "verified": "सत्यापित",
+      "unverified": "सत्यापन आवश्यक",
+      "provenance": {
+        "simulated": "सिम्युलेटेड",
+        "inferred": "अनुमित",
+        "remembered": "यादित"
+      },
+      "quiescentWarning": "नोट: सुरक्षा हेतु नए engram डिफ़ॉल्ट रूप से शांत अवस्था में रहते हैं, लेकिन प्रारंभ से पहले आप नीचे स्वायत्तता सीमाएँ और मोड स्पष्ट रूप से विस्तृत कर सकते हैं।",
+      "confirm": "पुष्टि करें और प्रारंभ करें",
+      "confirming": "प्रारंभ हो रहा है...",
+      "cancel": "मसौदा त्यागें",
+      "itemsCount": "{{count}} आइटम"
+    },
+    "modes": {
+      "quiescent": "शांत",
+      "orientation": "ओरिएंटेशन",
+      "social": "सोशल",
+      "simulation": "सिमुलेशन",
+      "initiative_limited": "सीमित_पहल",
+      "full_bounded": "पूर्ण_सीमित"
+    },
+    "errors": {
+      "uploadFailed": "स्रोत से engram संश्लेषित नहीं हो सका।",
+      "confirmFailed": "engram प्रारंभ नहीं हो सका।",
+      "unverifiedMemories": "प्रारंभ नहीं हो सकता: कुछ remembered उम्मीदवारों के लिए स्पष्ट सत्यापन आवश्यक है।",
+      "fileRequired": "CSV स्रोत फ़ाइल आवश्यक है।",
+      "invalidFileType": "स्रोत फ़ाइल CSV होनी चाहिए।",
+      "verificationRequiredTitle": "सत्यापन आवश्यक",
+      "errorTitle": "त्रुटि",
+      "invalidJson": "सर्वर से अमान्य प्रतिक्रिया मिली।"
+    },
+    "success": {
+      "title": "Engram प्रारंभ हुआ",
+      "description": "पर्सोना {{name}} सफलतापूर्वक संश्लेषित हुआ।"
+    },
+    "empty": {
+      "memories": "कोई स्मृति उम्मीदवार नहीं निकाले गए।"
+    },
+    "labels": {
+      "row": "पंक्ति {{row}}:",
+      "code": "[{{code}}]",
+      "id": "ID: {{id}}",
+      "notAvailable": "कोई नहीं",
+      "content": "सामग्री",
+      "provenance": "स्रोत",
+      "rows": "पंक्तियाँ: {{rows}}",
+      "toggleAdvanced": "उन्नत आर्किटेक्चर टॉगल करें"
+    }
+  },
   "download": {
     "title": "PYRI डाउनलोड करें",
     "subtitleSlim": "नेटिव डेस्कटॉप ऐप — निजी, पूरी तरह ऑफ़लाइन AI के लिए लोकल मॉडल कनेक्ट करें",
@@ -638,8 +771,8 @@
       "simulations": "सिमुलेशन",
       "terminal": "टर्मिनल",
       "chat": "चैट",
-      "environment": "परिवेश",
-      "inquiry": "जांच",
+      "environment": "पर्यावरण",
+      "inquiry": "पूछताछ",
       "media": "मीडिया",
       "studio": "स्टूडियो",
       "personality": "व्यक्तित्व",
@@ -647,10 +780,11 @@
       "worldModel": "विश्व मॉडल",
       "journal": "जर्नल",
       "personas": "पर्सोना",
-      "hieroCode": "हायरो-कोड",
+      "hieroCode": "हाइरो-कोड",
       "beliefs": "विश्वास",
       "evolution": "विकास",
       "analytics": "एनालिटिक्स",
+      "createEngram": "Engram आयात करें",
       "downloadApp": "ऐप डाउनलोड करें",
       "settings": "सेटिंग्स"
     }

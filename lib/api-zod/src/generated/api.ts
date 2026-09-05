@@ -783,6 +783,242 @@ export const SynthesizeEngramResponse = zod.object({
 
 
 /**
+ * Accepts multipart/form-data at runtime with a required file field and optional stipulations field. The multipart body is intentionally not modeled because the shared server validator does not include browser File globals.
+ * @summary Parse a CSV upload and prepare a short-lived editable engram draft without writing to the database
+ */
+export const previewEngramCsvImportResponseDraftNameMax = 100;
+
+export const previewEngramCsvImportResponseDraftTitleMax = 160;
+
+export const previewEngramCsvImportResponseDraftSymbolMax = 8;
+
+export const previewEngramCsvImportResponseDraftOriginMax = 500;
+
+export const previewEngramCsvImportResponseDraftMemoryCandidatesItemContentMax = 1000;
+
+export const previewEngramCsvImportResponseDraftMemoryCandidatesItemOperatorVerifiedContentMax = 1000;
+
+
+
+export const PreviewEngramCsvImportResponse = zod.object({
+  "draftId": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "source": zod.object({
+  "filename": zod.string(),
+  "rowsAccepted": zod.number(),
+  "rowsSkipped": zod.number(),
+  "charactersAccepted": zod.number(),
+  "warnings": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "row": zod.number().nullable()
+}))
+}),
+  "draft": zod.object({
+  "name": zod.string().min(1).max(previewEngramCsvImportResponseDraftNameMax),
+  "title": zod.string().min(1).max(previewEngramCsvImportResponseDraftTitleMax),
+  "symbol": zod.string().min(1).max(previewEngramCsvImportResponseDraftSymbolMax),
+  "origin": zod.string().min(1).max(previewEngramCsvImportResponseDraftOriginMax),
+  "voiceProfile": zod.object({
+  "speechStyle": zod.string(),
+  "formatting": zod.string(),
+  "vocabulary": zod.array(zod.string()),
+  "sampleLines": zod.array(zod.string()),
+  "narrationStyle": zod.string()
+}),
+  "emotionalBaseline": zod.object({
+  "valence": zod.number(),
+  "arousal": zod.number(),
+  "volatility": zod.number(),
+  "mood": zod.string()
+}),
+  "environmentAnchor": zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "locations": zod.array(zod.string()),
+  "items": zod.array(zod.string()),
+  "ambient": zod.string()
+}),
+  "memorySeed": zod.object({
+  "relationship": zod.string(),
+  "facts": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "guardrails": zod.object({
+  "framing": zod.string(),
+  "boundaries": zod.array(zod.string())
+}),
+  "drives": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "weight": zod.number(),
+  "baseRate": zod.number()
+})),
+  "focusThemes": zod.array(zod.string()),
+  "memoryCandidates": zod.array(zod.object({
+  "id": zod.string(),
+  "content": zod.string().min(1).max(previewEngramCsvImportResponseDraftMemoryCandidatesItemContentMax),
+  "provenance": zod.enum(['simulated', 'inferred', 'remembered']).describe('Uploads can never create observed entries; remembered requires explicit operator verification.'),
+  "operatorVerified": zod.boolean().describe('Must be true when provenance is remembered and is valid only for the exact operatorVerifiedContent.'),
+  "operatorVerifiedContent": zod.string().max(previewEngramCsvImportResponseDraftMemoryCandidatesItemOperatorVerifiedContentMax).nullable().describe('Exact content snapshot approved by the operator; null unless a remembered candidate is verified.'),
+  "sourceRows": zod.array(zod.number())
+})),
+  "autonomyEnabled": zod.boolean(),
+  "tickCadenceSeconds": zod.number(),
+  "initiationThreshold": zod.number(),
+  "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
+  "humanContactEnabled": zod.boolean(),
+  "simulationEnabled": zod.boolean(),
+  "artifactGenerationEnabled": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Confirm a short-lived CSV import draft and atomically create one mutable engram
+ */
+
+export const confirmEngramCsvImportBodyDraftNameMax = 100;
+
+export const confirmEngramCsvImportBodyDraftTitleMax = 160;
+
+export const confirmEngramCsvImportBodyDraftSymbolMax = 8;
+
+export const confirmEngramCsvImportBodyDraftOriginMax = 500;
+
+export const confirmEngramCsvImportBodyDraftMemoryCandidatesItemContentMax = 1000;
+
+export const confirmEngramCsvImportBodyDraftMemoryCandidatesItemOperatorVerifiedContentMax = 1000;
+
+
+
+export const ConfirmEngramCsvImportBody = zod.object({
+  "draftId": zod.string().min(1),
+  "draft": zod.object({
+  "name": zod.string().min(1).max(confirmEngramCsvImportBodyDraftNameMax),
+  "title": zod.string().min(1).max(confirmEngramCsvImportBodyDraftTitleMax),
+  "symbol": zod.string().min(1).max(confirmEngramCsvImportBodyDraftSymbolMax),
+  "origin": zod.string().min(1).max(confirmEngramCsvImportBodyDraftOriginMax),
+  "voiceProfile": zod.object({
+  "speechStyle": zod.string(),
+  "formatting": zod.string(),
+  "vocabulary": zod.array(zod.string()),
+  "sampleLines": zod.array(zod.string()),
+  "narrationStyle": zod.string()
+}),
+  "emotionalBaseline": zod.object({
+  "valence": zod.number(),
+  "arousal": zod.number(),
+  "volatility": zod.number(),
+  "mood": zod.string()
+}),
+  "environmentAnchor": zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "locations": zod.array(zod.string()),
+  "items": zod.array(zod.string()),
+  "ambient": zod.string()
+}),
+  "memorySeed": zod.object({
+  "relationship": zod.string(),
+  "facts": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "guardrails": zod.object({
+  "framing": zod.string(),
+  "boundaries": zod.array(zod.string())
+}),
+  "drives": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "weight": zod.number(),
+  "baseRate": zod.number()
+})),
+  "focusThemes": zod.array(zod.string()),
+  "memoryCandidates": zod.array(zod.object({
+  "id": zod.string(),
+  "content": zod.string().min(1).max(confirmEngramCsvImportBodyDraftMemoryCandidatesItemContentMax),
+  "provenance": zod.enum(['simulated', 'inferred', 'remembered']).describe('Uploads can never create observed entries; remembered requires explicit operator verification.'),
+  "operatorVerified": zod.boolean().describe('Must be true when provenance is remembered and is valid only for the exact operatorVerifiedContent.'),
+  "operatorVerifiedContent": zod.string().max(confirmEngramCsvImportBodyDraftMemoryCandidatesItemOperatorVerifiedContentMax).nullable().describe('Exact content snapshot approved by the operator; null unless a remembered candidate is verified.'),
+  "sourceRows": zod.array(zod.number())
+})),
+  "autonomyEnabled": zod.boolean(),
+  "tickCadenceSeconds": zod.number(),
+  "initiationThreshold": zod.number(),
+  "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
+  "humanContactEnabled": zod.boolean(),
+  "simulationEnabled": zod.boolean(),
+  "artifactGenerationEnabled": zod.boolean()
+})
+})
+
+export const ConfirmEngramCsvImportResponse = zod.object({
+  "id": zod.number(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "title": zod.string(),
+  "symbol": zod.string(),
+  "origin": zod.string(),
+  "voiceProfile": zod.object({
+  "speechStyle": zod.string(),
+  "formatting": zod.string(),
+  "vocabulary": zod.array(zod.string()),
+  "sampleLines": zod.array(zod.string()),
+  "narrationStyle": zod.string()
+}),
+  "emotionalBaseline": zod.object({
+  "valence": zod.number(),
+  "arousal": zod.number(),
+  "volatility": zod.number(),
+  "mood": zod.string()
+}),
+  "environmentAnchor": zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "locations": zod.array(zod.string()),
+  "items": zod.array(zod.string()),
+  "ambient": zod.string()
+}),
+  "memorySeed": zod.object({
+  "relationship": zod.string(),
+  "facts": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "guardrails": zod.object({
+  "framing": zod.string(),
+  "boundaries": zod.array(zod.string())
+}),
+  "drives": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "weight": zod.number(),
+  "baseRate": zod.number()
+})),
+  "focusThemes": zod.array(zod.string()),
+  "autonomyEnabled": zod.boolean(),
+  "tickCadenceSeconds": zod.number(),
+  "initiationThreshold": zod.number(),
+  "driveState": zod.record(zod.string(), zod.number()),
+  "currentMood": zod.string().optional(),
+  "lastTickAt": zod.string().optional(),
+  "lastTransmissionAt": zod.string().optional(),
+  "backoffUntil": zod.string().nullish(),
+  "isChatActive": zod.boolean(),
+  "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
+  "humanContactEnabled": zod.boolean(),
+  "simulationEnabled": zod.boolean(),
+  "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
  * @summary Live autonomy state (per-drive pressure, cooldown, backoff) for every engram
  */
 export const GetEngramStatesResponseItem = zod.object({

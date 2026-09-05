@@ -622,6 +622,115 @@ export interface EngramSynthesisInput {
   sourceEngramIds?: number[];
 }
 
+export interface EngramImportWarning {
+  code: string;
+  message: string;
+  /** @nullable */
+  row: number | null;
+}
+
+export interface EngramImportSourceSummary {
+  filename: string;
+  rowsAccepted: number;
+  rowsSkipped: number;
+  charactersAccepted: number;
+  warnings: EngramImportWarning[];
+}
+
+/**
+ * Uploads can never create observed entries; remembered requires explicit operator verification.
+ */
+export type EngramImportMemoryCandidateProvenance = typeof EngramImportMemoryCandidateProvenance[keyof typeof EngramImportMemoryCandidateProvenance];
+
+
+export const EngramImportMemoryCandidateProvenance = {
+  simulated: 'simulated',
+  inferred: 'inferred',
+  remembered: 'remembered',
+} as const;
+
+export interface EngramImportMemoryCandidate {
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  content: string;
+  /** Uploads can never create observed entries; remembered requires explicit operator verification. */
+  provenance: EngramImportMemoryCandidateProvenance;
+  /** Must be true when provenance is remembered and is valid only for the exact operatorVerifiedContent. */
+  operatorVerified: boolean;
+  /**
+     * Exact content snapshot approved by the operator; null unless a remembered candidate is verified.
+     * @maxLength 1000
+     */
+  operatorVerifiedContent: string | null;
+  sourceRows: number[];
+}
+
+export type EngramImportEditableDraftMode = typeof EngramImportEditableDraftMode[keyof typeof EngramImportEditableDraftMode];
+
+
+export const EngramImportEditableDraftMode = {
+  orientation: 'orientation',
+  social: 'social',
+  simulation: 'simulation',
+  initiative_limited: 'initiative_limited',
+  full_bounded: 'full_bounded',
+  quiescent: 'quiescent',
+} as const;
+
+export interface EngramImportEditableDraft {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 8
+     */
+  symbol: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  origin: string;
+  voiceProfile: VoiceProfile;
+  emotionalBaseline: EmotionalBaseline;
+  environmentAnchor: EnvironmentAnchor;
+  memorySeed: MemorySeed;
+  guardrails: Guardrails;
+  drives: EngramDrive[];
+  focusThemes: string[];
+  memoryCandidates: EngramImportMemoryCandidate[];
+  autonomyEnabled: boolean;
+  tickCadenceSeconds: number;
+  initiationThreshold: number;
+  mode: EngramImportEditableDraftMode;
+  humanContactEnabled: boolean;
+  simulationEnabled: boolean;
+  artifactGenerationEnabled: boolean;
+}
+
+export interface EngramImportPreview {
+  draftId: string;
+  expiresAt: string;
+  source: EngramImportSourceSummary;
+  draft: EngramImportEditableDraft;
+}
+
+export interface EngramImportConfirmation {
+  /** @minLength 1 */
+  draftId: string;
+  draft: EngramImportEditableDraft;
+}
+
 export interface SimulationCreateInput {
   engramId: number;
   /** The specific scenario the simulation should explore */

@@ -1,10 +1,12 @@
 import { Router } from "express";
+import multer from "multer";
 import { db } from "@workspace/db";
 import { responseLanguageInstruction } from "@workspace/i18n";
 import {
   engramsTable,
   engramTransmissionsTable,
   engramInquiriesTable,
+  engramWorldModelTable,
 } from "@workspace/db/schema";
 import type { Engram, EmotionalBaseline } from "@workspace/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -20,6 +22,7 @@ import {
   ListEngramInquiriesParams,
   CreateEngramInquiryParams,
   CreateEngramInquiryBody,
+  ConfirmEngramCsvImportBody,
 } from "@workspace/api-zod";
 import { runTick, forceTransmission, COOLDOWN_MS } from "../services/engram-engine";
 import {
@@ -27,12 +30,42 @@ import {
   generateDevelopment,
   generateEngramSynthesis,
 } from "../lib/engram-generation";
-import { engramWorldModelTable } from "@workspace/db/schema";
+import {
+  MAX_ENGRAM_CSV_BYTES,
+  parseEngramCsv,
+} from "../lib/engram-csv-parser";
+import {
+  generateEngramImportDraft,
+  MAX_ENGRAM_IMPORT_PROMPT_CHARS,
+  MAX_ENGRAM_IMPORT_PROMPT_ROWS,
+  sanitizeEngramImportConfirmation,
+} from "../lib/engram-import";
+import { engramImportDraftStore } from "../lib/engram-import-store";
 
 const router = Router();
 
 const TRANSMISSION_LIST_CAP = 100;
 const MAX_FACTS = 30;
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_ENGRAM_CSV_BYTES, files: 1 },
+});
+const uploadCsv = csvUpload.single("file");
+
+function uniqueEngramSlug(name: string, takenSlugs: string[]): string {
+  const base =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "imported";
+  const taken = new Set(takenSlugs);
+  let slug = base;
+  for (let suffix = 2; taken.has(slug); suffix += 1) {
+    slug = `${base}-${suffix}`;
+  }
+  return slug;
+}
 
 async function loadEngram(id: number): Promise<Engram | undefined> {
   const [row] = await db.select().from(engramsTable).where(eq(engramsTable.id, id));
@@ -150,6 +183,205 @@ router.post("/engrams/synthesize", async (req, res) => {
     .returning();
 
   res.status(201).json(row);
+});
+
+// Multipart upload is intentionally handled outside generated request-body
+// validation because @workspace/api-zod is shared with Node and cannot safely
+// reference browser File/Blob globals. The response and confirm body remain
+// contract-first and generated from OpenAPI.
+router.post("/engrams/import-csv/preview", (req, res) => {
+  uploadCsv(req, res, async (uploadError: unknown) => {
+    if (uploadError) {
+      if (uploadError instanceof multer.MulterError) {
+        const status = uploadError.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+        res.status(status).json({ error: `Upload rejected: ${uploadError.message}` });
+        return;
+      }
+      req.log.error(uploadError);
+      res.status(400).json({ error: "Upload failed" });
+      return;
+    }
+
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: "No CSV file provided (expected field 'file')." });
+      return;
+    }
+
+    const filename =
+      file.originalname.split(/[\\/]/).pop()?.trim().slice(0, 255) || "transcript.csv";
+    const parsed = parseEngramCsv(file.buffer, filename);
+    if (!parsed.ok) {
+      const unsupportedCodes = new Set([
+        "INVALID_FILENAME",
+        "BINARY_INPUT",
+        "INVALID_CSV_CONTENT",
+      ]);
+      res
+        .status(unsupportedCodes.has(parsed.error.code) ? 415 : 400)
+        .json({ error: parsed.error.message });
+      return;
+    }
+    if (parsed.rows.length === 0) {
+      res.status(400).json({ error: "The CSV did not contain any usable transcript rows." });
+      return;
+    }
+
+    const stipulations =
+      typeof req.body?.stipulations === "string"
+        ? req.body.stipulations.trim().slice(0, 2000)
+        : "";
+
+    try {
+      const draft = await generateEngramImportDraft({
+        rows: parsed.rows,
+        stipulations,
+      });
+      if (!draft) {
+        res.status(502).json({
+          error:
+            "Draft generation failed — the model did not return a usable engram preview.",
+        });
+        return;
+      }
+
+      const draftId = engramImportDraftStore.create(draft);
+      const expiresAt = engramImportDraftStore.expiresAt(draftId);
+      const warnings = [...parsed.warnings];
+      const charactersAccepted = parsed.rows.reduce(
+        (total, row) => total + row.content.length,
+        0,
+      );
+      if (
+        parsed.rows.length > MAX_ENGRAM_IMPORT_PROMPT_ROWS ||
+        charactersAccepted > MAX_ENGRAM_IMPORT_PROMPT_CHARS
+      ) {
+        warnings.push({
+          code: "SYNTHESIS_SAMPLE_TRUNCATED",
+          message:
+            "The full CSV was parsed, but draft synthesis used a bounded sample. Review the generated draft carefully.",
+          row: null,
+        });
+      }
+      const skippedCodes = new Set([
+        "SKIPPED_EMPTY_CONTENT",
+        "SKIPPED_AMBIGUOUS_ROW",
+        "TRUNCATED_ROWS",
+        "TRUNCATED_TOTAL_TEXT",
+      ]);
+      res.json({
+        draftId,
+        expiresAt: new Date(expiresAt ?? Date.now()).toISOString(),
+        source: {
+          filename,
+          rowsAccepted: parsed.rows.length,
+          rowsSkipped: warnings.filter((warning) =>
+            skippedCodes.has(warning.code),
+          ).length,
+          charactersAccepted,
+          warnings,
+        },
+        draft,
+      });
+    } catch (error) {
+      req.log.error(error);
+      res.status(502).json({ error: "Draft generation is currently unavailable." });
+    }
+  });
+});
+
+router.post("/engrams/import-csv/confirm", async (req, res) => {
+  const parsedBody = ConfirmEngramCsvImportBody.safeParse(req.body);
+  if (!parsedBody.success) {
+    res.status(400).json({ error: "Invalid import confirmation." });
+    return;
+  }
+
+  const { draftId } = parsedBody.data;
+  const confirmed = sanitizeEngramImportConfirmation(parsedBody.data.draft);
+  if (!confirmed) {
+    res.status(400).json({
+      error:
+        "The edited draft contains invalid settings or an unsafe memory provenance choice.",
+    });
+    return;
+  }
+
+  const draftStatus = engramImportDraftStore.status(draftId);
+  if (draftStatus === "missing") {
+    res.status(410).json({ error: "This import draft has expired. Upload the CSV again." });
+    return;
+  }
+  if (!engramImportDraftStore.beginConfirm(draftId)) {
+    res.status(409).json({ error: "This import draft is already being confirmed or was used." });
+    return;
+  }
+
+  try {
+    const row = await db.transaction(async (tx) => {
+      const existing = await tx.select().from(engramsTable);
+      const slug = uniqueEngramSlug(
+        confirmed.name,
+        existing.map((engram) => engram.slug),
+      );
+      const [created] = await tx
+        .insert(engramsTable)
+        .values({
+          slug,
+          name: confirmed.name,
+          title: confirmed.title,
+          symbol: confirmed.symbol,
+          origin: confirmed.origin,
+          voiceProfile: confirmed.voiceProfile,
+          emotionalBaseline: confirmed.emotionalBaseline,
+          environmentAnchor: confirmed.environmentAnchor,
+          memorySeed: confirmed.memorySeed,
+          guardrails: confirmed.guardrails,
+          drives: confirmed.drives,
+          focusThemes: confirmed.focusThemes,
+          autonomyEnabled: confirmed.autonomyEnabled,
+          tickCadenceSeconds: confirmed.tickCadenceSeconds,
+          initiationThreshold: confirmed.initiationThreshold,
+          mode: confirmed.mode,
+          humanContactEnabled: confirmed.humanContactEnabled,
+          simulationEnabled: confirmed.simulationEnabled,
+          artifactGenerationEnabled: confirmed.artifactGenerationEnabled,
+          isArchival: false,
+          driveState: {},
+          currentMood: confirmed.emotionalBaseline.mood,
+          isChatActive: false,
+        })
+        .returning();
+      if (!created) throw new Error("Engram insert did not return a row");
+
+      if (confirmed.memoryCandidates.length > 0) {
+        await tx.insert(engramWorldModelTable).values(
+          confirmed.memoryCandidates.map((candidate) => ({
+            engramId: created.id,
+            provenance: candidate.provenance,
+            content: candidate.content,
+            confidence:
+              candidate.provenance === "remembered"
+                ? 0.85
+                : candidate.provenance === "inferred"
+                  ? 0.65
+                  : 0.5,
+            scope: "private",
+            source: `csv-import:${draftId}`,
+          })),
+        );
+      }
+
+      return created;
+    });
+
+    engramImportDraftStore.consume(draftId);
+    res.status(201).json(row);
+  } catch (error) {
+    engramImportDraftStore.release(draftId);
+    req.log.error(error);
+    res.status(500).json({ error: "Engram creation failed; the draft can be retried." });
+  }
 });
 
 // Must be registered before "/engrams/:id" so "state" is not parsed as an id.

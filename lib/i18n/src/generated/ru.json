@@ -169,6 +169,139 @@
       "daysAgo": "{{count}}д назад"
     }
   },
+  "createEngram": {
+    "title": "Инициализировать Engram из источника",
+    "subtitle": "Синтезировать новую структуру личности из поведенческих записей.",
+    "upload": {
+      "title": "Выберите исходный материал",
+      "description": "Загрузите CSV-файл, чтобы синтезировать черты личности, эмоциональные базовые параметры и кандидаты памяти. Синтез выполняется с помощью модели и создает редактируемый черновик.",
+      "fileLabel": "Исходный CSV-файл",
+      "dragDrop": "Перетащите CSV сюда",
+      "browse": "Выбрать файл",
+      "limit": "Только CSV, до 2 MiB",
+      "selected": "Выбрано:",
+      "change": "Изменить",
+      "stipulationsLabel": "Условия синтеза (необязательно)",
+      "stipulationsPlaceholder": "напр., Сосредоточиться именно на профессиональной истории и подавить личные отношения.",
+      "button": "Синтезировать личность",
+      "processing": "Синтез..."
+    },
+    "preview": {
+      "title": "Проверка чернового синтеза",
+      "sourceSummary": "Источник обработан: {{filename}}",
+      "sourceStats": "{{rowsAccepted}} записей разобрано | {{rowsSkipped}} пропущено | {{charactersAccepted}} символов",
+      "warnings": "Предупреждения синтеза",
+      "noWriteBoundary": "Записи не производились. Скорректируйте сгенерированные параметры перед подтверждением инициализации.",
+      "sections": {
+        "identity": "Параметры идентичности",
+        "behavior": "Поведение и контроль автономии",
+        "architecture": "Когнитивная архитектура",
+        "memories": "Манифест памяти"
+      },
+      "fields": {
+        "name": "Обозначение",
+        "title": "Титул",
+        "symbol": "Символ (макс. 8 символов)",
+        "origin": "Нарратив происхождения",
+        "autonomyEnabled": "Автономная инициатива",
+        "humanContactEnabled": "Разрешить контакт с человеком",
+        "simulationEnabled": "Разрешить симуляцию",
+        "artifactGenerationEnabled": "Разрешить генерацию артефактов",
+        "mode": "Системный режим",
+        "tickCadenceSeconds": "Частота тиков (с)",
+        "initiationThreshold": "Порог инициации",
+        "drives": "Ключевые драйвы",
+        "emotionalBaseline": "Эмоциональный базовый уровень",
+        "voiceProfile": "Голосовой профиль",
+        "environmentAnchor": "Якорь окружения",
+        "memorySeed": "Контекст памяти из источника",
+        "guardrails": "Ограничители",
+        "focusThemes": "Темы фокуса (по одной на строку)"
+      },
+      "architectureFields": {
+        "speechStyle": "Стиль речи",
+        "formatting": "Форматирование",
+        "narrationStyle": "Стиль повествования",
+        "vocabulary": "Словарь (по одному на строку)",
+        "sampleLines": "Примеры реплик (по одной на строку)",
+        "mood": "Настроение",
+        "valence": "Валентность (-1 до 1)",
+        "arousal": "Возбуждение (0 до 1)",
+        "volatility": "Волатильность (0 до 1)",
+        "envName": "Название окружения",
+        "envDescription": "Описание",
+        "envAmbient": "Фоновый саундтрек",
+        "envLocations": "Локации (по одной на строку)",
+        "envItems": "Предметы (по одному на строку)",
+        "memRelationship": "Связь с пользователем",
+        "memSummary": "Сводка памяти",
+        "memFacts": "Ключевые факты (по одному на строку)",
+        "memFactsHelp": "Новые или измененные факты переклассифицируются как симулированные кандидаты. Помечайте кандидата как remembered и подтверждайте его ниже только если он каноничен.",
+        "guardFraming": "Системное фреймирование",
+        "guardBoundaries": "Жесткие границы (по одной на строку)",
+        "driveId": "ID драйва",
+        "driveLabel": "Метка",
+        "driveDesc": "Описание",
+        "driveWeight": "Вес (0 до 1)",
+        "driveBaseRate": "Базовая частота (0.0001 до 0.01)"
+      },
+      "actions": {
+        "addDrive": "Добавить драйв",
+        "newDriveLabel": "Новый драйв",
+        "removeDrive": "Удалить драйв",
+        "removeMemory": "Удалить кандидата"
+      },
+      "memoryDescription": "Проверьте извлеченные воспоминания. Отредактируйте содержимое или переклассифицируйте происхождение. Записи с происхождением 'remembered' требуют явной верификации оператором.",
+      "verifyRemembered": "Проверить целостность",
+      "verified": "Проверено",
+      "unverified": "Требует проверки",
+      "provenance": {
+        "simulated": "Симулированное",
+        "inferred": "Выведенное",
+        "remembered": "Remembered"
+      },
+      "quiescentWarning": "Примечание: Новые engram по умолчанию находятся в состоянии покоя ради безопасности, но перед инициализацией вы можете явно расширить границы автономии и режимы ниже.",
+      "confirm": "Подтвердить и инициализировать",
+      "confirming": "Инициализация...",
+      "cancel": "Отменить черновик",
+      "itemsCount": "{{count}} элементов"
+    },
+    "modes": {
+      "quiescent": "QUIESCENT",
+      "orientation": "ORIENTATION",
+      "social": "SOCIAL",
+      "simulation": "SIMULATION",
+      "initiative_limited": "INITIATIVE_LIMITED",
+      "full_bounded": "FULL_BOUNDED"
+    },
+    "errors": {
+      "uploadFailed": "Не удалось синтезировать engram из источника.",
+      "confirmFailed": "Не удалось инициализировать engram.",
+      "unverifiedMemories": "Невозможно инициализировать: некоторые remembered-кандидаты требуют явной проверки.",
+      "fileRequired": "Требуется исходный CSV-файл.",
+      "invalidFileType": "Исходный файл должен быть в формате CSV.",
+      "verificationRequiredTitle": "Требуется проверка",
+      "errorTitle": "Ошибка",
+      "invalidJson": "Получен недопустимый ответ от сервера."
+    },
+    "success": {
+      "title": "Engram инициализирован",
+      "description": "Личность {{name}} успешно синтезирована."
+    },
+    "empty": {
+      "memories": "Кандидаты памяти не извлечены."
+    },
+    "labels": {
+      "row": "Строка {{row}}:",
+      "code": "[{{code}}]",
+      "id": "ID: {{id}}",
+      "notAvailable": "Нет",
+      "content": "Содержимое",
+      "provenance": "Происхождение",
+      "rows": "Строк: {{rows}}",
+      "toggleAdvanced": "Переключить расширенную архитектуру"
+    }
+  },
   "download": {
     "title": "СКАЧАТЬ PYRI",
     "subtitleSlim": "Нативное десктопное приложение — подключите локальную модель для приватного, полностью офлайн AI",
@@ -638,7 +771,7 @@
       "simulations": "Симуляции",
       "terminal": "Терминал",
       "chat": "Чат",
-      "environment": "Окружение",
+      "environment": "Среда",
       "inquiry": "Запрос",
       "media": "Медиа",
       "studio": "Студия",
@@ -647,10 +780,11 @@
       "worldModel": "Модель мира",
       "journal": "Журнал",
       "personas": "Персоны",
-      "hieroCode": "Hiero-Code",
+      "hieroCode": "Hiero-код",
       "beliefs": "Убеждения",
       "evolution": "Эволюция",
       "analytics": "Аналитика",
+      "createEngram": "Импорт Engram",
       "downloadApp": "Скачать приложение",
       "settings": "Настройки"
     }

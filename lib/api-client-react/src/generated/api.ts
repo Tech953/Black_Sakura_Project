@@ -29,6 +29,8 @@ import type {
   Engram,
   EngramArtifact,
   EngramConfigInput,
+  EngramImportConfirmation,
+  EngramImportPreview,
   EngramInquiry,
   EngramInquiryInput,
   EngramLiveState,
@@ -2327,6 +2329,147 @@ export const useSynthesizeEngram = <TError = ErrorType<OpenaiError>,
         TContext
       > => {
       return useMutation(getSynthesizeEngramMutationOptions(options));
+    }
+
+export const getPreviewEngramCsvImportUrl = () => {
+
+
+
+
+  return `/api/engrams/import-csv/preview`
+}
+
+/**
+ * Accepts multipart/form-data at runtime with a required file field and optional stipulations field. The multipart body is intentionally not modeled because the shared server validator does not include browser File globals.
+ * @summary Parse a CSV upload and prepare a short-lived editable engram draft without writing to the database
+ */
+export const previewEngramCsvImport = async ( options?: RequestInit): Promise<EngramImportPreview> => {
+
+  return customFetch<EngramImportPreview>(getPreviewEngramCsvImportUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPreviewEngramCsvImportMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewEngramCsvImport>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewEngramCsvImport>>, TError,void, TContext> => {
+
+const mutationKey = ['previewEngramCsvImport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewEngramCsvImport>>, void> = () => {
+
+
+          return  previewEngramCsvImport(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewEngramCsvImportMutationResult = NonNullable<Awaited<ReturnType<typeof previewEngramCsvImport>>>
+
+    export type PreviewEngramCsvImportMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Parse a CSV upload and prepare a short-lived editable engram draft without writing to the database
+ */
+export const usePreviewEngramCsvImport = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewEngramCsvImport>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewEngramCsvImport>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPreviewEngramCsvImportMutationOptions(options));
+    }
+
+export const getConfirmEngramCsvImportUrl = () => {
+
+
+
+
+  return `/api/engrams/import-csv/confirm`
+}
+
+/**
+ * @summary Confirm a short-lived CSV import draft and atomically create one mutable engram
+ */
+export const confirmEngramCsvImport = async (engramImportConfirmation: EngramImportConfirmation, options?: RequestInit): Promise<Engram> => {
+
+  return customFetch<Engram>(getConfirmEngramCsvImportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(engramImportConfirmation)
+  }
+);}
+
+
+
+
+export const getConfirmEngramCsvImportMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmEngramCsvImport>>, TError,{data: BodyType<EngramImportConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmEngramCsvImport>>, TError,{data: BodyType<EngramImportConfirmation>}, TContext> => {
+
+const mutationKey = ['confirmEngramCsvImport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmEngramCsvImport>>, {data: BodyType<EngramImportConfirmation>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmEngramCsvImport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmEngramCsvImportMutationResult = NonNullable<Awaited<ReturnType<typeof confirmEngramCsvImport>>>
+    export type ConfirmEngramCsvImportMutationBody = BodyType<EngramImportConfirmation>
+    export type ConfirmEngramCsvImportMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Confirm a short-lived CSV import draft and atomically create one mutable engram
+ */
+export const useConfirmEngramCsvImport = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmEngramCsvImport>>, TError,{data: BodyType<EngramImportConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmEngramCsvImport>>,
+        TError,
+        {data: BodyType<EngramImportConfirmation>},
+        TContext
+      > => {
+      return useMutation(getConfirmEngramCsvImportMutationOptions(options));
     }
 
 export const getGetEngramStatesUrl = () => {
