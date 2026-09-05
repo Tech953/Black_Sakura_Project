@@ -1,12 +1,21 @@
 #!/usr/bin/env node
 
-import { existsSync, realpathSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  statSync,
+} from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const mobileRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requiredAbis = ["arm64-v8a", "x86_64"];
+const minimumArm64LoadAlignment = 0x4000n;
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -74,6 +83,71 @@ function checkExpoPackageVersions() {
   console.log("Expo package versions match the installed SDK.");
 }
 
+function findAndroidBuildTool(name) {
+  const sdkRoots = [
+    process.env.ANDROID_HOME,
+    process.env.ANDROID_SDK_ROOT,
+    path.resolve(mobileRoot, "../..", ".android-sdk"),
+  ].filter(Boolean);
+  for (const sdkRoot of sdkRoots) {
+    const buildToolsRoot = path.join(sdkRoot, "build-tools");
+    if (!existsSync(buildToolsRoot)) continue;
+    const versions = readdirSync(buildToolsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    for (const version of versions) {
+      const tool = path.join(buildToolsRoot, version, name);
+      if (existsSync(tool)) return tool;
+    }
+  }
+  throw new Error(
+    `${name} was not found in Android SDK build-tools; set ANDROID_HOME before APK verification.`,
+  );
+}
+
+function verifyArm64ElfAlignment(apkPath) {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "engram-apk-"));
+  try {
+    run("unzip", ["-qq", apkPath, "lib/arm64-v8a/*.so", "-d", tempDir], {
+      capture: true,
+    });
+    const libraryDir = path.join(tempDir, "lib", "arm64-v8a");
+    const libraries = readdirSync(libraryDir)
+      .filter((name) => name.endsWith(".so"))
+      .sort();
+    if (libraries.length === 0) {
+      throw new Error("Release APK has no arm64-v8a shared libraries.");
+    }
+    for (const library of libraries) {
+      const output = run("readelf", ["-lW", path.join(libraryDir, library)], {
+        capture: true,
+      });
+      const alignments = output
+        .split(/\r?\n/)
+        .filter((line) => /^\s*LOAD\s/.test(line))
+        .map((line) => line.trim().split(/\s+/).at(-1))
+        .filter(Boolean);
+      if (alignments.length === 0) {
+        throw new Error(`Could not read ELF LOAD segments from ${library}.`);
+      }
+      const incompatible = alignments.find(
+        (alignment) => BigInt(alignment) < minimumArm64LoadAlignment,
+      );
+      if (incompatible) {
+        throw new Error(
+          `${library} has ELF LOAD alignment ${incompatible}; Android 15/16 requires at least 0x4000.`,
+        );
+      }
+    }
+    console.log(
+      `Release APK arm64 libraries are 16 KB compatible (${libraries.length} checked).`,
+    );
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
 function verifyApk(apkPath) {
   const resolved = path.resolve(process.cwd(), apkPath);
   if (!existsSync(resolved) || !statSync(resolved).isFile()) {
@@ -82,6 +156,20 @@ function verifyApk(apkPath) {
   const entries = run("unzip", ["-Z1", resolved], { capture: true })
     .split(/\r?\n/)
     .filter(Boolean);
+  const packagedAbis = [
+    ...new Set(
+      entries
+        .map((entry) => /^lib\/([^/]+)\//.exec(entry)?.[1])
+        .filter(Boolean),
+    ),
+  ].sort();
+  const missingAbis = requiredAbis.filter((abi) => !packagedAbis.includes(abi));
+  const unsupportedAbis = packagedAbis.filter((abi) => !requiredAbis.includes(abi));
+  if (missingAbis.length > 0 || unsupportedAbis.length > 0) {
+    throw new Error(
+      `Release APK ABI set is ${packagedAbis.join(", ") || "<empty>"}; expected only ${requiredAbis.join(", ")}.`,
+    );
+  }
   const missing = requiredAbis.filter(
     (abi) =>
       !entries.some(
@@ -103,6 +191,10 @@ function verifyApk(apkPath) {
       entry.endsWith(".so"),
   );
   console.log(`Release APK contains ${packaged.length} librnllama libraries.`);
+  const zipalign = findAndroidBuildTool("zipalign");
+  run(zipalign, ["-c", "-P", "16", "-v", "4", resolved], { capture: true });
+  console.log("Release APK passes 16 KB ZIP alignment verification.");
+  verifyArm64ElfAlignment(resolved);
 }
 
 function parseArgs(argv) {

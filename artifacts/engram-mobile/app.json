@@ -2,7 +2,7 @@
   "expo": {
     "name": "ENGRAM Mobile",
     "slug": "engram-mobile",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "engram-mobile",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "ai.pyri.engram",
-      "versionCode": 3,
+      "versionCode": 4,
       "resizeableActivity": true
     },
     "web": {
@@ -35,6 +35,7 @@
       ],
       "expo-font",
       "expo-web-browser",
+      "./plugins/withAndroidLaunchReliability",
       "./plugins/withAndroidReleaseSigning"
     ],
     "experiments": {

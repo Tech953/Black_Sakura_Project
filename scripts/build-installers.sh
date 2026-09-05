@@ -133,9 +133,9 @@ if [ "$DO_ANDROID" = 1 ]; then
   export ANDROID_HOME="$SDK_DIR"
   export ANDROID_SDK_ROOT="$SDK_DIR"
   export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=768}"
-  GRADLE_JVMARGS="${ORG_GRADLE_JVMARGS:--Xmx1536m -XX:MaxMetaspaceSize=384m -Dfile.encoding=UTF-8}"
+  GRADLE_JVMARGS="${ORG_GRADLE_JVMARGS:--Xmx1536m -XX:MaxMetaspaceSize=640m -Dfile.encoding=UTF-8}"
   pnpm --filter @workspace/engram-mobile run release:preflight
-  ( cd "$MOBILE_DIR/android" && ./gradlew :app:assembleRelease -x lint --no-daemon --max-workers="${GRADLE_MAX_WORKERS:-2}" -Dorg.gradle.jvmargs="$GRADLE_JVMARGS" )
+  ( cd "$MOBILE_DIR/android" && ./gradlew :app:assembleRelease -x lint --no-daemon --max-workers="${GRADLE_MAX_WORKERS:-1}" -Dorg.gradle.jvmargs="$GRADLE_JVMARGS" )
 
   APK_SRC="$MOBILE_DIR/android/app/build/outputs/apk/release/app-release.apk"
   [ -f "$APK_SRC" ] || { echo "ERROR: APK not found at $APK_SRC" >&2; exit 1; }
@@ -161,6 +161,7 @@ if [ "$DO_ANDROID" = 1 ]; then
   find "$DOWNLOADS_DIR" -maxdepth 1 -name '*.apk' -delete
   cp "$APK_SRC" "$DOWNLOADS_DIR/ENGRAM-android-$APP_VERSION.apk"
   cp "$APK_SRC" "$DOWNLOADS_DIR/ENGRAM-android.apk"
+  ( cd "$DOWNLOADS_DIR" && sha256sum ENGRAM-android.apk > ENGRAM-android.apk.sha256 )
   echo "==> Android: refreshed $DOWNLOADS_DIR/ENGRAM-android-$APP_VERSION.apk and $DOWNLOADS_DIR/ENGRAM-android.apk"
 fi
 

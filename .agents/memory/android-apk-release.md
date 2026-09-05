@@ -45,10 +45,12 @@ unchanged regardless of how the page fetches.
 
 ### Memory-constrained release builds
 - **Why:** an unrestricted Gradle release build can have its daemon killed while
-  Metro and native CMake compilation run concurrently in the workspace.
-- **How to apply:** local installer builds use `--max-workers=2`, a 1536 MB Gradle
-  heap, reduced metaspace, and a 768 MB Node heap; retrying without these limits
-  is likely to fail before packaging.
+  Metro and native CMake compilation run concurrently in the workspace. With
+  Gradle 8.14/Kotlin 2.1, the older 384 MB metaspace limit can also produce a
+  misleading app Kotlin compile failure while parallel release tasks exhaust it.
+- **How to apply:** local installer builds use one worker, a 1536 MB Gradle heap,
+  640 MB metaspace, and a 768 MB Node heap; retrying without these limits is
+  likely to fail before packaging.
 
 ## OS/device detection ordering
 - An Android browser User-Agent string also contains the substring `linux`.
