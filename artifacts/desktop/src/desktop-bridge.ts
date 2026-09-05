@@ -15,9 +15,29 @@ export interface CustomModelView {
   metadata?: CustomModelMetadataView;
 }
 
+export type OfflineModelStatus =
+  | "none"
+  | "downloading"
+  | "partial"
+  | "available"
+  | "active"
+  | "corrupt"
+  | "error";
+
+export interface OfflineModelView {
+  filename: string;
+  expectedBytes: number;
+  expectedSha256: string;
+  storageLocation: string;
+  status: OfflineModelStatus;
+  downloadedBytes: number;
+  error?: string;
+}
+
 export interface SettingsView {
   mode: DesktopLlmMode;
   bundledAvailable: boolean;
+  bundledModelIncluded: boolean;
   allowLan: boolean;
   lanAddresses: string[];
   offline: { baseUrl: string; model: string };
@@ -25,6 +45,7 @@ export interface SettingsView {
   hasApiKey: boolean;
   encryptionAvailable: boolean;
   customModel: CustomModelView;
+  offlineModel: OfflineModelView;
 }
 
 export interface SettingsPayload {
@@ -64,6 +85,28 @@ export type GgufImportStatus =
       imported?: boolean;
     };
 
+export type OfflineModelDownloadStatus =
+  | {
+      operationId: string;
+      state: "downloading";
+      downloadedBytes: number;
+      totalBytes: number;
+      fraction: number;
+    }
+  | { operationId: string; state: "verifying" | "activating" }
+  | {
+      operationId: string;
+      state: "completed";
+      downloadedBytes: number;
+      totalBytes: number;
+    }
+  | {
+      operationId: string;
+      state: "cancelled" | "error";
+      error?: string;
+      downloaded?: boolean;
+    };
+
 export type UpdateStatus =
   | { state: "idle" }
   | { state: "checking" }
@@ -96,6 +139,18 @@ export interface EngramDesktopBridge {
   removeGguf: () => Promise<{ ok: boolean; error?: string }>;
   onGgufImportStatus: (
     callback: (status: GgufImportStatus) => void,
+  ) => () => void;
+  downloadOfflineModel: () => Promise<{
+    ok: boolean;
+    operationId?: string;
+    error?: string;
+  }>;
+  cancelOfflineModelDownload: (
+    operationId: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  removeOfflineModel: () => Promise<{ ok: boolean; error?: string }>;
+  onOfflineModelStatus: (
+    callback: (status: OfflineModelDownloadStatus) => void,
   ) => () => void;
   close: () => Promise<void>;
   getAppInfo: () => Promise<AppInfo>;
@@ -146,6 +201,27 @@ export function createEngramDesktopBridge(
       ipc.on("gguf:import-status", listener);
       return () => {
         ipc.removeListener("gguf:import-status", listener);
+      };
+    },
+    downloadOfflineModel: () =>
+      ipc.invoke("offline-model:download") as ReturnType<
+        EngramDesktopBridge["downloadOfflineModel"]
+      >,
+    cancelOfflineModelDownload: (operationId) =>
+      ipc.invoke(
+        "offline-model:cancel",
+        operationId,
+      ) as ReturnType<EngramDesktopBridge["cancelOfflineModelDownload"]>,
+    removeOfflineModel: () =>
+      ipc.invoke("offline-model:remove") as ReturnType<
+        EngramDesktopBridge["removeOfflineModel"]
+      >,
+    onOfflineModelStatus: (callback) => {
+      const listener = (_event: unknown, payload: unknown): void =>
+        callback(payload as OfflineModelDownloadStatus);
+      ipc.on("offline-model:status", listener);
+      return () => {
+        ipc.removeListener("offline-model:status", listener);
       };
     },
     close: () => ipc.invoke("settings:close") as Promise<void>,
