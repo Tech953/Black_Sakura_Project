@@ -157,7 +157,8 @@
         if (!s.bundledAvailable) {
           const radio = document.querySelector('input[name="mode"][value="bundled"]');
           radio.disabled = true;
-          $("bundled-hint").textContent = "This build does not include a bundled model.";
+          $("bundled-hint").textContent =
+            "This slim build does not include a bundled model. Choose Local server to stay offline with Ollama, LM Studio, or another OpenAI-compatible endpoint.";
           if (s.mode === "bundled") s.mode = "offline";
         }
         document.querySelector(`input[name="mode"][value="${s.mode}"]`).checked = true;

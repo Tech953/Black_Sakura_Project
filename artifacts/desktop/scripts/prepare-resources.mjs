@@ -18,6 +18,14 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const desktopDir = path.join(here, ".."); // artifacts/desktop
 const repoRoot = path.join(desktopDir, "..", ".."); // workspace root
 const resources = path.join(desktopDir, "resources");
+const bundleLlmSetting = process.env.DESKTOP_BUNDLE_LLM ?? "1";
+
+if (bundleLlmSetting !== "0" && bundleLlmSetting !== "1") {
+  throw new Error(
+    `Invalid DESKTOP_BUNDLE_LLM="${bundleLlmSetting}" (expected "0" or "1").`,
+  );
+}
+const bundleLlm = bundleLlmSetting === "1";
 
 function requireDir(dir, hint) {
   if (!existsSync(dir)) {
@@ -151,9 +159,12 @@ cpSync(ffprobeSrc, ffprobeOut);
 chmodSync(ffmpegOut, 0o755);
 chmodSync(ffprobeOut, 0o755);
 
-// 6. Bundled local LLM (llama.cpp server + GGUF model) so chat/analysis/
+// 6. Optional bundled local LLM (llama.cpp server + GGUF model) so chat/analysis/
 //    simulation run fully offline with zero setup. Staged from the repo-root
-//    `.llama/` cache (gitignored). Targets pkgTarget (see above).
+//    `.llama/` cache (gitignored). Targets pkgTarget (see above). Windows release
+//    builds set DESKTOP_BUNDLE_LLM=0 to stay browser-downloadable; those builds
+//    retain offline operation through Ollama/LM Studio/local OpenAI-compatible
+//    servers and can also use the configured cloud provider.
 //    If the cache is missing, the build still succeeds WITHOUT a bundled
 //    model — the app then falls back to the external-local-server mode.
 const llamaCache = path.join(repoRoot, ".llama");
@@ -222,6 +233,16 @@ function stageLlama() {
   );
 }
 
-stageLlama();
+if (bundleLlm) {
+  stageLlama();
+} else {
+  // Keep the directory present because electron-builder copies it via an
+  // unconditional extraResources entry.
+  mkdirSync(path.join(resources, "llama"), { recursive: true });
+  console.log(
+    "[desktop] bundled LLM intentionally omitted (DESKTOP_BUNDLE_LLM=0); " +
+      "the app will use external local-server or cloud mode.",
+  );
+}
 
 console.log("[desktop] resources prepared ->", resources);
