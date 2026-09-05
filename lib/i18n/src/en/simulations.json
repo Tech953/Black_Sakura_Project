@@ -18,6 +18,7 @@
   "openedDescription": "The first beat is being generated now.",
   "openError": "Failed to open simulation",
   "openErrorTitle": "Could not open simulation",
+  "retry": "Retry",
   "status": {
     "proposed": "Proposed",
     "running": "Running",

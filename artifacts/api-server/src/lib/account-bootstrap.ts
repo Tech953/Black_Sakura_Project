@@ -30,33 +30,50 @@ import {
  */
 export async function ensureAccountBootstrap(ownerId: string): Promise<void> {
   await db.transaction(async (tx) => {
-    const [created] = await tx
+    await tx
       .insert(accountsTable)
       .values({ id: ownerId })
       .onConflictDoNothing()
       .returning({ id: accountsTable.id });
-    if (!created) return;
 
-    const [templatePersonality] = await tx
-      .select()
+    const [accountPersonality] = await tx
+      .select({ id: personalityTable.id })
       .from(personalityTable)
-      .where(eq(personalityTable.ownerId, SYSTEM_OWNER_ID))
+      .where(eq(personalityTable.ownerId, ownerId))
       .limit(1);
-    if (templatePersonality) {
-      const { id: _id, ownerId: _ownerId, updatedAt: _updatedAt, ...values } =
-        templatePersonality;
-      await tx.insert(personalityTable).values({ ...values, ownerId });
+    if (accountPersonality) {
+      // The account may predate a newer template set. Continue below so newly
+      // added engrams (such as Full Rezz) are still backfilled.
     } else {
-      await tx.insert(personalityTable).values({ ownerId });
+      const [templatePersonality] = await tx
+        .select()
+        .from(personalityTable)
+        .where(eq(personalityTable.ownerId, SYSTEM_OWNER_ID))
+        .limit(1);
+      if (templatePersonality) {
+        const { id: _id, ownerId: _ownerId, updatedAt: _updatedAt, ...values } =
+          templatePersonality;
+        await tx.insert(personalityTable).values({ ...values, ownerId });
+      } else {
+        await tx.insert(personalityTable).values({ ownerId });
+      }
     }
 
     const spaceTemplates = await tx
       .select()
       .from(hubSpacesTable)
       .where(eq(hubSpacesTable.ownerId, SYSTEM_OWNER_ID));
-    if (spaceTemplates.length) {
+    const accountSpaces = await tx
+      .select({ slug: hubSpacesTable.slug })
+      .from(hubSpacesTable)
+      .where(eq(hubSpacesTable.ownerId, ownerId));
+    const accountSpaceSlugs = new Set(accountSpaces.map(({ slug }) => slug));
+    const missingSpaces = spaceTemplates.filter(
+      (space) => !accountSpaceSlugs.has(space.slug),
+    );
+    if (missingSpaces.length) {
       await tx.insert(hubSpacesTable).values(
-        spaceTemplates.map(({ id: _id, ownerId: _ownerId, createdAt: _createdAt, updatedAt: _updatedAt, ...values }) => ({
+        missingSpaces.map(({ id: _id, ownerId: _ownerId, createdAt: _createdAt, updatedAt: _updatedAt, ...values }) => ({
           ...values,
           ownerId,
         })),
@@ -67,9 +84,17 @@ export async function ensureAccountBootstrap(ownerId: string): Promise<void> {
       .select()
       .from(engramsTable)
       .where(eq(engramsTable.ownerId, SYSTEM_OWNER_ID));
-    if (templates.length) {
+    const accountEngrams = await tx
+      .select({ id: engramsTable.id, slug: engramsTable.slug })
+      .from(engramsTable)
+      .where(eq(engramsTable.ownerId, ownerId));
+    const accountEngramSlugs = new Set(accountEngrams.map(({ slug }) => slug));
+    const missingTemplates = templates.filter(
+      (template) => !accountEngramSlugs.has(template.slug),
+    );
+    if (missingTemplates.length) {
       const createdEngrams = await tx.insert(engramsTable).values(
-        templates.map(({ id: _id, ownerId: _ownerId, createdAt: _createdAt, updatedAt: _updatedAt, ...values }) => ({
+        missingTemplates.map(({ id: _id, ownerId: _ownerId, createdAt: _createdAt, updatedAt: _updatedAt, ...values }) => ({
           ...values,
           ownerId,
         })),

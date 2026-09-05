@@ -33,6 +33,7 @@ import {
   seedAll,
   seedEngrams,
   seedRebeccaAdaptiveProfile,
+  seedFullRezzArchive,
 } from "@workspace/db/seed";
 import {
   FULL_REZZ_BASE_TIMESTAMP_MS,
@@ -265,5 +266,36 @@ describe("Rebecca source authority with account ownership", () => {
     await expect(seedAll(db)).resolves.toMatchObject({
       fullRezz: { engramInserted: false, messagesInserted: 0 },
     });
+  });
+
+  it("backfills Full Rezz for an account created before the archive was seeded", async () => {
+    await seedAndBootstrap("owner-a");
+    await seedFullRezzArchive(db);
+
+    await expect(ensureAccountBootstrap("owner-a")).resolves.toBeUndefined();
+
+    const [accountArchive] = await db
+      .select()
+      .from(engramsTable)
+      .where(
+        and(
+          eq(engramsTable.ownerId, "owner-a"),
+          eq(engramsTable.slug, FULL_REZZ_SLUG),
+        ),
+      );
+    expect(accountArchive).toMatchObject({
+      isArchival: true,
+      name: "Rebecca (Full Rezz)",
+    });
+    const accountConversations = await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.ownerId, "owner-a"),
+          eq(conversations.engramId, accountArchive!.id),
+        ),
+      );
+    expect(accountConversations).toHaveLength(1);
   });
 });

@@ -53,7 +53,7 @@ function relativeTime(iso: string): string {
 
 export default function Simulations() {
   const { t } = useTranslation("simulations");
-  const { data: simulations, isLoading } = useListSimulations(undefined, {
+  const { data: simulations, isLoading, isError, refetch } = useListSimulations(undefined, {
     query: {
       queryKey: getListSimulationsQueryKey(),
       refetchInterval: 15000,
@@ -105,6 +105,28 @@ export default function Simulations() {
           )}
         </div>
       </div>
+
+      {isError ? (
+        <Card className="border-destructive/40 bg-destructive/[0.04]">
+          <CardContent className="p-5 flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="font-display text-sm uppercase tracking-wider text-destructive">
+                {t("openErrorTitle")}
+              </p>
+              <p className="font-mono text-xs text-muted-foreground mt-1">
+                {t("openError")}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              className="font-mono text-xs uppercase tracking-wider"
+            >
+              {t("retry")}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="bg-rose-500/[0.03] border border-rose-500/20 p-4 font-mono text-xs text-muted-foreground space-y-1">
         <p className="text-rose-400/80 flex items-center gap-1.5">

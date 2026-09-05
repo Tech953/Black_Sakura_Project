@@ -308,7 +308,6 @@ export default function ChatScreen() {
   }
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const reversed = [...messages].reverse();
   const archivalReadOnly = engram?.isArchival === true;
 
   return (
@@ -337,9 +336,8 @@ export default function ChatScreen() {
         keyboardVerticalOffset={0}
       >
         <FlatList
-          data={reversed}
+          data={messages}
           keyExtractor={(item) => item.id}
-          inverted={messages.length > 0}
           contentContainerStyle={styles.listContent}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
@@ -527,7 +525,6 @@ const styles = StyleSheet.create({
   emptyWrap: {
     flex: 1,
     minHeight: 360,
-    transform: [{ scaleY: -1 }],
   },
   inputBar: {
     flexDirection: "row",
