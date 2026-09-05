@@ -14,3 +14,9 @@ The Electron launcher should also race the health check against the child proces
 **Why:** A missing runtime import otherwise looks like a generic 60-second health timeout, hiding the actual package-boundary failure from both users and release debugging.
 
 **How to apply:** Keep the server child startup transactional: fail immediately on pre-health exit, clean up the child, and preserve enough recent stderr to diagnose a packaged-resource problem.
+
+Windows first launch should allow a longer `/api/healthz` window than warm Linux launches because Defender scanning and initial PGlite setup can be slow. The timeout error should also include the last health response or request failure.
+
+**Why:** A healthy packaged server can still be incorrectly reported as broken when Windows first-run initialization exceeds a short probe window; the last probe detail distinguishes a slow start from a child-process failure.
+
+**How to apply:** Keep the Windows startup budget bounded, and retain the captured child stderr plus the last health-probe detail in the startup dialog.
