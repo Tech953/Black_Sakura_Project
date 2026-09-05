@@ -488,7 +488,13 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       // relabeling the already-persisted human-response pass as failed.
       try {
         for (let turnIndex = 0; turnIndex < MAX_GROUP_AUTONOMOUS_TURNS; turnIndex += 1) {
-        if (res.destroyed || res.writableEnded) break;
+        if (res.destroyed || res.writableEnded) {
+          req.log.info(
+            { conversationId: id, turnIndex },
+            "group continuation stopped because the response closed",
+          );
+          break;
+        }
 
         const speakerId = groupParticipantIds[turnIndex % groupParticipantIds.length]!;
         const [controls, speaker, presence] = await Promise.all([
@@ -496,7 +502,27 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
           loadOwnedEngram(speakerId, req.userId!),
           loadPresenceForEngram(speakerId, req.userId!),
         ]);
-        if (!speaker || speaker.isArchival || !speaker.autonomyEnabled) continue;
+        if (!speaker) {
+          req.log.warn(
+            { conversationId: id, engramId: speakerId, turnIndex },
+            "group continuation skipped missing participant",
+          );
+          continue;
+        }
+        if (speaker.isArchival) {
+          req.log.info(
+            { conversationId: id, engramId: speaker.id, turnIndex },
+            "group continuation skipped archival participant",
+          );
+          continue;
+        }
+        if (!speaker.autonomyEnabled) {
+          req.log.info(
+            { conversationId: id, engramId: speaker.id, turnIndex },
+            "group continuation skipped participant with autonomy disabled",
+          );
+          continue;
+        }
 
         const space = presence
           ? await loadSpaceById(presence.spaceId, req.userId!)
@@ -509,7 +535,27 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
             : undefined,
           humanContactEnabled: speaker.humanContactEnabled,
         });
-        if (presence?.status === "resting" || !capabilities.canConverse) continue;
+        if (presence?.status === "resting") {
+          req.log.info(
+            { conversationId: id, engramId: speaker.id, turnIndex, reason: "presence is resting" },
+            "group continuation skipped participant",
+          );
+          continue;
+        }
+        if (!capabilities.canConverse) {
+          req.log.info(
+            {
+              conversationId: id,
+              engramId: speaker.id,
+              turnIndex,
+              reason:
+                capabilities.humanContactBlockReason ??
+                `mode "${speaker.mode}" or current space does not permit conversation`,
+            },
+            "group continuation skipped participant",
+          );
+          continue;
+        }
 
         const currentParticipants = (
           await Promise.all(
@@ -521,7 +567,13 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
           (participant): participant is NonNullable<typeof participant> =>
             Boolean(participant) && !participant.isArchival,
         );
-        if (currentParticipants.length < 2) break;
+        if (currentParticipants.length < 2) {
+          req.log.warn(
+            { conversationId: id, turnIndex, participantCount: currentParticipants.length },
+            "group continuation stopped because fewer than two participants remain",
+          );
+          break;
+        }
 
         const others = currentParticipants
           .filter((participant) => participant.id !== speaker.id)
