@@ -12,4 +12,5 @@ export interface OpenaiConversationInput {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  engramIds?: number[];
 }

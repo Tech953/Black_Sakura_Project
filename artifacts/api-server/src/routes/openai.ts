@@ -3,6 +3,7 @@ import multer from "multer";
 import { db, type MediaAsset } from "@workspace/db";
 import {
   conversations,
+  conversationEngramParticipants,
   messages,
   personalityTable,
   personasTable,
@@ -10,8 +11,9 @@ import {
   expressionsTable,
   engramsTable,
 } from "@workspace/db/schema";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, asc, inArray } from "drizzle-orm";
 import { llm, LLM_MODEL } from "../lib/llm";
+import { generateGroupChatTurn } from "../lib/engram-generation";
 import {
   CreateOpenaiConversationBody,
   SendOpenaiMessageBody,
@@ -40,6 +42,41 @@ const uploadSingle = multer({
   limits: { fileSize: MEDIA_MAX_BYTES, files: 1 },
 }).single("file");
 
+const MAX_GROUP_PARTICIPANTS = 6;
+
+async function participantIdsForConversationIds(ids: number[]) {
+  if (ids.length === 0) return new Map<number, number[]>();
+  const rows = await db
+    .select({
+      conversationId: conversationEngramParticipants.conversationId,
+      engramId: conversationEngramParticipants.engramId,
+    })
+    .from(conversationEngramParticipants)
+    .where(inArray(conversationEngramParticipants.conversationId, ids))
+    .orderBy(asc(conversationEngramParticipants.createdAt));
+  const byConversation = new Map<number, number[]>();
+  for (const row of rows) {
+    const list = byConversation.get(row.conversationId) ?? [];
+    list.push(row.engramId);
+    byConversation.set(row.conversationId, list);
+  }
+  return byConversation;
+}
+
+async function participantIdsForConversation(id: number): Promise<number[]> {
+  return (await participantIdsForConversationIds([id])).get(id) ?? [];
+}
+
+function withParticipantIds<T extends { id: number; engramId?: number | null }>(
+  row: T,
+  participantIds: number[] | undefined,
+) {
+  return {
+    ...row,
+    engramIds: participantIds?.length ? participantIds : row.engramId != null ? [row.engramId] : [],
+  };
+}
+
 /** Minimal serialization for an inline chat upload (this route is not in the OpenAPI spec). */
 function serializeChatMediaAsset(a: MediaAsset) {
   return {
@@ -62,7 +99,8 @@ router.get("/openai/conversations", async (req, res) => {
     .from(conversations)
     .where(eq(conversations.ownerId, req.userId!))
     .orderBy(desc(conversations.createdAt));
-  res.json(rows);
+  const participantIds = await participantIdsForConversationIds(rows.map((row) => row.id));
+  res.json(rows.map((row) => withParticipantIds(row, participantIds.get(row.id))));
 });
 
 router.post("/openai/conversations", async (req, res) => {
@@ -72,6 +110,20 @@ router.post("/openai/conversations", async (req, res) => {
     return;
   }
   const { title, mode, personaName, customEngram, engramId } = parsed.data;
+  const requestedGroupIds = parsed.data.engramIds ?? [];
+  if (engramId != null && requestedGroupIds.length > 0) {
+    res.status(400).json({ error: "Choose one engram or a group, not both." });
+    return;
+  }
+  const uniqueGroupIds = [...new Set(requestedGroupIds)];
+  if (uniqueGroupIds.length > MAX_GROUP_PARTICIPANTS) {
+    res.status(400).json({ error: `A group can include at most ${MAX_GROUP_PARTICIPANTS} engrams.` });
+    return;
+  }
+  if (uniqueGroupIds.length === 1) {
+    res.status(400).json({ error: "A group conversation needs at least two engrams." });
+    return;
+  }
   if (engramId != null) {
     const engram = await loadOwnedEngram(engramId, req.userId!);
     if (!engram) {
@@ -83,11 +135,42 @@ router.post("/openai/conversations", async (req, res) => {
       return;
     }
   }
-  const [row] = await db
-    .insert(conversations)
-    .values({ ownerId: req.userId!, title, mode: mode ?? "companion", personaName, customEngram, engramId })
-    .returning();
-  res.status(201).json(row);
+  if (uniqueGroupIds.length > 0) {
+    const groupEngrams = await Promise.all(uniqueGroupIds.map((id) => loadOwnedEngram(id, req.userId!)));
+    if (groupEngrams.some((engram) => !engram)) {
+      res.status(404).json({ error: "One or more selected engrams were not found." });
+      return;
+    }
+    if (groupEngrams.some((engram) => engram?.isArchival)) {
+      res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
+  }
+
+  const row = await db.transaction(async (tx) => {
+    const [conversation] = await tx
+      .insert(conversations)
+      .values({
+        ownerId: req.userId!,
+        title,
+        mode: uniqueGroupIds.length > 0 ? "companion" : mode ?? "companion",
+        personaName,
+        customEngram,
+        engramId,
+      })
+      .returning();
+    if (uniqueGroupIds.length > 0) {
+      await tx.insert(conversationEngramParticipants).values(
+        uniqueGroupIds.map((participantId) => ({
+          conversationId: conversation.id,
+          engramId: participantId,
+          ownerId: req.userId!,
+        })),
+      );
+    }
+    return conversation;
+  });
+  res.status(201).json(withParticipantIds(row, uniqueGroupIds));
 });
 
 router.get("/openai/conversations/:id", async (req, res) => {
@@ -107,7 +190,7 @@ router.get("/openai/conversations/:id", async (req, res) => {
     .from(messages)
     .where(eq(messages.conversationId, id))
     .orderBy(messages.createdAt);
-  res.json({ ...conv, messages: msgs });
+  res.json({ ...withParticipantIds(conv, await participantIdsForConversation(id)), messages: msgs });
 });
 
 router.delete("/openai/conversations/:id", async (req, res) => {
@@ -125,6 +208,14 @@ router.delete("/openai/conversations/:id", async (req, res) => {
   if (conv.engramId != null) {
     const engram = await loadOwnedEngram(conv.engramId, req.userId!);
     if (engram?.isArchival) {
+      res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
+  }
+  const groupParticipantIds = await participantIdsForConversation(id);
+  if (groupParticipantIds.length > 0) {
+    const groupEngrams = await Promise.all(groupParticipantIds.map((participantId) => loadOwnedEngram(participantId, req.userId!)));
+    if (groupEngrams.some((engram) => engram?.isArchival)) {
       res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
       return;
     }
@@ -173,9 +264,26 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     return;
   }
 
+  const groupParticipantIds = await participantIdsForConversation(id);
+  const groupEngrams =
+    groupParticipantIds.length > 0
+      ? await Promise.all(groupParticipantIds.map((participantId) => loadOwnedEngram(participantId, req.userId!)))
+      : [];
+  if (groupEngrams.some((engram) => !engram)) {
+    res.status(404).json({ error: "One or more group participants no longer exist." });
+    return;
+  }
+  if (groupEngrams.some((engram) => engram?.isArchival)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+    return;
+  }
+  const isGroupConversation = groupEngrams.length >= 2;
+
   // An engram-linked conversation embodies that engram's persona; otherwise PYRI answers.
   let systemPrompt: string;
-  if (conv.engramId) {
+  if (isGroupConversation) {
+    systemPrompt = "";
+  } else if (conv.engramId) {
     const engram = await loadOwnedEngram(conv.engramId, req.userId!);
     if (!engram) {
       res.status(404).json({ error: "Engram not found" });
@@ -258,10 +366,15 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
 
   // For engram-linked chats, record the user's message as an OBSERVED world-model entry:
   // the engram directly perceived them say this. Provenance is OBSERVED and never inflated.
-  if (conv.engramId) {
+  const observedEngramIds = isGroupConversation
+    ? groupParticipantIds
+    : conv.engramId
+      ? [conv.engramId]
+      : [];
+  for (const observedEngramId of observedEngramIds) {
     try {
       await appendWorldModelEntry({
-        engramId: conv.engramId,
+        engramId: observedEngramId,
         provenance: "observed",
         content: `They said: "${content.replace(/\s+/g, " ").trim().slice(0, 240)}"`,
         confidence: 0.85,
@@ -307,6 +420,68 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
+  if (isGroupConversation) {
+    const participantById = new Map(groupEngrams.map((engram) => [engram!.id, engram!]));
+    const recentTurns = history
+      .filter((message) => message.role !== "context")
+      .slice(-12)
+      .map((message) => ({
+        speaker:
+          message.role === "user"
+            ? "You"
+            : message.speakerEngramId != null
+              ? participantById.get(message.speakerEngramId)?.name ?? "Engram"
+              : "PYRI",
+        content: message.content,
+      }));
+
+    try {
+      for (const participant of groupEngrams) {
+        if (!participant) continue;
+        const others = groupEngrams
+          .filter((other): other is NonNullable<typeof other> => Boolean(other) && other.id !== participant.id)
+          .map((other) => ({ name: other.name, title: other.title }));
+        const response = await generateGroupChatTurn({
+          engram: participant,
+          others,
+          recentTurns,
+          humanMessage: content,
+          worldModelSummary: summarizeWorldModel(await loadRecentWorldModel(participant.id)),
+          responseLanguageInstruction: languageInstruction,
+        });
+        const [assistantMessage] = await db
+          .insert(messages)
+          .values({
+            conversationId: id,
+            role: "assistant",
+            content: response,
+            speakerEngramId: participant.id,
+          })
+          .returning();
+        publishEvent({
+          type: "message.created",
+          ownerId: req.userId!,
+          conversationId: id,
+          engramId: participant.id,
+          data: assistantMessage,
+        });
+        res.write(
+          `data: ${JSON.stringify({
+            speakerEngramId: participant.id,
+            content: response,
+          })}\n\n`,
+        );
+        recentTurns.push({ speaker: participant.name, content: response });
+      }
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    } catch (err) {
+      req.log.error(err);
+      res.write(`data: ${JSON.stringify({ error: "Group response failed" })}\n\n`);
+    }
+    res.end();
+    return;
+  }
+
   let fullResponse = "";
   try {
     const stream = await llm.chat.completions.create({
@@ -326,7 +501,12 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
 
     const [assistantMessage] = await db
       .insert(messages)
-      .values({ conversationId: id, role: "assistant", content: fullResponse })
+      .values({
+        conversationId: id,
+        role: "assistant",
+        content: fullResponse,
+        speakerEngramId: conv.engramId ?? null,
+      })
       .returning();
     publishEvent({
       type: "message.created",
