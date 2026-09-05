@@ -35,6 +35,8 @@ tags:
     description: Engram processing environment operations
   - name: media
     description: Multimodal media perception operations
+  - name: mobile
+    description: Mobile app synchronization operations
 paths:
   /healthz:
     get:
@@ -49,6 +51,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /mobile/offline-sync:
+    post:
+      operationId: syncOfflineHistory
+      tags: [mobile]
+      summary: Import locally-created mobile history after reconnecting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfflineSyncInput"
+      responses:
+        "200":
+          description: Imported or previously acknowledged offline rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfflineSyncResult"
+        "400":
+          description: Invalid offline history payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "403":
+          description: An offline record targets a read-only archival engram
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "409":
+          description: A sync ID conflicts with a different record kind
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
 
   /personality:
     get:
@@ -1419,6 +1458,217 @@ components:
           type: string
       required:
         - status
+
+    OfflineSyncMessage:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        createdAt:
+          type: string
+          format: date-time
+      required: [syncId, role, content, createdAt]
+
+    OfflineSyncConversation:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        title:
+          type: [string, "null"]
+          maxLength: 500
+        mode:
+          type: string
+          minLength: 1
+          maxLength: 40
+        engramSlug:
+          type: [string, "null"]
+          maxLength: 120
+        createdAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncMessage"
+      required: [syncId, title, mode, engramSlug, createdAt, messages]
+
+    OfflineSyncInquiry:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        engramSlug:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          type: string
+          minLength: 1
+          maxLength: 40
+        question:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        response:
+          type: string
+          maxLength: 40000
+        createdAt:
+          type: string
+          format: date-time
+      required: [syncId, engramSlug, kind, question, response, createdAt]
+
+    OfflineSyncTransmission:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        engramSlug:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          type: string
+          minLength: 1
+          maxLength: 40
+        drive:
+          type: [string, "null"]
+          maxLength: 120
+        content:
+          type: string
+          minLength: 1
+          maxLength: 40000
+        mood:
+          type: [string, "null"]
+          maxLength: 120
+        importanceScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        confidenceScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        noveltyScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        overallScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        wasDelivered:
+          type: boolean
+        seen:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [syncId, engramSlug, kind, drive, content, mood, importanceScore, confidenceScore, noveltyScore, overallScore, wasDelivered, seen, createdAt]
+
+    OfflineSyncObservedEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        engramSlug:
+          type: string
+          minLength: 1
+          maxLength: 120
+        conversationSyncId:
+          type: [string, "null"]
+          maxLength: 80
+        content:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        createdAt:
+          type: string
+          format: date-time
+      required: [syncId, engramSlug, conversationSyncId, content, confidence, createdAt]
+
+    OfflineSyncInput:
+      type: object
+      additionalProperties: false
+      properties:
+        deviceId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        conversations:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncConversation"
+        inquiries:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncInquiry"
+        transmissions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncTransmission"
+        observedEntries:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncObservedEntry"
+      required: [deviceId, conversations, inquiries, transmissions, observedEntries]
+
+    OfflineSyncCounts:
+      type: object
+      properties:
+        conversations:
+          type: integer
+        messages:
+          type: integer
+        inquiries:
+          type: integer
+        transmissions:
+          type: integer
+        observedEntries:
+          type: integer
+      required: [conversations, messages, inquiries, transmissions, observedEntries]
+
+    OfflineSyncResult:
+      type: object
+      properties:
+        syncedIds:
+          type: array
+          items:
+            type: string
+        imported:
+          $ref: "#/components/schemas/OfflineSyncCounts"
+      required: [syncedIds, imported]
 
     PersonalityProfile:
       type: object

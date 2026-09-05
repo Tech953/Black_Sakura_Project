@@ -64,6 +64,8 @@ import type {
   MemoryEntry,
   MemoryInput,
   MovePresenceInput,
+  OfflineSyncInput,
+  OfflineSyncResult,
   OpenaiConversation,
   OpenaiConversationInput,
   OpenaiConversationWithMessages,
@@ -188,6 +190,76 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getSyncOfflineHistoryUrl = () => {
+
+
+
+
+  return `/api/mobile/offline-sync`
+}
+
+/**
+ * @summary Import locally-created mobile history after reconnecting
+ */
+export const syncOfflineHistory = async (offlineSyncInput: OfflineSyncInput, options?: RequestInit): Promise<OfflineSyncResult> => {
+
+  return customFetch<OfflineSyncResult>(getSyncOfflineHistoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(offlineSyncInput)
+  }
+);}
+
+
+
+
+export const getSyncOfflineHistoryMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncOfflineHistory>>, TError,{data: BodyType<OfflineSyncInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncOfflineHistory>>, TError,{data: BodyType<OfflineSyncInput>}, TContext> => {
+
+const mutationKey = ['syncOfflineHistory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncOfflineHistory>>, {data: BodyType<OfflineSyncInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  syncOfflineHistory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncOfflineHistoryMutationResult = NonNullable<Awaited<ReturnType<typeof syncOfflineHistory>>>
+    export type SyncOfflineHistoryMutationBody = BodyType<OfflineSyncInput>
+    export type SyncOfflineHistoryMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Import locally-created mobile history after reconnecting
+ */
+export const useSyncOfflineHistory = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncOfflineHistory>>, TError,{data: BodyType<OfflineSyncInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncOfflineHistory>>,
+        TError,
+        {data: BodyType<OfflineSyncInput>},
+        TContext
+      > => {
+      return useMutation(getSyncOfflineHistoryMutationOptions(options));
+    }
 
 export const getGetPersonalityUrl = () => {
 

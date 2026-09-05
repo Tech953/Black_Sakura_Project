@@ -18,6 +18,140 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Import locally-created mobile history after reconnecting
+ */
+export const syncOfflineHistoryBodyDeviceIdMax = 128;
+
+export const syncOfflineHistoryBodyConversationsItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyConversationsItemTitleMax = 500;
+
+export const syncOfflineHistoryBodyConversationsItemModeMax = 40;
+
+export const syncOfflineHistoryBodyConversationsItemEngramSlugMax = 120;
+
+export const syncOfflineHistoryBodyConversationsItemMessagesItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyConversationsItemMessagesItemContentMax = 20000;
+
+export const syncOfflineHistoryBodyConversationsItemMessagesMax = 100;
+
+export const syncOfflineHistoryBodyConversationsMax = 100;
+
+export const syncOfflineHistoryBodyInquiriesItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyInquiriesItemEngramSlugMax = 120;
+
+export const syncOfflineHistoryBodyInquiriesItemKindMax = 40;
+
+export const syncOfflineHistoryBodyInquiriesItemQuestionMax = 20000;
+
+export const syncOfflineHistoryBodyInquiriesItemResponseMax = 40000;
+
+export const syncOfflineHistoryBodyInquiriesMax = 100;
+
+export const syncOfflineHistoryBodyTransmissionsItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyTransmissionsItemEngramSlugMax = 120;
+
+export const syncOfflineHistoryBodyTransmissionsItemKindMax = 40;
+
+export const syncOfflineHistoryBodyTransmissionsItemDriveMax = 120;
+
+export const syncOfflineHistoryBodyTransmissionsItemContentMax = 40000;
+
+export const syncOfflineHistoryBodyTransmissionsItemMoodMax = 120;
+
+export const syncOfflineHistoryBodyTransmissionsItemImportanceScoreMin = 0;
+export const syncOfflineHistoryBodyTransmissionsItemImportanceScoreMax = 1;
+
+export const syncOfflineHistoryBodyTransmissionsItemConfidenceScoreMin = 0;
+export const syncOfflineHistoryBodyTransmissionsItemConfidenceScoreMax = 1;
+
+export const syncOfflineHistoryBodyTransmissionsItemNoveltyScoreMin = 0;
+export const syncOfflineHistoryBodyTransmissionsItemNoveltyScoreMax = 1;
+
+export const syncOfflineHistoryBodyTransmissionsItemOverallScoreMin = 0;
+export const syncOfflineHistoryBodyTransmissionsItemOverallScoreMax = 1;
+
+export const syncOfflineHistoryBodyTransmissionsMax = 100;
+
+export const syncOfflineHistoryBodyObservedEntriesItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyObservedEntriesItemEngramSlugMax = 120;
+
+export const syncOfflineHistoryBodyObservedEntriesItemConversationSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyObservedEntriesItemContentMax = 20000;
+
+export const syncOfflineHistoryBodyObservedEntriesItemConfidenceMin = 0;
+export const syncOfflineHistoryBodyObservedEntriesItemConfidenceMax = 1;
+
+export const syncOfflineHistoryBodyObservedEntriesMax = 100;
+
+
+
+export const SyncOfflineHistoryBody = zod.object({
+  "deviceId": zod.string().min(1).max(syncOfflineHistoryBodyDeviceIdMax),
+  "conversations": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemSyncIdMax),
+  "title": zod.string().max(syncOfflineHistoryBodyConversationsItemTitleMax).nullable(),
+  "mode": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemModeMax),
+  "engramSlug": zod.string().max(syncOfflineHistoryBodyConversationsItemEngramSlugMax).nullable(),
+  "createdAt": zod.coerce.date(),
+  "messages": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemMessagesItemSyncIdMax),
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemMessagesItemContentMax),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyConversationsItemMessagesMax)
+})).max(syncOfflineHistoryBodyConversationsMax),
+  "inquiries": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyInquiriesItemSyncIdMax),
+  "engramSlug": zod.string().min(1).max(syncOfflineHistoryBodyInquiriesItemEngramSlugMax),
+  "kind": zod.string().min(1).max(syncOfflineHistoryBodyInquiriesItemKindMax),
+  "question": zod.string().min(1).max(syncOfflineHistoryBodyInquiriesItemQuestionMax),
+  "response": zod.string().max(syncOfflineHistoryBodyInquiriesItemResponseMax),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyInquiriesMax),
+  "transmissions": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyTransmissionsItemSyncIdMax),
+  "engramSlug": zod.string().min(1).max(syncOfflineHistoryBodyTransmissionsItemEngramSlugMax),
+  "kind": zod.string().min(1).max(syncOfflineHistoryBodyTransmissionsItemKindMax),
+  "drive": zod.string().max(syncOfflineHistoryBodyTransmissionsItemDriveMax).nullable(),
+  "content": zod.string().min(1).max(syncOfflineHistoryBodyTransmissionsItemContentMax),
+  "mood": zod.string().max(syncOfflineHistoryBodyTransmissionsItemMoodMax).nullable(),
+  "importanceScore": zod.number().min(syncOfflineHistoryBodyTransmissionsItemImportanceScoreMin).max(syncOfflineHistoryBodyTransmissionsItemImportanceScoreMax),
+  "confidenceScore": zod.number().min(syncOfflineHistoryBodyTransmissionsItemConfidenceScoreMin).max(syncOfflineHistoryBodyTransmissionsItemConfidenceScoreMax),
+  "noveltyScore": zod.number().min(syncOfflineHistoryBodyTransmissionsItemNoveltyScoreMin).max(syncOfflineHistoryBodyTransmissionsItemNoveltyScoreMax),
+  "overallScore": zod.number().min(syncOfflineHistoryBodyTransmissionsItemOverallScoreMin).max(syncOfflineHistoryBodyTransmissionsItemOverallScoreMax),
+  "wasDelivered": zod.boolean(),
+  "seen": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyTransmissionsMax),
+  "observedEntries": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyObservedEntriesItemSyncIdMax),
+  "engramSlug": zod.string().min(1).max(syncOfflineHistoryBodyObservedEntriesItemEngramSlugMax),
+  "conversationSyncId": zod.string().max(syncOfflineHistoryBodyObservedEntriesItemConversationSyncIdMax).nullable(),
+  "content": zod.string().min(1).max(syncOfflineHistoryBodyObservedEntriesItemContentMax),
+  "confidence": zod.number().min(syncOfflineHistoryBodyObservedEntriesItemConfidenceMin).max(syncOfflineHistoryBodyObservedEntriesItemConfidenceMax),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyObservedEntriesMax)
+})
+
+export const SyncOfflineHistoryResponse = zod.object({
+  "syncedIds": zod.array(zod.string()),
+  "imported": zod.object({
+  "conversations": zod.number(),
+  "messages": zod.number(),
+  "inquiries": zod.number(),
+  "transmissions": zod.number(),
+  "observedEntries": zod.number()
+})
+})
+
+
+/**
  * Returns the current ENGRAM personality trait values
  * @summary Get personality traits
  */

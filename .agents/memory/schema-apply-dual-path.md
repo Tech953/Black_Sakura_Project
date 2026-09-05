@@ -14,3 +14,11 @@ When you edit `lib/db/src/schema/*.ts`, run **both**:
 **Gotcha — drizzle-kit generate corrupts an absolute `out`:** generate prepends `./` to `out`, so an absolute `out` (e.g. `path.join(__dirname, "./drizzle")`) resolves wrong and fails with ENOENT on the meta snapshot. `out` in `drizzle.config.ts` must be **relative** (`out: "drizzle"`) — `pnpm --filter` always runs with cwd at the package, so a relative path is stable. `push` is unaffected by this (it never reads the meta/snapshot files), which is why push works while generate breaks.
 
 **How to apply:** after any schema edit, push for dev, generate for desktop, then verify a fresh migrate with an in-memory PGlite (`@electric-sql/pglite` + `drizzle-orm/pglite/migrator` `migrate(db, { migrationsFolder })`) if the change is risky. Commit `0001_*.sql`, its `meta/0001_snapshot.json`, and the updated `_journal.json` together.
+
+## Run ad-hoc migration checks from the database package
+
+The workspace root intentionally may not expose `tsx` or link PGlite even though the database package declares PGlite.
+
+**Why:** Root-level ad-hoc checks can fail with command/package-not-found errors that look like migration failures. Running the same native ESM script through the database package resolves its declared dependencies correctly.
+
+**How to apply:** execute one-off PGlite migration verification with `pnpm --filter @workspace/db exec node --input-type=module ...` and use migration paths relative to the database package.

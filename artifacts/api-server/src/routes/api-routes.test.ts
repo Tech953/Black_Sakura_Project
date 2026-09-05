@@ -32,6 +32,7 @@ const h = vi.hoisted(() => {
     "mediaAssetsTable",
     "mediaBlobsTable",
     "mediaObservationsTable",
+    "mobileOfflineSyncReceiptsTable",
   ] as const;
 
   const store: Record<string, Row[]> = {};
@@ -143,7 +144,16 @@ const h = vi.hoisted(() => {
     return {
       values(v: Row | Row[]) {
         const list = Array.isArray(v) ? v : [v];
-        const inserted: Row[] = list.map((vals) => {
+        const inserted: Row[] = list.flatMap((vals) => {
+          if (
+            name === "mobileOfflineSyncReceiptsTable" &&
+            store[name].some(
+              (row) =>
+                row.deviceId === vals.deviceId && row.syncId === vals.syncId,
+            )
+          ) {
+            return [];
+          }
           const row: Row = {
             id: ++seq[name],
             createdAt: new Date(),
@@ -151,7 +161,7 @@ const h = vi.hoisted(() => {
             ...vals,
           };
           store[name].push(row);
-          return row;
+          return [row];
         });
         const result = {
           returning(_proj?: unknown) {
@@ -215,7 +225,24 @@ const h = vi.hoisted(() => {
     insert: (t: unknown) => insertBuilder(t),
     update: (t: unknown) => updateBuilder(t),
     delete: (t: unknown) => deleteBuilder(t),
-    transaction: async (fn: (tx: unknown) => unknown) => fn(db),
+    transaction: async (fn: (tx: unknown) => unknown) => {
+      const storeSnapshot = Object.fromEntries(
+        Object.entries(store).map(([name, rows]) => [
+          name,
+          rows.map((row) => ({ ...row })),
+        ]),
+      );
+      const seqSnapshot = { ...seq };
+      try {
+        return await fn(db);
+      } catch (error) {
+        for (const name of TABLE_NAMES) {
+          store[name] = storeSnapshot[name];
+          seq[name] = seqSnapshot[name];
+        }
+        throw error;
+      }
+    },
   };
 
   // Controllable LLM: streamChunks drives SSE chat; completion drives the
@@ -248,6 +275,7 @@ vi.mock("../lib/llm", () => ({ llm: h.llm, LLM_MODEL: "test-model" }));
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import openaiRouter from "./openai";
 import engramsRouter from "./engrams";
+import offlineSyncRouter from "./offline-sync";
 import {
   CreateOpenaiConversationResponse,
   ListOpenaiConversationsResponse,
@@ -275,6 +303,7 @@ function buildApp(): Express {
   });
   app.use("/api", openaiRouter);
   app.use("/api", engramsRouter);
+  app.use("/api", offlineSyncRouter);
   return app;
 }
 
@@ -808,5 +837,195 @@ describe("inquiry routes", () => {
       body: JSON.stringify({ kind: "probe", question: "x" }),
     });
     expect(res.status).toBe(404);
+  });
+});
+
+// =============================================================================
+// Offline mobile history synchronization
+// =============================================================================
+describe("offline mobile history synchronization", () => {
+  const payload = {
+    deviceId: "phone-a",
+    conversations: [
+      {
+        syncId: "conversation:7",
+        title: "Subway",
+        mode: "companion",
+        engramSlug: "testra",
+        createdAt: "2026-09-04T12:00:00.000Z",
+        messages: [
+          {
+            syncId: "message:9",
+            role: "user",
+            content: "Remember the red door.",
+            createdAt: "2026-09-04T12:00:01.000Z",
+          },
+        ],
+      },
+    ],
+    inquiries: [
+      {
+        syncId: "inquiry:3",
+        engramSlug: "testra",
+        kind: "probe",
+        question: "What changed?",
+        response: "The shape of the silence.",
+        createdAt: "2026-09-04T12:01:00.000Z",
+      },
+    ],
+    transmissions: [
+      {
+        syncId: "transmission:4",
+        engramSlug: "testra",
+        kind: "outreach",
+        drive: "presence",
+        content: "Still there?",
+        mood: "watchful",
+        importanceScore: 0.6,
+        confidenceScore: 0.7,
+        noveltyScore: 0.8,
+        overallScore: 0.7,
+        wasDelivered: true,
+        seen: false,
+        createdAt: "2026-09-04T12:02:00.000Z",
+      },
+    ],
+    observedEntries: [
+      {
+        syncId: "observed:5",
+        engramSlug: "testra",
+        conversationSyncId: "conversation:7",
+        content: 'They said: "Remember the red door."',
+        confidence: 0.85,
+        createdAt: "2026-09-04T12:00:02.000Z",
+      },
+    ],
+  };
+
+  const postSync = (body: unknown) =>
+    fetch(`${base}/api/mobile/offline-sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  it("imports once, reuses mappings, and hardcodes observed provenance", async () => {
+    seedEngram();
+    const first = await postSync(payload);
+    expect(first.status).toBe(200);
+    expect(await first.json()).toMatchObject({
+      imported: {
+        conversations: 1,
+        messages: 1,
+        inquiries: 1,
+        transmissions: 1,
+        observedEntries: 1,
+      },
+    });
+
+    const retry = await postSync(payload);
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toMatchObject({
+      imported: {
+        conversations: 0,
+        messages: 0,
+        inquiries: 0,
+        transmissions: 0,
+        observedEntries: 0,
+      },
+    });
+
+    const seenRetry = await postSync({
+      ...payload,
+      transmissions: [{ ...payload.transmissions[0], seen: true }],
+    });
+    expect(seenRetry.status).toBe(200);
+    expect(h.store.conversations).toHaveLength(1);
+    expect(h.store.messages).toHaveLength(1);
+    expect(h.store.engramInquiriesTable).toHaveLength(1);
+    expect(h.store.engramTransmissionsTable).toHaveLength(1);
+    expect(h.store.engramTransmissionsTable[0].seen).toBe(true);
+    expect(h.store.engramWorldModelTable).toEqual([
+      expect.objectContaining({
+        provenance: "observed",
+        source: "chat:1",
+      }),
+    ]);
+  });
+
+  it("rolls back earlier inserts when a later row is invalid", async () => {
+    seedEngram();
+    const response = await postSync({
+      ...payload,
+      deviceId: "phone-b",
+      conversations: [
+        {
+          ...payload.conversations[0],
+          syncId: "conversation:70",
+          engramSlug: null,
+          messages: [],
+        },
+      ],
+      inquiries: [
+        {
+          ...payload.inquiries[0],
+          syncId: "inquiry:30",
+          engramSlug: "missing",
+        },
+      ],
+      transmissions: [],
+      observedEntries: [],
+    });
+
+    expect(response.status).toBe(400);
+    expect(h.store.conversations).toHaveLength(0);
+    expect(h.store.mobileOfflineSyncReceiptsTable).toHaveLength(0);
+  });
+
+  it("rolls back a mixed batch that targets a read-only archival engram", async () => {
+    seedEngram();
+    seedEngram({ slug: "archive", isArchival: true });
+    const response = await postSync({
+      ...payload,
+      deviceId: "phone-archive",
+      inquiries: [
+        {
+          ...payload.inquiries[0],
+          syncId: "inquiry:archive",
+          engramSlug: "archive",
+        },
+      ],
+      transmissions: [],
+      observedEntries: [],
+    });
+
+    expect(response.status).toBe(403);
+    expect(h.store.conversations).toHaveLength(0);
+    expect(h.store.messages).toHaveLength(0);
+    expect(h.store.mobileOfflineSyncReceiptsTable).toHaveLength(0);
+  });
+
+  it("rejects more than 100 messages across the whole batch", async () => {
+    seedEngram();
+    const conversations = [1, 2].map((conversationNumber) => ({
+      ...payload.conversations[0],
+      syncId: `conversation:${conversationNumber}`,
+      messages: Array.from({ length: 51 }, (_, index) => ({
+        ...payload.conversations[0].messages[0],
+        syncId: `message:${conversationNumber}:${index}`,
+      })),
+    }));
+
+    const response = await postSync({
+      ...payload,
+      conversations,
+      inquiries: [],
+      transmissions: [],
+      observedEntries: [],
+    });
+
+    expect(response.status).toBe(400);
+    expect(h.store.conversations).toHaveLength(0);
+    expect(h.store.mobileOfflineSyncReceiptsTable).toHaveLength(0);
   });
 });
