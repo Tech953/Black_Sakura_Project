@@ -1,4 +1,12 @@
 import {
+  beginLaunchCrashMonitoring,
+  clearPreviousCrash,
+  markLaunchReady,
+  persistFatalCrash,
+  updateLaunchBreadcrumb,
+  type CrashReport,
+} from "@/lib/crash-log";
+import {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -28,6 +36,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PreviousCrashScreen } from "@/components/PreviousCrashScreen";
 import { EngramProvider } from "@/context/engram-context";
 import { setBaseUrl, setLocalHandler } from "@workspace/api-client-react";
 import { DEFAULT_SERVER_URL, resolveServerUrl } from "@/lib/server-url";
@@ -89,18 +98,67 @@ export default function RootLayout() {
   });
 
   const [serverReady, setServerReady] = React.useState(false);
+  const [crashStateLoaded, setCrashStateLoaded] = React.useState(false);
+  const [previousCrash, setPreviousCrash] =
+    React.useState<CrashReport | null>(null);
+  useEffect(() => {
+    let active = true;
+    void beginLaunchCrashMonitoring()
+      .then((report) => {
+        if (active) setPreviousCrash(report);
+      })
+      .finally(() => {
+        if (active) setCrashStateLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   useEffect(() => {
     serverUrlReady.finally(() => setServerReady(true));
   }, []);
 
   useEffect(() => {
-    if ((fontsLoaded || fontError) && serverReady) {
+    if (
+      (fontsLoaded || fontError) &&
+      crashStateLoaded &&
+      (previousCrash || serverReady)
+    ) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError, serverReady]);
+  }, [
+    crashStateLoaded,
+    fontsLoaded,
+    fontError,
+    previousCrash,
+    serverReady,
+  ]);
 
   useEffect(() => {
-    if (!serverReady) return;
+    if (
+      !crashStateLoaded ||
+      previousCrash ||
+      !serverReady ||
+      (!fontsLoaded && !fontError)
+    ) {
+      return;
+    }
+    void updateLaunchBreadcrumb("ui-rendered");
+    const timer = setTimeout(() => {
+      void markLaunchReady();
+    }, 1_000);
+    return () => clearTimeout(timer);
+  }, [
+    crashStateLoaded,
+    fontsLoaded,
+    fontError,
+    previousCrash,
+    serverReady,
+  ]);
+
+  useEffect(() => {
+    if (!serverReady || previousCrash) return;
     const retryPendingHistory = () => {
       if (isOfflineMode()) return;
       void syncOfflineData()
@@ -124,13 +182,36 @@ export default function RootLayout() {
       appStateSubscription.remove();
       clearInterval(retryTimer);
     };
-  }, [serverReady]);
+  }, [previousCrash, serverReady]);
 
-  if ((!fontsLoaded && !fontError) || !serverReady) return null;
+  if ((!fontsLoaded && !fontError) || !crashStateLoaded) return null;
+
+  if (previousCrash) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <PreviousCrashScreen
+          report={previousCrash}
+          onContinue={() => {
+            void clearPreviousCrash().finally(() => setPreviousCrash(null));
+          }}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (!serverReady) return null;
 
   return (
     <SafeAreaProvider>
-      <ErrorBoundary>
+      <ErrorBoundary
+        onError={(error, componentStack) => {
+          void persistFatalCrash(error, {
+            source: "react-boundary",
+            componentStack,
+          });
+        }}
+      >
         <QueryClientProvider client={queryClient}>
           <EngramProvider>
             <GestureHandlerRootView>

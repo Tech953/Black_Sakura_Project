@@ -2,6 +2,7 @@
 - [Android APK CI release](android-apk-release.md) — building the Expo APK without an Expo account, attaching it to electron-builder's DRAFT release, plus signing + OS-detection gotchas.
 - [Mobile on-device offline mode](mobile-offline-mode.md) — local-handler seam, safety prompts single-sourced in engram-core, mode-scoped conversation IDs, Qwen3 think-block hold-back, expo resumeData.
 - [Mobile offline reconciliation](mobile-offline-sync.md) — retry-safe device history upload: receipts, dependency ordering, revision guards, bounded payloads, and post-ack cache clearing.
+- [Mobile crash recovery](mobile-crash-recovery.md) — device-local fatal reports plus startup breadcrumbs; preserve the platform handler and clear launch state only after stable UI.
 - [Bundled offline LLM (desktop)](bundled-offline-llm.md) — zero-setup offline mode via shipped llama.cpp server + model; staging, lifecycle, LAN, and workspace quota gotchas.
 - [Desktop auto-update](desktop-auto-update.md) — how the Electron app self-updates and the non-obvious constraints that make it actually fire.
 - [Desktop embedded DB seam (pglite)](desktop-embedded-db.md) — running with an embedded DB for desktop, and the non-obvious bundling constraints.
