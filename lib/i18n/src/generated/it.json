@@ -483,12 +483,12 @@
       "personas": "Personas",
       "feed": "Feed",
       "chat": "Chat",
-      "inquiry": "Interrogazione"
+      "inquiry": "Indagine"
     },
     "personas": {
-      "kicker": "ENGRAM // REGISTRY",
+      "kicker": "ENGRAM // REGISTRO",
       "title": "Personas",
-      "subtitle": "Seleziona un engram per attivarlo in feed, chat e interrogazione.",
+      "subtitle": "Seleziona un engram per renderlo attivo in feed, chat e indagine.",
       "serverSettings": "Impostazioni server",
       "openServerSettings": "Apri impostazioni server",
       "connectionLost": "Connessione persa",
@@ -497,10 +497,10 @@
       "retryConnection": "Riprova connessione",
       "checkServerLink": "Controlla l'indirizzo del server o vai offline",
       "empty": "Nessun engram ancora",
-      "emptySubtitle": "Il registro è vuoto. Inizializza gli engram dalla dashboard per iniziare."
+      "emptySubtitle": "Il registro è vuoto. Inizia popolando gli engram dalla dashboard."
     },
     "feed": {
-      "kicker": "LIVE FEED",
+      "kicker": "FEED LIVE",
       "fallbackTitle": "Trasmissioni",
       "noEngram": "Nessun engram selezionato",
       "noEngramSubtitle": "Scegli un engram dalla scheda Personas per monitorarne le trasmissioni live.",
@@ -514,7 +514,7 @@
       "daysAgo": "{{count}}g fa"
     },
     "chat": {
-      "kicker": "DIRECT LINK",
+      "kicker": "COLLEGAMENTO DIRETTO",
       "fallbackTitle": "Chat",
       "sessionTitle": "sessione {{name}}",
       "engramFallback": "Engram",
@@ -522,13 +522,13 @@
       "noEngramSubtitle": "Scegli un engram dalla scheda Personas per parlargli con la sua voce.",
       "speakWith": "Parla con {{name}}",
       "theEngram": "l'engram",
-      "speakSubtitle": "Le risposte arrivano in streaming con la voce e la formattazione proprie di questo engram.",
+      "speakSubtitle": "Le risposte arrivano in streaming con la voce e la formattazione di questo engram.",
       "inputPlaceholder": "Trasmetti un messaggio…",
-      "offlineUnavailable": "[ modello on-device non disponibile — controlla che il modello sia scaricato in Impostazioni ]",
+      "offlineUnavailable": "[ modello on-device non disponibile — verifica che il modello sia scaricato in Impostazioni ]",
       "signalInterrupted": "[ segnale interrotto — riprova ]"
     },
     "inquiry": {
-      "kicker": "INQUIRY",
+      "kicker": "INDAGINE",
       "title": "Interroga",
       "noEngram": "Nessun engram selezionato",
       "noEngramSubtitle": "Scegli un engram per sondarne la mente o guidarne lo sviluppo.",
@@ -539,7 +539,7 @@
       "probePlaceholder": "Cosa ricordi di…?",
       "developPlaceholder": "Diventa più curioso riguardo a…",
       "history": "Cronologia",
-      "noInquiries": "Nessuna interrogazione ancora.",
+      "noInquiries": "Nessuna indagine ancora.",
       "configDelta": "delta config"
     },
     "detail": {
@@ -563,25 +563,25 @@
     },
     "settings": {
       "title": "Server",
-      "connectionKicker": "ENGRAM // CONNECTION",
+      "connectionKicker": "ENGRAM // CONNESSIONE",
       "serverAddress": "Indirizzo server",
-      "serverAddressHint": "Lascia vuoto per usare il server cloud predefinito. Per eseguire tutto offline, inserisci l'indirizzo mostrato dall'app desktop ENGRAM sulla tua rete locale, ad es. http://192.168.1.20:3101",
+      "serverAddressHint": "Lascia vuoto per usare il server cloud predefinito. Per funzionare completamente offline, inserisci l'indirizzo mostrato dall'app desktop ENGRAM sulla tua rete locale, ad es. http://192.168.1.20:3101",
       "useDefault": "Usa predefinito",
       "saveConnect": "Salva e connetti",
       "usingDefault": "Uso del server cloud predefinito.",
-      "invalidAddress": "L'indirizzo non sembra valido.",
+      "invalidAddress": "Questo non sembra un indirizzo valido.",
       "connected": "Connesso. Questo indirizzo è ora attivo.",
       "savedNoResponse": "Salvato — ma il server non ha risposto. Ricontrolla l'indirizzo e che l'app desktop sia in esecuzione.",
-      "languageKicker": "ENGRAM // LANGUAGE",
+      "languageKicker": "ENGRAM // LINGUA",
       "languageTitle": "Lingua",
       "languageHint": "Scegli la lingua dell'interfaccia dell'app e quella in cui rispondono i tuoi engram.",
       "interfaceLanguage": "Lingua interfaccia",
-      "replyLanguage": "Lingua risposta engram",
-      "replyMatchUi": "Corrisponde alla lingua interfaccia",
-      "replyAuto": "Automatica (segue come scrivi)",
+      "replyLanguage": "Lingua risposte engram",
+      "replyMatchUi": "Corrispondi alla lingua interfaccia",
+      "replyAuto": "Automatica (in base a come scrivi)",
       "onDeviceKicker": "ENGRAM // ON-DEVICE",
       "offlineMode": "Modalità offline",
-      "offlineHint": "Esegui gli engram interamente su questo telefono — nessun server, nessuna rete. Usa un modello locale ({{model}}, download unico di ~{{size}}) e conserva le conversazioni nella memoria on-device. Chat, interrogazioni e trasmissioni funzionano; media, simulazioni e hub richiedono il server.",
+      "offlineHint": "Esegui gli engram interamente su questo telefono — nessun server, nessuna rete. Usa un modello locale ({{model}}, download una tantum di ~{{size}}) e conserva le conversazioni nella memoria on-device. Chat, indagini e trasmissioni funzionano; media, simulazioni e hub richiedono il server.",
       "useOfflineMode": "Usa modalità offline",
       "modelReady": "Modello pronto. Ora puoi andare completamente offline.",
       "downloadFailed": "Download fallito — riprova.",
@@ -590,7 +590,7 @@
       "backOnline": "Di nuovo online — uso del server.",
       "syncingHistory": "Di nuovo online — sincronizzazione cronologia offline…",
       "syncedHistory": "Di nuovo online — sincronizzati {{count}} elementi offline.",
-      "syncPending": "Di nuovo online. La cronologia offline è ancora al sicuro su questo telefono e ritenterà quando il server sarà raggiungibile.",
+      "syncPending": "Di nuovo online. La cronologia offline è ancora al sicuro su questo telefono e verrà ritentata quando il server sarà raggiungibile.",
       "modelDeleted": "Modello eliminato.",
       "modelInstalled": "Modello installato ({{size}}).",
       "deleteModel": "Elimina modello",
@@ -602,7 +602,7 @@
     "notFound": {
       "title": "Ops!",
       "message": "Questa schermata non esiste.",
-      "goHome": "Vai alla schermata iniziale!"
+      "goHome": "Vai alla schermata principale!"
     },
     "nav": {
       "back": "Indietro",
@@ -612,9 +612,17 @@
       "title": "Qualcosa è andato storto",
       "message": "Ricarica l'app per continuare.",
       "tryAgain": "Riprova",
-      "viewDetails": "Vedi dettagli errore",
+      "viewDetails": "Mostra dettagli errore",
       "details": "Dettagli errore",
       "closeDetails": "Chiudi dettagli errore"
+    },
+    "crashRecovery": {
+      "kicker": "ENGRAM // RECUPERO",
+      "title": "La sessione precedente è andata in crash",
+      "message": "ENGRAM ha salvato l'ultimo errore fatale su questo dispositivo. Copia questi dettagli quando segnali il crash, poi continua nell'app.",
+      "details": "DETTAGLI CRASH",
+      "copyHint": "Tieni premuti i dettagli sopra per selezionarli e copiarli.",
+      "continue": "Continua"
     }
   },
   "nav": {

@@ -135,5 +135,13 @@
     "viewDetails": "View error details",
     "details": "Error Details",
     "closeDetails": "Close error details"
+  },
+  "crashRecovery": {
+    "kicker": "ENGRAM // RECOVERY",
+    "title": "Previous session crashed",
+    "message": "ENGRAM saved the last fatal error on this device. Copy these details when reporting the crash, then continue into the app.",
+    "details": "CRASH DETAILS",
+    "copyHint": "Press and hold the details above to select and copy them.",
+    "continue": "Continue"
   }
 }
