@@ -94,6 +94,10 @@ const h = vi.hoisted(() => {
       (col: { __col: string }, val: unknown) =>
       (row: Row) =>
         norm(row[col.__col]) !== norm(val),
+    lt:
+      (col: { __col: string }, val: unknown) =>
+      (row: Row) =>
+        (norm(row[col.__col]) as number) < (norm(val) as number),
     and:
       (...preds: Array<(row: Row) => boolean>) =>
       (row: Row) =>
@@ -279,9 +283,18 @@ const h = vi.hoisted(() => {
     streamChunks: ["Hello", " there"] as string[],
     completion: "a response",
     throwOnCreate: false,
+    blockNextCreate: null as Promise<void> | null,
+    onCreateStarted: null as (() => void) | null,
   };
   const create = vi.fn(async (opts: { stream?: boolean }) => {
     if (llmState.throwOnCreate) throw new Error("model unavailable");
+    const blockedCreate = llmState.blockNextCreate;
+    if (blockedCreate) {
+      llmState.blockNextCreate = null;
+      llmState.onCreateStarted?.();
+      llmState.onCreateStarted = null;
+      await blockedCreate;
+    }
     if (opts.stream) {
       const chunks = llmState.streamChunks;
       return (async function* () {
@@ -444,6 +457,8 @@ function resetStore() {
   h.llmState.streamChunks = ["Hello", " there"];
   h.llmState.completion = "a response";
   h.llmState.throwOnCreate = false;
+  h.llmState.blockNextCreate = null;
+  h.llmState.onCreateStarted = null;
   h.failureState.nextInsertTable = null;
   h.create.mockClear();
   engramImportDraftStore.reset();

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import multer from "multer";
 import { db, type MediaAsset } from "@workspace/db";
 import {
@@ -11,7 +12,7 @@ import {
   expressionsTable,
   engramsTable,
 } from "@workspace/db/schema";
-import { and, eq, desc, asc, inArray, isNull, isNotNull } from "drizzle-orm";
+import { and, eq, desc, asc, inArray, isNull, isNotNull, lt, or } from "drizzle-orm";
 import { llm, LLM_MODEL } from "../lib/llm";
 import { generateGroupChatTurn } from "../lib/engram-generation";
 import {
@@ -52,6 +53,46 @@ const uploadSingle = multer({
 const MAX_GROUP_PARTICIPANTS = 6;
 /** Hard request-scoped cap: no background loop survives the response or a restart. */
 export const MAX_GROUP_AUTONOMOUS_TURNS = 4;
+/** A crashed process may leave a claim behind, but never block a conversation forever. */
+const GROUP_CONTINUATION_CLAIM_TTL_MS = 15 * 60 * 1000;
+
+async function claimGroupContinuation(conversationId: number, token: string, now = new Date()) {
+  const [claimed] = await db
+    .update(conversations)
+    .set({
+      groupContinuationClaimToken: token,
+      groupContinuationClaimedAt: now,
+    })
+    .where(
+      and(
+        eq(conversations.id, conversationId),
+        or(
+          isNull(conversations.groupContinuationClaimedAt),
+          lt(
+            conversations.groupContinuationClaimedAt,
+            new Date(now.getTime() - GROUP_CONTINUATION_CLAIM_TTL_MS),
+          ),
+        ),
+      ),
+    )
+    .returning({ id: conversations.id });
+  return claimed != null;
+}
+
+async function releaseGroupContinuation(conversationId: number, token: string) {
+  await db
+    .update(conversations)
+    .set({
+      groupContinuationClaimToken: null,
+      groupContinuationClaimedAt: null,
+    })
+    .where(
+      and(
+        eq(conversations.id, conversationId),
+        eq(conversations.groupContinuationClaimToken, token),
+      ),
+    );
+}
 
 async function participantIdsForConversationIds(ids: number[]) {
   if (ids.length === 0) return new Map<number, number[]>();
@@ -447,6 +488,28 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     }
   }
 
+  let groupContinuationClaimToken: string | null = null;
+  if (isGroupConversation) {
+    const token = randomUUID();
+    if (!(await claimGroupContinuation(id, token))) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.write(
+        `data: ${JSON.stringify({
+          error:
+            "Your message was saved, but this group is already responding to another message. No duplicate group reply was started.",
+          messageSaved: true,
+          done: true,
+        })}\n\n`,
+      );
+      res.end();
+      return;
+    }
+    groupContinuationClaimToken = token;
+  }
+
   const chatMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: systemPrompt },
     // A persisted `context` message (an inline-upload perception inserted by the media
@@ -482,58 +545,58 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
   res.setHeader("X-Accel-Buffering", "no");
 
   if (isGroupConversation) {
-    const participantById = new Map(groupEngrams.map((engram) => [engram!.id, engram!]));
-    const recentTurns = history
-      .filter((message) => message.role !== "context")
-      .slice(-12)
-      .map((message) => ({
-        speaker:
-          message.role === "user"
-            ? "You"
-            : message.speakerEngramId != null
-              ? participantById.get(message.speakerEngramId)?.name ?? "Engram"
-              : "PYRI",
-        content: message.content,
-      }));
-
     try {
+      const participantById = new Map(groupEngrams.map((engram) => [engram!.id, engram!]));
+      const recentTurns = history
+        .filter((message) => message.role !== "context")
+        .slice(-12)
+        .map((message) => ({
+          speaker:
+            message.role === "user"
+              ? "You"
+              : message.speakerEngramId != null
+                ? participantById.get(message.speakerEngramId)?.name ?? "Engram"
+                : "PYRI",
+          content: message.content,
+        }));
+
       for (const participant of groupEngrams) {
-        if (!participant) continue;
-        const others = groupEngrams
-          .filter((other): other is NonNullable<typeof other> => Boolean(other) && other.id !== participant.id)
-          .map((other) => ({ name: other.name, title: other.title }));
-        const response = await generateGroupChatTurn({
-          engram: participant,
-          others,
-          recentTurns,
-          humanMessage: content,
-          worldModelSummary: summarizeWorldModel(await loadRecentWorldModel(participant.id)),
-          responseLanguageInstruction: languageInstruction,
-        });
-        const [assistantMessage] = await db
-          .insert(messages)
-          .values({
+          if (!participant) continue;
+          const others = groupEngrams
+            .filter((other): other is NonNullable<typeof other> => Boolean(other) && other.id !== participant.id)
+            .map((other) => ({ name: other.name, title: other.title }));
+          const response = await generateGroupChatTurn({
+            engram: participant,
+            others,
+            recentTurns,
+            humanMessage: content,
+            worldModelSummary: summarizeWorldModel(await loadRecentWorldModel(participant.id)),
+            responseLanguageInstruction: languageInstruction,
+          });
+          const [assistantMessage] = await db
+            .insert(messages)
+            .values({
+              conversationId: id,
+              role: "assistant",
+              content: response,
+              speakerEngramId: participant.id,
+            })
+            .returning();
+          publishEvent({
+            type: "message.created",
+            ownerId: req.userId!,
             conversationId: id,
-            role: "assistant",
-            content: response,
-            speakerEngramId: participant.id,
-          })
-          .returning();
-        publishEvent({
-          type: "message.created",
-          ownerId: req.userId!,
-          conversationId: id,
-          engramId: participant.id,
-          data: assistantMessage,
-        });
-        res.write(
-          `data: ${JSON.stringify({
-            speakerEngramId: participant.id,
-            content: response,
-          })}\n\n`,
-        );
-        recentTurns.push({ speaker: participant.name, content: response });
-      }
+            engramId: participant.id,
+            data: assistantMessage,
+          });
+          res.write(
+            `data: ${JSON.stringify({
+              speakerEngramId: participant.id,
+              content: response,
+            })}\n\n`,
+          );
+          recentTurns.push({ speaker: participant.name, content: response });
+        }
 
       // The human-triggered pass above is always preserved. A short peer exchange may
       // follow, but it is request-scoped and hard-capped: a disconnect/restart stops it
@@ -726,6 +789,14 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     } catch (err) {
       req.log.error(err);
       res.write(`data: ${JSON.stringify({ error: "Group response failed" })}\n\n`);
+    } finally {
+      if (groupContinuationClaimToken) {
+        try {
+          await releaseGroupContinuation(id, groupContinuationClaimToken);
+        } catch (err) {
+          req.log.error(err);
+        }
+      }
     }
     res.end();
     return;
