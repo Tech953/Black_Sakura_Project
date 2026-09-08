@@ -645,6 +645,102 @@ describe("conversation persistence routes", () => {
       first.id,
       second.id,
     ]);
+    expect(h.store.conversations[0]).toMatchObject({
+      groupContinuationClaimToken: null,
+      groupContinuationClaimedAt: null,
+    });
+  });
+
+  it("persists an overlapping human send without starting a second group reply", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "Concurrent",
+      mode: "companion",
+      createdAt: new Date(),
+    });
+    h.store.conversationEngramParticipants.push(
+      { id: 1, conversationId: 1, engramId: first.id, ownerId: "test-owner", createdAt: new Date() },
+      { id: 2, conversationId: 1, engramId: second.id, ownerId: "test-owner", createdAt: new Date() },
+    );
+
+    let releaseFirstCreate!: () => void;
+    const firstCreateBlocked = new Promise<void>((resolve) => {
+      releaseFirstCreate = resolve;
+    });
+    let firstCreateStarted!: () => void;
+    const firstCreateDidStart = new Promise<void>((resolve) => {
+      firstCreateStarted = resolve;
+    });
+    h.llmState.blockNextCreate = firstCreateBlocked;
+    h.llmState.onCreateStarted = firstCreateStarted;
+
+    const firstRequest = fetch(`${base}/api/openai/conversations/1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "First question." }),
+    });
+    await firstCreateDidStart;
+
+    const secondResponse = await fetch(`${base}/api/openai/conversations/1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Second question." }),
+    });
+    expect(secondResponse.status).toBe(200);
+    expect(parseSse(await secondResponse.text())).toEqual([
+      {
+        error:
+          "Your message was saved, but this group is already responding to another message. No duplicate group reply was started.",
+        messageSaved: true,
+        done: true,
+      },
+    ]);
+    expect(h.store.messages.filter((message) => message.role === "user")).toHaveLength(2);
+    expect(h.store.messages.filter((message) => message.role === "assistant")).toHaveLength(0);
+
+    releaseFirstCreate();
+    const firstResponse = await firstRequest;
+    expect(firstResponse.status).toBe(200);
+    expect(parseSse(await firstResponse.text())).toHaveLength(7);
+    expect(h.store.messages.filter((message) => message.role === "assistant")).toHaveLength(6);
+    expect(h.store.conversations[0]).toMatchObject({
+      groupContinuationClaimToken: null,
+      groupContinuationClaimedAt: null,
+    });
+  });
+
+  it("reclaims a stale group continuation claim after a crashed request", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "Recoverable",
+      mode: "companion",
+      createdAt: new Date(),
+      groupContinuationClaimToken: "abandoned-request",
+      groupContinuationClaimedAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    h.store.conversationEngramParticipants.push(
+      { id: 1, conversationId: 1, engramId: first.id, ownerId: "test-owner", createdAt: new Date() },
+      { id: 2, conversationId: 1, engramId: second.id, ownerId: "test-owner", createdAt: new Date() },
+    );
+
+    const response = await fetch(`${base}/api/openai/conversations/1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Continue after restart." }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(parseSse(await response.text())).toHaveLength(7);
+    expect(h.store.conversations[0]).toMatchObject({
+      groupContinuationClaimToken: null,
+      groupContinuationClaimedAt: null,
+    });
   });
 
   it("keeps human-triggered group replies but blocks autonomous continuation when policy disallows it", async () => {
