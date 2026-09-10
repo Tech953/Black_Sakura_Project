@@ -411,6 +411,18 @@ export interface SystemStats {
   beliefConfidenceDistribution: ConfidenceBucket[];
 }
 
+/**
+ * Consent for peer-generated turns after the human-triggered group reply.
+ */
+export type OpenaiConversationGroupContinuationMode = typeof OpenaiConversationGroupContinuationMode[keyof typeof OpenaiConversationGroupContinuationMode];
+
+
+export const OpenaiConversationGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
+
 export interface OpenaiConversation {
   id: number;
   title: string;
@@ -420,6 +432,8 @@ export interface OpenaiConversation {
   engramId?: number;
   /** Explicit participants for a human-mediated group conversation. */
   engramIds: number[];
+  /** Consent for peer-generated turns after the human-triggered group reply. */
+  groupContinuationMode: OpenaiConversationGroupContinuationMode;
   createdAt: string;
   /** @nullable */
   archivedAt: string | null;
@@ -438,6 +452,18 @@ export interface OpenaiMessage {
   createdAt: string;
 }
 
+/**
+ * Consent for peer-generated turns after the human-triggered group reply.
+ */
+export type OpenaiConversationInputGroupContinuationMode = typeof OpenaiConversationInputGroupContinuationMode[keyof typeof OpenaiConversationInputGroupContinuationMode];
+
+
+export const OpenaiConversationInputGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
+
 export interface OpenaiConversationInput {
   title: string;
   mode: string;
@@ -450,6 +476,8 @@ export interface OpenaiConversationInput {
      * @maxItems 6
      */
   engramIds?: number[];
+  /** Consent for peer-generated turns after the human-triggered group reply. */
+  groupContinuationMode?: OpenaiConversationInputGroupContinuationMode;
 }
 
 export interface OpenaiMessageInput {
@@ -457,6 +485,18 @@ export interface OpenaiMessageInput {
   /** Optional BCP-47 language code the assistant/engram should respond in (e.g. "es", "ja"). Omit for automatic (match the user). */
   language?: string;
 }
+
+/**
+ * Consent for peer-generated turns after the human-triggered group reply.
+ */
+export type OpenaiConversationWithMessagesGroupContinuationMode = typeof OpenaiConversationWithMessagesGroupContinuationMode[keyof typeof OpenaiConversationWithMessagesGroupContinuationMode];
+
+
+export const OpenaiConversationWithMessagesGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
 
 export interface OpenaiConversationWithMessages {
   id: number;
@@ -466,6 +506,8 @@ export interface OpenaiConversationWithMessages {
   customEngram?: string;
   engramId?: number;
   engramIds?: number[];
+  /** Consent for peer-generated turns after the human-triggered group reply. */
+  groupContinuationMode: OpenaiConversationWithMessagesGroupContinuationMode;
   createdAt: string;
   /** @nullable */
   archivedAt: string | null;

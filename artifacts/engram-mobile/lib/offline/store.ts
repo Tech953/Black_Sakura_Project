@@ -209,6 +209,7 @@ async function initializeDb(selectedAccountId: string): Promise<SQLite.SQLiteDat
       personaName TEXT,
       customEngram TEXT,
       engramId INTEGER,
+      groupContinuationMode TEXT NOT NULL DEFAULT 'off',
       createdAt TEXT NOT NULL,
       syncedAt TEXT
     );
@@ -290,6 +291,13 @@ async function initializeDb(selectedAccountId: string): Promise<SQLite.SQLiteDat
     } catch (error) {
       if (!String(error).toLowerCase().includes("duplicate column")) throw error;
     }
+  }
+  try {
+    await opened.execAsync(
+      "ALTER TABLE conversations ADD COLUMN groupContinuationMode TEXT NOT NULL DEFAULT 'off';",
+    );
+  } catch (error) {
+    if (!String(error).toLowerCase().includes("duplicate column")) throw error;
   }
   // Seed personas once (keyed on slug, like the server's idempotent seed).
   const t = nowIso();
@@ -506,19 +514,21 @@ export async function createConversation(opts: {
   personaName?: string | null;
   customEngram?: string | null;
   engramId?: number | null;
+  groupContinuationMode?: "off" | "short" | "extended";
 }): Promise<Record<string, unknown>> {
   if (opts.engramId != null) await assertWritableEngram(opts.engramId);
   const d = await getDb();
   const t = nowIso();
   const res = await d.runAsync(
     `INSERT INTO conversations
-     (title, mode, personaName, customEngram, engramId, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     (title, mode, personaName, customEngram, engramId, groupContinuationMode, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     opts.title ?? null,
     opts.mode ?? "companion",
     opts.personaName ?? null,
     opts.customEngram ?? null,
     opts.engramId ?? null,
+    opts.groupContinuationMode ?? "off",
     t,
   );
   return {
@@ -529,6 +539,7 @@ export async function createConversation(opts: {
     customEngram: opts.customEngram ?? undefined,
     engramId: opts.engramId ?? undefined,
     engramIds: opts.engramId != null ? [opts.engramId] : [],
+    groupContinuationMode: opts.groupContinuationMode ?? "off",
     createdAt: t,
     archivedAt: null,
   };

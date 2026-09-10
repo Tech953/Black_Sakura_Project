@@ -533,6 +533,7 @@ export const ListOpenaiConversationsResponseItem = zod.object({
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
   "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullable()
 })
@@ -545,7 +546,7 @@ export const ListOpenaiConversationsResponse = zod.array(ListOpenaiConversations
 export const createOpenaiConversationBodyEngramIdsMin = 2;
 export const createOpenaiConversationBodyEngramIdsMax = 6;
 
-
+export const createOpenaiConversationBodyGroupContinuationModeDefault = `short`;
 
 export const CreateOpenaiConversationBody = zod.object({
   "title": zod.string(),
@@ -553,7 +554,8 @@ export const CreateOpenaiConversationBody = zod.object({
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
-  "engramIds": zod.array(zod.number()).min(createOpenaiConversationBodyEngramIdsMin).max(createOpenaiConversationBodyEngramIdsMax).optional().describe('Select 2–6 non-archival engrams for a human-mediated group conversation.')
+  "engramIds": zod.array(zod.number()).min(createOpenaiConversationBodyEngramIdsMin).max(createOpenaiConversationBodyEngramIdsMax).optional().describe('Select 2–6 non-archival engrams for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).default(createOpenaiConversationBodyGroupContinuationModeDefault).describe('Consent for peer-generated turns after the human-triggered group reply.')
 })
 
 export const CreateOpenaiConversationResponse = zod.object({
@@ -564,6 +566,7 @@ export const CreateOpenaiConversationResponse = zod.object({
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
   "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullable()
 })
@@ -584,6 +587,7 @@ export const GetOpenaiConversationResponse = zod.object({
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
   "engramIds": zod.array(zod.number()).optional(),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullable(),
   "messages": zod.array(zod.object({
@@ -626,6 +630,7 @@ export const ArchiveOpenaiConversationResponse = zod.object({
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
   "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullable()
 })

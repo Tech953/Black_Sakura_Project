@@ -82,6 +82,7 @@ const database = {
         personaName,
         customEngram,
         engramId,
+        groupContinuationMode,
         createdAt,
       ] = args;
       const id = state.conversations.length + 1;
@@ -92,6 +93,7 @@ const database = {
         personaName,
         customEngram,
         engramId,
+        groupContinuationMode,
         createdAt,
       });
       return { lastInsertRowId: id, changes: 1 };
