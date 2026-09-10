@@ -136,6 +136,8 @@ describe("offline SQLite failure harness", () => {
               mode: "companion",
               engramSlug: "pyri",
               createdAt: "2026-09-04T12:00:00.000Z",
+              archivedAt: "2026-09-04T12:05:00.000Z",
+              syncVersion: 1,
             },
           ];
         }
@@ -173,6 +175,7 @@ describe("offline SQLite failure harness", () => {
       conversations: [
         {
           syncId: "conversation:7",
+          archivedAt: "2026-09-04T12:05:00.000Z",
           messages: [{ syncId: "message:9" }],
         },
       ],

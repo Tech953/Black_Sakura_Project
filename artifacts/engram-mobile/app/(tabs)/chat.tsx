@@ -74,7 +74,12 @@ export default function ChatScreen() {
   const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { selectedEngramId, getConversationId, setConversationId } = useEngram();
+  const {
+    selectedEngramId,
+    getConversationId,
+    setConversationId,
+    setSelectedEngramId,
+  } = useEngram();
   const queryClient = useQueryClient();
   // Conversation IDs are backend-specific; re-resolve when the mode flips.
   const offlineActive = useOfflineMode();
@@ -105,7 +110,7 @@ export default function ChatScreen() {
       { archived: showArchived },
       {
         query: {
-          enabled: !offlineActive && historyOpen,
+          enabled: historyOpen,
           queryKey: getListOpenaiConversationsQueryKey({
             archived: showArchived,
           }),
@@ -186,10 +191,11 @@ export default function ChatScreen() {
       setLocalConversationId(selected.id);
       if (selected.engramId != null) {
         setConversationId(selected.engramId, selected.id);
+        setSelectedEngramId(selected.engramId);
       }
       setHistoryOpen(false);
     },
-    [setConversationId],
+    [setConversationId, setSelectedEngramId],
   );
 
   const handleArchiveConversation = useCallback(
@@ -205,6 +211,9 @@ export default function ChatScreen() {
           }),
           queryClient.invalidateQueries({
             queryKey: getListOpenaiConversationsQueryKey({ archived: true }),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: getGetOpenaiConversationQueryKey(selected.id),
           }),
         ]);
       } catch {
@@ -500,37 +509,35 @@ export default function ChatScreen() {
           <Text style={[styles.h1, rtl && styles.rtlText, { color: colors.foreground }]}>
             {engram?.name ?? t("chat.fallbackTitle")}
           </Text>
-          {!offlineActive && (
-            <View style={styles.headerActions}>
+          <View style={styles.headerActions}>
+            <Pressable
+              accessibilityLabel={t("chat.history")}
+              onPress={() => setHistoryOpen(true)}
+              style={({ pressed }) => [styles.headerButton, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Feather name="clock" size={18} color={colors.primary} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel={t("chat.exportConversation")}
+              disabled={messages.length === 0 || isStreaming}
+              onPress={() => setExportOpen(true)}
+              style={({ pressed }) => [
+                styles.headerButton,
+                { opacity: messages.length === 0 || isStreaming ? 0.3 : pressed ? 0.6 : 1 },
+              ]}
+            >
+              <Feather name="download" size={18} color={colors.primary} />
+            </Pressable>
+            {conversation?.archivedAt && (
               <Pressable
-                accessibilityLabel={t("chat.history")}
-                onPress={() => setHistoryOpen(true)}
+                accessibilityLabel={t("chat.restoreConversation")}
+                onPress={() => void handleArchiveConversation(conversation, false)}
                 style={({ pressed }) => [styles.headerButton, { opacity: pressed ? 0.6 : 1 }]}
               >
-                <Feather name="clock" size={18} color={colors.primary} />
+                <Feather name="archive" size={18} color={colors.primary} />
               </Pressable>
-              <Pressable
-                accessibilityLabel={t("chat.exportConversation")}
-                disabled={messages.length === 0 || isStreaming}
-                onPress={() => setExportOpen(true)}
-                style={({ pressed }) => [
-                  styles.headerButton,
-                  { opacity: messages.length === 0 || isStreaming ? 0.3 : pressed ? 0.6 : 1 },
-                ]}
-              >
-                <Feather name="download" size={18} color={colors.primary} />
-              </Pressable>
-              {conversation?.archivedAt && (
-                <Pressable
-                  accessibilityLabel={t("chat.restoreConversation")}
-                  onPress={() => void handleArchiveConversation(conversation, false)}
-                  style={({ pressed }) => [styles.headerButton, { opacity: pressed ? 0.6 : 1 }]}
-                >
-                  <Feather name="archive" size={18} color={colors.primary} />
-                </Pressable>
-              )}
-            </View>
-          )}
+            )}
+          </View>
         </View>
       </View>
 

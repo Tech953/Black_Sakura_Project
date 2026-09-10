@@ -1620,6 +1620,9 @@ components:
         createdAt:
           type: string
           format: date-time
+        archivedAt:
+          type: [string, "null"]
+          format: date-time
         messages:
           type: array
           maxItems: 100

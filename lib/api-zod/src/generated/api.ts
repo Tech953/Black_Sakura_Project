@@ -99,6 +99,7 @@ export const SyncOfflineHistoryBody = zod.object({
   "mode": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemModeMax),
   "engramSlug": zod.string().max(syncOfflineHistoryBodyConversationsItemEngramSlugMax).nullable(),
   "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish(),
   "messages": zod.array(zod.object({
   "syncId": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemMessagesItemSyncIdMax),
   "role": zod.enum(['user', 'assistant']),

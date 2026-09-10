@@ -1715,6 +1715,43 @@ describe("offline mobile history synchronization", () => {
     ]);
   });
 
+  it("reconciles a local archive and later restore through the same receipt", async () => {
+    seedEngram();
+    const archivedPayload = {
+      ...payload,
+      deviceId: "phone-archive",
+      conversations: [
+        {
+          ...payload.conversations[0],
+          syncId: "conversation:archive",
+          archivedAt: "2026-09-04T12:03:00.000Z",
+          messages: [],
+        },
+      ],
+      inquiries: [],
+      transmissions: [],
+      observedEntries: [],
+    };
+
+    const archived = await postSync(archivedPayload);
+    expect(archived.status).toBe(200);
+    expect(h.store.conversations[0].archivedAt).toEqual(
+      new Date("2026-09-04T12:03:00.000Z"),
+    );
+
+    const restored = await postSync({
+      ...archivedPayload,
+      conversations: [
+        {
+          ...archivedPayload.conversations[0],
+          archivedAt: null,
+        },
+      ],
+    });
+    expect(restored.status).toBe(200);
+    expect(h.store.conversations[0].archivedAt).toBeNull();
+  });
+
   it("rolls back earlier inserts when a later row is invalid", async () => {
     seedEngram();
     const response = await postSync({

@@ -10,6 +10,7 @@ import {
   GetEngramResponse,
   GetOpenaiConversationResponse,
   HealthCheckResponse,
+  ListOpenaiConversationsResponse,
   ListEngramInquiriesResponse,
   ListEngramTransmissionsResponse,
   ListEngramsResponse,
@@ -95,8 +96,21 @@ const database = {
         engramId,
         groupContinuationMode,
         createdAt,
+        archivedAt: null,
+        syncVersion: 0,
+        syncedAt: null,
       });
       return { lastInsertRowId: id, changes: 1 };
+    }
+    if (sql.includes("UPDATE conversations")) {
+      const [archivedAt, id] = args;
+      const row = state.conversations.find((candidate) => candidate.id === id);
+      if (row) {
+        row.archivedAt = archivedAt;
+        row.syncVersion = Number(row.syncVersion ?? 0) + 1;
+        row.syncedAt = null;
+      }
+      return { lastInsertRowId: 0, changes: row ? 1 : 0 };
     }
     if (sql.includes("INSERT INTO inquiries")) {
       const [engramId, kind, question, response, createdAt] = args;
@@ -184,6 +198,7 @@ const database = {
     if (sql.includes("FROM messages")) {
       return state.messages.filter((row) => row.conversationId === id);
     }
+    if (sql.includes("FROM conversations c")) return [...state.conversations];
     if (sql.includes("FROM world_model")) return [];
     return [];
   }),
@@ -348,6 +363,49 @@ describe("offline handler generated response contracts", () => {
       personaName: "Analyst",
       customEngram: "Be concise and evidence-led.",
     });
+  });
+
+  it("lists, archives, restores, and re-lists local conversations", async () => {
+    const created = expectContract(
+      await request("POST", "/api/openai/conversations", {
+        title: "Offline history",
+        mode: "companion",
+        engramId: 1,
+      }),
+      201,
+      CreateOpenaiConversationResponse,
+    );
+
+    const active = expectContract(
+      await request("GET", "/api/openai/conversations?archived=false"),
+      200,
+      ListOpenaiConversationsResponse,
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0].archivedAt).toBeNull();
+
+    const archived = await request(
+      "PATCH",
+      `/api/openai/conversations/${created.id}/archive`,
+      { archived: true },
+    );
+    expect(archived?.status).toBe(200);
+    expect((archived?.body as Row).archivedAt).toBeTruthy();
+
+    const archivedList = expectContract(
+      await request("GET", "/api/openai/conversations?archived=true"),
+      200,
+      ListOpenaiConversationsResponse,
+    );
+    expect(archivedList).toHaveLength(1);
+
+    const restored = await request(
+      "PATCH",
+      `/api/openai/conversations/${created.id}/archive`,
+      { archived: false },
+    );
+    expect(restored?.status).toBe(200);
+    expect((restored?.body as Row).archivedAt).toBeNull();
   });
 
   it.each([

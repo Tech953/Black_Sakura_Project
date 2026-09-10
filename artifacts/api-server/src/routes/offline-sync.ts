@@ -155,6 +155,10 @@ router.post("/mobile/offline-sync", async (req, res) => {
               mode: conversation.mode,
               engramId: engram?.id ?? null,
               createdAt: new Date(conversation.createdAt),
+                archivedAt:
+                  conversation.archivedAt == null
+                    ? null
+                    : new Date(conversation.archivedAt),
             })
             .returning({ id: conversations.id });
           remoteConversationId = created!.id;
@@ -168,6 +172,22 @@ router.post("/mobile/offline-sync", async (req, res) => {
             conversationClaim.receipt,
             conversation.syncId,
           );
+          if (conversation.archivedAt !== undefined) {
+            await tx
+              .update(conversations)
+              .set({
+                archivedAt:
+                  conversation.archivedAt == null
+                    ? null
+                    : new Date(conversation.archivedAt),
+              })
+              .where(
+                and(
+                  eq(conversations.id, remoteConversationId),
+                  eq(conversations.ownerId, ownerId),
+                ),
+              );
+          }
         }
         syncedIds.add(conversation.syncId);
 
