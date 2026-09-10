@@ -13,6 +13,15 @@ export interface MobileChatExportEntry {
   content: string;
 }
 
+export interface MobileChatExportDocument {
+  title: string;
+  downloadedOn: string;
+  exportedAt: string;
+  conversationCreated: string;
+  createdAt: string;
+  entries: MobileChatExportEntry[];
+}
+
 export function buildTranscriptEntries(
   messages: MobileChatExportMessage[],
   labels: {
@@ -39,14 +48,7 @@ export function buildTranscriptEntries(
     }));
 }
 
-export function buildMarkdownTranscript(input: {
-  title: string;
-  downloadedOn: string;
-  exportedAt: string;
-  conversationCreated: string;
-  createdAt: string;
-  entries: MobileChatExportEntry[];
-}): string {
+export function buildMarkdownTranscript(input: MobileChatExportDocument): string {
   return [
     `# ${input.title}`,
     "",
@@ -63,14 +65,7 @@ export function buildMarkdownTranscript(input: {
   ].join("\n");
 }
 
-export function buildPlainTextTranscript(input: {
-  title: string;
-  downloadedOn: string;
-  exportedAt: string;
-  conversationCreated: string;
-  createdAt: string;
-  entries: MobileChatExportEntry[];
-}): string {
+export function buildPlainTextTranscript(input: MobileChatExportDocument): string {
   return [
     input.title,
     `${input.downloadedOn}: ${input.exportedAt}`,
@@ -100,14 +95,7 @@ function paragraph(text: string, bold = false): string {
   return `<w:p>${properties}<w:r>${runProperties}<w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
 }
 
-export function buildDocxBytes(input: {
-  title: string;
-  downloadedOn: string;
-  exportedAt: string;
-  conversationCreated: string;
-  createdAt: string;
-  entries: MobileChatExportEntry[];
-}): Uint8Array {
+export function buildDocxBytes(input: MobileChatExportDocument): Uint8Array {
   const body = [
     paragraph(input.title, true),
     paragraph(`${input.downloadedOn}: ${input.exportedAt}`),
