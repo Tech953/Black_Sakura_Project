@@ -62,12 +62,11 @@ import { isRtlLanguage } from "@/lib/layout-direction";
 import { OFFLINE_LIMITS } from "@/lib/offline/limits";
 import { resolveServerApiUrl } from "@/lib/server-url";
 import {
-  buildDocxBytes,
   buildMarkdownTranscript,
   buildPlainTextTranscript,
   buildTranscriptEntries,
-  escapeHtml,
 } from "@/lib/chat-export";
+import { exportNativeChatConversation } from "@/lib/native-chat-export";
 
 export default function ChatScreen() {
   const { t, i18n } = useTranslation("mobile");
@@ -263,55 +262,19 @@ export default function ChatScreen() {
           return;
         }
 
-        let uri: string;
-        let mimeType: string;
-        if (format === "pdf") {
-          const html =
-            `<html><body><h1>${escapeHtml(title)}</h1>` +
-            entries
-              .map(
-                (entry) =>
-                  `<h2>${escapeHtml(entry.heading)}</h2>` +
-                  (entry.timestamp
-                    ? `<p><em>${escapeHtml(entry.timestamp)}</em></p>`
-                    : "") +
-                  `<p>${escapeHtml(entry.content)}</p>`,
-              )
-              .join("") +
-            "</body></html>";
-          uri = (await Print.printToFileAsync({ html })).uri;
-          mimeType = "application/pdf";
-        } else {
-          uri = `${FileSystem.cacheDirectory ?? ""}${safeTitle}.${format}`;
-          if (format === "docx") {
-            const bytes = buildDocxBytes(exportInput);
-            let binary = "";
-            const chunkSize = 0x8000;
-            for (let index = 0; index < bytes.length; index += chunkSize) {
-              binary += String.fromCharCode(
-                ...bytes.subarray(index, index + chunkSize),
-              );
-            }
-            await FileSystem.writeAsStringAsync(uri, btoa(binary), {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            mimeType =
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-          } else {
-            const content =
-              format === "md"
-                ? buildMarkdownTranscript(exportInput)
-                : buildPlainTextTranscript(exportInput);
-            await FileSystem.writeAsStringAsync(uri, content, {
-              encoding: FileSystem.EncodingType.UTF8,
-            });
-            mimeType = format === "md" ? "text/markdown" : "text/plain";
-          }
-        }
-        await Sharing.shareAsync(uri, {
-          mimeType,
+        await exportNativeChatConversation(format, exportInput, safeTitle, {
+          cacheDirectory: FileSystem.cacheDirectory ?? "",
+          writeAsStringAsync: (uri, contents, options) =>
+            FileSystem.writeAsStringAsync(uri, contents, {
+              encoding:
+                options.encoding === "base64"
+                  ? FileSystem.EncodingType.Base64
+                  : FileSystem.EncodingType.UTF8,
+            }),
+          printToFileAsync: ({ html }) => Print.printToFileAsync({ html }),
+          getInfoAsync: (uri) => FileSystem.getInfoAsync(uri),
+          shareAsync: (uri, options) => Sharing.shareAsync(uri, options),
           dialogTitle: t("chat.shareConversation"),
-          UTI: mimeType,
         });
       } finally {
         setExporting(false);

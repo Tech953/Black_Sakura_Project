@@ -105,6 +105,11 @@ function runHistoryBrowserRegression() {
   run("pnpm", ["run", "test:e2e:history"]);
 }
 
+function runNativeExportRegression() {
+  console.log("Running native chat export regression...");
+  run("pnpm", ["run", "smoke:exports", "--", "--ci"]);
+}
+
 function findAndroidBuildTool(name) {
   const sdkRoots = [
     process.env.ANDROID_HOME,
@@ -330,6 +335,7 @@ try {
   const { skipExpo, skipHistoryE2e, apkPath } = parseArgs(process.argv.slice(2));
   if (!skipExpo) checkExpoPackageVersions();
   if (!skipHistoryE2e) runHistoryBrowserRegression();
+  runNativeExportRegression();
   verifyCheckedInAndroidPrivacyPolicy();
   ensureLlamaNativeLibraries();
   if (apkPath) verifyApk(apkPath);
