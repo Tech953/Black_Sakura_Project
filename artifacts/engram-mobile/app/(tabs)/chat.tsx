@@ -67,6 +67,10 @@ import {
   buildTranscriptEntries,
 } from "@/lib/chat-export";
 import { exportNativeChatConversation } from "@/lib/native-chat-export";
+import {
+  buildWebChatExport,
+  downloadWebChatExport,
+} from "@/lib/web-chat-export";
 
 export default function ChatScreen() {
   const { t, i18n } = useTranslation("mobile");
@@ -253,11 +257,17 @@ export default function ChatScreen() {
           createdAt: conversation.createdAt,
           entries,
         };
+        if (Platform.OS === "web") {
+          downloadWebChatExport(
+            buildWebChatExport(format, exportInput, safeTitle),
+          );
+          return;
+        }
         const fallback =
           format === "md"
             ? buildMarkdownTranscript(exportInput)
             : buildPlainTextTranscript(exportInput);
-        if (Platform.OS === "web" || !(await Sharing.isAvailableAsync())) {
+        if (!(await Sharing.isAvailableAsync())) {
           await Share.share({ title, message: fallback });
           return;
         }

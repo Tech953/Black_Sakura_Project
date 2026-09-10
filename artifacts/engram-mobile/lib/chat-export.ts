@@ -130,6 +130,67 @@ export function buildDocxBytes(input: MobileChatExportDocument): Uint8Array {
   });
 }
 
+function escapePdfText(value: string): string {
+  return value
+    .replace(/[^\x20-\x7e]/g, "?")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+}
+
+export function buildPdfBytes(input: MobileChatExportDocument): Uint8Array {
+  const lines = [
+    input.title,
+    `${input.downloadedOn}: ${input.exportedAt}`,
+    `${input.conversationCreated}: ${new Date(input.createdAt).toISOString()}`,
+    "",
+    ...input.entries.flatMap((entry) => [
+      entry.heading,
+      ...(entry.timestamp ? [entry.timestamp] : []),
+      ...entry.content.split(/\r?\n/),
+      "",
+    ]),
+  ]
+    .flatMap((line) => {
+      const chunks = line.match(/.{1,88}/g);
+      return chunks && chunks.length > 0 ? chunks : [""];
+    })
+    .slice(0, 48);
+
+  const stream = [
+    "BT",
+    "/F1 11 Tf",
+    ...lines.map(
+      (line, index) =>
+        `1 0 0 1 48 ${744 - index * 14} Tm (${escapePdfText(line)}) Tj`,
+    ),
+    "ET",
+  ].join("\n");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+  ];
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  for (let index = 0; index < objects.length; index += 1) {
+    offsets.push(pdf.length);
+    pdf += `${index + 1} 0 obj\n${objects[index]}\nendobj\n`;
+  }
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  pdf += offsets
+    .slice(1)
+    .map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`)
+    .join("");
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return strToU8(pdf);
+}
+
 export function escapeHtml(value: string): string {
   return escapeXml(value).replace(/\n/g, "<br/>");
 }

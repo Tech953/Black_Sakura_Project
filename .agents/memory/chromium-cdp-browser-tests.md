@@ -16,3 +16,9 @@ For Expo mobile export coverage, the browser path cannot use `expo-file-system` 
 Native mobile export paths should verify the produced URI exists and has non-zero size before invoking the platform share sheet; a successful share callback alone does not prove that PDF/DOCX generation completed.
 
 **How to apply:** Keep the native export service injectable so deterministic tests can inspect all four file formats, and pair it with a physical-device checklist for share-sheet and Files-provider verification.
+
+Browser exports should use Blob/object-URL downloads rather than native Expo file APIs; CDP tests can intercept `URL.createObjectURL` and anchor clicks to verify filename, MIME type, size, and binary signatures without relying on the host filesystem.
+
+**Why:** Expo web does not provide native file-system or sharing APIs, and browser download paths otherwise regress silently while text-share tests continue to pass. The current lightweight PDF generator preserves ASCII text; international PDF text needs an explicit font/encoding upgrade.
+
+**How to apply:** Extend the browser download fixture’s expected metadata and signature checks whenever a format or filename contract changes.

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDocxBytes,
   buildMarkdownTranscript,
+  buildPdfBytes,
   buildPlainTextTranscript,
   buildTranscriptEntries,
   escapeHtml,
@@ -55,5 +56,11 @@ describe("mobile chat exports", () => {
     const docx = buildDocxBytes(input);
     expect(Array.from(docx.slice(0, 2))).toEqual([80, 75]);
     expect(escapeHtml("<hello>\nworld")).toBe("&lt;hello&gt;<br/>world");
+  });
+
+  it("builds a readable PDF payload", () => {
+    const pdf = buildPdfBytes(input);
+    expect(new TextDecoder().decode(pdf.slice(0, 8))).toBe("%PDF-1.4");
+    expect(new TextDecoder().decode(pdf)).toContain("Welcome back");
   });
 });
