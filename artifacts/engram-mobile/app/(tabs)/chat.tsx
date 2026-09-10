@@ -259,7 +259,7 @@ export default function ChatScreen() {
         };
         if (Platform.OS === "web") {
           downloadWebChatExport(
-            buildWebChatExport(format, exportInput, safeTitle),
+            await buildWebChatExport(format, exportInput, safeTitle),
           );
           return;
         }

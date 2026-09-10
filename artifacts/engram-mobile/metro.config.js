@@ -16,7 +16,7 @@ config.transformer = {
 // resolving the offline store and repeatedly reloads instead of rendering.
 config.resolver = {
   ...config.resolver,
-  assetExts: [...config.resolver.assetExts, "wasm"],
+  assetExts: [...config.resolver.assetExts, "wasm", "woff2"],
 };
 
 module.exports = config;

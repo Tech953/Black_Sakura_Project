@@ -19,9 +19,15 @@ Native mobile export paths should verify the produced URI exists and has non-zer
 
 Browser exports should use Blob/object-URL downloads rather than native Expo file APIs; CDP tests can intercept `URL.createObjectURL` and anchor clicks to verify filename, MIME type, size, and binary signatures without relying on the host filesystem.
 
-**Why:** Expo web does not provide native file-system or sharing APIs, and browser download paths otherwise regress silently while text-share tests continue to pass. Web PDFs render through the browser’s Unicode font fallback; native exports retain their separate file-generation path.
+**Why:** Expo web does not provide native file-system or sharing APIs, and browser download paths otherwise regress silently while text-share tests continue to pass. Web PDFs use a small, locally bundled Unicode font set before rasterization; native exports retain their separate file-generation path.
 
 **How to apply:** Extend the browser download fixture’s expected metadata and signature checks whenever a format or filename contract changes.
+
+For guaranteed web-PDF glyphs, keep only the selected Noto WOFF2 subsets in the mobile assets, load them with Expo Font before drawing, fail the export if loading fails, and add `woff2` to Metro’s asset extensions. Do not import the full font packages at runtime.
+
+**Why:** Metro does not treat WOFF2 as an asset by default, and the complete CJK package is too large for a mobile bundle even though the needed 400-weight subsets total about 1.2 MB.
+
+**How to apply:** If the font set changes, update the vendored assets and the asset declaration together; keep the browser-only font import dynamic so Vitest/native module evaluation does not parse React Native Flow syntax.
 
 When Firefox/WebKit binaries are unavailable, do not label the result as real cross-browser execution. Use an explicit engine-compatibility harness around the production download function, enforce each engine’s relevant DOM/object-URL constraint, and keep the limitation documented.
 

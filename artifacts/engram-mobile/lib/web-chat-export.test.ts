@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BROWSER_UNICODE_FONT_STACK,
   buildBrowserPdfBytes,
   buildWebChatExport,
   type BrowserPdfRuntime,
@@ -22,7 +23,7 @@ const document = {
 };
 
 describe("web chat exports", () => {
-  it("returns browser-download metadata and non-empty bodies for every format", () => {
+  it("returns browser-download metadata and non-empty bodies for every format", async () => {
     const expected = [
       ["md", "Signal-01.md", "text/markdown"],
       ["txt", "Signal-01.txt", "text/plain"],
@@ -35,7 +36,7 @@ describe("web chat exports", () => {
     ] as const;
 
     for (const [format, filename, mimeType] of expected) {
-      const exported = buildWebChatExport(format, document, "Signal-01");
+      const exported = await buildWebChatExport(format, document, "Signal-01");
       const size =
         typeof exported.body === "string"
           ? new TextEncoder().encode(exported.body).byteLength
@@ -47,7 +48,7 @@ describe("web chat exports", () => {
     }
   });
 
-  it("renders multilingual PDF text through the browser font fallback", () => {
+  it("renders multilingual PDF text with the bundled Unicode font stack", () => {
     const rendered: string[] = [];
     const runtime: BrowserPdfRuntime = {
       createCanvas: (width, height) => ({
@@ -79,6 +80,10 @@ describe("web chat exports", () => {
 
     const pdf = buildBrowserPdfBytes(multilingual, runtime);
 
+    expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto CJK");
+    expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Arabic");
+    expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Cyrillic");
+    expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Latin");
     expect(new TextDecoder().decode(pdf.slice(0, 8))).toBe("%PDF-1.4");
     expect(Array.from(pdf).some((byte, index) => byte === 0xff && pdf[index + 1] === 0xd8)).toBe(true);
     expect(rendered.join(" ")).toContain("Café");
