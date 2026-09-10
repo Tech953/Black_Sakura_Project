@@ -79,6 +79,7 @@ describe("web chat exports", () => {
     };
 
     const pdf = buildBrowserPdfBytes(multilingual, runtime);
+    const pdfText = new TextDecoder().decode(pdf);
 
     expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto CJK");
     expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Arabic");
@@ -86,6 +87,11 @@ describe("web chat exports", () => {
     expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Latin");
     expect(new TextDecoder().decode(pdf.slice(0, 8))).toBe("%PDF-1.4");
     expect(Array.from(pdf).some((byte, index) => byte === 0xff && pdf[index + 1] === 0xd8)).toBe(true);
+    expect(pdfText).toContain("/ToUnicode");
+    expect(pdfText).toContain("3 Tr");
+    expect(pdfText).toContain("<4F60>");
+    expect(pdfText).toContain("<041F>");
+    expect(pdfText).toContain("<0645>");
     expect(rendered.join(" ")).toContain("Café");
     expect(rendered.join(" ")).toContain("你好");
     expect(rendered.join(" ")).toContain("Привет");
