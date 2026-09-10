@@ -167,6 +167,84 @@ function assertAndroidPrivacyPolicy(manifest, context) {
   }
 }
 
+function readAndroidXmlAttribute(xml, attribute) {
+  return xml.match(new RegExp(`android:${attribute}\\s*=\\s*"([^"]+)"`))?.[1] ?? null;
+}
+
+function currentAndroidBuildInputs() {
+  const appConfigPath = path.join(mobileRoot, "app.json");
+  const manifestPath = path.join(mobileRoot, "android/app/src/main/AndroidManifest.xml");
+  const appConfig = JSON.parse(readFileSync(appConfigPath, "utf8"));
+  const expo = appConfig.expo ?? {};
+  const android = expo.android ?? {};
+  const sourceManifest = readFileSync(manifestPath, "utf8");
+  const packageName = android.package;
+  const versionCode = Number(android.versionCode);
+  const versionName = expo.version;
+  const allowBackup = readAndroidXmlAttribute(sourceManifest, "allowBackup");
+
+  if (
+    typeof packageName !== "string" ||
+    !Number.isInteger(versionCode) ||
+    typeof versionName !== "string" ||
+    (allowBackup !== "true" && allowBackup !== "false")
+  ) {
+    throw new Error(`Could not read expected Android package/version/privacy inputs from ${appConfigPath}.`);
+  }
+
+  return {
+    packageName,
+    versionCode,
+    versionName,
+    allowBackup: allowBackup === "true",
+  };
+}
+
+function parseAaptBadging(badging) {
+  const match = badging.match(
+    /^package:\s+name='([^']+)'\s+versionCode='([^']+)'\s+versionName='([^']*)'/m,
+  );
+  if (!match) {
+    throw new Error("Release APK package/version metadata could not be read from aapt badging output.");
+  }
+  const versionCode = Number(match[2]);
+  if (!Number.isInteger(versionCode)) {
+    throw new Error(`Release APK has an invalid versionCode in aapt badging output: ${match[2]}.`);
+  }
+  return {
+    packageName: match[1],
+    versionCode,
+    versionName: match[3],
+  };
+}
+
+function parseAaptManifestMetadata(manifest) {
+  const allowBackup = manifest.match(
+    /A:\s+android:allowBackup\([^)]+\)=\(type 0x12\)(0x[0-9a-f]+)/i,
+  );
+  return {
+    allowBackup: allowBackup ? BigInt(allowBackup[1]) !== 0n : null,
+  };
+}
+
+function formatMetadataValue(value) {
+  return value === null || value === undefined ? "<missing>" : JSON.stringify(value);
+}
+
+export function assertApkFreshness(expected, actual, context = "Release APK") {
+  const differences = Object.keys(expected)
+    .filter((key) => expected[key] !== actual[key])
+    .map(
+      (key) =>
+        `${key}: embedded ${formatMetadataValue(actual[key])}; expected ${formatMetadataValue(expected[key])}`,
+    );
+  if (differences.length > 0) {
+    throw new Error(
+      `${context} is stale relative to current Android build inputs (${differences.join("; ")}).`,
+    );
+  }
+}
+
 function verifyCheckedInAndroidPrivacyPolicy() {
   const manifestPath = path.join(mobileRoot, "android/app/src/main/AndroidManifest.xml");
   if (!existsSync(manifestPath)) {
@@ -228,6 +306,21 @@ function verifyApkPrivacyPolicy(apkPath) {
   console.log("Release APK backup and permission policy is hardened.");
 }
 
+function verifyApkFreshness(apkPath) {
+  const aapt = findAndroidBuildTool("aapt");
+  const expected = currentAndroidBuildInputs();
+  const badging = run(aapt, ["dump", "badging", apkPath], { capture: true });
+  const manifest = run(aapt, ["dump", "xmltree", apkPath, "AndroidManifest.xml"], {
+    capture: true,
+  });
+  const actual = {
+    ...parseAaptBadging(badging),
+    ...parseAaptManifestMetadata(manifest),
+  };
+  assertApkFreshness(expected, actual);
+  console.log("Release APK matches current Android package, version, and privacy inputs.");
+}
+
 function verifyArm64ElfAlignment(apkPath) {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "engram-apk-"));
   try {
@@ -275,6 +368,7 @@ function verifyApk(apkPath) {
   if (!existsSync(resolved) || !statSync(resolved).isFile()) {
     throw new Error(`Release APK not found at ${resolved}`);
   }
+  verifyApkFreshness(resolved);
   verifyApkPrivacyPolicy(resolved);
   const entries = run("unzip", ["-Z1", resolved], { capture: true })
     .split(/\r?\n/)
@@ -342,15 +436,21 @@ function parseArgs(argv) {
 }
 
 try {
-  const { skipExpo, skipHistoryE2e, apkPath } = parseArgs(process.argv.slice(2));
-  if (!skipExpo) checkExpoPackageVersions();
-  if (!skipHistoryE2e) runHistoryBrowserRegression();
-  runNativeExportRegression();
-  runWebExportCompatibilityRegression();
-  verifyCheckedInAndroidPrivacyPolicy();
-  ensureLlamaNativeLibraries();
-  if (apkPath) verifyApk(apkPath);
-  console.log("Mobile release dependency preflight passed.");
+  const isMain =
+    process.argv[1] &&
+    existsSync(process.argv[1]) &&
+    realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  if (isMain) {
+    const { skipExpo, skipHistoryE2e, apkPath } = parseArgs(process.argv.slice(2));
+    if (!skipExpo) checkExpoPackageVersions();
+    if (!skipHistoryE2e) runHistoryBrowserRegression();
+    runNativeExportRegression();
+    runWebExportCompatibilityRegression();
+    verifyCheckedInAndroidPrivacyPolicy();
+    ensureLlamaNativeLibraries();
+    if (apkPath) verifyApk(apkPath);
+    console.log("Mobile release dependency preflight passed.");
+  }
 } catch (error) {
   console.error(`Mobile release dependency preflight failed: ${error.message}`);
   process.exitCode = 1;
