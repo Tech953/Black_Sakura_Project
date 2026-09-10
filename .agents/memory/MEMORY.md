@@ -3,6 +3,7 @@
 - [Mobile on-device offline mode](mobile-offline-mode.md) — local-handler seam, safety prompts single-sourced in engram-core, mode-scoped conversation IDs, Qwen3 think-block hold-back, expo resumeData.
 - [Mobile offline reconciliation](mobile-offline-sync.md) — retry-safe device history upload: receipts, dependency ordering, revision guards, bounded payloads, and post-ack cache clearing.
 - [Mobile crash recovery](mobile-crash-recovery.md) — device-local fatal reports plus startup breadcrumbs; preserve the platform handler and clear launch state only after stable UI.
+- [Expo native dependency pinning](expo-native-dependency-pinning.md) — native Expo modules must match the installed SDK; run Expo compatibility checks after every native dependency change.
 - [Bundled offline LLM (desktop)](bundled-offline-llm.md) — zero-setup offline mode via shipped llama.cpp server + model; staging, lifecycle, LAN, and workspace quota gotchas.
 - [Desktop server bundle boundary](desktop-server-bundle-boundary.md) — only explicitly staged runtime dependencies may remain external in the standalone packaged API child.
 - [Desktop auto-update](desktop-auto-update.md) — how the Electron app self-updates and the non-obvious constraints that make it actually fire.
