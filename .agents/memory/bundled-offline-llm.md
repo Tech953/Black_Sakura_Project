@@ -31,3 +31,11 @@ The desktop app's "bundled" LLM mode spawns a llama.cpp `llama-server` shipped i
 **Why:** Windows is the release platform where the managed model is intentionally absent, and Linux full-model smoke cannot prove that userData-backed activation works.
 
 **How to apply:** Keep the fixture override opt-in to packaged CI smoke only; production always uses the immutable pinned model metadata.
+
+## Linux runtime dependency contract
+
+The pinned Linux llama.cpp binary is dynamically linked against host-provided `libstdc++`, OpenSSL 3, and OpenMP. Debian packages declare `libstdc++6`, `libssl3`, and `libgomp1`; AppImage users need equivalent libraries. Packaged smoke runs `ldd` before Electron launch and reports unresolved libraries instead of waiting for a code-127 child exit.
+
+**Why:** The NixOS workspace does not expose these libraries through the default loader path, while copying Nix store paths into a release would not be portable or reproducible.
+
+**How to apply:** Keep Linux dependency resolution as a release preflight contract, use `LD_LIBRARY_PATH` only for compatible local smoke hosts, and keep the Windows runtime self-contained with adjacent DLLs.

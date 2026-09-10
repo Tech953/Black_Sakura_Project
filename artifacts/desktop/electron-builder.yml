@@ -78,6 +78,11 @@ deb:
     - libnss3
     - libxss1
     - libxtst6
+    # The pinned Linux llama.cpp runtime links against these host libraries.
+    # AppImage users need equivalent libraries from their distribution.
+    - libstdc++6
+    - libssl3
+    - libgomp1
     - xdg-utils
 
 mac:
