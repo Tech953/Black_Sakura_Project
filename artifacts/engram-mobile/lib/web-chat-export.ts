@@ -14,6 +14,23 @@ export interface WebChatExport {
   body: string | Uint8Array;
 }
 
+export interface WebChatDownloadAnchor {
+  href: string;
+  download: string;
+  rel: string;
+  click(): void;
+  remove(): void;
+}
+
+export interface WebChatDownloadRuntime {
+  createBlob(parts: BlobPart[], mimeType: string): Blob;
+  createObjectURL(blob: Blob): string;
+  revokeObjectURL(url: string): void;
+  createAnchor(): WebChatDownloadAnchor;
+  appendAnchor(anchor: WebChatDownloadAnchor): void;
+  schedule(callback: () => void): void;
+}
+
 export function buildWebChatExport(
   format: WebChatExportFormat,
   document: MobileChatExportDocument,
@@ -48,7 +65,23 @@ export function buildWebChatExport(
   }
 }
 
-export function downloadWebChatExport(exported: WebChatExport): void {
+function defaultDownloadRuntime(): WebChatDownloadRuntime {
+  return {
+    createBlob: (parts, mimeType) => new Blob(parts, { type: mimeType }),
+    createObjectURL: (blob) => URL.createObjectURL(blob),
+    revokeObjectURL: (url) => URL.revokeObjectURL(url),
+    createAnchor: () => document.createElement("a"),
+    appendAnchor: (anchor) => document.body.appendChild(anchor as HTMLAnchorElement),
+    schedule: (callback) => {
+      globalThis.setTimeout(callback, 0);
+    },
+  };
+}
+
+export function downloadWebChatExport(
+  exported: WebChatExport,
+  runtime = defaultDownloadRuntime(),
+): void {
   const body =
     typeof exported.body === "string"
       ? exported.body
@@ -57,14 +90,14 @@ export function downloadWebChatExport(exported: WebChatExport): void {
           copy.set(exported.body);
           return copy.buffer;
         })();
-  const blob = new Blob([body], { type: exported.mimeType });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
+  const blob = runtime.createBlob([body], exported.mimeType);
+  const url = runtime.createObjectURL(blob);
+  const anchor = runtime.createAnchor();
   anchor.href = url;
   anchor.download = exported.filename;
   anchor.rel = "noopener";
-  document.body.appendChild(anchor);
+  runtime.appendAnchor(anchor);
   anchor.click();
   anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  runtime.schedule(() => runtime.revokeObjectURL(url));
 }
