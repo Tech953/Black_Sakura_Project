@@ -8,3 +8,9 @@ Native release sign-off requires both artifact freshness and a real target runti
 **Why:** The workspace had a stale APK whose embedded `allowBackup` policy contradicted the current manifest, and no ADB/emulator or Windows/Wine runtime was available to launch the target artifacts.
 
 **How to apply:** Record artifact hashes and build dates, run the APK/Windows package directly on their target platforms, and label Linux desktop smoke or static ZIP checks as proxies rather than native playtests. If packaged model activation exits 127, inspect runtime library resolution before attributing it to renderer code.
+
+Portable ZIPs can also lag behind a newer unpacked Windows directory; compare required runtime entries inside the ZIP itself, not only the sibling `win-unpacked` tree.
+
+**Why:** The unpacked Windows build contained the llama runtime while the dated portable ZIP contained no llama entries, so the ZIP required regeneration before its static contents were trustworthy.
+
+**How to apply:** Validate `unzip -tq`, artifact hash/timestamp, and critical `resources/llama`, server, and media entries for the exact ZIP intended for release.
