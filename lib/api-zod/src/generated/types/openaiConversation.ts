@@ -5,6 +5,7 @@
  * ENGRAM AI Persona Framework API
  * OpenAPI spec version: 0.1.0
  */
+import type { OpenaiConversationGroupContinuationMode } from './openaiConversationGroupContinuationMode';
 
 export interface OpenaiConversation {
   id: number;
@@ -15,6 +16,8 @@ export interface OpenaiConversation {
   engramId?: number;
   /** Explicit participants for a human-mediated group conversation. */
   engramIds: number[];
+  /** Consent for peer-generated turns after the human-triggered group reply. */
+  groupContinuationMode: OpenaiConversationGroupContinuationMode;
   createdAt: Date;
   /** @nullable */
   archivedAt: Date | null;

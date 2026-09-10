@@ -219,6 +219,7 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
       personaName?: unknown;
       customEngram?: unknown;
       engramId?: unknown;
+      groupContinuationMode?: unknown;
     };
     if (
       typeof conversation.title !== "string" ||
@@ -246,6 +247,11 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
         personaName: conversation.personaName as string | undefined,
         customEngram: conversation.customEngram as string | undefined,
         engramId: conversation.engramId as number | undefined,
+        groupContinuationMode: conversation.groupContinuationMode as
+          | "off"
+          | "short"
+          | "extended"
+          | undefined,
       }),
       201,
     );

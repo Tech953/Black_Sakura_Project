@@ -53,6 +53,12 @@ const uploadSingle = multer({
 const MAX_GROUP_PARTICIPANTS = 6;
 /** Hard request-scoped cap: no background loop survives the response or a restart. */
 export const MAX_GROUP_AUTONOMOUS_TURNS = 4;
+const GROUP_CONTINUATION_TURN_LIMITS = {
+  off: 0,
+  short: 2,
+  extended: MAX_GROUP_AUTONOMOUS_TURNS,
+} as const;
+type GroupContinuationMode = keyof typeof GROUP_CONTINUATION_TURN_LIMITS;
 /** A crashed process may leave a claim behind, but never block a conversation forever. */
 const GROUP_CONTINUATION_CLAIM_TTL_MS = 15 * 60 * 1000;
 
@@ -208,6 +214,8 @@ router.post("/openai/conversations", async (req, res) => {
     }
   }
 
+  const groupContinuationMode =
+    uniqueGroupIds.length >= 2 ? parsed.data.groupContinuationMode ?? "short" : "off";
   const row = await db.transaction(async (tx) => {
     const [conversation] = await tx
       .insert(conversations)
@@ -218,6 +226,7 @@ router.post("/openai/conversations", async (req, res) => {
         personaName,
         customEngram,
         engramId,
+        groupContinuationMode,
         archivedAt: null,
       })
       .returning();
@@ -380,6 +389,11 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     return;
   }
   const isGroupConversation = groupEngrams.length >= 2;
+  const continuationMode: GroupContinuationMode =
+    conv.groupContinuationMode in GROUP_CONTINUATION_TURN_LIMITS
+      ? (conv.groupContinuationMode as GroupContinuationMode)
+      : "short";
+  const continuationTurnLimit = GROUP_CONTINUATION_TURN_LIMITS[continuationMode];
 
   // An engram-linked conversation embodies that engram's persona; otherwise PYRI answers.
   let systemPrompt: string;
@@ -605,7 +619,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       // Continuation is best-effort: a failure ends the peer exchange cleanly without
       // relabeling the already-persisted human-response pass as failed.
       try {
-        for (let turnIndex = 0; turnIndex < MAX_GROUP_AUTONOMOUS_TURNS; turnIndex += 1) {
+        for (let turnIndex = 0; turnIndex < continuationTurnLimit; turnIndex += 1) {
         if (res.destroyed || res.writableEnded) {
           req.log.info(
             { conversationId: id, turnIndex },

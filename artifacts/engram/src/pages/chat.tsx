@@ -98,6 +98,7 @@ function describeEvent(ev: EngramEvent, t: TFunction): { label: string; tone: Ev
 }
 
 type ChatMode = "informational" | "alert" | "tutorial" | "companion" | "analyst" | "silent" | "custom";
+type GroupContinuationMode = "off" | "short" | "extended";
 
 interface Message {
   id?: number;
@@ -127,6 +128,7 @@ interface Conversation {
   customEngram?: string | null;
   engramId?: number | null;
   engramIds?: number[];
+  groupContinuationMode?: GroupContinuationMode;
   createdAt: string;
   archivedAt?: string | null;
 }
@@ -164,6 +166,7 @@ export default function Chat() {
   const [streaming, setStreaming] = useState(false);
   const [customEngram, setCustomEngram] = useState("");
   const [selectedEngramIds, setSelectedEngramIds] = useState<number[]>([]);
+  const [groupContinuationMode, setGroupContinuationMode] = useState<GroupContinuationMode>("short");
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [convSheetOpen, setConvSheetOpen] = useState(false);
@@ -218,6 +221,7 @@ export default function Chat() {
       customEngram: data.customEngram,
       engramId: data.engramId,
       engramIds: data.engramIds ?? (data.engramId != null ? [data.engramId] : []),
+      groupContinuationMode: data.groupContinuationMode ?? "short",
       createdAt: data.createdAt,
       archivedAt: data.archivedAt ?? null,
     };
@@ -228,6 +232,7 @@ export default function Chat() {
     setConvMode((conv.mode as ChatMode) ?? "companion");
     setCustomEngram(conv.customEngram ?? "");
     setSelectedEngramIds(conv.engramIds ?? (conv.engramId != null ? [conv.engramId] : []));
+    setGroupContinuationMode(conv.groupContinuationMode ?? "short");
     setConvSheetOpen(false);
     scrollToBottom();
   }, [authFetch]);
@@ -299,6 +304,7 @@ export default function Chat() {
         customEngram: selectedEngramIds.length === 0 && convMode === "custom" ? customEngram : undefined,
         engramId: selectedEngramIds.length === 1 ? selectedEngramIds[0] : undefined,
         engramIds: isGroup ? selectedEngramIds : undefined,
+        groupContinuationMode: isGroup ? groupContinuationMode : undefined,
       },
     });
     queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
@@ -313,6 +319,7 @@ export default function Chat() {
       customEngram: result.customEngram,
       engramId: result.engramId,
       engramIds: result.engramIds ?? [],
+      groupContinuationMode: result.groupContinuationMode ?? groupContinuationMode,
       createdAt: String(result.createdAt),
       archivedAt: result.archivedAt ?? null,
     });
@@ -638,6 +645,7 @@ export default function Chat() {
                  className="w-7 h-7 text-primary hover:bg-primary/10"
                  onClick={() => {
                    setSelectedEngramIds([]);
+                    setGroupContinuationMode("short");
                    setNewTitle("");
                  }}
                >
@@ -683,9 +691,39 @@ export default function Chat() {
                         : t("talkToHint")}
                     </p>
                     {selectedEngramIds.length >= 2 && (
-                      <div className="mt-2 border border-primary/20 bg-primary/5 px-2.5 py-2 font-mono text-[9px] leading-relaxed text-primary/70">
-                        {t("groupConsentNotice")}
-                      </div>
+                      <>
+                        <div className="mt-2 border border-primary/20 bg-primary/5 px-2.5 py-2 font-mono text-[9px] leading-relaxed text-primary/70">
+                          {t("groupConsentNotice")}
+                        </div>
+                        <div className="mt-3">
+                          <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider mb-1 block">
+                            {t("groupContinuationLabel")}
+                          </label>
+                          <p className="font-mono text-[9px] leading-relaxed text-muted-foreground/60 mb-2">
+                            {t("groupContinuationDescription")}
+                          </p>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {(["off", "short", "extended"] as const).map((mode) => {
+                              const labelKey = `groupContinuation${mode[0].toUpperCase()}${mode.slice(1)}` as const;
+                              return (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  onClick={() => setGroupContinuationMode(mode)}
+                                  className={`border px-2 py-2 text-left font-mono transition-colors ${
+                                    groupContinuationMode === mode
+                                      ? "border-primary/50 bg-primary/10 text-primary"
+                                      : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                                  }`}
+                                >
+                                  <span className="block text-[10px] uppercase tracking-wider">{t(labelKey)}</span>
+                                  <span className="mt-0.5 block text-[9px] opacity-60">{t(`${labelKey}Hint`)}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
@@ -1060,6 +1098,8 @@ export default function Chat() {
                 variant="outline"
                 className="shrink-0 border-rose-500/40 text-rose-400 hover:bg-rose-500/10 h-11 w-11"
                 onClick={() => abortRef.current?.abort()}
+                title={isActiveGroup ? t("stopGroupContinuation") : t("stopGeneration")}
+                aria-label={isActiveGroup ? t("stopGroupContinuation") : t("stopGeneration")}
               >
                 <X className="w-4 h-4" />
               </Button>

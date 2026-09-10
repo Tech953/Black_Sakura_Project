@@ -569,7 +569,7 @@ describe("conversation persistence routes", () => {
     expect(res.status).toBe(404);
   });
 
-  it("creates a selected group, emits a four-turn continuation, and persists truthful participant experience", async () => {
+  it("creates a selected group, emits an extended continuation, and persists truthful participant experience", async () => {
     const first = seedEngram({ name: "First" });
     const second = seedEngram({ name: "Second" });
     const liveEvents: Array<Record<string, any>> = [];
@@ -581,11 +581,17 @@ describe("conversation persistence routes", () => {
     const createRes = await fetch(`${base}/api/openai/conversations`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "Shared room", mode: "companion", engramIds: [first.id, second.id] }),
+      body: JSON.stringify({
+        title: "Shared room",
+        mode: "companion",
+        engramIds: [first.id, second.id],
+        groupContinuationMode: "extended",
+      }),
     });
     expect(createRes.status).toBe(201);
     const created = (await createRes.json()) as Record<string, any>;
     expect(created.engramIds).toEqual([first.id, second.id]);
+    expect(created.groupContinuationMode).toBe("extended");
     expect(h.store.conversationEngramParticipants).toHaveLength(2);
 
     const sendRes = await fetch(`${base}/api/openai/conversations/${created.id}/messages`, {
@@ -651,6 +657,36 @@ describe("conversation persistence routes", () => {
     });
   });
 
+  it("honors an off continuation choice after the human-triggered group replies", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "No peer continuation",
+      mode: "companion",
+      groupContinuationMode: "off",
+      createdAt: new Date(),
+    });
+    h.store.conversationEngramParticipants.push(
+      { id: 1, conversationId: 1, engramId: first.id, ownerId: "test-owner", createdAt: new Date() },
+      { id: 2, conversationId: 1, engramId: second.id, ownerId: "test-owner", createdAt: new Date() },
+    );
+
+    const response = await fetch(`${base}/api/openai/conversations/1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Just answer once." }),
+    });
+
+    expect(parseSse(await response.text())).toEqual([
+      { speakerEngramId: first.id, content: "a response" },
+      { speakerEngramId: second.id, content: "a response" },
+      { done: true },
+    ]);
+    expect(h.create).toHaveBeenCalledTimes(2);
+  });
+
   it("persists an overlapping human send without starting a second group reply", async () => {
     const first = seedEngram({ name: "First" });
     const second = seedEngram({ name: "Second" });
@@ -659,6 +695,7 @@ describe("conversation persistence routes", () => {
       ownerId: "test-owner",
       title: "Concurrent",
       mode: "companion",
+      groupContinuationMode: "extended",
       createdAt: new Date(),
     });
     h.store.conversationEngramParticipants.push(
@@ -720,6 +757,7 @@ describe("conversation persistence routes", () => {
       ownerId: "test-owner",
       title: "Recoverable",
       mode: "companion",
+      groupContinuationMode: "extended",
       createdAt: new Date(),
       groupContinuationClaimToken: "abandoned-request",
       groupContinuationClaimedAt: new Date(Date.now() - 60 * 60 * 1000),
@@ -827,6 +865,7 @@ describe("conversation persistence routes", () => {
       ownerId: "test-owner",
       title: "Safe",
       mode: "companion",
+      groupContinuationMode: "extended",
       createdAt: new Date(),
     });
     h.store.conversationEngramParticipants.push(
@@ -880,6 +919,25 @@ describe("conversation persistence routes", () => {
       { done: true },
     ]);
     expect(h.store.messages.filter((message) => message.role === "assistant")).toHaveLength(2);
+  });
+
+  it("rejects an unsupported group continuation choice", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+
+    const response = await fetch(`${base}/api/openai/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Invalid continuation",
+        mode: "companion",
+        engramIds: [first.id, second.id],
+        groupContinuationMode: "unbounded",
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(h.store.conversations).toHaveLength(0);
   });
 
   it("rejects group participants owned by another user", async () => {
