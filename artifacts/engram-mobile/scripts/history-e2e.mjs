@@ -136,7 +136,7 @@ const browserMock = String.raw`(() => {
       { id: 2, conversationId: 101, role: "assistant", content: "Current response", createdAt: "2026-09-10T12:00:01.000Z" },
     ],
     102: [
-      { id: 3, conversationId: 102, role: "user", content: "Hydrated history message", createdAt: "2026-09-10T12:01:00.000Z" },
+      { id: 3, conversationId: 102, role: "user", content: "Hydrated history message — Café 你好 Привет مرحبا", createdAt: "2026-09-10T12:01:00.000Z" },
       { id: 4, conversationId: 102, role: "assistant", content: "Hydrated history response", createdAt: "2026-09-10T12:01:01.000Z" },
     ],
   };
@@ -167,11 +167,13 @@ const browserMock = String.raw`(() => {
     const blob = this.download ? downloadBlobs.get(url) : null;
     if (!blob) return realAnchorClick.call(this);
     blob.arrayBuffer().then((buffer) => {
+      const bytes = new Uint8Array(buffer);
       window.__historyE2E.downloads.push({
         filename: this.download,
         type: blob.type,
         size: blob.size,
-        prefix: Array.from(new Uint8Array(buffer).slice(0, 8)),
+        prefix: Array.from(bytes.slice(0, 8)),
+        hasJpegImage: bytes.some((byte, index) => byte === 0xff && bytes[index + 1] === 0xd8),
       });
     });
   };
@@ -403,11 +405,12 @@ try {
   const expectedDownloads = [
     ["Hydrated-history.md", "text/markdown", []],
     ["Hydrated-history.txt", "text/plain", []],
-    ["Hydrated-history.pdf", "application/pdf", [37, 80, 68, 70]],
+    ["Hydrated-history.pdf", "application/pdf", [37, 80, 68, 70], true],
     [
       "Hydrated-history.docx",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       [80, 75, 3, 4],
+      false,
     ],
   ];
   if (
@@ -417,6 +420,7 @@ try {
         download.filename !== expectedDownloads[index][0] ||
         download.type !== expectedDownloads[index][1] ||
         download.size <= 0 ||
+        Boolean(download.hasJpegImage) !== Boolean(expectedDownloads[index][3]) ||
         expectedDownloads[index][2].some(
           (byte, byteIndex) => download.prefix[byteIndex] !== byte,
         ),

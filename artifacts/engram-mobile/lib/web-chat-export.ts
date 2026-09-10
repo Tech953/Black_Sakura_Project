@@ -31,6 +31,29 @@ export interface WebChatDownloadRuntime {
   schedule(callback: () => void): void;
 }
 
+export interface BrowserPdfCanvas {
+  width: number;
+  height: number;
+  getContext(
+    contextId: "2d",
+  ):
+    | {
+        fillStyle: unknown;
+        font: string;
+        textAlign: string;
+        direction: string;
+        fillRect(x: number, y: number, width: number, height: number): void;
+        fillText(text: string, x: number, y: number): void;
+        measureText(text: string): { width: number };
+      }
+    | null;
+  toDataURL(type: "image/jpeg", quality?: number): string;
+}
+
+export interface BrowserPdfRuntime {
+  createCanvas(width: number, height: number): BrowserPdfCanvas;
+}
+
 export function buildWebChatExport(
   format: WebChatExportFormat,
   document: MobileChatExportDocument,
@@ -53,7 +76,7 @@ export function buildWebChatExport(
       return {
         filename: `${safeTitle}.pdf`,
         mimeType: "application/pdf",
-        body: buildPdfBytes(document),
+        body: buildBrowserPdfBytes(document),
       };
     case "docx":
       return {
@@ -63,6 +86,207 @@ export function buildWebChatExport(
         body: buildDocxBytes(document),
       };
   }
+}
+
+const BROWSER_PDF_WIDTH = 1224;
+const BROWSER_PDF_HEIGHT = 1584;
+const BROWSER_PDF_MARGIN = 96;
+const BROWSER_PDF_LINE_HEIGHT = 32;
+
+function browserPdfLines(input: MobileChatExportDocument): string[] {
+  return [
+    input.title,
+    `${input.downloadedOn}: ${input.exportedAt}`,
+    `${input.conversationCreated}: ${new Date(input.createdAt).toISOString()}`,
+    "",
+    ...input.entries.flatMap((entry) => [
+      entry.heading,
+      ...(entry.timestamp ? [entry.timestamp] : []),
+      ...entry.content.split(/\r?\n/),
+      "",
+    ]),
+  ];
+}
+
+function wrapBrowserPdfLine(
+  line: string,
+  measureText: (text: string) => number,
+  maxWidth: number,
+): string[] {
+  if (!line) return [""];
+  const lines: string[] = [];
+  let current = "";
+  for (const character of Array.from(line)) {
+    const candidate = `${current}${character}`;
+    if (current && measureText(candidate) > maxWidth) {
+      lines.push(current);
+      current = character;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function defaultBrowserPdfRuntime(): BrowserPdfRuntime | null {
+  if (typeof document === "undefined") return null;
+  return {
+    createCanvas: (width, height) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      return canvas;
+    },
+  };
+}
+
+function dataUrlBytes(dataUrl: string): Uint8Array {
+  const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function asciiBytes(value: string): Uint8Array {
+  return new TextEncoder().encode(value);
+}
+
+function concatBytes(parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    result.set(part, offset);
+    offset += part.byteLength;
+  }
+  return result;
+}
+
+function buildImagePdf(jpegs: Array<{ bytes: Uint8Array; width: number; height: number }>): Uint8Array {
+  const pageObjectNumbers = jpegs.map((_, index) => 3 + index * 3);
+  const objectCount = 2 + jpegs.length * 3;
+  const objects: Array<
+    | { kind: "text"; value: string }
+    | { kind: "image"; dictionary: string; bytes: Uint8Array }
+  > = [
+    { kind: "text", value: "<< /Type /Catalog /Pages 2 0 R >>" },
+    {
+      kind: "text",
+      value: `<< /Type /Pages /Kids [${pageObjectNumbers.map((number) => `${number} 0 R`).join(" ")}] /Count ${jpegs.length} >>`,
+    },
+  ];
+
+  for (let index = 0; index < jpegs.length; index += 1) {
+    const jpeg = jpegs[index];
+    const pageNumber = pageObjectNumbers[index];
+    const imageNumber = pageNumber + 1;
+    const contentNumber = pageNumber + 2;
+    objects.push({
+      kind: "text",
+      value:
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] ` +
+        `/Resources << /XObject << /Im0 ${imageNumber} 0 R >> >> ` +
+        `/Contents ${contentNumber} 0 R >>`,
+    });
+    objects.push({
+      kind: "image",
+      dictionary:
+        `<< /Type /XObject /Subtype /Image /Width ${jpeg.width} /Height ${jpeg.height} ` +
+        `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.bytes.byteLength} >>`,
+      bytes: jpeg.bytes,
+    });
+    const content = "q\n612 0 0 792 0 0 cm\n/Im0 Do\nQ";
+    objects.push({
+      kind: "text",
+      value: `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
+    });
+  }
+
+  const chunks: Uint8Array[] = [asciiBytes("%PDF-1.4\n")];
+  const offsets = [0];
+  let byteOffset = chunks[0].byteLength;
+  for (let index = 0; index < objects.length; index += 1) {
+    const object = objects[index];
+    offsets.push(byteOffset);
+    const prefix = asciiBytes(`${index + 1} 0 obj\n`);
+    chunks.push(prefix);
+    byteOffset += prefix.byteLength;
+    if (object.kind === "image") {
+      const dictionary = asciiBytes(`${object.dictionary}\nstream\n`);
+      chunks.push(dictionary, object.bytes, asciiBytes("\nendstream\n"));
+      byteOffset += dictionary.byteLength + object.bytes.byteLength + "\nendstream\n".length;
+    } else {
+      const body = asciiBytes(`${object.value}\nendobj\n`);
+      chunks.push(body);
+      byteOffset += body.byteLength;
+    }
+    if (object.kind === "image") {
+      const end = asciiBytes("endobj\n");
+      chunks.push(end);
+      byteOffset += end.byteLength;
+    }
+  }
+  const xrefOffset = byteOffset;
+  const xref = [
+    `xref\n0 ${objectCount + 1}\n`,
+    "0000000000 65535 f \n",
+    ...offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`),
+    `trailer\n<< /Size ${objectCount + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`,
+  ].join("");
+  chunks.push(asciiBytes(xref));
+  return concatBytes(chunks);
+}
+
+export function buildBrowserPdfBytes(
+  input: MobileChatExportDocument,
+  runtime = defaultBrowserPdfRuntime(),
+): Uint8Array {
+  if (!runtime) {
+    return buildPdfBytes(input);
+  }
+
+  const measureCanvas = runtime.createCanvas(BROWSER_PDF_WIDTH, BROWSER_PDF_HEIGHT);
+  const measureContext = measureCanvas.getContext("2d");
+  if (!measureContext) return buildPdfBytes(input);
+  measureContext.font = "32px system-ui, 'Noto Sans', 'DejaVu Sans', sans-serif";
+  const maxWidth = BROWSER_PDF_WIDTH - BROWSER_PDF_MARGIN * 2;
+  const lines = browserPdfLines(input).flatMap((line) =>
+    wrapBrowserPdfLine(line, (value) => measureContext.measureText(value).width, maxWidth),
+  );
+  const linesPerPage = Math.floor(
+    (BROWSER_PDF_HEIGHT - BROWSER_PDF_MARGIN * 2) / BROWSER_PDF_LINE_HEIGHT,
+  );
+  const jpegs = [];
+  for (let start = 0; start < Math.max(lines.length, 1); start += linesPerPage) {
+    const canvas = runtime.createCanvas(BROWSER_PDF_WIDTH, BROWSER_PDF_HEIGHT);
+    const context = canvas.getContext("2d");
+    if (!context) return buildPdfBytes(input);
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, BROWSER_PDF_WIDTH, BROWSER_PDF_HEIGHT);
+    context.font = measureContext.font;
+    for (let index = 0; index < linesPerPage && start + index < lines.length; index += 1) {
+      const line = lines[start + index];
+      const rtl = /[\u0590-\u08ff]/u.test(line);
+      context.direction = rtl ? "rtl" : "ltr";
+      context.textAlign = rtl ? "right" : "left";
+      context.fillStyle = "#111827";
+      context.fillText(
+        line,
+        rtl ? BROWSER_PDF_WIDTH - BROWSER_PDF_MARGIN : BROWSER_PDF_MARGIN,
+        BROWSER_PDF_MARGIN + (index + 1) * BROWSER_PDF_LINE_HEIGHT,
+      );
+    }
+    jpegs.push({
+      bytes: dataUrlBytes(canvas.toDataURL("image/jpeg", 0.92)),
+      width: canvas.width,
+      height: canvas.height,
+    });
+  }
+  return buildImagePdf(jpegs);
 }
 
 function defaultDownloadRuntime(): WebChatDownloadRuntime {

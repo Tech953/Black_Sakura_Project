@@ -19,7 +19,7 @@ Native mobile export paths should verify the produced URI exists and has non-zer
 
 Browser exports should use Blob/object-URL downloads rather than native Expo file APIs; CDP tests can intercept `URL.createObjectURL` and anchor clicks to verify filename, MIME type, size, and binary signatures without relying on the host filesystem.
 
-**Why:** Expo web does not provide native file-system or sharing APIs, and browser download paths otherwise regress silently while text-share tests continue to pass. The current lightweight PDF generator preserves ASCII text; international PDF text needs an explicit font/encoding upgrade.
+**Why:** Expo web does not provide native file-system or sharing APIs, and browser download paths otherwise regress silently while text-share tests continue to pass. Web PDFs render through the browser’s Unicode font fallback; native exports retain their separate file-generation path.
 
 **How to apply:** Extend the browser download fixture’s expected metadata and signature checks whenever a format or filename contract changes.
 

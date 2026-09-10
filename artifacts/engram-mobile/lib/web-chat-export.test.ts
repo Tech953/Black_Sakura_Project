@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildWebChatExport } from "./web-chat-export";
+import {
+  buildBrowserPdfBytes,
+  buildWebChatExport,
+  type BrowserPdfRuntime,
+} from "./web-chat-export";
 
 const document = {
   title: "Signal <01>",
@@ -41,5 +45,45 @@ describe("web chat exports", () => {
       expect(exported.mimeType).toBe(mimeType);
       expect(size).toBeGreaterThan(0);
     }
+  });
+
+  it("renders multilingual PDF text through the browser font fallback", () => {
+    const rendered: string[] = [];
+    const runtime: BrowserPdfRuntime = {
+      createCanvas: (width, height) => ({
+        width,
+        height,
+        getContext: () => ({
+          fillStyle: "",
+          font: "",
+          textAlign: "left" as const,
+          direction: "ltr" as const,
+          fillRect: () => {},
+          fillText: (text: string) => rendered.push(text),
+          measureText: (text: string) => ({ width: text.length * 32 }),
+        }),
+        toDataURL: () => "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==",
+      }),
+    };
+    const multilingual = {
+      ...document,
+      title: "Café 你好 Привет مرحبا",
+      entries: [
+        {
+          heading: "You",
+          timestamp: "",
+          content: "Accents: déjà vu · CJK: 你好 · Cyrillic: Привет · Arabic: مرحبا",
+        },
+      ],
+    };
+
+    const pdf = buildBrowserPdfBytes(multilingual, runtime);
+
+    expect(new TextDecoder().decode(pdf.slice(0, 8))).toBe("%PDF-1.4");
+    expect(Array.from(pdf).some((byte, index) => byte === 0xff && pdf[index + 1] === 0xd8)).toBe(true);
+    expect(rendered.join(" ")).toContain("Café");
+    expect(rendered.join(" ")).toContain("你好");
+    expect(rendered.join(" ")).toContain("Привет");
+    expect(rendered.join(" ")).toContain("مرحبا");
   });
 });
