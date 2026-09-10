@@ -125,6 +125,7 @@ async function handleTransmit(engramId: number): Promise<{ status: number; body:
 /** Route table for offline mode. Returns undefined only for truly unknown paths. */
 export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
   const url = path.split("?")[0];
+  const query = new URLSearchParams(path.split("?")[1] ?? "");
   let parsed: Record<string, unknown> = {};
   if (body) {
     try {
@@ -212,6 +213,14 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
     return handleTransmit(Number(m[1]));
   }
 
+  if (url === "/api/openai/conversations" && method === "GET") {
+    return ok(
+      await store.listConversations({
+        archived: query.get("archived") === "true",
+      }),
+    );
+  }
+
   if (url === "/api/openai/conversations" && method === "POST") {
     const conversation = parsed as {
       title?: unknown;
@@ -255,6 +264,20 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
       }),
       201,
     );
+  }
+
+  if (
+    (m = url.match(/^\/api\/openai\/conversations\/(\d+)\/archive$/)) &&
+    method === "PATCH"
+  ) {
+    if (typeof parsed.archived !== "boolean") {
+      return { status: 400, body: { error: "Invalid archive body" } };
+    }
+    const conversation = await store.setConversationArchived(
+      Number(m[1]),
+      parsed.archived,
+    );
+    return conversation ? ok(conversation) : notFound("Conversation not found");
   }
 
   if ((m = url.match(/^\/api\/openai\/conversations\/(\d+)$/)) && method === "GET") {

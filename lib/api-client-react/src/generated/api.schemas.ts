@@ -54,6 +54,8 @@ export interface OfflineSyncConversation {
      */
   engramSlug: string | null;
   createdAt: string;
+  /** @nullable */
+  archivedAt?: string | null;
   /** @maxItems 100 */
   messages: OfflineSyncMessage[];
 }

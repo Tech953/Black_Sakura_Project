@@ -65,6 +65,7 @@ function nowIso(): string {
 }
 
 function archiveFlagFromData(data: string): boolean {
+  if (typeof data !== "string") return false;
   const parsed = JSON.parse(data) as { isArchival?: unknown };
   return parsed.isArchival === true;
 }
@@ -211,6 +212,8 @@ async function initializeDb(selectedAccountId: string): Promise<SQLite.SQLiteDat
       engramId INTEGER,
       groupContinuationMode TEXT NOT NULL DEFAULT 'off',
       createdAt TEXT NOT NULL,
+      archivedAt TEXT,
+      syncVersion INTEGER NOT NULL DEFAULT 0,
       syncedAt TEXT
     );
     CREATE TABLE IF NOT EXISTS messages (
@@ -298,6 +301,18 @@ async function initializeDb(selectedAccountId: string): Promise<SQLite.SQLiteDat
     );
   } catch (error) {
     if (!String(error).toLowerCase().includes("duplicate column")) throw error;
+  }
+  for (const [column, definition] of [
+    ["archivedAt", "TEXT"],
+    ["syncVersion", "INTEGER NOT NULL DEFAULT 0"],
+  ] as const) {
+    try {
+      await opened.execAsync(
+        `ALTER TABLE conversations ADD COLUMN ${column} ${definition};`,
+      );
+    } catch (error) {
+      if (!String(error).toLowerCase().includes("duplicate column")) throw error;
+    }
   }
   // Seed personas once (keyed on slug, like the server's idempotent seed).
   const t = nowIso();
@@ -466,6 +481,15 @@ export async function isArchivalConversation(id: number): Promise<boolean> {
   return row ? archiveFlagFromData(row.data) : false;
 }
 
+export async function isConversationArchived(id: number): Promise<boolean> {
+  const d = await getDb();
+  const row = await d.getFirstAsync<{ archivedAt: string | null }>(
+    "SELECT archivedAt FROM conversations WHERE id = ?",
+    id,
+  );
+  return row?.archivedAt != null;
+}
+
 /** Resolve the one preseeded archival conversation without creating anything. */
 export async function getArchivalConversationId(
   engramId: number,
@@ -491,7 +515,10 @@ async function assertWritableEngram(id: number): Promise<void> {
 }
 
 async function assertWritableConversation(id: number): Promise<void> {
-  if (await isArchivalConversation(id)) {
+  if (
+    (await isArchivalConversation(id)) ||
+    (await isConversationArchived(id))
+  ) {
     throw new Error(OFFLINE_ARCHIVAL_READ_ONLY_ERROR);
   }
 }
@@ -568,9 +595,66 @@ export async function getConversation(id: number): Promise<Record<string, unknow
       typeof conv.engramId === "number" ? conv.engramId : undefined,
     engramIds:
       typeof conv.engramId === "number" ? [conv.engramId] : [],
-    archivedAt: null,
+    archivedAt:
+      typeof conv.archivedAt === "string" ? conv.archivedAt : null,
     messages: msgs,
   };
+}
+
+export async function listConversations(opts: {
+  archived?: boolean;
+} = {}): Promise<Record<string, unknown>[]> {
+  const d = await getDb();
+  const archivedClause = opts.archived
+    ? "c.archivedAt IS NOT NULL"
+    : "c.archivedAt IS NULL";
+  const rows = await d.getAllAsync<Record<string, unknown>>(
+    `SELECT c.*
+     FROM conversations c
+     LEFT JOIN engrams e ON e.id = c.engramId
+     WHERE ${archivedClause}
+       AND COALESCE(json_extract(e.data, '$.isArchival'), 0) = 0
+     ORDER BY c.createdAt DESC, c.id DESC`,
+  );
+  return rows.map((conv) => ({
+    ...conv,
+    title:
+      typeof conv.title === "string" ? conv.title : "New conversation",
+    personaName:
+      typeof conv.personaName === "string" ? conv.personaName : undefined,
+    customEngram:
+      typeof conv.customEngram === "string" ? conv.customEngram : undefined,
+    engramId:
+      typeof conv.engramId === "number" ? conv.engramId : undefined,
+    engramIds:
+      typeof conv.engramId === "number" ? [conv.engramId] : [],
+    archivedAt:
+      typeof conv.archivedAt === "string" ? conv.archivedAt : null,
+  }));
+}
+
+export async function setConversationArchived(
+  id: number,
+  archived: boolean,
+): Promise<Record<string, unknown> | null> {
+  if (await isArchivalConversation(id)) {
+    throw new Error(OFFLINE_ARCHIVAL_READ_ONLY_ERROR);
+  }
+  const d = await getDb();
+  const current = await d.getFirstAsync<{ archivedAt: string | null }>(
+    "SELECT archivedAt FROM conversations WHERE id = ?",
+    id,
+  );
+  if (!current) return null;
+  if ((current.archivedAt != null) === archived) return getConversation(id);
+  await d.runAsync(
+    `UPDATE conversations
+     SET archivedAt = ?, syncedAt = NULL, syncVersion = syncVersion + 1
+     WHERE id = ?`,
+    archived ? nowIso() : null,
+    id,
+  );
+  return getConversation(id);
 }
 
 export async function listMessages(
@@ -795,6 +879,7 @@ export async function loadRecentWorldModel(
 
 type LocalSyncRows = {
   conversationIds: number[];
+  conversationRevisions?: Array<{ id: number; syncVersion: number }>;
   messageIds: number[];
   inquiryIds: number[];
   transmissions: Array<{ id: number; syncVersion: number }>;
@@ -868,12 +953,20 @@ function trimSyncBatchToByteBudget(
         batch.localRows.conversationIds.filter(
           (id) => id !== localConversationId,
         );
+      batch.localRows.conversationRevisions =
+        batch.localRows.conversationRevisions?.filter(
+          ({ id }) => id !== localConversationId,
+        );
       continue;
     }
     removeTail(batch.payload.conversations);
     batch.localRows.conversationIds = batch.localRows.conversationIds.filter(
       (id) => id !== localConversationId,
     );
+    batch.localRows.conversationRevisions =
+      batch.localRows.conversationRevisions?.filter(
+        ({ id }) => id !== localConversationId,
+      );
   }
   return batch;
 }
@@ -884,6 +977,8 @@ interface PendingConversationRow {
   mode: string;
   engramSlug: string | null;
   createdAt: string;
+  archivedAt: string | null;
+  syncVersion: number;
 }
 
 interface PendingMessageRow {
@@ -933,7 +1028,8 @@ export async function buildPendingSyncBatch(
 ): Promise<PendingOfflineSyncBatch> {
   const d = await getDb();
   const conversationRows = await d.getAllAsync<PendingConversationRow>(
-    `SELECT c.id, c.title, c.mode, e.slug AS engramSlug, c.createdAt
+    `SELECT c.id, c.title, c.mode, e.slug AS engramSlug, c.createdAt,
+            c.archivedAt, c.syncVersion
      FROM conversations c
      LEFT JOIN engrams e ON e.id = c.engramId
      WHERE (
@@ -951,6 +1047,7 @@ export async function buildPendingSyncBatch(
   const conversations: OfflineSyncInput["conversations"] = [];
   const localRows: LocalSyncRows = {
     conversationIds: [],
+    conversationRevisions: [],
     messageIds: [],
     inquiryIds: [],
     transmissions: [],
@@ -978,6 +1075,7 @@ export async function buildPendingSyncBatch(
       mode: row.mode,
       engramSlug: row.engramSlug,
       createdAt: row.createdAt,
+      archivedAt: row.archivedAt,
       messages: messageRows.map((message) => ({
         syncId: `message:${message.id}`,
         role: message.role,
@@ -986,7 +1084,13 @@ export async function buildPendingSyncBatch(
       })),
     });
     exportedConversationIds.add(row.id);
-    if (!hasMoreMessages) localRows.conversationIds.push(row.id);
+    if (!hasMoreMessages) {
+      localRows.conversationIds.push(row.id);
+      localRows.conversationRevisions?.push({
+        id: row.id,
+        syncVersion: row.syncVersion,
+      });
+    }
     localRows.messageIds.push(...messageRows.map((message) => message.id));
   }
 
@@ -1153,8 +1257,25 @@ export async function markSyncBatchComplete(
       ...ids,
     );
   };
+  const markConversations = async () => {
+    const revisions = batch.localRows.conversationRevisions;
+    if (!revisions || revisions.length === 0) {
+      await mark("conversations", batch.localRows.conversationIds);
+      return;
+    }
+    for (const revision of revisions) {
+      await d.runAsync(
+        `UPDATE conversations
+         SET syncedAt = ?
+         WHERE id = ? AND syncVersion = ? AND ${archivalExclusions.conversations}`,
+        completedAt,
+        revision.id,
+        revision.syncVersion,
+      );
+    }
+  };
   await d.withTransactionAsync(async () => {
-    await mark("conversations", batch.localRows.conversationIds);
+    await markConversations();
     await mark("messages", batch.localRows.messageIds);
     await mark("inquiries", batch.localRows.inquiryIds);
     for (const transmission of batch.localRows.transmissions) {
