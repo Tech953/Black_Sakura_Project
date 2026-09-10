@@ -1,3 +1,7 @@
+import notoSansArabic from "../assets/fonts/engram-noto-arabic.woff2";
+import notoSansCjk from "../assets/fonts/engram-noto-cjk.woff2";
+import notoSansCyrillic from "../assets/fonts/engram-noto-cyrillic.woff2";
+import notoSansLatin from "../assets/fonts/engram-noto-latin.woff2";
 import {
   buildDocxBytes,
   buildMarkdownTranscript,
@@ -31,6 +35,31 @@ export interface WebChatDownloadRuntime {
   schedule(callback: () => void): void;
 }
 
+export const BROWSER_UNICODE_FONT_STACK =
+  '"Engram Noto CJK", "Engram Noto Arabic", "Engram Noto Cyrillic", "Engram Noto Latin", sans-serif';
+
+let browserUnicodeFontsPromise: Promise<void> | null = null;
+
+export function ensureBrowserUnicodeFonts(): Promise<void> {
+  if (typeof document === "undefined") return Promise.resolve();
+  browserUnicodeFontsPromise ??= (async () => {
+    const { FontDisplay, loadAsync } = await import("expo-font");
+    await loadAsync({
+      "Engram Noto CJK": { uri: notoSansCjk, display: FontDisplay.BLOCK },
+      "Engram Noto Arabic": { uri: notoSansArabic, display: FontDisplay.BLOCK },
+      "Engram Noto Cyrillic": {
+        uri: notoSansCyrillic,
+        display: FontDisplay.BLOCK,
+      },
+      "Engram Noto Latin": { uri: notoSansLatin, display: FontDisplay.BLOCK },
+    });
+  })().catch((error) => {
+    browserUnicodeFontsPromise = null;
+    throw new Error("Unable to load the bundled Unicode PDF fonts", { cause: error });
+  });
+  return browserUnicodeFontsPromise;
+}
+
 export interface BrowserPdfCanvas {
   width: number;
   height: number;
@@ -54,11 +83,11 @@ export interface BrowserPdfRuntime {
   createCanvas(width: number, height: number): BrowserPdfCanvas;
 }
 
-export function buildWebChatExport(
+export async function buildWebChatExport(
   format: WebChatExportFormat,
   document: MobileChatExportDocument,
   safeTitle: string,
-): WebChatExport {
+): Promise<WebChatExport> {
   switch (format) {
     case "md":
       return {
@@ -73,6 +102,7 @@ export function buildWebChatExport(
         body: buildPlainTextTranscript(document),
       };
     case "pdf":
+      await ensureBrowserUnicodeFonts();
       return {
         filename: `${safeTitle}.pdf`,
         mimeType: "application/pdf",
@@ -252,7 +282,7 @@ export function buildBrowserPdfBytes(
   const measureCanvas = runtime.createCanvas(BROWSER_PDF_WIDTH, BROWSER_PDF_HEIGHT);
   const measureContext = measureCanvas.getContext("2d");
   if (!measureContext) return buildPdfBytes(input);
-  measureContext.font = "32px system-ui, 'Noto Sans', 'DejaVu Sans', sans-serif";
+  measureContext.font = `32px ${BROWSER_UNICODE_FONT_STACK}`;
   const maxWidth = BROWSER_PDF_WIDTH - BROWSER_PDF_MARGIN * 2;
   const lines = browserPdfLines(input).flatMap((line) =>
     wrapBrowserPdfLine(line, (value) => measureContext.measureText(value).width, maxWidth),

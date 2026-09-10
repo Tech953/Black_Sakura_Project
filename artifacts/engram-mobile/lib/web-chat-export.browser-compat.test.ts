@@ -90,7 +90,7 @@ function makeRuntime(
 }
 
 describe("web chat export browser compatibility", () => {
-  it("preserves downloads across Safari- and Firefox-shaped runtimes", () => {
+  it("preserves downloads across Safari- and Firefox-shaped runtimes", async () => {
     for (const engine of ["safari", "firefox"] as const) {
       const downloads: Array<{
         filename: string;
@@ -101,7 +101,7 @@ describe("web chat export browser compatibility", () => {
 
       for (const [format, filename, mimeType] of formats) {
         downloadWebChatExport(
-          buildWebChatExport(format, document, "Signal-01"),
+          await buildWebChatExport(format, document, "Signal-01"),
           runtime,
         );
       }
