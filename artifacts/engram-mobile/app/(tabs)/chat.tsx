@@ -1,13 +1,20 @@
 import { Feather } from "@expo/vector-icons";
 import { fetch as expoFetch } from "expo/fetch";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -22,15 +29,21 @@ import { useColors } from "@/hooks/useColors";
 import {
   getGetEngramQueryKey,
   getGetOpenaiConversationQueryKey,
+  getListOpenaiConversationsQueryKey,
+  useArchiveOpenaiConversation,
   useCreateOpenaiConversation,
   useGetEngram,
   useGetOpenaiConversation,
+  useListOpenaiConversations,
 } from "@workspace/api-client-react";
+import type { OpenaiConversation } from "@workspace/api-client-react";
 
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  createdAt?: string;
+  speakerEngramId?: number | null;
 }
 
 let messageCounter = 0;
@@ -48,6 +61,13 @@ import { resolveReplyLanguage } from "@/lib/i18n";
 import { isRtlLanguage } from "@/lib/layout-direction";
 import { OFFLINE_LIMITS } from "@/lib/offline/limits";
 import { resolveServerApiUrl } from "@/lib/server-url";
+import {
+  buildDocxBytes,
+  buildMarkdownTranscript,
+  buildPlainTextTranscript,
+  buildTranscriptEntries,
+  escapeHtml,
+} from "@/lib/chat-export";
 
 export default function ChatScreen() {
   const { t, i18n } = useTranslation("mobile");
@@ -55,6 +75,7 @@ export default function ChatScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { selectedEngramId, getConversationId, setConversationId } = useEngram();
+  const queryClient = useQueryClient();
   // Conversation IDs are backend-specific; re-resolve when the mode flips.
   const offlineActive = useOfflineMode();
 
@@ -70,10 +91,27 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [showTyping, setShowTyping] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const initializedRef = useRef(false);
 
   const createConversation = useCreateOpenaiConversation();
+  const archiveConversation = useArchiveOpenaiConversation();
+  const { data: history, isLoading: historyLoading } =
+    useListOpenaiConversations(
+      { archived: showArchived },
+      {
+        query: {
+          enabled: !offlineActive && historyOpen,
+          queryKey: getListOpenaiConversationsQueryKey({
+            archived: showArchived,
+          }),
+        },
+      },
+    );
 
   // Resolve / create the conversation for the selected engram.
   useEffect(() => {
@@ -133,11 +171,143 @@ export default function ChatScreen() {
           id: String(m.id),
           role: m.role === "user" ? "user" : "assistant",
           content: m.content,
+          createdAt: m.createdAt,
+          speakerEngramId: m.speakerEngramId,
         })),
       );
       initializedRef.current = true;
     }
   }, [conversation?.messages]);
+
+  const selectHistoryConversation = useCallback(
+    (selected: OpenaiConversation) => {
+      initializedRef.current = false;
+      setMessages([]);
+      setLocalConversationId(selected.id);
+      if (selected.engramId != null) {
+        setConversationId(selected.engramId, selected.id);
+      }
+      setHistoryOpen(false);
+    },
+    [setConversationId],
+  );
+
+  const handleArchiveConversation = useCallback(
+    async (selected: Pick<OpenaiConversation, "id">, archived = !showArchived) => {
+      try {
+        await archiveConversation.mutateAsync({
+          id: selected.id,
+          data: { archived },
+        });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: getListOpenaiConversationsQueryKey({ archived: false }),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: getListOpenaiConversationsQueryKey({ archived: true }),
+          }),
+        ]);
+      } catch {
+        // Leave the history sheet open; the next refresh shows the unchanged state.
+      }
+    },
+    [archiveConversation, queryClient, showArchived],
+  );
+
+  const handleExport = useCallback(
+    async (format: "md" | "txt" | "pdf" | "docx") => {
+      if (!conversation || messages.length === 0) return;
+      setExporting(true);
+      try {
+        const title = conversation.title ?? t("chat.fallbackTitle");
+        const exportedAt = new Date().toISOString();
+        const entries = buildTranscriptEntries(messages, {
+          you: t("chat.you"),
+          perceivedContext: t("chat.perceivedContext"),
+          engramFallback: t("chat.engramFallback"),
+          speakerName: () => engram?.name ?? t("chat.engramFallback"),
+          defaultAssistant: engram?.name ?? t("chat.engramFallback"),
+        });
+        const safeTitle =
+          title
+            .trim()
+            .replace(/[^\w.-]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 80) || "engram-chat";
+        const exportInput = {
+          title,
+          downloadedOn: t("chat.exportedOn"),
+          exportedAt,
+          conversationCreated: t("chat.conversationCreated"),
+          createdAt: conversation.createdAt,
+          entries,
+        };
+        if (!(await Sharing.isAvailableAsync())) {
+          const fallback =
+            format === "md"
+              ? buildMarkdownTranscript(exportInput)
+              : buildPlainTextTranscript(exportInput);
+          await Share.share({ title, message: fallback });
+          return;
+        }
+
+        let uri: string;
+        let mimeType: string;
+        if (format === "pdf") {
+          const html =
+            `<html><body><h1>${escapeHtml(title)}</h1>` +
+            entries
+              .map(
+                (entry) =>
+                  `<h2>${escapeHtml(entry.heading)}</h2>` +
+                  (entry.timestamp
+                    ? `<p><em>${escapeHtml(entry.timestamp)}</em></p>`
+                    : "") +
+                  `<p>${escapeHtml(entry.content)}</p>`,
+              )
+              .join("") +
+            "</body></html>";
+          uri = (await Print.printToFileAsync({ html })).uri;
+          mimeType = "application/pdf";
+        } else {
+          uri = `${FileSystem.cacheDirectory ?? ""}${safeTitle}.${format}`;
+          if (format === "docx") {
+            const bytes = buildDocxBytes(exportInput);
+            let binary = "";
+            const chunkSize = 0x8000;
+            for (let index = 0; index < bytes.length; index += chunkSize) {
+              binary += String.fromCharCode(
+                ...bytes.subarray(index, index + chunkSize),
+              );
+            }
+            await FileSystem.writeAsStringAsync(uri, btoa(binary), {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            mimeType =
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+          } else {
+            const content =
+              format === "md"
+                ? buildMarkdownTranscript(exportInput)
+                : buildPlainTextTranscript(exportInput);
+            await FileSystem.writeAsStringAsync(uri, content, {
+              encoding: FileSystem.EncodingType.UTF8,
+            });
+            mimeType = format === "md" ? "text/markdown" : "text/plain";
+          }
+        }
+        await Sharing.shareAsync(uri, {
+          mimeType,
+          dialogTitle: t("chat.shareConversation"),
+          UTI: mimeType,
+        });
+      } finally {
+        setExporting(false);
+        setExportOpen(false);
+      }
+    },
+    [conversation, engram?.name, messages, t],
+  );
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -308,7 +478,8 @@ export default function ChatScreen() {
   }
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const archivalReadOnly = engram?.isArchival === true;
+  const archivalReadOnly =
+    engram?.isArchival === true || Boolean(conversation?.archivedAt);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -325,9 +496,42 @@ export default function ChatScreen() {
         <Text style={[styles.kicker, rtl && styles.rtlText, { color: colors.primary }]}>
           {t("chat.kicker")} // {engram?.symbol ?? "··"}
         </Text>
-        <Text style={[styles.h1, rtl && styles.rtlText, { color: colors.foreground }]}>
-          {engram?.name ?? t("chat.fallbackTitle")}
-        </Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.h1, rtl && styles.rtlText, { color: colors.foreground }]}>
+            {engram?.name ?? t("chat.fallbackTitle")}
+          </Text>
+          {!offlineActive && (
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityLabel={t("chat.history")}
+                onPress={() => setHistoryOpen(true)}
+                style={({ pressed }) => [styles.headerButton, { opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Feather name="clock" size={18} color={colors.primary} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel={t("chat.exportConversation")}
+                disabled={messages.length === 0 || isStreaming}
+                onPress={() => setExportOpen(true)}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  { opacity: messages.length === 0 || isStreaming ? 0.3 : pressed ? 0.6 : 1 },
+                ]}
+              >
+                <Feather name="download" size={18} color={colors.primary} />
+              </Pressable>
+              {conversation?.archivedAt && (
+                <Pressable
+                  accessibilityLabel={t("chat.restoreConversation")}
+                  onPress={() => void handleArchiveConversation(conversation, false)}
+                  style={({ pressed }) => [styles.headerButton, { opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <Feather name="archive" size={18} color={colors.primary} />
+                </Pressable>
+              )}
+            </View>
+          )}
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -477,6 +681,181 @@ export default function ChatScreen() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+      <Modal
+        visible={historyOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setHistoryOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setHistoryOpen(false)}
+          />
+          <View
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: colors.primary }]}>
+                  {t("chat.history")}
+                </Text>
+                <Text style={[styles.modalHint, { color: colors.mutedForeground }]}>
+                  {t("chat.historyHint")}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityLabel={t("chat.closeHistory")}
+                onPress={() => setHistoryOpen(false)}
+              >
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <View style={styles.historyTabs}>
+              {([false, true] as const).map((archived) => (
+                <Pressable
+                  key={String(archived)}
+                  onPress={() => setShowArchived(archived)}
+                  style={[
+                    styles.historyTab,
+                    {
+                      borderColor: showArchived === archived ? colors.primary : colors.border,
+                      backgroundColor: showArchived === archived ? colors.primary + "18" : "transparent",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: showArchived === archived ? colors.primary : colors.mutedForeground,
+                      fontFamily: "JetBrainsMono_500Medium",
+                      fontSize: 11,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {archived ? t("chat.archived") : t("chat.active")}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <ScrollView
+              contentContainerStyle={styles.historyList}
+              showsVerticalScrollIndicator={false}
+            >
+              {historyLoading ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : history && history.length > 0 ? (
+                history.map((item) => (
+                  <View
+                    key={item.id}
+                    style={[styles.historyItem, { borderColor: colors.border }]}
+                  >
+                    <Pressable
+                      style={styles.historyItemMain}
+                      onPress={() => selectHistoryConversation(item)}
+                    >
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.historyItemTitle, { color: colors.foreground }]}
+                      >
+                        {item.title ?? t("chat.fallbackTitle")}
+                      </Text>
+                      <Text style={[styles.historyItemMeta, { color: colors.mutedForeground }]}>
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel={
+                        showArchived
+                          ? t("chat.restoreConversation")
+                          : t("chat.archiveConversation")
+                      }
+                      disabled={archiveConversation.isPending}
+                      onPress={() => void handleArchiveConversation(item)}
+                      style={styles.historyAction}
+                    >
+                      <Feather
+                        name={showArchived ? "archive" : "archive"}
+                        size={17}
+                        color={colors.primary}
+                      />
+                    </Pressable>
+                  </View>
+                ))
+              ) : (
+                <Text style={[styles.emptyHistory, { color: colors.mutedForeground }]}>
+                  {showArchived ? t("chat.noArchived") : t("chat.noHistory")}
+                </Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={exportOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setExportOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setExportOpen(false)}
+          />
+          <View
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: colors.primary }]}>
+                  {t("chat.exportConversation")}
+                </Text>
+                <Text style={[styles.modalHint, { color: colors.mutedForeground }]}>
+                  {t("chat.exportHint")}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityLabel={t("chat.closeExport")}
+                onPress={() => setExportOpen(false)}
+              >
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            {(
+              [
+                ["md", "downloadMarkdown"],
+                ["txt", "downloadText"],
+                ["pdf", "downloadPdf"],
+                ["docx", "downloadDocx"],
+              ] as const
+            ).map(([format, label]) => (
+              <Pressable
+                key={format}
+                disabled={exporting}
+                onPress={() => void handleExport(format)}
+                style={({ pressed }) => [
+                  styles.exportOption,
+                  {
+                    borderColor: colors.border,
+                    backgroundColor: pressed ? colors.primary + "18" : colors.background,
+                    opacity: exporting ? 0.5 : 1,
+                  },
+                ]}
+              >
+                <Feather name="file-text" size={18} color={colors.primary} />
+                <Text style={[styles.exportOptionText, { color: colors.foreground }]}>
+                  {t(`chat.${label}`)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -489,6 +868,23 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: 1,
     gap: 4,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  headerButton: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
   },
   kicker: {
     fontFamily: "JetBrainsMono_500Medium",
@@ -549,6 +945,102 @@ const styles = StyleSheet.create({
     height: 46,
     alignItems: "center",
     justifyContent: "center",
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0, 0, 0, 0.62)",
+  },
+  modalCard: {
+    maxHeight: "82%",
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 28,
+    borderTopWidth: 1,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 16,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontFamily: "Rajdhani_700Bold",
+    fontSize: 22,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  modalHint: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 3,
+    maxWidth: 280,
+  },
+  historyTabs: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
+  historyTab: {
+    flex: 1,
+    borderWidth: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  historyList: {
+    gap: 8,
+    paddingBottom: 10,
+  },
+  historyItem: {
+    minHeight: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  historyItemMain: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  historyItemTitle: {
+    fontFamily: "Rajdhani_600SemiBold",
+    fontSize: 16,
+  },
+  historyItemMeta: {
+    fontFamily: "JetBrainsMono_500Medium",
+    fontSize: 10,
+    marginTop: 3,
+  },
+  historyAction: {
+    width: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "stretch",
+  },
+  emptyHistory: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    textAlign: "center",
+    paddingVertical: 30,
+  },
+  exportOption: {
+    minHeight: 52,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  exportOptionText: {
+    fontFamily: "JetBrainsMono_500Medium",
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
   },
   rtlText: {
     writingDirection: "rtl",
