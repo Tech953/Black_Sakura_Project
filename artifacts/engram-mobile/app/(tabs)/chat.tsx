@@ -194,8 +194,11 @@ export default function ChatScreen() {
         setSelectedEngramId(selected.engramId);
       }
       setHistoryOpen(false);
+      void queryClient.invalidateQueries({
+        queryKey: getGetOpenaiConversationQueryKey(selected.id),
+      });
     },
-    [setConversationId, setSelectedEngramId],
+    [queryClient, setConversationId, setSelectedEngramId],
   );
 
   const handleArchiveConversation = useCallback(
@@ -251,11 +254,11 @@ export default function ChatScreen() {
           createdAt: conversation.createdAt,
           entries,
         };
-        if (!(await Sharing.isAvailableAsync())) {
-          const fallback =
-            format === "md"
-              ? buildMarkdownTranscript(exportInput)
-              : buildPlainTextTranscript(exportInput);
+        const fallback =
+          format === "md"
+            ? buildMarkdownTranscript(exportInput)
+            : buildPlainTextTranscript(exportInput);
+        if (Platform.OS === "web" || !(await Sharing.isAvailableAsync())) {
           await Share.share({ title, message: fallback });
           return;
         }

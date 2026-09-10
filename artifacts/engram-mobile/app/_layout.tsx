@@ -57,6 +57,7 @@ import { offlineHandler } from "@/lib/offline/handlers";
 import { syncOfflineData } from "@/lib/offline/sync";
 import { setOfflineStoreAccount } from "@/lib/offline/store";
 import { queryClient } from "@/lib/query-client";
+import { e2eAuthBypass, e2eAuthUserId } from "@/lib/e2e-auth";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
@@ -106,6 +107,9 @@ function AuthenticatedApp() {
   const { user } = useUser();
   const [accountReady, setAccountReady] = React.useState(false);
   const userId = isSignedIn ? user?.id ?? null : null;
+  const effectiveSignedIn = e2eAuthBypass || isSignedIn;
+  const effectiveUserId = e2eAuthBypass ? e2eAuthUserId : userId;
+  const accountTokenDependency = e2eAuthBypass ? null : getToken;
 
   useEffect(() => {
     let active = true;
@@ -113,14 +117,16 @@ function AuthenticatedApp() {
     setAuthTokenGetter(null);
     queryClient.clear();
 
-    if (!userId) return () => {
+    if (!effectiveUserId) return () => {
       active = false;
     };
 
-    void setOfflineStoreAccount(userId)
+    void setOfflineStoreAccount(effectiveUserId)
       .then(() => {
         if (!active) return;
-        setAuthTokenGetter(() => getToken());
+        setAuthTokenGetter(
+          e2eAuthBypass ? () => "e2e-history-token" : () => getToken(),
+        );
         setAccountReady(true);
       })
       .catch((error) => {
@@ -134,10 +140,10 @@ function AuthenticatedApp() {
       setAuthTokenGetter(null);
       queryClient.clear();
     };
-  }, [getToken, userId]);
+  }, [accountTokenDependency, effectiveUserId]);
 
   useEffect(() => {
-    if (!accountReady || !userId) return;
+    if (!accountReady || !effectiveUserId) return;
     const retryPendingHistory = () => {
       if (isOfflineMode()) return;
       void syncOfflineData()
@@ -157,10 +163,10 @@ function AuthenticatedApp() {
       appStateSubscription.remove();
       clearInterval(retryTimer);
     };
-  }, [accountReady, userId]);
+  }, [accountReady, effectiveUserId]);
 
   if (!isLoaded) return null;
-  if (!isSignedIn) {
+  if (!effectiveSignedIn) {
     return (
       <>
         <RootLayoutNav />
@@ -168,10 +174,10 @@ function AuthenticatedApp() {
       </>
     );
   }
-  if (!userId || !accountReady) return null;
+  if (!effectiveUserId || !accountReady) return null;
 
   return (
-    <EngramProvider key={userId} accountId={userId}>
+    <EngramProvider key={effectiveUserId} accountId={effectiveUserId!}>
       <GestureHandlerRootView>
         <KeyboardProvider>
           <StatusBar style="light" />

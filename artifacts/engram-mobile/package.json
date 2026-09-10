@@ -8,6 +8,7 @@
     "build": "node scripts/build.js",
     "serve": "node server/serve.js",
     "test": "vitest run lib",
+    "test:e2e:history": "node scripts/history-e2e.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "smoke:gguf": "node scripts/gguf-device-smoke.mjs",
     "release:preflight": "node scripts/release-preflight.mjs",
