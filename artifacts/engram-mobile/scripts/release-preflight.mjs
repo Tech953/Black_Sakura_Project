@@ -110,6 +110,16 @@ function runNativeExportRegression() {
   run("pnpm", ["run", "smoke:exports", "--", "--ci"]);
 }
 
+function runWebExportCompatibilityRegression() {
+  console.log("Running web export browser compatibility regression...");
+  run("pnpm", [
+    "exec",
+    "vitest",
+    "run",
+    "lib/web-chat-export.browser-compat.test.ts",
+  ]);
+}
+
 function findAndroidBuildTool(name) {
   const sdkRoots = [
     process.env.ANDROID_HOME,
@@ -336,6 +346,7 @@ try {
   if (!skipExpo) checkExpoPackageVersions();
   if (!skipHistoryE2e) runHistoryBrowserRegression();
   runNativeExportRegression();
+  runWebExportCompatibilityRegression();
   verifyCheckedInAndroidPrivacyPolicy();
   ensureLlamaNativeLibraries();
   if (apkPath) verifyApk(apkPath);

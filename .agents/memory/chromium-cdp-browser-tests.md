@@ -22,3 +22,7 @@ Browser exports should use Blob/object-URL downloads rather than native Expo fil
 **Why:** Expo web does not provide native file-system or sharing APIs, and browser download paths otherwise regress silently while text-share tests continue to pass. The current lightweight PDF generator preserves ASCII text; international PDF text needs an explicit font/encoding upgrade.
 
 **How to apply:** Extend the browser download fixture’s expected metadata and signature checks whenever a format or filename contract changes.
+
+When Firefox/WebKit binaries are unavailable, do not label the result as real cross-browser execution. Use an explicit engine-compatibility harness around the production download function, enforce each engine’s relevant DOM/object-URL constraint, and keep the limitation documented.
+
+**Why:** This workspace provides Chromium only; a compatibility contract is useful and repeatable, but it is not evidence that Safari or Firefox themselves ran the flow.
