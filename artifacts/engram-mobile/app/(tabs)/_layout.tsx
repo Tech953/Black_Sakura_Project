@@ -12,6 +12,7 @@ import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 import { isRtlLanguage } from "@/lib/layout-direction";
+import { e2eAuthBypass } from "@/lib/e2e-auth";
 
 type FeatherName = React.ComponentProps<typeof Feather>["name"];
 
@@ -114,7 +115,7 @@ function ClassicTabLayout() {
 export default function TabLayout() {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
+  if (!isSignedIn && !e2eAuthBypass) return <Redirect href="/(auth)/sign-in" />;
   if (isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
   }

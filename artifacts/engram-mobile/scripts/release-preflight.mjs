@@ -100,6 +100,11 @@ function checkExpoPackageVersions() {
   console.log("Expo package versions match the installed SDK.");
 }
 
+function runHistoryBrowserRegression() {
+  console.log("Running authenticated mobile history browser regression...");
+  run("pnpm", ["run", "test:e2e:history"]);
+}
+
 function findAndroidBuildTool(name) {
   const sdkRoots = [
     process.env.ANDROID_HOME,
@@ -302,11 +307,14 @@ function verifyApk(apkPath) {
 
 function parseArgs(argv) {
   let skipExpo = false;
+  let skipHistoryE2e = false;
   let apkPath = null;
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--skip-expo") {
       skipExpo = true;
+    } else if (arg === "--skip-history-e2e") {
+      skipHistoryE2e = true;
     } else if (arg === "--apk") {
       apkPath = argv[index + 1] ?? null;
       index += 1;
@@ -315,12 +323,13 @@ function parseArgs(argv) {
       throw new Error(`Unknown argument: ${arg}`);
     }
   }
-  return { skipExpo, apkPath };
+  return { skipExpo, skipHistoryE2e, apkPath };
 }
 
 try {
-  const { skipExpo, apkPath } = parseArgs(process.argv.slice(2));
+  const { skipExpo, skipHistoryE2e, apkPath } = parseArgs(process.argv.slice(2));
   if (!skipExpo) checkExpoPackageVersions();
+  if (!skipHistoryE2e) runHistoryBrowserRegression();
   verifyCheckedInAndroidPrivacyPolicy();
   ensureLlamaNativeLibraries();
   if (apkPath) verifyApk(apkPath);
