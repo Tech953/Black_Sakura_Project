@@ -29,6 +29,12 @@ For guaranteed web-PDF glyphs, keep only the selected Noto WOFF2 subsets in the 
 
 **How to apply:** If the font set changes, update the vendored assets and the asset declaration together; keep the browser-only font import dynamic so Vitest/native module evaluation does not parse React Native Flow syntax.
 
+Web PDF pages can remain visually image-backed while becoming searchable by adding a hidden Unicode text layer: use per-shard built-in Type 1 fonts with distinct names, one-byte ToUnicode CMaps, and `/ActualText` for each line.
+
+**Why:** A single placeholder Type 0 font was not extracted consistently by `pdftotext`, and repeated `/BaseFont /Helvetica` shards caused mapping reuse. Distinct Type 1 resources preserve extraction without embedding another large font.
+
+**How to apply:** Keep the image and text layers in the same page stream, use `/ActualText` for logical RTL copy/search, and validate with a real PDF extractor rather than only checking `/ToUnicode` markers.
+
 When Firefox/WebKit binaries are unavailable, do not label the result as real cross-browser execution. Use an explicit engine-compatibility harness around the production download function, enforce each engine’s relevant DOM/object-URL constraint, and keep the limitation documented.
 
 **Why:** This workspace provides Chromium only; a compatibility contract is useful and repeatable, but it is not evidence that Safari or Firefox themselves ran the flow.

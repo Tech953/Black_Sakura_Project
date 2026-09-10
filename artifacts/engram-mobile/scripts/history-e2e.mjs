@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
@@ -137,7 +138,7 @@ const browserMock = String.raw`(() => {
     ],
     102: [
       { id: 3, conversationId: 102, role: "user", content: "Hydrated history message — Café 你好 Привет مرحبا", createdAt: "2026-09-10T12:01:00.000Z" },
-      { id: 4, conversationId: 102, role: "assistant", content: "Hydrated history response", createdAt: "2026-09-10T12:01:01.000Z" },
+      { id: 4, conversationId: 102, role: "assistant", content: "Hydrated history response — Café 你好 Привет مرحبا", createdAt: "2026-09-10T12:01:01.000Z" },
     ],
   };
   const conversations = new Map([
@@ -168,12 +169,22 @@ const browserMock = String.raw`(() => {
     if (!blob) return realAnchorClick.call(this);
     blob.arrayBuffer().then((buffer) => {
       const bytes = new Uint8Array(buffer);
+      let pdfBase64 = null;
+      if (blob.type === "application/pdf") {
+        let binary = "";
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        pdfBase64 = btoa(binary);
+      }
       window.__historyE2E.downloads.push({
         filename: this.download,
         type: blob.type,
         size: blob.size,
         prefix: Array.from(bytes.slice(0, 8)),
         hasJpegImage: bytes.some((byte, index) => byte === 0xff && bytes[index + 1] === 0xd8),
+        hasToUnicodeMap: new TextDecoder().decode(bytes).includes("/ToUnicode"),
+        hasInvisibleTextLayer: new TextDecoder().decode(bytes).includes("3 Tr"),
+        hasCjkMapping: new TextDecoder().decode(bytes).includes("<4F60>"),
+        pdfBase64,
       });
     });
   };
@@ -405,7 +416,7 @@ try {
   const expectedDownloads = [
     ["Hydrated-history.md", "text/markdown", []],
     ["Hydrated-history.txt", "text/plain", []],
-    ["Hydrated-history.pdf", "application/pdf", [37, 80, 68, 70], true],
+    ["Hydrated-history.pdf", "application/pdf", [37, 80, 68, 70], true, true, true, true],
     [
       "Hydrated-history.docx",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -421,12 +432,38 @@ try {
         download.type !== expectedDownloads[index][1] ||
         download.size <= 0 ||
         Boolean(download.hasJpegImage) !== Boolean(expectedDownloads[index][3]) ||
+        Boolean(download.hasToUnicodeMap) !== Boolean(expectedDownloads[index][4]) ||
+        Boolean(download.hasInvisibleTextLayer) !== Boolean(expectedDownloads[index][5]) ||
+        Boolean(download.hasCjkMapping) !== Boolean(expectedDownloads[index][6]) ||
         expectedDownloads[index][2].some(
           (byte, byteIndex) => download.prefix[byteIndex] !== byte,
         ),
     )
   ) {
     throw new Error(`Unexpected export payloads: ${result}`);
+  }
+  const pdfDownload = parsed.downloads.find((download) => download.filename.endsWith(".pdf"));
+  const pdfProbePath = path.join(os.tmpdir(), `engram-history-e2e-${process.pid}.pdf`);
+  if (!pdfDownload?.pdfBase64) {
+    throw new Error("PDF download did not include a probe payload");
+  }
+  writeFileSync(pdfProbePath, Buffer.from(pdfDownload.pdfBase64, "base64"));
+  try {
+    const extractedText = execFileSync("pdftotext", [pdfProbePath, "-"], {
+      encoding: "utf8",
+    });
+    for (const expectedText of ["Café", "你好", "Привет"]) {
+      if (!extractedText.includes(expectedText)) {
+        throw new Error(`PDF text extraction omitted ${expectedText}: ${JSON.stringify(extractedText)}`);
+      }
+    }
+    for (const expectedCharacter of Array.from("مرحبا")) {
+      if (!extractedText.includes(expectedCharacter)) {
+        throw new Error(`PDF text extraction omitted Arabic character ${expectedCharacter}: ${JSON.stringify(extractedText)}`);
+      }
+    }
+  } finally {
+    rmSync(pdfProbePath, { force: true });
   }
   console.log("Mobile history browser regression passed: hydrate, archive, restore, read-only state, and four export downloads.");
 } finally {
