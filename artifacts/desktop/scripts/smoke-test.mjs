@@ -32,6 +32,7 @@ import { createServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { checkLlamaRuntime } from "./llama-runtime-check.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const desktopDir = path.join(here, ".."); // artifacts/desktop
@@ -196,7 +197,17 @@ const llamaServer = path.join(
 if (!existsSync(llamaServer)) {
   fail(`packaged custom-GGUF runtime missing: ${llamaServer}`);
 }
-log("trusted llama.cpp runtime present for managed custom GGUFs");
+const llamaRuntime = checkLlamaRuntime({
+  executablePath: llamaServer,
+  platform: process.platform,
+});
+if (!llamaRuntime.ok) {
+  fail(llamaRuntime.message);
+}
+log(
+  `trusted llama.cpp runtime present for managed custom GGUFs ` +
+    `(${llamaRuntime.code})`,
+);
 
 if (
   process.env.EXPECT_SLIM_LLM === "1" &&
