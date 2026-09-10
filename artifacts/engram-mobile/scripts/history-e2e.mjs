@@ -144,7 +144,7 @@ const browserMock = String.raw`(() => {
     [101, { id: 101, title: "Current transcript", mode: "companion", engramId: 1, engramIds: [1], groupContinuationMode: "off", createdAt: "2026-09-10T12:00:00.000Z", archivedAt: null }],
     [102, { id: 102, title: "Hydrated history", mode: "companion", engramId: 1, engramIds: [1], groupContinuationMode: "off", createdAt: "2026-09-10T12:01:00.000Z", archivedAt: null }],
   ]);
-  window.__historyE2E = { conversations, messages, shares: [], archiveRequests: [], requests: [] };
+  window.__historyE2E = { conversations, messages, shares: [], downloads: [], archiveRequests: [], requests: [] };
   const response = (body, status = 200) => new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
@@ -154,6 +154,27 @@ const browserMock = String.raw`(() => {
     messages: messages[id] ?? [],
   });
   const realFetch = window.fetch.bind(window);
+  const downloadBlobs = new Map();
+  let downloadId = 0;
+  URL.createObjectURL = (blob) => {
+    const url = "blob:e2e-" + (++downloadId);
+    downloadBlobs.set(url, blob);
+    return url;
+  };
+  const realAnchorClick = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function () {
+    const url = this.getAttribute("href") ?? this.href;
+    const blob = this.download ? downloadBlobs.get(url) : null;
+    if (!blob) return realAnchorClick.call(this);
+    blob.arrayBuffer().then((buffer) => {
+      window.__historyE2E.downloads.push({
+        filename: this.download,
+        type: blob.type,
+        size: blob.size,
+        prefix: Array.from(new Uint8Array(buffer).slice(0, 8)),
+      });
+    });
+  };
   window.navigator.share = async (payload) => {
     window.__historyE2E.shares.push(payload);
   };
@@ -371,19 +392,39 @@ try {
   await clickLabel(client, "Export conversation");
   for (const label of ["Markdown", "Plain text", "PDF", "Word document"]) {
     await clickText(client, label);
-    await waitForValue(client, `window.__historyE2E.shares.length >= ${label === "Markdown" ? 1 : label === "Plain text" ? 2 : label === "PDF" ? 3 : 4}`, `${label} share payload`);
+    await waitForValue(client, `window.__historyE2E.downloads.length >= ${label === "Markdown" ? 1 : label === "Plain text" ? 2 : label === "PDF" ? 3 : 4}`, `${label} download`);
     await clickLabel(client, "Export conversation");
   }
   const result = await client.evaluate(`JSON.stringify({
     archiveRequests: window.__historyE2E.archiveRequests,
-    shareCount: window.__historyE2E.shares.length,
-    shareMessages: window.__historyE2E.shares.map((item) => item.message || item.text || "")
+    downloads: window.__historyE2E.downloads
   })`);
   const parsed = JSON.parse(result);
-  if (parsed.shareCount !== 4 || parsed.shareMessages.some((message) => !message.includes("Hydrated history message"))) {
+  const expectedDownloads = [
+    ["Hydrated-history.md", "text/markdown", []],
+    ["Hydrated-history.txt", "text/plain", []],
+    ["Hydrated-history.pdf", "application/pdf", [37, 80, 68, 70]],
+    [
+      "Hydrated-history.docx",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      [80, 75, 3, 4],
+    ],
+  ];
+  if (
+    parsed.downloads.length !== expectedDownloads.length ||
+    parsed.downloads.some(
+      (download, index) =>
+        download.filename !== expectedDownloads[index][0] ||
+        download.type !== expectedDownloads[index][1] ||
+        download.size <= 0 ||
+        expectedDownloads[index][2].some(
+          (byte, byteIndex) => download.prefix[byteIndex] !== byte,
+        ),
+    )
+  ) {
     throw new Error(`Unexpected export payloads: ${result}`);
   }
-  console.log("Mobile history browser regression passed: hydrate, archive, restore, read-only state, and four export share payloads.");
+  console.log("Mobile history browser regression passed: hydrate, archive, restore, read-only state, and four export downloads.");
 } finally {
   client?.close();
   for (const child of processes.reverse()) await stopProcess(child);
