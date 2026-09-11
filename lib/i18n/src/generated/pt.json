@@ -373,6 +373,7 @@
     "transmissionForced": "Transmissão forçada",
     "transmissionForcedDesc": "{{name}} entrou em contato.",
     "transmissionFailed": "Falha na transmissão",
+    "transmissionFailedHint": "O provedor do modelo de linguagem está indisponível. Verifique o acesso ao provedor ou escolha um modelo local saudável.",
     "tickComplete": "Tick concluído",
     "tickCompleteDesc": "{{ticked}} ticked · {{generated}} transmitidos.",
     "noEngramsProvisioned": "Nenhum engram provisionado",

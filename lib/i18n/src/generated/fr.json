@@ -373,6 +373,7 @@
     "transmissionForced": "Transmission forcée",
     "transmissionForcedDesc": "{{name}} a pris contact.",
     "transmissionFailed": "Échec de transmission",
+    "transmissionFailedHint": "Le fournisseur du modèle linguistique est indisponible. Vérifiez l’accès au fournisseur ou choisissez un modèle local disponible.",
     "tickComplete": "Tick terminé",
     "tickCompleteDesc": "{{ticked}} tickés · {{generated}} transmis.",
     "noEngramsProvisioned": "Aucun engram provisionné",

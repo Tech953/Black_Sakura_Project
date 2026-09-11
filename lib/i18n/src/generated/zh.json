@@ -373,6 +373,7 @@
     "transmissionForced": "已强制传输",
     "transmissionForcedDesc": "{{name}} 已发起联络。",
     "transmissionFailed": "传输失败",
+    "transmissionFailedHint": "语言模型提供商不可用。请检查提供商访问权限或选择可用的本地模型。",
     "tickComplete": "Tick 完成",
     "tickCompleteDesc": "已 tick {{ticked}} · 已传输 {{generated}}。",
     "noEngramsProvisioned": "未配置 engram",

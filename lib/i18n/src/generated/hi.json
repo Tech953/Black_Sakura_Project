@@ -373,6 +373,7 @@
     "transmissionForced": "ट्रांसमिशन बाध्य किया गया",
     "transmissionForcedDesc": "{{name}} ने संपर्क किया।",
     "transmissionFailed": "ट्रांसमिशन विफल",
+    "transmissionFailedHint": "भाषा मॉडल प्रदाता उपलब्ध नहीं है। प्रदाता का एक्सेस जाँचें या कोई स्वस्थ स्थानीय मॉडल चुनें।",
     "tickComplete": "टिक पूर्ण",
     "tickCompleteDesc": "{{ticked}} टिक हुआ · {{generated}} ट्रांसमिट हुआ।",
     "noEngramsProvisioned": "कोई engram provisioned नहीं",

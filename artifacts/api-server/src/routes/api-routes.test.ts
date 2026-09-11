@@ -332,7 +332,15 @@ vi.mock("@workspace/db", () => ({
 }));
 vi.mock("@workspace/db/schema", () => h.schema);
 vi.mock("drizzle-orm", () => h.drizzle);
-vi.mock("../lib/llm", () => ({ llm: h.llm, LLM_MODEL: "test-model" }));
+vi.mock("../lib/llm", () => ({
+  llm: h.llm,
+  LLM_MODEL: "test-model",
+  llmProviderFailureResponse: () => ({
+    error: "Generation unavailable",
+    code: "unavailable",
+    message: "The language-model provider is unavailable.",
+  }),
+}));
 
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import openaiRouter from "./openai";
@@ -1481,8 +1489,12 @@ describe("manual tick and transmit", () => {
     h.llmState.throwOnCreate = true;
     const res = await fetch(`${base}/api/engrams/${engram.id}/transmit`, { method: "POST" });
     expect(res.status).toBe(503);
-    const body = await res.json();
-    expect(body).toMatchObject({ error: "Generation unavailable" });
+    const body = (await res.json()) as { error?: string; code?: string; message?: string };
+    expect(body).toMatchObject({
+      error: "Generation unavailable",
+      code: "unavailable",
+    });
+    expect(body.message).toContain("language-model provider");
   });
 });
 

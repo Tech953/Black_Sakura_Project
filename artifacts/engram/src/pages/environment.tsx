@@ -71,6 +71,12 @@ function fromEngram(e: Engram): ConfigForm {
   };
 }
 
+function providerErrorMessage(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === "string" && message.trim() ? message : undefined;
+}
+
 export default function Environment() {
   const { t } = useTranslation("environment");
   const { data: engrams, isLoading } = useListEngrams();
@@ -180,7 +186,12 @@ export default function Environment() {
         queryClient.invalidateQueries({ queryKey: getGetEngramStatesQueryKey() });
         toast({ title: t("transmissionForced"), description: t("transmissionForcedDesc", { name: selected.name }) });
       },
-      onError: () => toast({ title: t("transmissionFailed"), variant: "destructive" }),
+      onError: (error) =>
+        toast({
+          title: t("transmissionFailed"),
+          description: providerErrorMessage(error) ?? t("transmissionFailedHint"),
+          variant: "destructive",
+        }),
     });
   }
 

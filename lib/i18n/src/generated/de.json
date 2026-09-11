@@ -373,6 +373,7 @@
     "transmissionForced": "Transmission erzwungen",
     "transmissionForcedDesc": "{{name}} hat sich gemeldet.",
     "transmissionFailed": "Transmission fehlgeschlagen",
+    "transmissionFailedHint": "Der Sprachmodell-Anbieter ist nicht verfügbar. Prüfe den Anbieterzugang oder wähle ein funktionierendes lokales Modell.",
     "tickComplete": "Tick abgeschlossen",
     "tickCompleteDesc": "{{ticked}} getickt · {{generated}} übertragen.",
     "noEngramsProvisioned": "Keine engrams bereitgestellt",
