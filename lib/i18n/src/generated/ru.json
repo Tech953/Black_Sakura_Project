@@ -373,6 +373,7 @@
     "transmissionForced": "Передача принудительно запущена",
     "transmissionForcedDesc": "{{name}} вышла на связь.",
     "transmissionFailed": "Сбой передачи",
+    "transmissionFailedHint": "Провайдер языковой модели недоступен. Проверьте доступ к провайдеру или выберите исправную локальную модель.",
     "tickComplete": "Тик завершён",
     "tickCompleteDesc": "{{ticked}} тиков обработано · {{generated}} передач отправлено.",
     "noEngramsProvisioned": "Нет развёрнутых engram",

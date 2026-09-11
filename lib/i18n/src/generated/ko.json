@@ -373,6 +373,7 @@
     "transmissionForced": "전송 강제됨",
     "transmissionForcedDesc": "{{name}}이 연락했습니다.",
     "transmissionFailed": "전송 실패",
+    "transmissionFailedHint": "언어 모델 제공자를 사용할 수 없습니다. 제공자 액세스를 확인하거나 정상적인 로컬 모델을 선택하세요.",
     "tickComplete": "틱 완료",
     "tickCompleteDesc": "{{ticked}} 틱 처리 · {{generated}} 전송됨.",
     "noEngramsProvisioned": "프로비저닝된 engram 없음",

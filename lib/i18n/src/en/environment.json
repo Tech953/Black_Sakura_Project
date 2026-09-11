@@ -12,6 +12,7 @@
   "transmissionForced": "Transmission forced",
   "transmissionForcedDesc": "{{name}} reached out.",
   "transmissionFailed": "Transmission failed",
+  "transmissionFailedHint": "The language-model provider is unavailable. Check provider access or select a healthy local model.",
   "tickComplete": "Tick complete",
   "tickCompleteDesc": "{{ticked}} ticked · {{generated}} transmitted.",
   "noEngramsProvisioned": "No engrams provisioned",

@@ -30,6 +30,7 @@ import {
   generateDevelopment,
   generateEngramSynthesis,
 } from "../lib/engram-generation";
+import { llmProviderFailureResponse } from "../lib/llm";
 import {
   MAX_ENGRAM_CSV_BYTES,
   parseEngramCsv,
@@ -150,11 +151,18 @@ router.post("/engrams/synthesize", async (req, res) => {
     )
     .join("\n");
 
-  const synthesized = await generateEngramSynthesis({
-    stipulations,
-    archiveDigest,
-    existingNames: existing.map((e) => e.name),
-  });
+  let synthesized;
+  try {
+    synthesized = await generateEngramSynthesis({
+      stipulations,
+      archiveDigest,
+      existingNames: existing.map((e) => e.name),
+    });
+  } catch (error) {
+    req.log.error({ err: error }, "engram synthesis provider failed");
+    res.status(503).json(llmProviderFailureResponse(error));
+    return;
+  }
   if (!synthesized) {
     res.status(502).json({ error: "Synthesis failed — the model did not return a usable engram config. Try again or refine the stipulations." });
     return;
@@ -528,8 +536,8 @@ router.post("/engrams/:id/transmit", async (req, res) => {
     const tx = await forceTransmission(engram);
     res.status(201).json(tx);
   } catch (err) {
-    req.log.error(err);
-    res.status(503).json({ error: "Generation unavailable" });
+    req.log.error({ err }, "engram transmission provider failed");
+    res.status(503).json(llmProviderFailureResponse(err));
   }
 });
 

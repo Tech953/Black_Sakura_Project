@@ -373,6 +373,7 @@
     "transmissionForced": "送信を強制",
     "transmissionForcedDesc": "{{name}}が接触しました。",
     "transmissionFailed": "送信失敗",
+    "transmissionFailedHint": "言語モデルプロバイダーを利用できません。プロバイダーへのアクセスを確認するか、正常なローカルモデルを選択してください。",
     "tickComplete": "Tick完了",
     "tickCompleteDesc": "{{ticked}}件tick · {{generated}}件送信。",
     "noEngramsProvisioned": "プロビジョニング済みengramなし",

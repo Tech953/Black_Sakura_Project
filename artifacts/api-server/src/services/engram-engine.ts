@@ -19,6 +19,7 @@ import { attemptOperatorContact } from "../lib/operator-contact";
 import { maybeRunCommonsTurn } from "../lib/commons";
 import { maybeRunSimulationStep } from "../lib/simulations";
 import { maybeRunArtifactGeneration } from "../lib/artifacts-scheduler";
+import { normalizeLLMProviderError } from "../lib/llm";
 
 // --- Tunable constants (cost & cadence guards) ---
 const GLOBAL_TICK_MS = 20_000; // how often the engine wakes up
@@ -348,7 +349,11 @@ export async function runTick(opts: { force?: boolean; ownerId?: string } = {}):
         );
         produced.push(tx);
       } catch (err) {
-        logger.error({ err, engramId: engram.id }, "engram transmission generation failed");
+        const providerError = normalizeLLMProviderError(err);
+        logger.error(
+          { err: providerError, engramId: engram.id, providerCode: providerError.code },
+          "engram transmission generation failed",
+        );
         // Persist the backoff (and accrued pressure) so a restart can't bypass it.
         await db
           .update(engramsTable)

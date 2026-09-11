@@ -373,6 +373,7 @@
     "transmissionForced": "Trasmissione forzata",
     "transmissionForcedDesc": "{{name}} si è fatta viva.",
     "transmissionFailed": "Trasmissione fallita",
+    "transmissionFailedHint": "Il provider del modello linguistico non è disponibile. Verifica l’accesso al provider o scegli un modello locale funzionante.",
     "tickComplete": "Tick completato",
     "tickCompleteDesc": "{{ticked}} tick completati · {{generated}} trasmessi.",
     "noEngramsProvisioned": "Nessun engram provisionato",

@@ -373,6 +373,7 @@
     "transmissionForced": "تم فرض الإرسال",
     "transmissionForcedDesc": "تواصل {{name}}.",
     "transmissionFailed": "فشل الإرسال",
+    "transmissionFailedHint": "موفر نموذج اللغة غير متاح. تحقق من الوصول إلى الموفر أو اختر نموذجًا محليًا سليمًا.",
     "tickComplete": "اكتملت النبضة",
     "tickCompleteDesc": "تمت {{ticked}} نبضة · أُرسل {{generated}}.",
     "noEngramsProvisioned": "لا توجد engrams مهيأة",

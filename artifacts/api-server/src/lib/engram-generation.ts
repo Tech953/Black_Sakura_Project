@@ -1,17 +1,28 @@
 import type { Engram } from "@workspace/db";
 import { buildEngramSystemPrompt } from "./prompts";
-import { llm, LLM_MODEL } from "./llm";
+import { llm, LLM_MODEL, LLMProviderError, normalizeLLMProviderError } from "./llm";
 
 async function complete(system: string, user: string, maxTokens: number): Promise<string> {
-  const res = await llm.chat.completions.create({
-    model: LLM_MODEL,
-    max_completion_tokens: maxTokens,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-  });
-  return res.choices[0]?.message?.content?.trim() ?? "";
+  try {
+    const res = await llm.chat.completions.create({
+      model: LLM_MODEL,
+      max_completion_tokens: maxTokens,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    });
+    const content = res.choices[0]?.message?.content?.trim() ?? "";
+    if (!content) {
+      throw new LLMProviderError(
+        "empty_response",
+        "The language-model provider returned an empty response.",
+      );
+    }
+    return content;
+  } catch (error) {
+    throw normalizeLLMProviderError(error);
+  }
 }
 
 export type TransmissionKind = "idle" | "outreach";

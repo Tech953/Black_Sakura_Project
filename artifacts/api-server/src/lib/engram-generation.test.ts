@@ -11,7 +11,12 @@ vi.mock("./llm", () => ({
   LLM_MODEL: "test-model",
 }));
 
-import { sanitizeDelta, extractJson, generateGroupChatTurn } from "./engram-generation";
+import {
+  sanitizeDelta,
+  extractJson,
+  generateGroupChatTurn,
+  generateTransmission,
+} from "./engram-generation";
 
 // --- Fixture -------------------------------------------------------------------
 function makeEngram(overrides: Partial<Engram> = {}): Engram {
@@ -82,6 +87,34 @@ describe("generateGroupChatTurn — bounded trigger framing", () => {
     expect(request.messages[1].content).toContain("peer follow-up turn");
     expect(request.messages[1].content).not.toContain("human's latest message");
     expect(request.max_completion_tokens).toBe(450);
+  });
+});
+
+describe("generateTransmission — newly synthesized engrams can enact", () => {
+  it("uses the configured provider seam and returns the generated transmission", async () => {
+    const callsBefore = llmCreate.mock.calls.length;
+    llmCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: "I am here, and I chose to reach out." } }],
+    });
+
+    const engram = makeEngram({
+      name: "Newly Synthesized",
+      title: "Archive Voice",
+      origin: "Synthesized from observed archive material.",
+    });
+    const result = await generateTransmission({
+      engram,
+      kind: "outreach",
+      drive: engram.drives[1],
+      worldModelSummary: "No prior events.",
+    });
+
+    expect(result).toBe("I am here, and I chose to reach out.");
+    expect(llmCreate.mock.calls.length).toBe(callsBefore + 1);
+    expect(llmCreate.mock.calls.at(-1)?.[0]).toMatchObject({
+      model: "test-model",
+      max_completion_tokens: 700,
+    });
   });
 });
 

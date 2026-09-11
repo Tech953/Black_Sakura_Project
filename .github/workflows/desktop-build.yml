@@ -63,6 +63,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify localized locale key trees
+        if: matrix.platform == 'linux'
+        run: pnpm --filter @workspace/scripts run check:locales
+
       # On a tag push (v1.2.3) set the desktop package version to match the tag,
       # so the published release + update manifest carry the right version and
       # installed apps can tell a newer release apart. Non-tag (manual) runs keep
@@ -301,9 +305,10 @@ jobs:
         run: pnpm run test:mobile-offline
 
       # Sync the mobile app version from the pushed tag (mirroring the desktop
-      # version sync) and stamp an integer versionCode from the CI run number so
-      # successive published builds are ordered. Exports APK_VERSION for the
-      # artifact name. Non-tag (manual) runs keep app.json's current version.
+      # version sync) and stamp a monotonic integer versionCode. The run number
+      # alone is not safe for a first release because app.json may already have
+      # a higher code. Exports APK_VERSION for the artifact name. Non-tag
+      # (manual) runs keep app.json's current version and code.
       - name: Sync mobile version
         shell: bash
         env:
@@ -316,14 +321,18 @@ jobs:
             const fs = require("fs");
             const f = "artifacts/engram-mobile/app.json";
             const j = JSON.parse(fs.readFileSync(f, "utf8"));
-            const current = j.expo.version || "1.0.0";
+             const current = j.expo.version || "1.0.0";
+             const currentCode = Number(j.expo.android?.versionCode) || 1;
             const version =
               process.env.REF_TYPE === "tag"
                 ? (process.env.REF_NAME || "").replace(/^v/, "")
                 : current;
             j.expo.version = version;
             j.expo.android = j.expo.android || {};
-            j.expo.android.versionCode = Number(process.env.RUN_NUMBER) || 1;
+             j.expo.android.versionCode =
+               process.env.REF_TYPE === "tag"
+                 ? Math.max(currentCode + 1, Number(process.env.RUN_NUMBER) || 1)
+                 : currentCode;
             fs.writeFileSync(f, JSON.stringify(j, null, 2) + "\n");
             fs.appendFileSync(process.env.GITHUB_ENV, "APK_VERSION=" + version + "\n");
             console.log("mobile version " + version + " (code " + j.expo.android.versionCode + ")");
@@ -343,6 +352,9 @@ jobs:
       # --clean: regenerate from a fresh template each run.
       - name: Verify mobile release dependencies
         run: pnpm --filter @workspace/engram-mobile run release:preflight
+
+      - name: Test APK artifact freshness gate
+        run: pnpm --filter @workspace/engram-mobile run test:release-preflight
 
       - name: Expo prebuild (android)
         run: pnpm --filter @workspace/engram-mobile exec expo prebuild --platform android --no-install --clean
