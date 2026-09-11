@@ -105,11 +105,12 @@ artifacts/engram-mobile/android/app/build/outputs/apk/release/app-release.apk
 
 `app.json` carries `expo.version` (the user-visible version, e.g. `1.2.3`) and
 `android.versionCode` (an integer that **must increase** for every release the
-Play Store / in-place update accepts). In CI these are stamped from the git tag
-and the run number; for local builds, bump them by hand in `app.json` before
-prebuilding if you want an update-safe sequence. Keep the matching `versionCode`
-in `android/app/build.gradle`; the installer script refuses to package a
-mismatch.
+Play Store / in-place update accepts). In CI, the user-visible version comes
+from the git tag and the version code is set to a value greater than the
+checked-in code and the workflow run number. For local builds, bump them by
+hand in `app.json` before prebuilding if you want an update-safe sequence.
+Keep the matching `versionCode` in `android/app/build.gradle`; the installer
+script refuses to package a mismatch.
 
 ### Release signing (update-safe installs)
 
