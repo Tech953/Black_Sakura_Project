@@ -8,7 +8,7 @@ import {
   RetryMediaAssetParams,
   DeleteMediaAssetParams,
 } from "@workspace/api-zod";
-import { detectModality } from "../lib/media-extraction";
+import { contentMatchesMime, detectModality } from "../lib/media-extraction";
 import {
   createMediaAsset,
   loadMediaAssets,
@@ -104,6 +104,12 @@ router.post("/media", (req, res) => {
       res
         .status(415)
         .json({ error: `Unsupported media type: ${file.mimetype}` });
+      return;
+    }
+    if (!contentMatchesMime(file.buffer, file.mimetype)) {
+      res.status(415).json({
+        error: `Uploaded bytes do not match the claimed media type: ${file.mimetype}`,
+      });
       return;
     }
 
