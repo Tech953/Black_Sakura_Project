@@ -1739,11 +1739,11 @@ export const ReplyToEngramMessageResponse = zod.object({
 
 
 /**
- * @summary Open an operator-directed simulation with a specific scenario premise
+ * @summary Open an operator-directed simulation with an optional scenario premise
  */
 export const CreateSimulationBody = zod.object({
   "engramId": zod.number(),
-  "premise": zod.string().describe('The specific scenario the simulation should explore'),
+  "premise": zod.string().optional().describe('Optional specific scenario; omitted to generate one from the engram\'s context'),
   "maxSteps": zod.number().optional().describe('Optional step budget (capped server-side)')
 })
 

@@ -1269,7 +1269,7 @@ paths:
     post:
       operationId: createSimulation
       tags: [simulations]
-      summary: Open an operator-directed simulation with a specific scenario premise
+      summary: Open an operator-directed simulation with an optional scenario premise
       requestBody:
         required: true
         content:
@@ -2980,13 +2980,13 @@ components:
 
     SimulationCreateInput:
       type: object
-      required: [engramId, premise]
+      required: [engramId]
       properties:
         engramId:
           type: integer
         premise:
           type: string
-          description: The specific scenario the simulation should explore
+          description: Optional specific scenario; omitted to generate one from the engram's context
         maxSteps:
           type: integer
           description: Optional step budget (capped server-side)

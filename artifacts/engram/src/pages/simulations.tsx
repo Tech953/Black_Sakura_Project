@@ -137,7 +137,13 @@ export default function Simulations() {
         </p>
       </div>
 
-      <LaunchSimulationPanel engrams={engrams ?? []} />
+      <LaunchSimulationPanel
+        engrams={(engrams ?? []).filter(
+          (engram) =>
+            engram.simulationEnabled &&
+            (engram.mode === "simulation" || engram.mode === "full_bounded"),
+        )}
+      />
 
       <div className="space-y-3">
         {isLoading ? (
@@ -169,13 +175,22 @@ function LaunchSimulationPanel({ engrams }: { engrams: Engram[] }) {
   const createSim = useCreateSimulation();
   const [engramId, setEngramId] = useState<number | null>(null);
   const [premise, setPremise] = useState("");
+  const [autoPremise, setAutoPremise] = useState(true);
 
   const selectedId = engramId ?? engrams[0]?.id ?? null;
 
   function handleLaunch() {
-    if (selectedId === null || !premise.trim() || createSim.isPending) return;
+    if (
+      selectedId === null ||
+      (!autoPremise && !premise.trim()) ||
+      createSim.isPending
+    )
+      return;
+    const data = autoPremise
+      ? { engramId: selectedId }
+      : { engramId: selectedId, premise: premise.trim() };
     createSim.mutate(
-      { data: { engramId: selectedId, premise: premise.trim() } },
+      { data },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListSimulationsQueryKey() });
@@ -217,16 +232,36 @@ function LaunchSimulationPanel({ engrams }: { engrams: Engram[] }) {
             </button>
           ))}
         </div>
+        {!engrams.length && (
+          <p className="font-mono text-[11px] text-amber-300/80">
+            {t("noCapableEngrams")}
+          </p>
+        )}
+        <label className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoPremise}
+            onChange={(event) => setAutoPremise(event.target.checked)}
+            className="accent-rose-500"
+            data-testid="checkbox-auto-premise"
+          />
+          {t("autoPremise")}
+        </label>
         <Textarea
           value={premise}
           onChange={(e) => setPremise(e.target.value)}
-          placeholder={t("premisePlaceholder")}
+          disabled={autoPremise}
+          placeholder={autoPremise ? t("autoPremisePlaceholder") : t("premisePlaceholder")}
           className="font-mono text-xs bg-background/40 border-rose-500/30 min-h-[64px]"
           data-testid="input-sim-premise"
         />
         <Button
           onClick={handleLaunch}
-          disabled={selectedId === null || !premise.trim() || createSim.isPending}
+          disabled={
+            selectedId === null ||
+            (!autoPremise && !premise.trim()) ||
+            createSim.isPending
+          }
           data-testid="button-launch-simulation"
           className="bg-rose-600/80 hover:bg-rose-600 text-white font-mono text-xs uppercase tracking-widest"
         >

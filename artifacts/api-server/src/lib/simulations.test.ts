@@ -51,6 +51,11 @@ const h = vi.hoisted(() => {
     generateSimulationExitSummary: vi.fn(async () => "I learned the drains hold."),
     loadRecentWorldModel: vi.fn(async () => [] as unknown[]),
     appendActivity: vi.fn(async () => undefined),
+    loadPresenceForEngram: vi.fn(async () => ({
+      engramId: 1,
+      spaceId: 5,
+      status: "active",
+    })),
   };
 });
 
@@ -75,7 +80,10 @@ vi.mock("./engram-generation", () => ({
   generateSimulationExitSummary: h.generateSimulationExitSummary,
 }));
 vi.mock("./world-model-store", () => ({ loadRecentWorldModel: h.loadRecentWorldModel }));
-vi.mock("./hub-store", () => ({ appendActivity: h.appendActivity }));
+vi.mock("./hub-store", () => ({
+  appendActivity: h.appendActivity,
+  loadPresenceForEngram: h.loadPresenceForEngram,
+}));
 
 import {
   maybeRunSimulationStep,
@@ -307,6 +315,40 @@ describe("maybeRunSimulationStep — proposing", () => {
       }),
     ).rejects.toBeInstanceOf(SimulationTransitionError);
     expect(h.createSimulation).not.toHaveBeenCalled();
+  });
+
+  it("generates an operator premise only after the capability guards pass", async () => {
+    h.generateSimulationPremise.mockResolvedValueOnce("What if the vault flooded?");
+
+    const sim = await openOperatorSimulation({
+      engram: makeEngram(),
+      chamber: CHAMBER,
+      controls: { paused: false, quietMode: false },
+    });
+
+    expect(h.generateSimulationPremise).toHaveBeenCalledTimes(1);
+    expect(h.createSimulation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        premise: "What if the vault flooded?",
+        status: "running",
+        spaceId: CHAMBER.id,
+      }),
+    );
+    expect(sim).toMatchObject({ premise: "What if the vault flooded?" });
+  });
+
+  it("does not call the model when an operator supplies a premise", async () => {
+    await openOperatorSimulation({
+      engram: makeEngram(),
+      chamber: CHAMBER,
+      premise: "  What if the lights fail?  ",
+      controls: { paused: false, quietMode: false },
+    });
+
+    expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+    expect(h.createSimulation).toHaveBeenCalledWith(
+      expect.objectContaining({ premise: "What if the lights fail?" }),
+    );
   });
 });
 

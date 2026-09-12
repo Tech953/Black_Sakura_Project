@@ -813,8 +813,8 @@ export interface EngramImportConfirmation {
 
 export interface SimulationCreateInput {
   engramId: number;
-  /** The specific scenario the simulation should explore */
-  premise: string;
+  /** Optional specific scenario; omitted to generate one from the engram's context */
+  premise?: string;
   /** Optional step budget (capped server-side) */
   maxSteps?: number;
 }
