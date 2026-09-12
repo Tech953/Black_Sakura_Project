@@ -20,16 +20,32 @@ name: Desktop & Android builds
 on:
   workflow_dispatch: {}
   push:
+    branches:
+      - "**"
     tags:
       - "v*"
+    paths:
+      - "artifacts/desktop/**"
+      - "artifacts/api-server/**"
+      - "artifacts/engram/**"
+      - "lib/db/**"
+  pull_request:
+    paths:
+      - "artifacts/desktop/**"
+      - "artifacts/api-server/**"
+      - "artifacts/engram/**"
+      - "lib/db/**"
 
 concurrency:
   group: desktop-build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Release packaging remains a full native matrix. Ordinary branch/PR changes
+  # use the Linux-only pre-release-smoke job below instead.
   build:
     name: ${{ matrix.platform }}
+    if: github.event_name == 'workflow_dispatch' || github.ref_type == 'tag'
     runs-on: ${{ matrix.os }}
     # Required so electron-builder's GitHub publisher can create the Release and
     # upload installers + update manifests using the default GITHUB_TOKEN.
@@ -257,6 +273,75 @@ jobs:
             artifacts/desktop/release/*.dmg
             artifacts/desktop/release/*.exe
             artifacts/desktop/release/*.zip
+
+  # Fast pre-release signal for the packaged runtime. This intentionally uses
+  # the same Linux build/staging/smoke path as the release matrix, but omits
+  # release publishing, native OS builds, Android, and release-only checks.
+  pre-release-smoke:
+    name: pre-release desktop smoke
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate API client + Zod (codegen)
+        run: pnpm --filter @workspace/api-spec run codegen
+
+      - name: Build shared libraries
+        run: pnpm run typecheck:libs
+
+      - name: Build API server bundle
+        run: pnpm --filter @workspace/api-server run build
+
+      - name: Build web dashboard
+        env:
+          PORT: "5000"
+          BASE_PATH: "/"
+          NODE_ENV: "production"
+        run: pnpm --filter @workspace/engram run build
+
+      - name: Build desktop main + stage resources
+        env:
+          DESKTOP_BUNDLE_LLM: "1"
+          DESKTOP_REQUIRE_LLAMA_RUNTIME: "1"
+        run: pnpm --filter @workspace/desktop run build
+
+      - name: Package Linux installer
+        run: pnpm --filter @workspace/desktop exec electron-builder --linux --publish never
+
+      - name: Stage compatible GGUF smoke fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @workspace/desktop exec node scripts/download-smoke-gguf.mjs \
+            "${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf"
+
+      - name: Smoke test packaged app
+        shell: bash
+        env:
+          EXPECT_SLIM_LLM: "0"
+          ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          xvfb-run -a pnpm --filter @workspace/desktop run smoke
 
   # Build the Expo mobile app into an installable Android .apk and attach it to
   # the SAME release as the desktop installers. Runs after `build` so the draft
