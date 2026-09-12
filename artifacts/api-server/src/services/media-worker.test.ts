@@ -19,6 +19,7 @@ const h = vi.hoisted(() => {
       };
       return chain;
     },
+    transaction: async (fn: (tx: unknown) => unknown) => fn({ kind: "transaction" }),
   };
 
   return {
@@ -143,12 +144,17 @@ describe("runMediaTick — completes a claimed job", () => {
     expect(h.appendMediaObservation).toHaveBeenCalledTimes(2);
     // The worker passes asset/engram ids straight through; provenance + source are
     // fixed inside the store (asserted separately in media-store.test.ts).
-    expect(h.appendMediaObservation).toHaveBeenNthCalledWith(1, {
+    const appendCall = h.appendMediaObservation.mock.calls[0] as unknown as [
+      Record<string, unknown>,
+      unknown,
+    ];
+    expect(appendCall[0]).toEqual({
       assetId: 7,
       engramId: 3,
       content: "A lighthouse blinks twice.",
       confidence: 0.85,
     });
+    expect(appendCall[1]).toEqual({ kind: "transaction" });
     expect(h.generateMediaCommentary).toHaveBeenCalledTimes(1);
 
     expect(h.updateMediaAsset).toHaveBeenCalledTimes(1);
@@ -163,6 +169,9 @@ describe("runMediaTick — completes a claimed job", () => {
       error: null,
     });
     expect(patch.completedAt).toBeInstanceOf(Date);
+    expect(
+      (h.updateMediaAsset.mock.calls[0] as unknown as [number, Record<string, unknown>, unknown])[2],
+    ).toEqual({ kind: "transaction" });
   });
 
   it("skips blank observation lines so observationCount reflects only real entries", async () => {

@@ -35,6 +35,7 @@ import {
   deleteMediaAsset,
   loadMediaAssetById,
   loadMediaBlob,
+  updateMediaAsset,
   upsertMediaContextMessage,
 } from "./media-store";
 
@@ -380,6 +381,52 @@ describe("appendMediaObservation — real world-model + mapping write", () => {
     expect(await observationLinkCount(assetId)).toBe(1);
     const linked = await loadMediaObservations(assetId);
     expect(linked.map((e) => e.id)).toEqual([entry.id]);
+  });
+});
+
+describe("media perception transaction boundary", () => {
+  it("rolls back observations, mappings, and completed metadata together", async () => {
+    const engramId = await insertEngram();
+    const assetId = await insertAsset({ status: "processing", engramId });
+
+    await expect(
+      db.transaction(async (tx) => {
+        await appendMediaObservation(
+          {
+            assetId,
+            engramId,
+            content: "This observation must not escape the transaction.",
+            confidence: 0.85,
+          },
+          tx,
+        );
+        await updateMediaAsset(
+          assetId,
+          {
+            status: "completed",
+            summary: "This completion must not escape the transaction.",
+            observationCount: 1,
+            completedAt: new Date(),
+          },
+          tx,
+        );
+        throw new Error("simulate worker crash before commit");
+      }),
+    ).rejects.toThrow("simulate worker crash before commit");
+
+    expect(await statusOf(assetId)).toBe("processing");
+    expect(
+      await db
+        .select()
+        .from(engramWorldModelTable)
+        .where(eq(engramWorldModelTable.engramId, engramId)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(mediaObservationsTable)
+        .where(eq(mediaObservationsTable.assetId, assetId)),
+    ).toHaveLength(0);
   });
 });
 

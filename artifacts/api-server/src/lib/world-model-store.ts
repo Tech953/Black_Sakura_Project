@@ -1,4 +1,4 @@
-import { db } from "@workspace/db";
+import { db, type AppDatabase } from "@workspace/db";
 import {
   engramWorldModelTable,
   type EngramWorldModelEntry,
@@ -9,6 +9,9 @@ import { TRUSTED_REBECCA_ADAPTIVE_SOURCES } from "./world-model";
 
 /** How many recent entries we pull into prompt context (the summarizer caps further). */
 export const WORLD_MODEL_PROMPT_LIMIT = 40;
+
+/** The subset shared by the application DB and a transaction handle. */
+export type DbExecutor = Pick<AppDatabase, "insert" | "update" | "delete">;
 
 /** Load an engram's most-recent world-model entries (recency-ordered) for prompt context. */
 export async function loadRecentWorldModel(
@@ -45,7 +48,11 @@ export async function loadRecentWorldModel(
 /** Append a single world-model entry. Provenance on a new entry is set once and never changed. */
 export async function appendWorldModelEntry(
   entry: NewEngramWorldModelEntry,
+  executor: DbExecutor = db,
 ): Promise<EngramWorldModelEntry> {
-  const [row] = await db.insert(engramWorldModelTable).values(entry).returning();
+  const [row] = await executor
+    .insert(engramWorldModelTable)
+    .values(entry)
+    .returning();
   return row;
 }

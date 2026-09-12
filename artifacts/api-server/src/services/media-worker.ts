@@ -74,23 +74,10 @@ async function processAsset(asset: MediaAsset): Promise<void> {
   // extracts a summary/transcript and surfaces them as conversation context below, but
   // creates no observations and no in-voice commentary. Provenance/source stay hardcoded
   // inside appendMediaObservation; there is no path here to choose them.
-  let written = 0;
   let commentary = "";
   if (asset.engramId != null) {
-    for (const content of extraction.observations) {
-      const trimmed = content.trim();
-      if (!trimmed) continue;
-      await appendMediaObservation({
-        assetId: asset.id,
-        engramId: asset.engramId,
-        content: trimmed,
-        confidence: OBSERVATION_CONFIDENCE,
-      });
-      written++;
-    }
-
     // In-voice reaction. Best-effort: extraction already succeeded and observations are
-    // persisted, so a commentary failure must not fail the whole job.
+    // committed separately below, so a commentary failure must not fail the whole job.
     if (engram) {
       try {
         const worldModelSummary = summarizeWorldModel(
@@ -110,14 +97,40 @@ async function processAsset(asset: MediaAsset): Promise<void> {
     }
   }
 
-  await updateMediaAsset(asset.id, {
-    status: "completed",
-    summary: extraction.summary || null,
-    transcript: extraction.transcript,
-    commentary: commentary || null,
-    observationCount: written,
-    completedAt: new Date(),
-    error: null,
+  const observations = asset.engramId == null
+    ? []
+    : extraction.observations
+        .map((content) => content.trim())
+        .filter(Boolean);
+
+  // The observation rows, mapping rows, and completed asset metadata must become
+  // visible together. If the process dies during this transaction, the asset
+  // remains processing and recovery/retry can replace the prior attempt.
+  await db.transaction(async (tx) => {
+    for (const content of observations) {
+      await appendMediaObservation(
+        {
+          assetId: asset.id,
+          engramId: asset.engramId!,
+          content,
+          confidence: OBSERVATION_CONFIDENCE,
+        },
+        tx,
+      );
+    }
+    await updateMediaAsset(
+      asset.id,
+      {
+        status: "completed",
+        summary: extraction.summary || null,
+        transcript: extraction.transcript,
+        commentary: commentary || null,
+        observationCount: observations.length,
+        completedAt: new Date(),
+        error: null,
+      },
+      tx,
+    );
   });
 
   publishEvent({
@@ -129,7 +142,7 @@ async function processAsset(asset: MediaAsset): Promise<void> {
       id: asset.id,
       modality: asset.modality,
       filename: asset.filename,
-      observationCount: written,
+       observationCount: observations.length,
     },
   });
 
@@ -152,7 +165,7 @@ async function processAsset(asset: MediaAsset): Promise<void> {
       engramId: asset.engramId,
       conversationId: asset.conversationId,
       modality: asset.modality,
-      observations: written,
+      observations: observations.length,
     },
     "media asset perceived",
   );
