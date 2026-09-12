@@ -9,8 +9,11 @@ import React, {
 } from "react";
 
 import { isOfflineMode } from "@/lib/offline/mode";
+import {
+  loadSelectedEngramId,
+  persistSelectedEngramId,
+} from "@/lib/mobile-flow-seams";
 
-const STORAGE_SELECTED = "engram.selectedId";
 const STORAGE_CONVO_MAP = "engram.conversationMap";
 
 // Conversation IDs are backend-specific: server conversations live in the
@@ -49,13 +52,10 @@ export function EngramProvider({
     (async () => {
       try {
         const [storedSelected, storedMap] = await Promise.all([
-          AsyncStorage.getItem(`${STORAGE_SELECTED}.${accountId}`),
+          loadSelectedEngramId(AsyncStorage, accountId),
           AsyncStorage.getItem(`${STORAGE_CONVO_MAP}.${accountId}`),
         ]);
-        if (storedSelected != null) {
-          const parsed = Number(storedSelected);
-          if (!Number.isNaN(parsed)) setSelectedEngramIdState(parsed);
-        }
+        if (storedSelected != null) setSelectedEngramIdState(storedSelected);
         if (storedMap) {
           setConversationMap(JSON.parse(storedMap) as ConversationMap);
         }
@@ -69,11 +69,7 @@ export function EngramProvider({
 
   const setSelectedEngramId = useCallback((id: number | null) => {
     setSelectedEngramIdState(id);
-    if (id == null) {
-      AsyncStorage.removeItem(`${STORAGE_SELECTED}.${accountId}`).catch(() => {});
-    } else {
-      AsyncStorage.setItem(`${STORAGE_SELECTED}.${accountId}`, String(id)).catch(() => {});
-    }
+    persistSelectedEngramId(AsyncStorage, accountId, id).catch(() => {});
   }, [accountId]);
 
   const getConversationId = useCallback(
