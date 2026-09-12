@@ -39,6 +39,7 @@ const h = vi.hoisted(() => {
   const store: Record<string, Row[]> = {};
   const seq: Record<string, number> = {};
   const failureState = { nextInsertTable: null as string | null };
+  const updateCalls: Array<{ table: string; patch: Row }> = [];
   for (const t of TABLE_NAMES) {
     store[t] = [];
     seq[t] = 0;
@@ -223,6 +224,7 @@ const h = vi.hoisted(() => {
     const name = tableName(t);
     return {
       set(patch: Row) {
+        updateCalls.push({ table: name, patch });
         return {
           where(pred: (row: Row) => boolean) {
             const matched = store[name].filter(pred);
@@ -314,6 +316,7 @@ const h = vi.hoisted(() => {
     llm,
     llmState,
     failureState,
+    updateCalls,
     create,
     TABLE_NAMES,
   };
@@ -468,6 +471,7 @@ function resetStore() {
   h.llmState.blockNextCreate = null;
   h.llmState.onCreateStarted = null;
   h.failureState.nextInsertTable = null;
+  h.updateCalls.length = 0;
   h.create.mockClear();
   engramImportDraftStore.reset();
 }
@@ -1539,7 +1543,8 @@ describe("inquiry routes", () => {
     expect(() => CreateEngramInquiryResponse.parse(row)).not.toThrow();
     expect(row).toMatchObject({ kind: "probe", response: "I am as I was." });
     expect(row.configDelta).toBeNull();
-    // probe never mutates the engram
+    // Probe never mutates configuration; its inquiry row is the only write.
+    expect(h.updateCalls).toHaveLength(0);
     const stored = h.store.engramsTable[0];
     expect(stored.initiationThreshold).toBe(0.6);
   });
@@ -1551,11 +1556,12 @@ describe("inquiry routes", () => {
     h.llmState.completion = JSON.stringify({
       response: "I shift toward you.",
       delta: {
-        emotionalBaseline: { valence: 5, mood: "  brighter  " },
+        emotionalBaseline: { valence: 5, arousal: -1, volatility: 2, mood: "  brighter  " },
         driveWeights: { order: 2, ghost: 0.9 },
         focusThemes: ["closeness", "  "],
         addFacts: ["They prefer terse replies."],
         initiationThreshold: 0.0001,
+        tickCadenceSeconds: 45.7,
         slug: "hacked", // forbidden identity field — must be ignored
       },
     });
@@ -1573,18 +1579,30 @@ describe("inquiry routes", () => {
     // configDelta only carries sanitized, bounded fields.
     const delta = row.configDelta as Record<string, unknown>;
     expect(delta.slug).toBeUndefined();
-    expect(delta.emotionalBaseline).toEqual({ valence: 1, mood: "brighter" });
+    expect(delta.emotionalBaseline).toEqual({
+      valence: 1,
+      arousal: 0,
+      volatility: 1,
+      mood: "brighter",
+    });
     expect(delta.driveWeights).toEqual({ order: 1 }); // ghost dropped, 2 clamped to 1
     expect(delta.focusThemes).toEqual(["closeness"]);
     expect(delta.initiationThreshold).toBe(0.1); // clamped up from 0.0001
+    expect(delta.tickCadenceSeconds).toBe(46); // rounded after bounded sanitization
     expect(delta.addFacts).toEqual(["They prefer terse replies."]);
 
     // The engram row reflects exactly that sanitized delta and nothing else.
     const stored = h.store.engramsTable[0];
     expect(stored.slug).toBe("testra"); // identity untouched
-    expect((stored.emotionalBaseline as { valence: number }).valence).toBe(1);
+    expect(stored.emotionalBaseline).toEqual({
+      valence: 1,
+      arousal: 0,
+      volatility: 1,
+      mood: "brighter",
+    });
     expect(stored.currentMood).toBe("brighter");
     expect(stored.initiationThreshold).toBe(0.1);
+    expect(stored.tickCadenceSeconds).toBe(46);
     expect(stored.focusThemes).toEqual(["closeness"]);
     const drives = stored.drives as Array<{ id: string; weight: number }>;
     expect(drives.find((d) => d.id === "order")?.weight).toBe(1);
@@ -1592,6 +1610,22 @@ describe("inquiry routes", () => {
     expect((stored.memorySeed as { facts: string[] }).facts).toContain(
       "They prefer terse replies.",
     );
+    expect(h.updateCalls).toHaveLength(1);
+    expect(h.updateCalls[0]).toMatchObject({
+      table: "engramsTable",
+      patch: {
+        emotionalBaseline: {
+          valence: 1,
+          arousal: 0,
+          volatility: 1,
+          mood: "brighter",
+        },
+        focusThemes: ["closeness"],
+        initiationThreshold: 0.1,
+        tickCadenceSeconds: 46,
+      },
+    });
+    expect(h.updateCalls[0].patch.slug).toBeUndefined();
   });
 
   it("rejects an invalid inquiry kind with 400", async () => {
