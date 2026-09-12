@@ -1,0 +1,1 @@
+ALTER TABLE "engram_messages" ADD COLUMN "author" text DEFAULT 'engram' NOT NULL;

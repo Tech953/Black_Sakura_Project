@@ -277,6 +277,7 @@ export function createDbHarness() {
               ...value,
             };
             if (name === "engramMessagesTable") {
+              row.author ??= "engram";
               row.isDigest ??= false;
               row.digestedAt ??= null;
             }
@@ -450,6 +451,7 @@ export function createDbHarness() {
     },
     set messages(rows: TestRow[]) {
       store.engramMessagesTable = rows.map((row) => ({
+        author: "engram",
         isDigest: false,
         digestedAt: null,
         ...row,

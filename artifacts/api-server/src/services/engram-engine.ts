@@ -21,6 +21,7 @@ import { maybeRunSimulationStep } from "../lib/simulations";
 import { maybeRunArtifactGeneration } from "../lib/artifacts-scheduler";
 import {
   createHumanDigest,
+  loadRecentOperatorReplies,
   listPendingHumanDigestOwners,
 } from "../lib/messages-store";
 import { normalizeLLMProviderError } from "../lib/llm";
@@ -151,11 +152,13 @@ async function emit(
 ): Promise<EngramTransmission> {
   const kind = pickKind(top.id, top.label);
   const worldModelSummary = summarizeWorldModel(await loadRecentWorldModel(engram.id));
+  const operatorReplies = await loadRecentOperatorReplies(engram.ownerId!, engram.id);
   const content = await generateTransmission({
     engram,
     kind,
     drive: { id: top.id, label: top.label, description: top.description },
     recentContents,
+    operatorReplies,
     worldModelSummary,
   });
 

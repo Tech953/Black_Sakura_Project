@@ -138,6 +138,7 @@ export async function recentHumanCounts(
             .where(and(eq(engramsTable.id, fromEngramId), eq(engramsTable.ownerId, ownerId))),
         ),
         eq(engramMessagesTable.channel, "human"),
+        eq(engramMessagesTable.author, "engram"),
         inArray(engramMessagesTable.status, [...CONTACTED_STATUSES]),
         gte(engramMessagesTable.createdAt, dayAgo),
       ),
@@ -148,6 +149,74 @@ export async function recentHumanCounts(
     if (r.createdAt >= hourAgo) hour += 1;
   }
   return { hour, day: rows.length };
+}
+
+/** Load the operator's recent replies so the next autonomous turn can acknowledge them. */
+export async function loadRecentOperatorReplies(
+  ownerId: string,
+  engramId: number,
+  limit = 5,
+): Promise<string[]> {
+  const rows = await db
+    .select({ content: engramMessagesTable.content })
+    .from(engramMessagesTable)
+    .innerJoin(engramsTable, eq(engramMessagesTable.fromEngramId, engramsTable.id))
+    .where(
+      and(
+        eq(engramsTable.ownerId, ownerId),
+        eq(engramMessagesTable.fromEngramId, engramId),
+        eq(engramMessagesTable.channel, "human"),
+        eq(engramMessagesTable.author, "operator"),
+      ),
+    )
+    .orderBy(desc(engramMessagesTable.createdAt))
+    .limit(Math.min(Math.max(limit, 1), 10));
+  return rows.map((row) => row.content);
+}
+
+/**
+ * Persist an operator reply to an engram-authored human message. The source
+ * lookup and owner check happen together so an id from another account cannot
+ * be used to address an engram.
+ */
+export async function replyToMessage(
+  ownerId: string,
+  messageId: number,
+  content: string,
+  now: Date = new Date(),
+): Promise<EngramMessage | null> {
+  const [source] = await db
+    .select({ message: engramMessagesTable })
+    .from(engramMessagesTable)
+    .innerJoin(engramsTable, eq(engramMessagesTable.fromEngramId, engramsTable.id))
+    .where(
+      and(
+        eq(engramMessagesTable.id, messageId),
+        eq(engramsTable.ownerId, ownerId),
+        eq(engramMessagesTable.channel, "human"),
+        eq(engramMessagesTable.author, "engram"),
+      ),
+    );
+  if (!source) return null;
+
+  const targetId = source.message.fromEngramId;
+  const [reply] = await db
+    .insert(engramMessagesTable)
+    .values({
+      fromEngramId: targetId,
+      toEngramId: targetId,
+      channel: "human",
+      author: "operator",
+      priority: "meaningful",
+      status: "delivered",
+      content,
+      reason: `Operator reply to message ${messageId}`,
+      seen: true,
+      isDigest: false,
+      deliveredAt: now,
+    })
+    .returning();
+  return reply;
 }
 
 /**

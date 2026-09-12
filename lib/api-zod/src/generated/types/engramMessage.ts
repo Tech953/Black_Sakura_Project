@@ -5,6 +5,7 @@
  * ENGRAM AI Persona Framework API
  * OpenAPI spec version: 0.1.0
  */
+import type { EngramMessageAuthor } from './engramMessageAuthor';
 import type { EngramMessageChannel } from './engramMessageChannel';
 import type { EngramMessagePriority } from './engramMessagePriority';
 import type { EngramMessageStatus } from './engramMessageStatus';
@@ -17,6 +18,7 @@ export interface EngramMessage {
   /** @nullable */
   spaceId: number | null;
   channel: EngramMessageChannel;
+  author: EngramMessageAuthor;
   priority: EngramMessagePriority;
   status: EngramMessageStatus;
   content: string;

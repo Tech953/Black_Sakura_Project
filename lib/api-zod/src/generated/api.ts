@@ -1680,6 +1680,7 @@ export const ListEngramMessagesResponseItem = zod.object({
   "toEngramId": zod.number().nullable(),
   "spaceId": zod.number().nullable(),
   "channel": zod.enum(['engram', 'human']),
+  "author": zod.enum(['engram', 'operator']),
   "priority": zod.enum(['urgent', 'meaningful', 'social']),
   "status": zod.enum(['delivered', 'queued', 'digest', 'blocked']),
   "content": zod.string(),
@@ -1701,6 +1702,39 @@ export const MarkEngramMessagesSeenBody = zod.object({
 
 export const MarkEngramMessagesSeenResponse = zod.object({
   "updated": zod.number()
+})
+
+
+/**
+ * @summary Reply to an engram's human-channel message
+ */
+export const ReplyToEngramMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const replyToEngramMessageBodyContentMax = 2000;
+
+
+
+export const ReplyToEngramMessageBody = zod.object({
+  "content": zod.string().min(1).max(replyToEngramMessageBodyContentMax)
+})
+
+export const ReplyToEngramMessageResponse = zod.object({
+  "id": zod.number(),
+  "fromEngramId": zod.number(),
+  "toEngramId": zod.number().nullable(),
+  "spaceId": zod.number().nullable(),
+  "channel": zod.enum(['engram', 'human']),
+  "author": zod.enum(['engram', 'operator']),
+  "priority": zod.enum(['urgent', 'meaningful', 'social']),
+  "status": zod.enum(['delivered', 'queued', 'digest', 'blocked']),
+  "content": zod.string(),
+  "reason": zod.string().nullable(),
+  "seen": zod.boolean(),
+  "isDigest": zod.boolean(),
+  "deliveredAt": zod.string().nullable(),
+  "createdAt": zod.string()
 })
 
 

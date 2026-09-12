@@ -1561,6 +1561,7 @@ describe("human contact messages route", () => {
       toEngramId: null,
       spaceId: null,
       channel: "human",
+      author: "engram",
       priority: "social",
       status: "digest",
       content: "Periodic digest · 2 low-priority messages\n• Digestor: Hello",
@@ -1583,6 +1584,81 @@ describe("human contact messages route", () => {
         status: "digest",
       }),
     ]);
+  });
+
+  it("persists an owner-scoped operator reply and returns it in the audit stream", async () => {
+    const engram = seedEngram({ name: "Responder" });
+    h.store.engramMessagesTable.push({
+      id: 1,
+      fromEngramId: engram.id,
+      toEngramId: null,
+      spaceId: null,
+      channel: "human",
+      author: "engram",
+      priority: "meaningful",
+      status: "delivered",
+      content: "Are you there?",
+      reason: null,
+      seen: true,
+      isDigest: false,
+      digestedAt: null,
+      deliveredAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    const response = await fetch(`${base}/api/messages/1/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "I am here." }),
+    });
+    expect(response.status).toBe(201);
+    const reply = await response.json();
+    expect(reply).toMatchObject({
+      fromEngramId: engram.id,
+      toEngramId: engram.id,
+      channel: "human",
+      author: "operator",
+      status: "delivered",
+      content: "I am here.",
+      seen: true,
+    });
+
+    const messages = (await (await fetch(`${base}/api/messages?channel=human`)).json()) as Array<{
+      author: string;
+    }>;
+    expect(messages.map((message: { author: string }) => message.author)).toEqual([
+      "operator",
+      "engram",
+    ]);
+  });
+
+  it("does not allow replies to another account's message", async () => {
+    const engram = seedEngram({ ownerId: "other-owner" });
+    h.store.engramMessagesTable.push({
+      id: 1,
+      fromEngramId: engram.id,
+      toEngramId: null,
+      spaceId: null,
+      channel: "human",
+      author: "engram",
+      priority: "meaningful",
+      status: "delivered",
+      content: "Private contact",
+      reason: null,
+      seen: false,
+      isDigest: false,
+      digestedAt: null,
+      deliveredAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    const response = await fetch(`${base}/api/messages/1/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Should not save." }),
+    });
+    expect(response.status).toBe(404);
+    expect(h.store.engramMessagesTable).toHaveLength(1);
   });
 });
 
