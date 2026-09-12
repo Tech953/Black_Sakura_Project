@@ -58,8 +58,132 @@ export const MEDIA_MIME_ALLOWLIST: Record<string, MediaModality> = {
 };
 
 export function detectModality(mimeType: string): MediaModality | null {
-  const normalized = mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
+  const normalized = normalizeMimeType(mimeType);
   return MEDIA_MIME_ALLOWLIST[normalized] ?? null;
+}
+
+function normalizeMimeType(mimeType: string): string {
+  return mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
+}
+
+function startsWithBytes(data: Buffer, signature: number[], offset = 0): boolean {
+  return signature.every((byte, index) => data[offset + index] === byte);
+}
+
+function containsAscii(data: Buffer, value: string): boolean {
+  return data.subarray(0, Math.min(data.length, 1024)).includes(Buffer.from(value, "ascii"));
+}
+
+/**
+ * Return the MIME family that can be established from file bytes alone.
+ *
+ * Generic text formats intentionally collapse to text/plain: plain text,
+ * Markdown, and CSV have no reliable magic signature. JSON is distinguished
+ * because it has an unambiguous parser-level check.
+ */
+export function detectContentType(data: Buffer): string | null {
+  if (startsWithBytes(data, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+    return "image/png";
+  if (startsWithBytes(data, [0xff, 0xd8, 0xff])) return "image/jpeg";
+  if (
+    startsWithBytes(data, [0x52, 0x49, 0x46, 0x46]) &&
+    data.subarray(8, 12).toString("ascii") === "WEBP"
+  )
+    return "image/webp";
+  if (
+    data.subarray(0, 6).toString("ascii") === "GIF87a" ||
+    data.subarray(0, 6).toString("ascii") === "GIF89a"
+  )
+    return "image/gif";
+
+  if (
+    startsWithBytes(data, [0x52, 0x49, 0x46, 0x46]) &&
+    data.subarray(8, 12).toString("ascii") === "WAVE"
+  )
+    return "audio/wav";
+  if (data.subarray(0, 4).toString("ascii") === "OggS") return "audio/ogg";
+  if (
+    data.subarray(0, 3).toString("ascii") === "ID3" ||
+    (data[0] === 0xff && (data[1]! & 0xe0) === 0xe0)
+  )
+    return "audio/mpeg";
+
+  // Matroska/WebM share the EBML header. The DocType identifies the
+  // container, while the claimed allowlist MIME distinguishes audio/webm
+  // from video/webm only at the API policy layer.
+  if (startsWithBytes(data, [0x1a, 0x45, 0xdf, 0xa3])) {
+    if (containsAscii(data, "webm")) return "video/webm";
+    if (containsAscii(data, "matroska")) return "video/x-matroska";
+    return null;
+  }
+
+  // ISO Base Media File Format covers MP4, M4A and QuickTime containers.
+  if (data.subarray(4, 8).toString("ascii") === "ftyp") {
+    const majorBrand = data.subarray(8, 12).toString("ascii");
+    if (majorBrand === "qt  " || containsAscii(data, "qt  "))
+      return "video/quicktime";
+    if (["M4A ", "M4B ", "M4P "].includes(majorBrand)) return "audio/mp4";
+    if (
+      ["isom", "iso2", "iso3", "iso4", "iso5", "iso6", "mp41", "mp42", "avc1"].includes(
+        majorBrand,
+      )
+    )
+      return "video/mp4";
+  }
+
+  // Reject common binary/executable signatures before the generic text path.
+  if (
+    startsWithBytes(data, [0x4d, 0x5a]) || // DOS/Windows executable
+    startsWithBytes(data, [0x7f, 0x45, 0x4c, 0x46]) || // ELF
+    startsWithBytes(data, [0x50, 0x4b, 0x03, 0x04]) // ZIP and OOXML
+  )
+    return null;
+
+  if (isUtf8Text(data)) {
+    const text = new TextDecoder("utf-8").decode(data).replace(/^\uFEFF/, "").trim();
+    if (text) {
+      try {
+        JSON.parse(text);
+        return "application/json";
+      } catch {
+        // Plain text, Markdown, and CSV do not have distinct signatures.
+      }
+    }
+    return "text/plain";
+  }
+  return null;
+}
+
+function isUtf8Text(data: Buffer): boolean {
+  if (!data.length) return false;
+  try {
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(data);
+    for (const char of text) {
+      const code = char.codePointAt(0)!;
+      if (code === 0 || (code < 0x20 && ![0x09, 0x0a, 0x0c, 0x0d].includes(code)))
+        return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Verify that the bytes support the client-declared allowlisted MIME type. */
+export function contentMatchesMime(data: Buffer, mimeType: string): boolean {
+  const claimed = normalizeMimeType(mimeType);
+  const detected = detectContentType(data);
+  if (!detected) return false;
+
+  if (claimed === "text/plain" || claimed === "text/markdown" || claimed === "text/csv")
+    return detected === "text/plain" || detected === "application/json";
+  if (claimed === "application/json") return detected === "application/json";
+  if (claimed === "audio/mp3") return detected === "audio/mpeg";
+  if (claimed === "audio/webm") return detected === "video/webm";
+  if (claimed === "video/webm") return detected === "video/webm";
+  if (claimed === "video/mp4") return detected === "video/mp4";
+  if (claimed === "audio/mp4") return detected === "audio/mp4";
+  return detected === claimed;
 }
 
 export interface MediaExtraction {

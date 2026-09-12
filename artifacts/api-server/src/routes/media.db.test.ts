@@ -216,7 +216,14 @@ describe("POST /media — upload gates against a real PGlite DB", () => {
     const engramId = await insertEngram();
     const form = new FormData();
     form.append("engramId", String(engramId));
-    form.append("file", new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" }), "pic.png");
+    form.append(
+      "file",
+      new Blob(
+        [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+        { type: "image/png" },
+      ),
+      "pic.png",
+    );
 
     const res = await fetch(`${base}/media`, { method: "POST", body: form });
 

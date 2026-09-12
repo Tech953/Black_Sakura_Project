@@ -303,6 +303,69 @@ describe("POST /media (upload)", () => {
     expect(h.createMediaAsset).not.toHaveBeenCalled();
   });
 
+  it.each([
+    {
+      mime: "image/png",
+      filename: "scene.png",
+      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      modality: "image",
+    },
+    {
+      mime: "audio/mpeg",
+      filename: "log.mp3",
+      bytes: new Uint8Array([0x49, 0x44, 0x33, 0x04, 0x00, 0x00]),
+      modality: "audio",
+    },
+    {
+      mime: "video/mp4",
+      filename: "clip.mp4",
+      bytes: new Uint8Array([
+        0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d,
+      ]),
+      modality: "video",
+    },
+  ])("accepts a valid $modality signature", async ({ mime, filename, bytes, modality }) => {
+    h.createMediaAsset.mockResolvedValueOnce(
+      makeAsset({ status: "pending", filename, mimeType: mime, modality }),
+    );
+    const form = new FormData();
+    form.append("engramId", "3");
+    form.append("file", new Blob([bytes], { type: mime }), filename);
+    const res = await fetch(`${base}/media`, { method: "POST", body: form });
+    expect(res.status).toBe(201);
+    expect(h.createMediaAsset.mock.calls[0][0]).toMatchObject({ mimeType: mime, modality });
+  });
+
+  it("rejects bytes whose signature does not match an allowlisted claimed MIME", async () => {
+    const form = new FormData();
+    form.append("engramId", "3");
+    form.append(
+      "file",
+      new Blob(
+        [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+        { type: "text/plain" },
+      ),
+      "not-text.txt",
+    );
+    const res = await fetch(`${base}/media`, { method: "POST", body: form });
+    expect(res.status).toBe(415);
+    expect(await res.json()).toMatchObject({ error: expect.stringContaining("do not match") });
+    expect(h.createMediaAsset).not.toHaveBeenCalled();
+  });
+
+  it("requires valid JSON bytes when the claimed type is application/json", async () => {
+    const form = new FormData();
+    form.append("engramId", "3");
+    form.append(
+      "file",
+      new Blob(["not actually json"], { type: "application/json" }),
+      "fake.json",
+    );
+    const res = await fetch(`${base}/media`, { method: "POST", body: form });
+    expect(res.status).toBe(415);
+    expect(h.createMediaAsset).not.toHaveBeenCalled();
+  });
+
   it("rejects an upload over the size cap with 413", async () => {
     // MEDIA_MAX_BYTES is 1024 (set in the hoisted block); 2 KiB exceeds it.
     const oversize = "x".repeat(2048);
