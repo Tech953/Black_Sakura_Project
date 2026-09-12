@@ -111,6 +111,41 @@ describe("CustomGgufStore", () => {
     await expect(store.verify(metadata)).resolves.toMatch(/\.gguf$/);
   });
 
+  it("keeps distinct imported fingerprints in the managed library", async () => {
+    const first = await fixture(gguf(3, 128));
+    const secondSource = path.join(path.dirname(first.source), "second.gguf");
+    await writeFile(secondSource, gguf(2, 128));
+
+    const firstMetadata = await first.store.import(first.source);
+    const secondMetadata = await first.store.import(secondSource);
+    expect(secondMetadata.sha256).not.toBe(firstMetadata.sha256);
+    expect((await readdir(first.root)).filter((name) => name.endsWith(".gguf")).sort()).toEqual(
+      [firstMetadata.path, secondMetadata.path].sort(),
+    );
+  });
+
+  it("does not duplicate storage when the same fingerprint is imported twice", async () => {
+    const { source, root, store } = await fixture();
+    const first = await store.import(source);
+    const second = await store.import(source);
+    expect(second.path).toBe(first.path);
+    expect((await readdir(root)).filter((name) => name.endsWith(".gguf"))).toEqual([first.path]);
+  });
+
+  it("enforces the aggregate managed storage limit before copying", async () => {
+    const { source, root } = await fixture();
+    const store = new CustomGgufStore(root, {
+      minBytes: 8,
+      maxBytes: 128,
+      maxTotalBytes: 200,
+      freeSpaceHeadroomBytes: 0,
+      getFreeSpaceBytes: async () => 10_000,
+    });
+    await store.import(source);
+    await expect(store.import(source)).rejects.toThrow(/storage limit/);
+    expect((await readdir(root)).filter((name) => name.endsWith(".partial"))).toEqual([]);
+  });
+
   it("rejects modified, truncated, and missing managed files", async () => {
     const first = await fixture();
     const modified = await first.store.import(first.source);

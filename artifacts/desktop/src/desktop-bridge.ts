@@ -2,15 +2,18 @@ export type DesktopLlmMode = "bundled" | "custom" | "offline" | "online";
 
 export interface CustomModelMetadataView {
   filename: string;
+  displayName: string;
   byteSize: number;
   sha256: string;
   ggufVersion: number;
   importedAt: string;
+  lastUsedAt: string;
 }
 
 export interface CustomModelView {
   storageLocation: string;
   status: "none" | "available" | "active" | "missing" | "corrupt" | "error";
+  compatibility: "compatible" | "incompatible" | "unknown";
   error?: string;
   metadata?: CustomModelMetadataView;
 }
@@ -45,6 +48,9 @@ export interface SettingsView {
   hasApiKey: boolean;
   encryptionAvailable: boolean;
   customModel: CustomModelView;
+  customModels: CustomModelView[];
+  customStorageBytes: number;
+  customStorageLimitBytes: number;
   offlineModel: OfflineModelView;
 }
 
@@ -137,7 +143,16 @@ export interface EngramDesktopBridge {
   cancelGgufImport: (
     operationId: string,
   ) => Promise<{ ok: boolean; error?: string }>;
-  removeGguf: () => Promise<{ ok: boolean; error?: string }>;
+  activateGguf: (
+    sha256: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  renameGguf: (
+    sha256: string,
+    displayName: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  removeGguf: (
+    sha256?: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
   onGgufImportStatus: (
     callback: (status: GgufImportStatus) => void,
   ) => () => void;
@@ -193,8 +208,16 @@ export function createEngramDesktopBridge(
       ipc.invoke("gguf:cancel", operationId) as ReturnType<
         EngramDesktopBridge["cancelGgufImport"]
       >,
-    removeGguf: () =>
-      ipc.invoke("gguf:remove") as ReturnType<
+    activateGguf: (sha256) =>
+      ipc.invoke("gguf:activate", sha256) as ReturnType<
+        EngramDesktopBridge["activateGguf"]
+      >,
+    renameGguf: (sha256, displayName) =>
+      ipc.invoke("gguf:rename", sha256, displayName) as ReturnType<
+        EngramDesktopBridge["renameGguf"]
+      >,
+    removeGguf: (sha256) =>
+      ipc.invoke("gguf:remove", sha256) as ReturnType<
         EngramDesktopBridge["removeGguf"]
       >,
     onGgufImportStatus: (callback) => {

@@ -36,5 +36,20 @@ export function normalizeCustomGgufMetadata(
   ) {
     return undefined;
   }
+  if (
+    candidate.displayName !== undefined &&
+    (typeof candidate.displayName !== "string" ||
+      candidate.displayName.trim().length === 0 ||
+      candidate.displayName.length > 128)
+  ) {
+    return undefined;
+  }
+  if (
+    candidate.lastUsedAt !== undefined &&
+    (typeof candidate.lastUsedAt !== "string" ||
+      !Number.isFinite(Date.parse(candidate.lastUsedAt)))
+  ) {
+    return undefined;
+  }
   return candidate as CustomGgufMetadata;
 }

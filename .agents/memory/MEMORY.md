@@ -49,3 +49,4 @@
 - [Native release playtest constraints](native-release-playtest.md) — native sign-off needs fresh artifact inspection and real Android/Windows execution; Linux/static checks are only proxies.
 - [Android release packaging](android-release-packaging.md) — release builds need an explicit META-INF collision exclusion for okhttp/jspecify dependency metadata.
 - [Locale generation fallback](locale-generation-fallback.md) — when translation generation cannot authenticate, preserve exact locale key parity with English fallbacks and retry translation later.
+- [Desktop custom model library](desktop-custom-model-library.md) — content-addressed multi-model storage, legacy migration, transactional switching, and safe active removal.

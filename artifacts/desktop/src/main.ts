@@ -187,6 +187,7 @@ interface Settings {
   /** Listen on all interfaces so the mobile app can connect over LAN. */
   allowLan?: boolean;
   custom?: CustomGgufMetadata;
+  customModels?: CustomGgufMetadata[];
   offline: { baseUrl: string; model: string };
   online: {
     baseUrl: string;
@@ -247,10 +248,12 @@ function customMetadataView(
 ): CustomModelMetadataView {
   return {
     filename: metadata.originalFilename,
+    displayName: metadata.displayName ?? metadata.originalFilename,
     byteSize: metadata.byteSize,
     sha256: metadata.sha256,
     ggufVersion: metadata.ggufVersion,
     importedAt: metadata.importedAt,
+    lastUsedAt: metadata.lastUsedAt ?? metadata.importedAt,
   };
 }
 
@@ -314,16 +317,73 @@ function loadSettings(): Settings {
   try {
     const raw = readFileSync(settingsFile(), "utf8");
     const parsed = JSON.parse(raw) as Partial<Settings>;
+    const legacyCustom = normalizeCustomGgufMetadata(parsed.custom);
+    const customModels = [
+      ...(Array.isArray(parsed.customModels)
+        ? parsed.customModels
+            .map(normalizeCustomGgufMetadata)
+            .filter((model): model is CustomGgufMetadata => Boolean(model))
+        : []),
+      ...(legacyCustom ? [legacyCustom] : []),
+    ].filter(
+      (model, index, models) =>
+        models.findIndex((candidate) => candidate.sha256 === model.sha256) ===
+        index,
+    );
+    const selectedCustom =
+      legacyCustom ??
+      (normalizeDesktopMode(parsed.mode) === "custom"
+        ? customModels[0]
+        : undefined);
     return {
       mode: normalizeDesktopMode(parsed.mode),
       allowLan: parsed.allowLan === true,
-      custom: normalizeCustomGgufMetadata(parsed.custom),
+      custom: selectedCustom,
+      customModels,
       offline: { ...DEFAULT_SETTINGS.offline, ...(parsed.offline ?? {}) },
       online: { ...DEFAULT_SETTINGS.online, ...(parsed.online ?? {}) },
     };
   } catch {
     return structuredClone(DEFAULT_SETTINGS);
   }
+}
+
+function customModelsFor(settings: Settings): CustomGgufMetadata[] {
+  const models = settings.customModels ?? [];
+  if (
+    settings.custom &&
+    !models.some((model) => model.sha256 === settings.custom?.sha256)
+  ) {
+    return [settings.custom, ...models];
+  }
+  return models;
+}
+
+function selectedCustomFor(settings: Settings): CustomGgufMetadata | undefined {
+  return settings.custom ?? customModelsFor(settings)[0];
+}
+
+function withCustomModels(
+  settings: Settings,
+  customModels: CustomGgufMetadata[],
+  selected: CustomGgufMetadata | undefined,
+): Settings {
+  return {
+    ...settings,
+    custom: selected,
+    customModels,
+  };
+}
+
+function markCustomModelUsed(
+  metadata: CustomGgufMetadata,
+  now = new Date().toISOString(),
+): CustomGgufMetadata {
+  return {
+    ...metadata,
+    displayName: metadata.displayName ?? metadata.originalFilename,
+    lastUsedAt: now,
+  };
 }
 
 function saveSettings(settings: Settings): void {
@@ -787,32 +847,44 @@ function createMainWindow(): void {
   });
 }
 
-async function getCustomModelView(settings: Settings) {
+async function getCustomModelView(
+  settings: Settings,
+  model: CustomGgufMetadata,
+) {
   const storageLocation = customGgufStore().root;
-  if (!settings.custom) {
-    return { storageLocation, status: "none" as const };
-  }
-
-  const metadata = customMetadataView(settings.custom);
+  const metadata = customMetadataView(model);
+  const selected = selectedCustomFor(settings);
   if (
-    customRuntimeFingerprint === settings.custom.sha256 &&
+    customRuntimeFingerprint === model.sha256 &&
     llamaProcess &&
-    effectiveMode(settings) === "custom"
+    effectiveMode(settings) === "custom" &&
+    selected?.sha256 === model.sha256
   ) {
-    return { storageLocation, status: "active" as const, metadata };
+    return {
+      storageLocation,
+      status: "active" as const,
+      compatibility: "compatible" as const,
+      metadata,
+    };
   }
 
   try {
-    await customGgufStore().verifyBeforeUse(settings.custom);
-    if (customRuntimeError) {
+    await customGgufStore().verifyBeforeUse(model);
+    if (customRuntimeError && selected?.sha256 === model.sha256) {
       return {
         storageLocation,
         status: "error" as const,
+        compatibility: "incompatible" as const,
         error: customRuntimeError,
         metadata,
       };
     }
-    return { storageLocation, status: "available" as const, metadata };
+    return {
+      storageLocation,
+      status: "available" as const,
+      compatibility: "compatible" as const,
+      metadata,
+    };
   } catch (error) {
     const code =
       error && typeof error === "object" && "code" in error
@@ -821,10 +893,17 @@ async function getCustomModelView(settings: Settings) {
     return {
       storageLocation,
       status: code === "ENOENT" ? ("missing" as const) : ("corrupt" as const),
+      compatibility: "incompatible" as const,
       error: errorMessage(error),
       metadata,
     };
   }
+}
+
+async function getCustomModelViews(settings: Settings) {
+  return Promise.all(
+    customModelsFor(settings).map((model) => getCustomModelView(settings, model)),
+  );
 }
 
 async function getOfflineModelView(
@@ -941,48 +1020,47 @@ async function runGgufImport(
 
     sendGgufImportStatus({ operationId, state: "activating" });
     const previous = loadSettings();
+    const existing = customModelsFor(previous).find(
+      (model) => model.sha256 === imported?.sha256,
+    );
+    const importedModel = existing ?? markCustomModelUsed(imported);
+    const customModels = existing
+      ? customModelsFor(previous).map((model) =>
+          model.sha256 === existing.sha256
+            ? markCustomModelUsed(model)
+            : model,
+        )
+      : [...customModelsFor(previous), importedModel];
     const candidate: Settings = {
       ...previous,
       mode: "custom",
-      custom: imported,
+      custom: importedModel,
+      customModels,
     };
 
     try {
       await activateDesktopSettings(previous, candidate);
     } catch (error) {
       customRuntimeError = errorMessage(error);
-      if (previous.mode !== "custom") {
-        // Keep a validated first import discoverable for explicit retry/removal,
-        // while the previous provider remains active.
-        saveSettings({ ...previous, custom: imported });
-      } else if (previous.custom?.sha256 !== imported.sha256) {
-        // A failed replacement must leave the old active model authoritative.
-        await customGgufStore()
-          .discard(imported)
-          .catch(() => undefined);
-      }
+      // Keep every validated import discoverable for explicit retry/removal,
+      // while the previous provider remains active after a failed activation.
+      saveSettings({
+        ...previous,
+        custom: previous.mode === "custom" ? previous.custom : importedModel,
+        customModels,
+      });
       sendGgufImportStatus({
         operationId,
         state: "error",
         error: errorMessage(error),
-        imported: previous.mode !== "custom",
+        imported: true,
       });
       return;
-    }
-
-    if (previous.custom && previous.custom.sha256 !== imported.sha256) {
-      await customGgufStore()
-        .discard(previous.custom)
-        .catch((error) => {
-          // The replacement is already active; cleanup can be retried manually.
-          // eslint-disable-next-line no-console
-          console.error("[desktop] old custom model cleanup failed:", error);
-        });
     }
     sendGgufImportStatus({
       operationId,
       state: "completed",
-      model: customMetadataView(imported),
+      model: customMetadataView(importedModel),
     });
   } catch (error) {
     const cancelled =
@@ -1093,6 +1171,17 @@ function buildMenu(): void {
 // ---------------------------------------------------------------------------
 ipcMain.handle("settings:get", async () => {
   const settings = loadSettings();
+  const customModels = await getCustomModelViews(settings);
+  const selectedCustom = selectedCustomFor(settings);
+  const customModel =
+    customModels.find(
+      (model) => model.metadata?.sha256 === selectedCustom?.sha256,
+    ) ??
+    ({
+      storageLocation: customGgufStore().root,
+      status: "none",
+      compatibility: "unknown",
+    } as const);
   return {
     mode: settings.mode,
     bundledAvailable: bundledModelAvailable(),
@@ -1113,7 +1202,10 @@ ipcMain.handle("settings:get", async () => {
     },
     hasApiKey: Boolean(settings.online.apiKeyEnc) || Boolean(sessionApiKey),
     encryptionAvailable: safeStorage.isEncryptionAvailable(),
-    customModel: await getCustomModelView(settings),
+    customModel,
+    customModels,
+    customStorageBytes: await customGgufStore().getManagedBytes(),
+    customStorageLimitBytes: customGgufStore().storageLimitBytes,
     offlineModel: await getOfflineModelView(settings),
   };
 });
@@ -1136,6 +1228,7 @@ ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {
       mode: normalizeDesktopMode(payload.mode),
       allowLan: payload.allowLan === true,
       custom: previous.custom,
+      customModels: customModelsFor(previous),
       offline: {
         baseUrl:
           String(payload.offline.baseUrl ?? "")
@@ -1288,25 +1381,118 @@ ipcMain.handle("gguf:cancel", (_event, operationId: unknown) => {
   return { ok: true };
 });
 
-ipcMain.handle("gguf:remove", async () => {
+function findCustomModel(
+  settings: Settings,
+  sha256: unknown,
+): CustomGgufMetadata {
+  if (typeof sha256 !== "string" || !/^[a-f0-9]{64}$/.test(sha256)) {
+    throw new Error("Invalid managed GGUF fingerprint.");
+  }
+  const model = customModelsFor(settings).find(
+    (candidate) => candidate.sha256 === sha256,
+  );
+  if (!model) throw new Error("That managed GGUF is not in the model library.");
+  return model;
+}
+
+ipcMain.handle("gguf:activate", async (_event, sha256: unknown) => {
   try {
     if (hasRunningModelOperation()) {
       throw new Error("Wait for the GGUF import to finish or cancel it first.");
     }
     const previous = loadSettings();
-    if (!previous.custom) return { ok: true };
+    const model = markCustomModelUsed(findCustomModel(previous, sha256));
+    const customModels = customModelsFor(previous).map((candidate) =>
+      candidate.sha256 === model.sha256 ? model : candidate,
+    );
+    await activateDesktopSettings(
+      previous,
+      withCustomModels(
+        { ...previous, mode: "custom" },
+        customModels,
+        model,
+      ),
+    );
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
+});
+
+ipcMain.handle(
+  "gguf:rename",
+  async (_event, sha256: unknown, displayName: unknown) => {
+    try {
+      const previous = loadSettings();
+      const model = findCustomModel(previous, sha256);
+      if (
+        typeof displayName !== "string" ||
+        displayName.trim().length === 0 ||
+        displayName.length > 128
+      ) {
+        throw new Error("Model name must be 1–128 characters.");
+      }
+      const renamed = {
+        ...model,
+        displayName: displayName.trim(),
+      };
+      const customModels = customModelsFor(previous).map((candidate) =>
+        candidate.sha256 === model.sha256 ? renamed : candidate,
+      );
+      saveSettings(
+        withCustomModels(
+          previous,
+          customModels,
+          previous.custom?.sha256 === model.sha256 ? renamed : previous.custom,
+        ),
+      );
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: errorMessage(error) };
+    }
+  },
+);
+
+ipcMain.handle("gguf:remove", async (_event, sha256?: unknown) => {
+  try {
+    if (hasRunningModelOperation()) {
+      throw new Error("Wait for the GGUF import to finish or cancel it first.");
+    }
+    const previous = loadSettings();
+    const model = findCustomModel(
+      previous,
+      sha256 ?? previous.custom?.sha256,
+    );
+    const remaining = customModelsFor(previous).filter(
+      (candidate) => candidate.sha256 !== model.sha256,
+    );
+    const nextSelected =
+      remaining
+        .slice()
+        .sort(
+          (a, b) =>
+            Date.parse(b.lastUsedAt ?? b.importedAt) -
+            Date.parse(a.lastUsedAt ?? a.importedAt),
+        )[0] ?? undefined;
 
     let deactivated = previous;
-    if (previous.mode === "custom") {
+    if (
+      previous.mode === "custom" &&
+      previous.custom?.sha256 === model.sha256
+    ) {
       deactivated = {
         ...previous,
         mode: bundledModelAvailable() ? "bundled" : "offline",
+        custom: nextSelected,
+        customModels: remaining,
       };
       await activateDesktopSettings(previous, deactivated);
+    } else {
+      deactivated = withCustomModels(previous, remaining, nextSelected);
     }
 
     try {
-      await customGgufStore().discard(previous.custom);
+      await customGgufStore().discard(model);
     } catch (error) {
       const code =
         error && typeof error === "object" && "code" in error
@@ -1314,7 +1500,7 @@ ipcMain.handle("gguf:remove", async () => {
           : "";
       if (code !== "ENOENT") throw error;
     }
-    saveSettings({ ...deactivated, custom: undefined });
+    saveSettings(deactivated);
     customRuntimeError = null;
     return { ok: true };
   } catch (error) {
