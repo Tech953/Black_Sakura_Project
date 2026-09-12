@@ -198,18 +198,61 @@ jobs:
           }
 
       - name: Verify macOS signature and notarization
-        if: github.ref_type == 'tag' && matrix.platform == 'mac'
+        if: matrix.platform == 'mac'
         shell: bash
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
+          if [ -z "${CSC_LINK:-}" ]; then
+            echo "No macOS signing certificate configured; skipping signature verification for this unsigned build."
+            exit 0
+          fi
+
           APP="$(find artifacts/desktop/release -type d -name ENGRAM.app -print -quit)"
           DMG="$(find artifacts/desktop/release -maxdepth 1 -type f -name '*.dmg' -print -quit)"
           test -n "$APP" || { echo "No packaged ENGRAM.app found" >&2; exit 1; }
           test -n "$DMG" || { echo "No DMG found for notarization validation" >&2; exit 1; }
+
+          echo "Verifying the signed ENGRAM app bundle..."
           codesign --verify --deep --strict --verbose=2 "$APP"
-          spctl --assess --type execute --verbose=4 "$APP"
-          xcrun stapler validate "$APP"
-          xcrun stapler validate "$DMG"
+
+          for name in ffmpeg ffprobe; do
+            BINARY="$APP/Contents/Resources/bin/$name"
+            test -f "$BINARY" || {
+              echo "Expected signed bundled binary is missing: $BINARY" >&2
+              exit 1
+            }
+            codesign --verify --strict --verbose=2 "$BINARY"
+            DETAILS="$(codesign -dv --verbose=4 "$BINARY" 2>&1)"
+            printf '%s\n' "$DETAILS"
+            printf '%s\n' "$DETAILS" | grep -Eq 'flags=.*\(runtime\)' || {
+              echo "Hardened runtime flag is missing from $BINARY" >&2
+              exit 1
+            }
+          done
+
+          APPLE_CREDENTIAL_COUNT=0
+          for name in APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            [ -n "${!name:-}" ] && APPLE_CREDENTIAL_COUNT=$((APPLE_CREDENTIAL_COUNT + 1))
+          done
+          if [ "$APPLE_CREDENTIAL_COUNT" -ne 0 ] &&
+            [ "$APPLE_CREDENTIAL_COUNT" -ne 3 ]; then
+            echo "Incomplete Apple notarization credentials; expected all three or none." >&2
+            exit 1
+          fi
+
+          if [ "$APPLE_CREDENTIAL_COUNT" -eq 3 ]; then
+            echo "Verifying Gatekeeper assessment and notarization staples..."
+            spctl --assess --type execute --verbose=4 "$APP"
+            xcrun stapler validate "$APP"
+            xcrun stapler validate "$DMG"
+          else
+            echo "Apple notarization credentials are not configured; skipping stapler verification."
+          fi
 
       - name: Enforce slim Windows download size
         if: matrix.platform == 'win'
