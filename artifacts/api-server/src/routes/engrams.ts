@@ -24,7 +24,12 @@ import {
   CreateEngramInquiryBody,
   ConfirmEngramCsvImportBody,
 } from "@workspace/api-zod";
-import { runTick, forceTransmission, COOLDOWN_MS } from "../services/engram-engine";
+import {
+  runTick,
+  forceTransmission,
+  COOLDOWN_MS,
+  projectDriveState,
+} from "../services/engram-engine";
 import {
   generateProbeResponse,
   generateDevelopment,
@@ -410,7 +415,9 @@ router.get("/engrams/state", async (req, res) => {
   const rows = await db.select().from(engramsTable).where(eq(engramsTable.ownerId, req.userId!)).orderBy(engramsTable.id);
   const now = Date.now();
   const states = rows.map((e) => {
-    const driveState = e.driveState ?? {};
+    // Display-only projection: keep the persisted engine state untouched while
+    // showing pressure accrued since the last persisted tick.
+    const driveState = projectDriveState(e, now);
     const drives = e.drives.map((d) => {
       const pressure = typeof driveState[d.id] === "number" ? driveState[d.id] : 0;
       return { id: d.id, label: d.label, pressure, weight: d.weight, charge: pressure * d.weight };
