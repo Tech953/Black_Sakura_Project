@@ -11,7 +11,7 @@ import {
   type EngramWorldModelEntry,
 } from "@workspace/db/schema";
 import { and, asc, desc, eq, lt, ne } from "drizzle-orm";
-import { appendWorldModelEntry } from "./world-model-store";
+import { appendWorldModelEntry, type DbExecutor } from "./world-model-store";
 import { SYSTEM_OWNER_ID } from "@workspace/db/schema";
 
 export interface CreateMediaAssetInput {
@@ -208,8 +208,9 @@ export type MediaAssetPatch = Partial<
 export async function updateMediaAsset(
   id: number,
   patch: MediaAssetPatch,
+  executor: DbExecutor = db,
 ): Promise<MediaAsset | undefined> {
-  const [row] = await db
+  const [row] = await executor
     .update(mediaAssetsTable)
     .set({ ...patch, updatedAt: new Date() })
     .where(eq(mediaAssetsTable.id, id))
@@ -277,16 +278,19 @@ export async function appendMediaObservation(input: {
   engramId: number;
   content: string;
   confidence: number;
-}): Promise<EngramWorldModelEntry> {
-  const entry = await appendWorldModelEntry({
-    engramId: input.engramId,
-    provenance: "observed",
-    content: input.content,
-    confidence: input.confidence,
-    scope: "private",
-    source: `media:${input.assetId}`,
-  });
-  await db
+}, executor: DbExecutor = db): Promise<EngramWorldModelEntry> {
+  const entry = await appendWorldModelEntry(
+    {
+      engramId: input.engramId,
+      provenance: "observed",
+      content: input.content,
+      confidence: input.confidence,
+      scope: "private",
+      source: `media:${input.assetId}`,
+    },
+    executor,
+  );
+  await executor
     .insert(mediaObservationsTable)
     .values({ assetId: input.assetId, worldModelEntryId: entry.id });
   return entry;

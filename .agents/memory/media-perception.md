@@ -15,6 +15,11 @@ Re-processing the same bytes (a retry) must clear the asset's prior world-model 
 **Why:** without the up-front clear, a retry stacks duplicate observations on top of a prior partial run; without the atomic guard, two retries both requeue.
 **How to apply:** any reprocessing path for provenance-tagged derived rows needs an idempotent clear keyed by the same `source` tag, plus a status-guarded atomic requeue.
 
+## Completion is one database commit
+After extraction, the complete observation set, asset-to-observation mappings, and completed asset metadata must be written through the same transaction executor. External model calls stay outside that transaction; a failed commit leaves the job non-completed for recovery/retry.
+**Why:** committing observations one at a time can expose a partial completed result if the worker dies before the final asset update.
+**How to apply:** store helpers that participate in the completion boundary must accept the caller's transaction executor instead of reaching for the global database handle.
+
 ## Deletion preserves observations
 Deleting a media asset cascades the blob + observation MAPPING rows but PRESERVES the world-model entries — they are genuine observations that outlive the source file (entries are not FK-owned by the asset; only the mapping table is).
 
