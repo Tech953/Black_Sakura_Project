@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
 
 // Run against a REAL embedded Postgres (in-memory PGlite) so the actual queue
-// SQL/locking is exercised, and mock only the LLM seam so authoring is
-// deterministic. The driver seam reads ENGRAM_DB_DRIVER at import time, so it
-// must be set before the module graph loads — vi.hoisted runs ahead of imports.
+// SQL/locking is exercised. Inject both the authoring response and unavailable
+// media provider explicitly so this test never inherits a workspace cloud
+// integration or makes an online generation request. The driver seam reads
+// ENGRAM_DB_DRIVER at import time, so it must be set before the module graph
+// loads — vi.hoisted runs ahead of imports.
 const h = vi.hoisted(() => {
   process.env.ENGRAM_DB_DRIVER = "pglite";
   delete process.env.PGLITE_DATA_DIR;
@@ -190,7 +192,9 @@ describe("artifact worker — local PDF generation end-to-end", () => {
 
     const done = await loadArtifactById(job.id);
     expect(done?.status).toBe("failed");
-    expect(done?.error).toMatch(/no online generation provider is configured/i);
+    expect(done?.error).toMatch(
+      /^No online generation provider is configured\./i,
+    );
     expect(await loadArtifactBlob(job.id)).toBeUndefined();
   });
 
