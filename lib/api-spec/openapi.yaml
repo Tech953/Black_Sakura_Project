@@ -1236,6 +1236,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/MarkMessagesSeenResult"
 
+  /messages/{id}/reply:
+    post:
+      operationId: replyToEngramMessage
+      tags: [hub]
+      summary: Reply to an engram's human-channel message
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplyToEngramMessageInput"
+      responses:
+        "201":
+          description: Persisted operator reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngramMessage"
+        "400":
+          description: Invalid reply
+        "404":
+          description: Message not found for this account
+
   /simulations:
     post:
       operationId: createSimulation
@@ -3372,6 +3401,9 @@ components:
         channel:
           type: string
           enum: [engram, human]
+        author:
+          type: string
+          enum: [engram, operator]
         priority:
           type: string
           enum: [urgent, meaningful, social]
@@ -3396,6 +3428,7 @@ components:
         - toEngramId
         - spaceId
         - channel
+        - author
         - priority
         - status
         - content
@@ -3422,6 +3455,16 @@ components:
           type: integer
       required:
         - updated
+
+    ReplyToEngramMessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+        - content
 
     MediaAsset:
       type: object
