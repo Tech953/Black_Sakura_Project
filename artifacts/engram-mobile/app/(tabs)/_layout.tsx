@@ -24,6 +24,7 @@ const TABS: {
   sfSelected: string;
 }[] = [
   { name: "index", labelKey: "tabs.personas", feather: "cpu", sf: "cpu", sfSelected: "cpu.fill" },
+  { name: "hub", labelKey: "tabs.hub", feather: "activity", sf: "waveform.path.ecg", sfSelected: "waveform.path.ecg" },
   { name: "feed", labelKey: "tabs.feed", feather: "radio", sf: "dot.radiowaves.left.and.right", sfSelected: "dot.radiowaves.left.and.right" },
   { name: "chat", labelKey: "tabs.chat", feather: "message-circle", sf: "bubble.left", sfSelected: "bubble.left.fill" },
   { name: "inquiry", labelKey: "tabs.inquiry", feather: "help-circle", sf: "questionmark.circle", sfSelected: "questionmark.circle.fill" },
