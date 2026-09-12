@@ -175,6 +175,23 @@ LLM_API_KEY=local
 With this set, both interactive chat and autonomous transmissions run entirely
 against the local model — no code changes required.
 
+### Desktop offline baseline
+
+Full desktop builds use one pinned standalone language model:
+
+```text
+Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+```
+
+It is an instruct-tuned Q4_K_M GGUF with a pinned byte count and SHA-256. Full
+desktop resource preparation verifies the GGUF header, exact size, and checksum
+before staging it. Slim Windows builds intentionally omit this multi-gigabyte
+baseline but keep the llama.cpp runtime available for managed custom GGUFs.
+
+Files named `mmproj-*.gguf` are vision-projector companions, not standalone
+language models. They cannot power ENGRAM chat or autonomous transmissions by
+themselves and are not accepted as the desktop baseline.
+
 ---
 
 ## What works offline
