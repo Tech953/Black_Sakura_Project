@@ -84,6 +84,28 @@ const OS_META: Record<
 
 const OS_ORDER: Os[] = ["mac", "win", "linux", "android"];
 
+const INSTALL_GUIDE_META: Record<
+  Os,
+  { installKey: string; requirementsKey: string }
+> = {
+  mac: {
+    installKey: "installMac",
+    requirementsKey: "requirementsMac",
+  },
+  win: {
+    installKey: "installWin",
+    requirementsKey: "requirementsWin",
+  },
+  linux: {
+    installKey: "installLinux",
+    requirementsKey: "requirementsLinux",
+  },
+  android: {
+    installKey: "installAndroid",
+    requirementsKey: "requirementsAndroid",
+  },
+};
+
 function detectOs(): Os | null {
   if (typeof navigator === "undefined") return null;
   const ua = `${navigator.userAgent} ${navigator.platform ?? ""}`.toLowerCase();
@@ -346,6 +368,61 @@ export default function DownloadPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card className="bg-card/40 border-primary/20 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-display tracking-widest text-sm text-primary/90">
+            {t("installGuideTitle")}
+          </CardTitle>
+          <p className="text-xs font-mono text-muted-foreground">
+            {t("installGuideIntro")}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {orderedOs.map((os) => {
+            const meta = OS_META[os];
+            const guide = INSTALL_GUIDE_META[os];
+            const Icon = meta.icon;
+            const isRecommended = os === detectedOs;
+            return (
+              <details
+                key={os}
+                className="group border border-border/50 bg-background/20"
+              >
+                <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-mono text-foreground hover:bg-white/5 [&::-webkit-details-marker]:hidden">
+                  <Icon className="h-4 w-4 shrink-0 text-primary" />
+                  <span>{t(meta.nameKey)}</span>
+                  {isRecommended && (
+                    <span className="ml-auto text-[10px] uppercase tracking-widest text-primary">
+                      {os === "android" ? t("yourDevice") : t("yourOs")}
+                    </span>
+                  )}
+                  <span
+                    aria-hidden="true"
+                    className="ml-auto text-lg leading-none text-primary/70 transition-transform group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <div className="grid gap-3 border-t border-border/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground md:grid-cols-2">
+                  <p>
+                    <strong className="mr-1 text-foreground">
+                      {t("howToInstall")}:
+                    </strong>
+                    {t(guide.installKey)}
+                  </p>
+                  <p>
+                    <strong className="mr-1 text-foreground">
+                      {t("systemRequirements")}:
+                    </strong>
+                    {t(guide.requirementsKey)}
+                  </p>
+                </div>
+              </details>
+            );
+          })}
+        </CardContent>
+      </Card>
 
       <div className="flex items-center justify-between flex-wrap gap-3 pt-2 border-t border-border/40">
         <p className="text-xs font-mono text-muted-foreground/70">
