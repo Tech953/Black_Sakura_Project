@@ -798,38 +798,39 @@ export default function Chat() {
                 return (
                   <div
                     key={c.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => loadConversation(c.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        loadConversation(c.id);
-                      }
-                    }}
                     className={`w-full text-left px-3 py-2.5 border-l-2 transition-all group flex items-start gap-2 ${activeId === c.id ? "border-primary bg-primary/10" : "border-transparent hover:bg-white/5 hover:border-white/20"}`}
                   >
-                    <span className="text-primary/60 text-sm mt-0.5">{modeGlyph}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-mono text-xs truncate ${activeId === c.id ? "text-primary" : "text-foreground/80"}`}>{c.title}</p>
-                      <p className="font-mono text-[9px] text-muted-foreground/50 uppercase mt-0.5 truncate">{modeLabel}</p>
+                    <button
+                      type="button"
+                      onClick={() => loadConversation(c.id)}
+                      className="flex min-w-0 flex-1 items-start gap-2 text-left touch-manipulation"
+                    >
+                      <span className="text-primary/60 text-sm mt-0.5">{modeGlyph}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className={`block font-mono text-xs truncate ${activeId === c.id ? "text-primary" : "text-foreground/80"}`}>{c.title}</span>
+                        <span className="block font-mono text-[9px] text-muted-foreground/50 uppercase mt-0.5 truncate">{modeLabel}</span>
+                      </span>
+                    </button>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={(e) => handleArchive(c.id, !showArchived, e)}
+                        className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-sm text-muted-foreground/70 transition-opacity hover:text-primary md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
+                        title={showArchived ? t("restoreConversation") : t("archiveConversation")}
+                        aria-label={showArchived ? t("restoreConversation") : t("archiveConversation")}
+                      >
+                        {showArchived ? <ArchiveRestore className="w-3 h-3" /> : <Archive className="w-3 h-3" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(c.id, e)}
+                        className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-sm text-muted-foreground/70 transition-opacity hover:text-rose-400 md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
+                        title={t("deleteConversation")}
+                        aria-label={t("deleteConversation")}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
-                     <button
-                       onClick={(e) => handleArchive(c.id, !showArchived, e)}
-                       className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary shrink-0"
-                       title={showArchived ? t("restoreConversation") : t("archiveConversation")}
-                       aria-label={showArchived ? t("restoreConversation") : t("archiveConversation")}
-                     >
-                       {showArchived ? <ArchiveRestore className="w-3 h-3" /> : <Archive className="w-3 h-3" />}
-                     </button>
-                     <button
-                       onClick={(e) => handleDelete(c.id, e)}
-                       className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-rose-400 shrink-0"
-                       title={t("deleteConversation")}
-                       aria-label={t("deleteConversation")}
-                     >
-                       <Trash2 className="w-3 h-3" />
-                     </button>
                   </div>
                 );
               })
