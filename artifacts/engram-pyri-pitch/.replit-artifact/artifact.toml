@@ -1,0 +1,28 @@
+kind = "slides"
+previewPath = "/engram-pyri-pitch/"
+title = "ENGRAM // PYRI — Pitch Deck"
+description = "A 16-slide pitch deck introducing ENGRAM's cognitive architecture, autonomous engrams, Hiero-Code expression layer, web dashboard, native mobile companion, and safety boundaries."
+version = "1.0.0"
+id = "artifacts/engram-pyri-pitch"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/engram-pyri-pitch/" ]
+localPort = 19563
+
+[services.development]
+run = "pnpm --filter @workspace/engram-pyri-pitch run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/engram-pyri-pitch", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/engram-pyri-pitch/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19563"
+BASE_PATH = "/engram-pyri-pitch/"
