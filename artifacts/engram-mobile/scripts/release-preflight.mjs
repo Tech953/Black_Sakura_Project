@@ -39,6 +39,7 @@ function run(command, args, options = {}) {
     cwd: options.cwd ?? mobileRoot,
     encoding: "utf8",
     stdio: options.capture ? "pipe" : "inherit",
+    maxBuffer: options.maxBuffer ?? 16 * 1024 * 1024,
   });
   if (result.error) throw result.error;
   if (result.status !== 0) {
@@ -161,7 +162,14 @@ function assertAndroidPrivacyPolicy(manifest, context) {
     }
   }
   for (const permission of forbiddenAndroidPermissions) {
-    if (manifest.includes(`android:name="${permission}"`)) {
+    const permissionTags = [...manifest.matchAll(/<uses-permission\b[^>]*>/g)].filter(
+      ([tag]) => tag.includes(`android:name="${permission}"`),
+    );
+    if (
+      permissionTags.some(
+        ([tag]) => !tag.includes('tools:node="remove"'),
+      )
+    ) {
       throw new Error(`${context} includes forbidden permission ${permission}.`);
     }
   }
