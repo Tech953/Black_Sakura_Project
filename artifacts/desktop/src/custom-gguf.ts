@@ -14,6 +14,7 @@ import {
   readdir,
   realpath,
   rename,
+  stat,
   statfs,
   unlink,
 } from "node:fs/promises";
@@ -23,6 +24,7 @@ import { Transform } from "node:stream";
 
 export const DEFAULT_MIN_GGUF_BYTES = 1024 * 1024;
 export const DEFAULT_MAX_GGUF_BYTES = 256 * 1024 ** 3;
+export const DEFAULT_MAX_GGUF_STORAGE_BYTES = 512 * 1024 ** 3;
 
 export interface GgufInspection {
   byteSize: number;
@@ -40,6 +42,8 @@ export interface CustomGgufMetadata extends GgufInspection {
   originalFilename: string;
   sha256: string;
   importedAt: string;
+  displayName?: string;
+  lastUsedAt?: string;
 }
 
 export interface GgufImportProgress {
@@ -57,6 +61,8 @@ export interface CustomGgufStoreOptions {
   maxBytes?: number;
   /** Extra bytes which must remain free in addition to the model size. */
   freeSpaceHeadroomBytes?: number;
+  /** Maximum total size of managed GGUF files. */
+  maxTotalBytes?: number;
   /** Test seam; defaults to statfs(root). */
   getFreeSpaceBytes?: (root: string) => Promise<number>;
   progressThrottleMs?: number;
@@ -114,6 +120,7 @@ export class CustomGgufStore {
   private readonly minBytes: number;
   private readonly maxBytes: number;
   private readonly headroom: number;
+  private readonly maxTotalBytes: number;
   private readonly getFreeSpace: (root: string) => Promise<number>;
   private readonly throttleMs: number;
 
@@ -127,6 +134,8 @@ export class CustomGgufStore {
     this.minBytes = options.minBytes ?? DEFAULT_MIN_GGUF_BYTES;
     this.maxBytes = options.maxBytes ?? DEFAULT_MAX_GGUF_BYTES;
     this.headroom = options.freeSpaceHeadroomBytes ?? 64 * 1024 * 1024;
+    this.maxTotalBytes =
+      options.maxTotalBytes ?? DEFAULT_MAX_GGUF_STORAGE_BYTES;
     this.throttleMs = options.progressThrottleMs ?? 100;
     if (
       !Number.isSafeInteger(this.minBytes) ||
@@ -134,7 +143,9 @@ export class CustomGgufStore {
       this.minBytes < 0 ||
       this.maxBytes < this.minBytes ||
       !Number.isSafeInteger(this.headroom) ||
-      this.headroom < 0
+      this.headroom < 0 ||
+      !Number.isSafeInteger(this.maxTotalBytes) ||
+      this.maxTotalBytes < this.maxBytes
     ) {
       throw new RangeError("Invalid GGUF store size limits");
     }
@@ -235,6 +246,23 @@ export class CustomGgufStore {
     );
   }
 
+  get storageLimitBytes(): number {
+    return this.maxTotalBytes;
+  }
+
+  async getManagedBytes(): Promise<number> {
+    const root = await this.prepareRoot();
+    const entries = await readdir(root, { withFileTypes: true });
+    let total = 0;
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".gguf")) continue;
+      const size = (await stat(path.join(root, entry.name))).size;
+      total += size;
+      if (!Number.isSafeInteger(total)) return Number.MAX_SAFE_INTEGER;
+    }
+    return total;
+  }
+
   async import(
     sourcePath: string,
     options: GgufImportOptions = {},
@@ -247,6 +275,13 @@ export class CustomGgufStore {
       const free = await this.getFreeSpace(root);
       if (!Number.isFinite(free) || free < opened.inspection.byteSize + this.headroom) {
         throw new Error("Insufficient free space to import GGUF model");
+      }
+      const managedBytes = await this.getManagedBytes();
+      if (
+        managedBytes + opened.inspection.byteSize + this.headroom >
+        this.maxTotalBytes
+      ) {
+        throw new Error("Managed GGUF storage limit would be exceeded");
       }
 
       partialPath = path.join(
@@ -314,10 +349,12 @@ export class CustomGgufStore {
       return {
         path: managedName,
         originalFilename: path.basename(sourcePath),
+        displayName: path.basename(sourcePath),
         byteSize: copied,
         sha256,
         ggufVersion: opened.inspection.ggufVersion,
         importedAt: new Date().toISOString(),
+        lastUsedAt: new Date().toISOString(),
       };
     } finally {
       await opened.handle.close().catch(() => undefined);
