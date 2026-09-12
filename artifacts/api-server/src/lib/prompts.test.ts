@@ -95,14 +95,19 @@ describe("buildExpressionSection — intimacy sanitization", () => {
     expect(section).not.toContain("flirt");
   });
 
-  it("never surfaces the free-text notes field (only structural metadata)", () => {
-    // ExpressionRow intentionally has no `notes`; assert the catalog is built from
-    // neutral fields (glyph/name/valence/arousal/cognitiveRole) only.
+  it("keeps neutral signal metadata but never surfaces stored free-text notes", () => {
+    // ExpressionRow intentionally has no `notes`, but this mirrors a database row
+    // with that extra field to prove prompt construction ignores it at runtime too.
     const section = buildExpressionSection("companion", [
-      makeExpression({ glyph: "^_^", name: "warmth", cognitiveRole: "rapport" }),
+      {
+        ...makeExpression({ glyph: "^_^", name: "warmth", cognitiveRole: "rapport" }),
+        notes: "PRIVATE NOTE: emotionally intimate context",
+      } as ExpressionRow,
     ]);
     expect(section).toContain("signal: rapport");
     expect(section.toLowerCase()).toContain("platonic");
+    expect(section).not.toContain("PRIVATE NOTE");
+    expect(section).not.toContain("emotionally intimate context");
   });
 
   it("emits no micro-expressions in silent mode", () => {
@@ -162,6 +167,44 @@ describe("buildSystemPrompt — PYRI chat prompt", () => {
     expect(prompt).toContain("^_^");
     expect(prompt).not.toContain("xoxo");
     expect(prompt).not.toContain("smooch");
+  });
+
+  it("keeps intimate expression metadata and notes out of the final chat prompt", () => {
+    const prompt = buildSystemPrompt({
+      mode: "companion",
+      expressions: [
+        {
+          ...makeExpression({
+            glyph: "^_^",
+            name: "warmth",
+            cognitiveRole: "rapport",
+            intimacy: 0,
+          }),
+          notes: "PRIVATE LOW-INTIMACY NOTE",
+        } as ExpressionRow,
+        {
+          ...makeExpression({
+            glyph: "xoxo",
+            name: "smooch",
+            cognitiveRole: "romantic-intimacy",
+            intimacy: 4,
+          }),
+          notes: "PRIVATE HIGH-INTIMACY NOTE",
+        } as ExpressionRow,
+      ],
+    });
+
+    // Safe structural metadata may be used as a neutral signal.
+    expect(prompt).toContain("^_^");
+    expect(prompt).toContain("signal: rapport");
+
+    // Neither the intimacy axis nor private row metadata may reach PYRI.
+    expect(prompt).not.toContain("intimacy:");
+    expect(prompt).not.toContain("xoxo");
+    expect(prompt).not.toContain("smooch");
+    expect(prompt).not.toContain("romantic-intimacy");
+    expect(prompt).not.toContain("PRIVATE LOW-INTIMACY NOTE");
+    expect(prompt).not.toContain("PRIVATE HIGH-INTIMACY NOTE");
   });
 
   it("keeps PYRI expression behavior platonic", () => {
