@@ -20,17 +20,19 @@ import {
   closeDb,
   conversations,
   db,
+  engramsTable,
   ensureDatabaseReady,
   messages,
   mobileOfflineSyncReceiptsTable,
 } from "@workspace/db";
+import type { OfflineSyncInput } from "@workspace/api-zod";
 import offlineSyncRouter from "./offline-sync";
 
 const ready = ensureDatabaseReady({ seed: false });
 let server: Server;
 let base: string;
 
-const payload = {
+const payload: OfflineSyncInput = {
   deviceId: "shared-device-id",
   conversations: [
     {
@@ -38,7 +40,7 @@ const payload = {
       title: "Offline",
       mode: "companion",
       engramSlug: null,
-      createdAt: "2026-09-05T12:00:00.000Z",
+      createdAt: new Date("2026-09-05T12:00:00.000Z"),
       messages: [],
     },
   ],
@@ -47,14 +49,14 @@ const payload = {
   observedEntries: [],
 };
 
-function postAs(ownerId: string) {
+function postAs(ownerId: string, body = payload) {
   return fetch(`${base}/mobile/offline-sync`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-test-user-id": ownerId,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
 
@@ -78,6 +80,7 @@ beforeEach(async () => {
   await db.delete(mobileOfflineSyncReceiptsTable);
   await db.delete(messages);
   await db.delete(conversations);
+  await db.delete(engramsTable);
 });
 
 afterAll(async () => {
@@ -120,5 +123,91 @@ describe("offline sync receipt ownership", () => {
       "owner-a",
       "owner-b",
     ]);
+
+    const ownerBArchive = await postAs("owner-b", {
+      ...payload,
+      conversations: [
+        {
+          ...payload.conversations[0],
+          archivedAt: new Date("2026-09-05T13:00:00.000Z"),
+        },
+      ],
+    });
+    expect(ownerBArchive.status).toBe(200);
+
+    const isolatedRows = await db.select().from(conversations);
+    expect(
+      isolatedRows.find((row) => row.ownerId === "owner-a")?.archivedAt,
+    ).toBeNull();
+    expect(
+      isolatedRows.find((row) => row.ownerId === "owner-b")?.archivedAt,
+    ).toEqual(new Date("2026-09-05T13:00:00.000Z"));
+  });
+
+  it("rejects unauthenticated uploads before validating or storing history", async () => {
+    const response = await fetch(`${base}/mobile/offline-sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await db.select().from(conversations)).toEqual([]);
+    expect(await db.select().from(mobileOfflineSyncReceiptsTable)).toEqual([]);
+  });
+
+  it("does not let one account import into another account's engram", async () => {
+    await db.insert(engramsTable).values({
+      ownerId: "owner-a",
+      slug: "private-owner-a",
+      name: "Private A",
+      title: "Private A",
+      symbol: "A",
+      origin: "test",
+      voiceProfile: {
+        speechStyle: "terse",
+        formatting: "plain",
+        vocabulary: [],
+        sampleLines: [],
+        narrationStyle: "first-person",
+      },
+      emotionalBaseline: {
+        valence: 0,
+        arousal: 0,
+        volatility: 0,
+        mood: "even",
+      },
+      environmentAnchor: {
+        name: "Test",
+        description: "Test",
+        locations: [],
+        items: [],
+        ambient: "quiet",
+      },
+      memorySeed: { relationship: "test", facts: [], summary: "" },
+      guardrails: { framing: "test", boundaries: [] },
+      drives: [],
+      focusThemes: [],
+    });
+
+    const response = await postAs("owner-b", {
+      ...payload,
+      deviceId: "shared-device-id-foreign-engram",
+      conversations: [
+        {
+          ...payload.conversations[0],
+          syncId: "conversation:foreign-engram",
+          engramSlug: "private-owner-a",
+        },
+      ],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Unknown engram slug: private-owner-a",
+    });
+    expect(await db.select().from(conversations)).toEqual([]);
+    expect(await db.select().from(mobileOfflineSyncReceiptsTable)).toEqual([]);
   });
 });

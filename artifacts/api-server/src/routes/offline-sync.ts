@@ -26,7 +26,11 @@ class OfflineSyncError extends Error {
 }
 
 router.post("/mobile/offline-sync", async (req, res) => {
-  const ownerId = req.userId!;
+  const ownerId = req.userId;
+  if (!ownerId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const parsed = SyncOfflineHistoryBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -68,7 +72,9 @@ router.post("/mobile/offline-sync", async (req, res) => {
             isArchival: engramsTable.isArchival,
           })
           .from(engramsTable)
-            .where(and(eq(engramsTable.slug, slug), eq(engramsTable.ownerId, ownerId)))
+          .where(
+            and(eq(engramsTable.slug, slug), eq(engramsTable.ownerId, ownerId)),
+          )
           .limit(1);
         if (!row) {
           throw new OfflineSyncError(400, `Unknown engram slug: ${slug}`);
@@ -155,17 +161,14 @@ router.post("/mobile/offline-sync", async (req, res) => {
               mode: conversation.mode,
               engramId: engram?.id ?? null,
               createdAt: new Date(conversation.createdAt),
-                archivedAt:
-                  conversation.archivedAt == null
-                    ? null
-                    : new Date(conversation.archivedAt),
+              archivedAt:
+                conversation.archivedAt == null
+                  ? null
+                  : new Date(conversation.archivedAt),
             })
             .returning({ id: conversations.id });
           remoteConversationId = created!.id;
-          await setRemoteId(
-            conversationClaim.receipt.id,
-            remoteConversationId,
-          );
+          await setRemoteId(conversationClaim.receipt.id, remoteConversationId);
           imported.conversations += 1;
         } else {
           remoteConversationId = requireRemoteId(
@@ -267,10 +270,7 @@ router.post("/mobile/offline-sync", async (req, res) => {
             .where(
               eq(
                 engramTransmissionsTable.id,
-                requireRemoteId(
-                  transmissionClaim.receipt,
-                  transmission.syncId,
-                ),
+                requireRemoteId(transmissionClaim.receipt, transmission.syncId),
               ),
             );
         }
