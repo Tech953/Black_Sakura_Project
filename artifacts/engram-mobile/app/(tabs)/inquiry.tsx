@@ -19,6 +19,7 @@ import { Chip, EmptyState, MonoLabel, PrimaryButton } from "@/components/ui";
 import { useEngram } from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
 import { resolveReplyLanguage } from "@/lib/i18n";
+import { inquiryRequest, type InquiryMode } from "@/lib/mobile-flow-seams";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetEngramQueryKey,
@@ -29,7 +30,7 @@ import {
 } from "@workspace/api-client-react";
 
 
-type Mode = "probe" | "develop";
+type Mode = InquiryMode;
 
 export default function InquiryScreen() {
   const { t } = useTranslation("mobile");
@@ -61,14 +62,14 @@ export default function InquiryScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
     try {
-      await create.mutateAsync({
-        id: engramId,
-        data: {
-          kind: mode,
-          question: question.trim(),
+      await create.mutateAsync(
+        inquiryRequest({
+          engramId,
+          mode,
+          question,
           language: await resolveReplyLanguage(),
-        },
-      });
+        }),
+      );
       setQuestion("");
       queryClient.invalidateQueries({
         queryKey: getListEngramInquiriesQueryKey(engramId),

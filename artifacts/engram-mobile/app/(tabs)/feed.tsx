@@ -16,6 +16,10 @@ import { TransmissionCard } from "@/components/transmission-card";
 import { EmptyState, IconButton, PrimaryButton } from "@/components/ui";
 import { useEngram } from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
+import {
+  markSeenRequest,
+  unseenTransmissionIds,
+} from "@/lib/mobile-flow-seams";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetEngramQueryKey,
@@ -59,15 +63,12 @@ export default function FeedScreen() {
   const markSeen = useMarkTransmissionsSeen();
   const [pulseFailed, setPulseFailed] = useState(false);
 
-  const unseenIds = useMemo(
-    () => (transmissions ?? []).filter((t) => !t.seen).map((t) => t.id),
-    [transmissions],
-  );
+  const unseenIds = useMemo(() => unseenTransmissionIds(transmissions), [transmissions]);
 
   useEffect(() => {
     if (!enabled || unseenIds.length === 0) return;
     markSeen
-      .mutateAsync({ id: engramId, data: { ids: unseenIds } })
+      .mutateAsync(markSeenRequest(engramId, unseenIds))
       .then(() =>
         queryClient.invalidateQueries({
           queryKey: getListEngramTransmissionsQueryKey(engramId),
