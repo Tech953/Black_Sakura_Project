@@ -665,6 +665,7 @@ export const SimulationStatus = {
 export interface Simulation {
   id: number;
   engramId: number;
+  participantEngramIds: number[];
   spaceId: number;
   premise: string;
   status: SimulationStatus;
@@ -689,6 +690,8 @@ export interface SimulationStep {
   id: number;
   simulationId: number;
   stepNumber: number;
+  /** @nullable */
+  speakerEngramId: number | null;
   narrative: string;
   /** @nullable */
   worldModelEntryId: number | null;
@@ -813,6 +816,11 @@ export interface EngramImportConfirmation {
 
 export interface SimulationCreateInput {
   engramId: number;
+  /**
+     * @minItems 1
+     * @maxItems 8
+     */
+  participantEngramIds?: number[];
   /** Optional specific scenario; omitted to generate one from the engram's context */
   premise?: string;
   /** Optional step budget (capped server-side) */

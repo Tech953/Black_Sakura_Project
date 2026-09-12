@@ -8,6 +8,11 @@
 
 export interface SimulationCreateInput {
   engramId: number;
+  /**
+     * @minItems 1
+     * @maxItems 8
+     */
+  participantEngramIds?: number[];
   /** Optional specific scenario; omitted to generate one from the engram's context */
   premise?: string;
   /** Optional step budget (capped server-side) */

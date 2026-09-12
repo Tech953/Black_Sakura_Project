@@ -9,6 +9,7 @@ import {
 import {
   loadSimulations,
   loadSimulationById,
+  loadSimulationParticipantIds,
   loadSimulationSteps,
 } from "../lib/simulations-store";
 import {
@@ -24,10 +25,11 @@ import { loadOwnedEngram } from "../lib/account-bootstrap";
 
 const router = Router();
 
-function serializeSimulation(s: EngramSimulation) {
+function serializeSimulation(s: EngramSimulation, participantEngramIds = [s.engramId]) {
   return {
     id: s.id,
     engramId: s.engramId,
+    participantEngramIds,
     spaceId: s.spaceId,
     premise: s.premise,
     status: s.status,
@@ -49,6 +51,7 @@ function serializeStep(s: EngramSimulationStep) {
     id: s.id,
     simulationId: s.simulationId,
     stepNumber: s.stepNumber,
+    speakerEngramId: s.speakerEngramId ?? null,
     narrative: s.narrative,
     worldModelEntryId: s.worldModelEntryId ?? null,
     createdAt: s.createdAt.toISOString(),
@@ -73,7 +76,13 @@ router.get("/simulations", async (req, res) => {
     engramId: parsed.data.engramId,
     status: parsed.data.status as SimulationStatus | undefined,
   });
-  res.json(rows.map(serializeSimulation));
+  res.json(
+    await Promise.all(
+      rows.map(async (row) =>
+        serializeSimulation(row, await loadSimulationParticipantIds(row)),
+      ),
+    ),
+  );
 });
 
 router.get("/simulations/:id/steps", async (req, res) => {
@@ -95,7 +104,12 @@ router.get("/simulations/:id/steps", async (req, res) => {
 // specific scenario premise. Same quarantine as autonomous simulations — every
 // generated beat is written with hardcoded provenance "simulated".
 router.post("/simulations", async (req, res) => {
-  const body = req.body as { engramId?: unknown; premise?: unknown; maxSteps?: unknown };
+  const body = req.body as {
+    engramId?: unknown;
+    participantEngramIds?: unknown;
+    premise?: unknown;
+    maxSteps?: unknown;
+  };
   const engramId = typeof body.engramId === "number" ? body.engramId : NaN;
   const premise =
     body.premise === undefined
@@ -109,8 +123,28 @@ router.post("/simulations", async (req, res) => {
       : body.maxSteps === undefined
         ? undefined
         : null;
-  if (!Number.isInteger(engramId) || premise === null || maxSteps === null) {
-    res.status(400).json({ error: "engramId (integer) and optional premise/maxSteps are invalid" });
+  const participantEngramIds =
+    body.participantEngramIds === undefined
+      ? [engramId]
+      : Array.isArray(body.participantEngramIds) &&
+          body.participantEngramIds.length > 0 &&
+          body.participantEngramIds.length <= 8 &&
+          body.participantEngramIds.every(
+            (id): id is number => typeof id === "number" && Number.isInteger(id),
+          )
+        ? [...new Set(body.participantEngramIds)]
+        : null;
+  if (
+    !Number.isInteger(engramId) ||
+    premise === null ||
+    maxSteps === null ||
+    participantEngramIds === null ||
+    !participantEngramIds.includes(engramId)
+  ) {
+    res.status(400).json({
+      error:
+        "engramId (integer), participantEngramIds (integer array), and optional premise/maxSteps are invalid",
+    });
     return;
   }
   const engram = await loadOwnedEngram(engramId, req.userId!);
@@ -121,6 +155,19 @@ router.post("/simulations", async (req, res) => {
   if (engram.isArchival) {
     res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
+  }
+  const participantEngrams = [];
+  for (const participantId of participantEngramIds) {
+    const participant = await loadOwnedEngram(participantId, req.userId!);
+    if (!participant) {
+      res.status(404).json({ error: "Simulation participant not found" });
+      return;
+    }
+    if (participant.isArchival) {
+      res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
+    participantEngrams.push(participant);
   }
   const spaces = await loadSpaces(req.userId!);
   const chamber = spaces.find(
@@ -139,11 +186,18 @@ router.post("/simulations", async (req, res) => {
   }
   try {
     const controls = await loadControls(req.userId!);
-    const sim = await openOperatorSimulation({ engram, chamber, premise, maxSteps, controls });
+    const sim = await openOperatorSimulation({
+      engram,
+      participants: participantEngrams,
+      chamber,
+      premise,
+      maxSteps,
+      controls,
+    });
     // First beat immediately (best-effort, in the background) so the operator
     // doesn't wait for the next engine tick.
     void kickSimulation(sim);
-    res.status(201).json(serializeSimulation(sim));
+    res.status(201).json(serializeSimulation(sim, participantEngramIds));
   } catch (err) {
     if (err instanceof SimulationTransitionError) {
       res.status(409).json({ error: err.message });
@@ -177,7 +231,9 @@ router.post("/simulations/:id/control", async (req, res) => {
     if (parsedBody.data.action === "start" || parsedBody.data.action === "resume") {
       void kickSimulation(updated);
     }
-    res.json(serializeSimulation(updated));
+    res.json(
+      serializeSimulation(updated, await loadSimulationParticipantIds(updated)),
+    );
   } catch (err) {
     if (err instanceof SimulationTransitionError) {
       res.status(400).json({ error: err.message });

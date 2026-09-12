@@ -25,7 +25,9 @@ const h = vi.hoisted(() => {
     createSimulation: vi.fn(async (v: Record<string, unknown>) => ({ id: 7, ...v })),
     loadActiveSimulationForEngram: vi.fn(async () => null as EngramSimulation | null),
     loadRunningSimulations: vi.fn(async () => [] as EngramSimulation[]),
+    loadSimulationParticipants: vi.fn(async () => []),
     loadSimulationSteps: vi.fn(async () => [] as { narrative: string }[]),
+    markSimulationParticipantSpoke: vi.fn(async () => undefined),
      updateSimulation: vi.fn(
        async (id: number, _ownerId: string, patch: Record<string, unknown>) => ({
          id,
@@ -70,7 +72,9 @@ vi.mock("./simulations-store", () => ({
   createSimulation: h.createSimulation,
   loadActiveSimulationForEngram: h.loadActiveSimulationForEngram,
   loadRunningSimulations: h.loadRunningSimulations,
+  loadSimulationParticipants: h.loadSimulationParticipants,
   loadSimulationSteps: h.loadSimulationSteps,
+  markSimulationParticipantSpoke: h.markSimulationParticipantSpoke,
   updateSimulation: h.updateSimulation,
   claimSimulationStep: h.claimSimulationStep,
 }));
@@ -101,6 +105,7 @@ const CHAMBER: HubSpace = {
   description: "where engrams run hypotheticals",
   allowsInitiative: true,
   actionScope: "simulate",
+  ownerId: "test-owner",
   createdAt: new Date(),
   updatedAt: new Date(),
 } as unknown as HubSpace;
@@ -333,6 +338,7 @@ describe("maybeRunSimulationStep — proposing", () => {
         status: "running",
         spaceId: CHAMBER.id,
       }),
+      [1],
     );
     expect(sim).toMatchObject({ premise: "What if the vault flooded?" });
   });
@@ -348,6 +354,7 @@ describe("maybeRunSimulationStep — proposing", () => {
     expect(h.generateSimulationPremise).not.toHaveBeenCalled();
     expect(h.createSimulation).toHaveBeenCalledWith(
       expect.objectContaining({ premise: "What if the lights fail?" }),
+      [1],
     );
   });
 });
