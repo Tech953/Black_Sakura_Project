@@ -11,30 +11,35 @@ id = "f-hUiEFYn8IrciUuluv73"
 uri = "file://docs/01_ENGRAM_Proposal.pdf"
 type = "pdf"
 title = "Formalized Proposal"
+logical_id = "89648875-9c3a-41cb-987b-99816b893959"
 
 [[outputs]]
 id = "P-sv7qwF3IjjTwPIyU6fN"
 uri = "file://docs/02_ENGRAM_Developer_Guide.pdf"
 type = "pdf"
 title = "Developer Document"
+logical_id = "9437071e-45e0-4cf5-bb63-106e5312e65b"
 
 [[outputs]]
 id = "10vPZH5_JV4mdFmY1BuxU"
 uri = "file://docs/03_ENGRAM_README.pdf"
 type = "pdf"
 title = "README"
+logical_id = "c1f99350-2dc5-4392-be7f-a81a67b8df52"
 
 [[outputs]]
 id = "Y-GEkJIGZB-ki3nRXt7IR"
 uri = "file://docs/04_ENGRAM_User_Manual.pdf"
 type = "pdf"
 title = "User Manual"
+logical_id = "313d84a5-2544-481a-91bf-2868062b192f"
 
 [[outputs]]
 id = "88WrrF4AZ8iTC99g9_hvH"
 uri = "file://docs/building-the-android-apk.md"
 type = "text"
 title = "How to build the ENGRAM Android .apk"
+logical_id = "1f9c2d4e-fdcc-472f-97f4-fe45d5994a17"
 
 [[outputs]]
 id = "wAGdkofmpVSyTrIWSbpWj"
@@ -42,6 +47,7 @@ uri = "file://docs/ENGRAM-developers-guide.csv"
 type = "table"
 title = "ENGRAM Developer's Guide (CSV)"
 description = "Comprehensive developer reference: architecture, setup, domain concepts, API contract, i18n, mobile/desktop builds, database, testing, operations, and gotchas — one row per topic with locations and key commands."
+logical_id = "f2248faa-5fbc-49e4-9232-8912aeb219da"
 
 [[outputs]]
 id = "ZWZlTIdkafgwQtalPq030"
@@ -49,3 +55,4 @@ uri = "file://downloads/ENGRAM-android.apk"
 type = "unspecified"
 title = "ENGRAM Android APK — Galaxy Z Flip 8 build"
 description = "Rebuilt for reliable modern Android/foldable installation: version 1.0.1 (versionCode 2), resizable activity enabled, aligned Expo dependencies, 16 KB ZIP/ELF native-library compatibility verified, arm64-v8a and x86_64 llama.rn libraries included. SHA-256: d7d622d9e57dc2df5cac548a965c910985724aa0b44a274b7f23da7c4e9f3221."
+logical_id = "f933e010-ebee-4435-b2c4-9e0483f67bdc"
