@@ -1,12 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createEngramDesktopBridge,
+  type AppInfo,
   type RendererIpc,
 } from "./desktop-bridge";
 
 function fakeIpc() {
-  const listeners = new Map<string, (event: unknown, payload: unknown) => void>();
-  const invoke = vi.fn(async () => ({ ok: true }));
+  const listeners = new Map<
+    string,
+    (event: unknown, payload: unknown) => void
+  >();
+  const invoke = vi.fn(
+    async (..._args: unknown[]): Promise<unknown> => ({ ok: true }),
+  );
   const ipc: RendererIpc = {
     invoke,
     on: (channel, listener) => listeners.set(channel, listener),
@@ -52,7 +58,9 @@ describe("desktop renderer bridge", () => {
       "gguf:import",
       "opaque-selection",
     );
-    expect(Object.keys(bridge).some((key) => /path|file/i.test(key))).toBe(false);
+    expect(Object.keys(bridge).some((key) => /path|file/i.test(key))).toBe(
+      false,
+    );
   });
 
   it("removes progress listeners with the same allowlisted channel", () => {
@@ -62,5 +70,20 @@ describe("desktop renderer bridge", () => {
     expect(listeners.has("gguf:import-status")).toBe(true);
     unsubscribe();
     expect(listeners.has("gguf:import-status")).toBe(false);
+  });
+
+  it("forwards the app info contract without reshaping its update status", async () => {
+    const { ipc, invoke } = fakeIpc();
+    const appInfo: AppInfo = {
+      version: "1.2.3",
+      updatesSupported: true,
+      updateStatus: { state: "downloading", percent: 42 },
+    };
+    invoke.mockResolvedValueOnce(appInfo);
+
+    const bridge = createEngramDesktopBridge(ipc);
+
+    await expect(bridge.getAppInfo()).resolves.toEqual(appInfo);
+    expect(invoke).toHaveBeenCalledWith("app:info");
   });
 });
