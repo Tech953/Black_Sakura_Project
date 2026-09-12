@@ -281,6 +281,10 @@ export function createDbHarness() {
               row.isDigest ??= false;
               row.digestedAt ??= null;
             }
+            if (name === "hubControlsTable") {
+              row.paused ??= false;
+              row.quietMode ??= false;
+            }
             store[name].push(row);
             insertCalls.push({ ...row, __table: table });
             return row;

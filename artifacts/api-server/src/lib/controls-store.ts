@@ -46,9 +46,14 @@ export async function updateControls(
   patch: { paused?: boolean; quietMode?: boolean },
 ): Promise<HubControls> {
   await loadControls(ownerId);
+  const update: { paused?: boolean; quietMode?: boolean; updatedAt: Date } = {
+    updatedAt: new Date(),
+  };
+  if (patch.paused !== undefined) update.paused = patch.paused;
+  if (patch.quietMode !== undefined) update.quietMode = patch.quietMode;
   const [row] = await db
     .update(hubControlsTable)
-    .set({ ...patch, updatedAt: new Date() })
+    .set(update)
     .where(eq(hubControlsTable.ownerId, ownerId))
     .returning();
   publishEvent({ type: "controls.changed", ownerId, data: row });

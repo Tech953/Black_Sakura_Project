@@ -32,6 +32,7 @@ import engramsRouter from "./engrams";
 import engramWorldModelRouter from "./engram-world-model";
 import offlineSyncRouter from "./offline-sync";
 import messagesRouter from "./messages";
+import hubRouter from "./hub";
 import {
   CreateOpenaiConversationResponse,
   ListOpenaiConversationsResponse,
@@ -46,6 +47,8 @@ import {
   CreateEngramWorldModelEntryResponse,
   UpdateEngramWorldModelEntryResponse,
   ListEngramMessagesResponse,
+  GetHubControlsResponse,
+  UpdateHubControlsResponse,
 } from "@workspace/api-zod";
 import { engramImportDraftStore } from "../lib/engram-import-store";
 import { subscribe } from "../lib/events";
@@ -79,6 +82,7 @@ function buildApp(): Express {
   app.use("/api", engramWorldModelRouter);
   app.use("/api", offlineSyncRouter);
   app.use("/api", messagesRouter);
+  app.use("/api", hubRouter);
   return app;
 }
 
@@ -1553,6 +1557,117 @@ describe("inquiry routes", () => {
 });
 
 describe("human contact messages route", () => {
+  it("filters by channel and clamps an oversized list limit", async () => {
+    const engram = seedEngram({ name: "Message Source" });
+    const peer = seedEngram({ name: "Peer Source" });
+    for (let id = 1; id <= 501; id += 1) {
+      h.store.engramMessagesTable.push({
+        id,
+        fromEngramId: engram.id,
+        toEngramId: null,
+        spaceId: null,
+        channel: "human",
+        author: "engram",
+        priority: "social",
+        status: "delivered",
+        content: `Contact ${id}`,
+        reason: null,
+        seen: false,
+        isDigest: false,
+        digestedAt: null,
+        deliveredAt: new Date(),
+        createdAt: new Date(Date.now() + id),
+      });
+    }
+    h.store.engramMessagesTable.push({
+      id: 502,
+      fromEngramId: peer.id,
+      toEngramId: engram.id,
+      spaceId: 1,
+      channel: "engram",
+      author: "engram",
+      priority: "meaningful",
+      status: "delivered",
+      content: "Peer exchange",
+      reason: null,
+      seen: false,
+      isDigest: false,
+      digestedAt: null,
+      deliveredAt: new Date(),
+      createdAt: new Date(Date.now() + 502),
+    });
+
+    const humanResponse = await fetch(`${base}/api/messages?channel=human&limit=9999`);
+    expect(humanResponse.status).toBe(200);
+    const humanMessages = (await humanResponse.json()) as Array<{ channel: string }>;
+    expect(humanMessages).toHaveLength(500);
+    expect(humanMessages.every((message: { channel: string }) => message.channel === "human")).toBe(true);
+
+    const engramResponse = await fetch(`${base}/api/messages?channel=engram&limit=10`);
+    expect(engramResponse.status).toBe(200);
+    const engramMessages = (await engramResponse.json()) as Array<{
+      channel: string;
+      content: string;
+    }>;
+    expect(engramMessages).toHaveLength(1);
+    expect(engramMessages[0]).toMatchObject({ channel: "engram", content: "Peer exchange" });
+  });
+
+  it("marks only human-channel rows as seen", async () => {
+    const engram = seedEngram({ name: "Seen Source" });
+    const rows = [
+      {
+        id: 1,
+        fromEngramId: engram.id,
+        toEngramId: null,
+        spaceId: null,
+        channel: "human",
+        author: "engram",
+        priority: "meaningful",
+        status: "delivered",
+        content: "Please notice me",
+        reason: null,
+        seen: false,
+        isDigest: false,
+        digestedAt: null,
+        deliveredAt: new Date(),
+        createdAt: new Date(),
+      },
+      {
+        id: 2,
+        fromEngramId: engram.id,
+        toEngramId: engram.id,
+        spaceId: 1,
+        channel: "engram",
+        author: "engram",
+        priority: "meaningful",
+        status: "delivered",
+        content: "Peer-only record",
+        reason: null,
+        seen: false,
+        isDigest: false,
+        digestedAt: null,
+        deliveredAt: new Date(),
+        createdAt: new Date(),
+      },
+    ];
+    h.store.engramMessagesTable.push(...rows);
+
+    const response = await fetch(`${base}/api/messages/mark-seen`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [1, 2] }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ updated: 1 });
+    expect(h.store.engramMessagesTable).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 1, seen: true }),
+        expect.objectContaining({ id: 2, seen: false }),
+      ]),
+    );
+  });
+
   it("serializes digest summaries distinctly from source contacts", async () => {
     const engram = seedEngram({ name: "Digestor" });
     h.store.engramMessagesTable.push({
@@ -1659,6 +1774,38 @@ describe("human contact messages route", () => {
     });
     expect(response.status).toBe(404);
     expect(h.store.engramMessagesTable).toHaveLength(1);
+  });
+});
+
+describe("Hub controls routes", () => {
+  it("gets defaults and updates only the requested global control", async () => {
+    const getResponse = await fetch(`${base}/api/hub/controls`);
+    expect(getResponse.status).toBe(200);
+    const defaults = await getResponse.json();
+    expect(() => GetHubControlsResponse.parse(defaults)).not.toThrow();
+    expect(defaults).toMatchObject({ paused: false, quietMode: false });
+
+    const updateResponse = await fetch(`${base}/api/hub/controls`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paused: true }),
+    });
+    expect(updateResponse.status).toBe(200);
+    const updated = await updateResponse.json();
+    expect(() => UpdateHubControlsResponse.parse(updated)).not.toThrow();
+    expect(updated).toMatchObject({ paused: true, quietMode: false });
+
+    const reloadResponse = await fetch(`${base}/api/hub/controls`);
+    expect(await reloadResponse.json()).toMatchObject({ paused: true, quietMode: false });
+  });
+
+  it("rejects invalid control values", async () => {
+    const response = await fetch(`${base}/api/hub/controls`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paused: "yes" }),
+    });
+    expect(response.status).toBe(400);
   });
 });
 
