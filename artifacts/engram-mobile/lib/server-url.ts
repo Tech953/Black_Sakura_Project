@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
  * works fully offline against the desktop's embedded server.
  */
 const KEY = "engram.serverUrl";
+const listeners = new Set<() => void>();
 
 export const DEFAULT_SERVER_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
@@ -45,6 +46,15 @@ export async function setServerUrlOverride(url: string | null): Promise<void> {
   } else {
     await AsyncStorage.removeItem(KEY);
   }
+  for (const listener of listeners) listener();
+}
+
+/** Subscribe to changes made by Server Settings during this app session. */
+export function subscribeServerUrl(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 /** The URL the app should actually use right now. */
