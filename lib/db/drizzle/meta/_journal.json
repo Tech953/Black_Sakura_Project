@@ -113,6 +113,13 @@
       "when": 1789218771623,
       "tag": "0015_purple_cassandra_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789219986675,
+      "tag": "0016_futuristic_ghost_rider",
+      "breakpoints": true
     }
   ]
 }
