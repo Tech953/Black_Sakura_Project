@@ -10,6 +10,7 @@
 # What it produces in downloads/ (older siblings of the same kind are removed):
 #   ENGRAM-<desktopVersion>-x64.zip   (slim Windows portable zip, < 300 MiB)
 #   ENGRAM-android-<appVersion>.apk   (Gradle release APK, stable-key signed)
+#   ENGRAM-android-previous-<priorVersion>.apk (lower-version update fixture)
 #
 # Notes:
 # - The Windows portable ZIP is the only desktop target buildable on Linux
@@ -113,56 +114,145 @@ if [ "$DO_ANDROID" = 1 ]; then
   [ -f "$ANDROID_KEYSTORE_PATH" ] || { echo "ERROR: Android keystore not found at configured path." >&2; exit 1; }
 
   # The android/ project is NOT regenerated here (prebuild --clean would wipe
-  # the Hermes/Babel fixes), so guard against a stale native versionName: the
-  # APK we publish must actually carry the version and versionCode it claims.
-  GRADLE_VERSION="$(grep -oP 'versionName\s+"\K[^"]+' "$MOBILE_DIR/android/app/build.gradle" | head -1 || true)"
+  # the Hermes/Babel fixes). Version fields accept explicit Gradle properties
+  # so the predecessor can be built without mutating app.json or this project.
+  if ! grep -q 'findProperty("engramVersionCode")' "$MOBILE_DIR/android/app/build.gradle" ||
+    ! grep -q 'findProperty("engramVersionName")' "$MOBILE_DIR/android/app/build.gradle"; then
+    echo "ERROR: Android build.gradle does not support controlled version overrides." >&2
+    exit 1
+  fi
   APP_VERSION_CODE="$(node -e 'const j = require(process.argv[1]); process.stdout.write(String(j.expo.android.versionCode));' "$MOBILE_DIR/app.json")"
-  GRADLE_VERSION_CODE="$(grep -oP 'versionCode\s+\K[0-9]+' "$MOBILE_DIR/android/app/build.gradle" | head -1 || true)"
-  if [ "$GRADLE_VERSION" != "$APP_VERSION" ]; then
-    echo "ERROR: app.json version ($APP_VERSION) != android/app/build.gradle versionName ($GRADLE_VERSION)." >&2
-    echo "Update versionName (and versionCode) in $MOBILE_DIR/android/app/build.gradle to match app.json," >&2
-    echo "or re-run prebuild per docs/building-the-android-apk.md (then re-apply its Hermes/Babel fixes)." >&2
-    exit 1
-  fi
-  if [ "$GRADLE_VERSION_CODE" != "$APP_VERSION_CODE" ]; then
-    echo "ERROR: app.json versionCode ($APP_VERSION_CODE) != android/app/build.gradle versionCode ($GRADLE_VERSION_CODE)." >&2
-    echo "Update both versionCode values before building an Android release." >&2
-    exit 1
-  fi
 
   export ANDROID_HOME="$SDK_DIR"
   export ANDROID_SDK_ROOT="$SDK_DIR"
   export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=768}"
   GRADLE_JVMARGS="${ORG_GRADLE_JVMARGS:--Xmx1536m -XX:MaxMetaspaceSize=640m -Dfile.encoding=UTF-8}"
   pnpm --filter @workspace/engram-mobile run release:preflight
-  ( cd "$MOBILE_DIR/android" && ./gradlew :app:assembleRelease -x lint --no-daemon --max-workers="${GRADLE_MAX_WORKERS:-1}" -Dorg.gradle.jvmargs="$GRADLE_JVMARGS" )
-
-  APK_SRC="$MOBILE_DIR/android/app/build/outputs/apk/release/app-release.apk"
-  [ -f "$APK_SRC" ] || { echo "ERROR: APK not found at $APK_SRC" >&2; exit 1; }
-  node "$MOBILE_DIR/scripts/release-preflight.mjs" --skip-expo --apk "$APK_SRC"
 
   BUILD_TOOLS_DIR="$(find "$SDK_DIR/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
   APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
   AAPT="$BUILD_TOOLS_DIR/aapt"
   [ -x "$APKSIGNER" ] || { echo "ERROR: apksigner not found in $BUILD_TOOLS_DIR" >&2; exit 1; }
-  APK_CERT="$("$APKSIGNER" verify --print-certs "$APK_SRC" 2>/dev/null | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')"
-  KEY_CERT="$(keytool -list -v -keystore "$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" 2>/dev/null | awk -F': ' '/SHA256:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')"
+  [ -x "$AAPT" ] || { echo "ERROR: aapt not found in $BUILD_TOOLS_DIR" >&2; exit 1; }
+
+  APP_PACKAGE="$(node -e 'const j = require(process.argv[1]); process.stdout.write(String(j.expo.android.package));' "$MOBILE_DIR/app.json")"
+  APP_VERSION_CODE="$(node -e 'const j = require(process.argv[1]); process.stdout.write(String(j.expo.android.versionCode));' "$MOBILE_DIR/app.json")"
+  PREVIOUS_VERSION_CODE="$((APP_VERSION_CODE - 1))"
+  [ "$PREVIOUS_VERSION_CODE" -gt 0 ] || {
+    echo "ERROR: current Android versionCode must be greater than 1 to create an update fixture." >&2
+    exit 1
+  }
+  PREVIOUS_VERSION="$(node -e '
+    const version = String(process.argv[1]);
+    const parts = version.split(".").map(Number);
+    if (parts.length !== 3 || parts.some((part) => !Number.isInteger(part) || part < 0)) {
+      throw new Error(`Expected a three-part Android version, received ${version}`);
+    }
+    if (parts[2] > 0) parts[2] -= 1;
+    else if (parts[1] > 0) { parts[1] -= 1; parts[2] = 99; }
+    else if (parts[0] > 0) { parts[0] -= 1; parts[1] = 99; parts[2] = 99; }
+    else throw new Error(`Cannot derive a predecessor for ${version}`);
+    process.stdout.write(parts.join("."));
+  ' "$APP_VERSION")"
+  PREVIOUS_APK="$DOWNLOADS_DIR/ENGRAM-android-previous-$PREVIOUS_VERSION.apk"
+  rm -f "$DOWNLOADS_DIR"/ENGRAM-android-previous-*.apk
+
+  KEY_CERT="$(
+    keytool -list -v \
+      -keystore "$ANDROID_KEYSTORE_PATH" \
+      -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+      -alias "$ANDROID_KEY_ALIAS" 2>/dev/null |
+      awk -F': ' '/SHA256:/ {print $2; exit}' |
+      tr -d ':' | tr 'A-F' 'a-f'
+  )"
+  [ -n "$KEY_CERT" ] || {
+    echo "ERROR: could not read the configured Android release certificate." >&2
+    exit 1
+  }
+
+  apk_cert() {
+    "$APKSIGNER" verify --print-certs "$1" 2>/dev/null |
+      awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}' |
+      tr -d ':' | tr 'A-F' 'a-f'
+  }
+
+  assert_apk_metadata() {
+    local apk="$1"
+    local expected_code="$2"
+    local expected_version="$3"
+    local label="$4"
+    local badging
+    badging="$("$AAPT" dump badging "$apk")"
+    if ! printf '%s\n' "$badging" | grep -q "package: name='$APP_PACKAGE' "; then
+      echo "ERROR: $label package does not match $APP_PACKAGE." >&2
+      exit 1
+    fi
+    local actual_code actual_version
+    actual_code="$(printf '%s\n' "$badging" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p" | sed -n '1p')"
+    actual_version="$(printf '%s\n' "$badging" | sed -n "s/.*versionName='\\([^']*\\)'.*/\\1/p" | sed -n '1p')"
+    if [ "$actual_code" != "$expected_code" ] || [ "$actual_version" != "$expected_version" ]; then
+      echo "ERROR: $label metadata is version $actual_version (code $actual_code); expected $expected_version (code $expected_code)." >&2
+      exit 1
+    fi
+  }
+
+  # Build a lower-version release with the same source and release keystore.
+  # Gradle properties override only the manifest version fields; app.json and
+  # the checked-in current build remain unchanged.
+  echo "==> Android: building previous signed update fixture (v$PREVIOUS_VERSION, code $PREVIOUS_VERSION_CODE)"
+  (
+    cd "$MOBILE_DIR/android"
+    ./gradlew :app:assembleRelease \
+      -PengramVersionCode="$PREVIOUS_VERSION_CODE" \
+      -PengramVersionName="$PREVIOUS_VERSION" \
+      -x lint --no-daemon --max-workers="${GRADLE_MAX_WORKERS:-1}" \
+      -Dorg.gradle.jvmargs="$GRADLE_JVMARGS"
+  )
+  APK_SRC="$MOBILE_DIR/android/app/build/outputs/apk/release/app-release.apk"
+  [ -f "$APK_SRC" ] || { echo "ERROR: APK not found at $APK_SRC" >&2; exit 1; }
+  assert_apk_metadata "$APK_SRC" "$PREVIOUS_VERSION_CODE" "$PREVIOUS_VERSION" "Previous APK"
+  PREVIOUS_CERT="$(apk_cert "$APK_SRC")"
+  if [ -z "$PREVIOUS_CERT" ] || [ "$PREVIOUS_CERT" != "$KEY_CERT" ]; then
+    echo "ERROR: previous APK signer does not match the configured release keystore." >&2
+    exit 1
+  fi
+  cp "$APK_SRC" "$PREVIOUS_APK"
+
+  # Build the current release after the predecessor so the output path is
+  # unambiguously the candidate that will be published.
+  echo "==> Android: building release APK (v$APP_VERSION)"
+  (
+    cd "$MOBILE_DIR/android"
+    ./gradlew :app:assembleRelease \
+      -PengramVersionCode="$APP_VERSION_CODE" \
+      -PengramVersionName="$APP_VERSION" \
+      -x lint --no-daemon --max-workers="${GRADLE_MAX_WORKERS:-1}" \
+      -Dorg.gradle.jvmargs="$GRADLE_JVMARGS"
+  )
+  APK_SRC="$MOBILE_DIR/android/app/build/outputs/apk/release/app-release.apk"
+  [ -f "$APK_SRC" ] || { echo "ERROR: current APK not found at $APK_SRC" >&2; exit 1; }
+  node "$MOBILE_DIR/scripts/release-preflight.mjs" --skip-expo --apk "$APK_SRC"
+  assert_apk_metadata "$APK_SRC" "$APP_VERSION_CODE" "$APP_VERSION" "Current APK"
+
+  APK_CERT="$(apk_cert "$APK_SRC")"
   if [ -z "$APK_CERT" ] || [ "$APK_CERT" != "$KEY_CERT" ]; then
     echo "ERROR: APK signer does not match the configured release keystore; refusing to stage it." >&2
     exit 1
   fi
-  APK_BADGING="$("$AAPT" dump badging "$APK_SRC")"
-  APK_VERSION_CODE="$(printf '%s\n' "$APK_BADGING" | sed -n "s/.*versionCode='\\([^']*\\)'.*/\\1/p" | sed -n '1p')"
-  if [ "$APK_VERSION_CODE" != "$APP_VERSION_CODE" ]; then
-    echo "ERROR: built APK versionCode ($APK_VERSION_CODE) != app.json versionCode ($APP_VERSION_CODE)." >&2
+  if [ "$PREVIOUS_CERT" != "$APK_CERT" ]; then
+    echo "ERROR: predecessor and current APKs do not use the same release certificate." >&2
+    exit 1
+  fi
+  if cmp -s "$PREVIOUS_APK" "$APK_SRC"; then
+    echo "ERROR: predecessor APK is byte-identical to the current APK; update testing would be invalid." >&2
     exit 1
   fi
 
-  find "$DOWNLOADS_DIR" -maxdepth 1 -name '*.apk' -delete
+  rm -f "$DOWNLOADS_DIR/ENGRAM-android-$APP_VERSION.apk" "$DOWNLOADS_DIR/ENGRAM-android.apk"
   cp "$APK_SRC" "$DOWNLOADS_DIR/ENGRAM-android-$APP_VERSION.apk"
   cp "$APK_SRC" "$DOWNLOADS_DIR/ENGRAM-android.apk"
   ( cd "$DOWNLOADS_DIR" && sha256sum ENGRAM-android.apk > ENGRAM-android.apk.sha256 )
-  echo "==> Android: refreshed $DOWNLOADS_DIR/ENGRAM-android-$APP_VERSION.apk and $DOWNLOADS_DIR/ENGRAM-android.apk"
+  echo "==> Android: refreshed $DOWNLOADS_DIR/ENGRAM-android-$APP_VERSION.apk, $PREVIOUS_APK, and $DOWNLOADS_DIR/ENGRAM-android.apk"
 fi
 
 echo "==> Done. downloads/ now contains:"
