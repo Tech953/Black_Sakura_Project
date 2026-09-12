@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "wouter";
 import {
   useListEngrams,
   useListEngramWorldModel,
@@ -18,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Trash2, Plus, Globe, Eye, GitBranch, Archive, Target, FlaskConical, Lock, Share2 } from "lucide-react";
+import { Trash2, Plus, Globe, Eye, GitBranch, Archive, Target, FlaskConical, Lock, Share2, ScanEye, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -37,6 +38,12 @@ const PROVENANCE_META: Record<
   desired: { color: "text-amber-400", bar: "bg-amber-400", icon: Target },
   simulated: { color: "text-rose-400", bar: "bg-rose-400", icon: FlaskConical },
 };
+
+function mediaAssetId(source: string | undefined): number | null {
+  if (!source?.startsWith("media:")) return null;
+  const id = Number(source.slice("media:".length));
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
 
 export default function WorldModel() {
   const { data: engrams, isLoading: engramsLoading } = useListEngrams();
@@ -290,6 +297,16 @@ export default function WorldModel() {
                               {entry.scope === "shared" ? <Share2 className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
                               {entry.scope}
                             </Badge>
+                            {mediaAssetId(entry.source) !== null ? (
+                              <Badge
+                                variant="outline"
+                                className="font-mono text-[9px] uppercase tracking-wider border-cyan-400/30 text-cyan-300 gap-1"
+                                data-testid={`media-source-${entry.id}`}
+                              >
+                                <ScanEye className="w-2.5 h-2.5" />
+                                {t("title", { ns: "media" })}
+                              </Badge>
+                            ) : null}
                             {entry.source && (
                               <span className="font-mono text-[10px] text-muted-foreground/40">{entry.source}</span>
                             )}
@@ -303,6 +320,17 @@ export default function WorldModel() {
                               <div className={`h-full ${meta.bar} transition-all`} style={{ width: `${entry.confidence * 100}%` }} />
                             </div>
                             <span className="font-mono text-[10px] text-muted-foreground">{t("confidencePercent", { percent: Math.round(entry.confidence * 100) })}</span>
+                            {mediaAssetId(entry.source) !== null ? (
+                              <Link
+                                href={`/media?asset=${mediaAssetId(entry.source)}`}
+                                className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-cyan-300/80 hover:text-cyan-200"
+                                aria-label={t("details", { ns: "media" })}
+                                data-testid={`link-media-source-${entry.id}`}
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                {t("details", { ns: "media" })}
+                              </Link>
+                            ) : null}
                           </div>
                         </div>
                         <button
