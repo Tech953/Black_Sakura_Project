@@ -1,8 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { useGetStats } from "@workspace/api-client-react";
+import { useGetEngramStates, useGetStats, useListEngrams } from "@workspace/api-client-react";
+import type { EngramLiveState } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Cell } from "recharts";
+import { Activity, Gauge } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { getGetEngramStatesQueryKey } from "@workspace/api-client-react";
 
 const LAYER_COLORS: Record<string, string> = {
   working: "#22d3ee",
@@ -25,6 +29,16 @@ const CUSTOM_TOOLTIP_STYLE = {
 export default function Analytics() {
   const { t } = useTranslation("analytics");
   const { data: stats, isLoading } = useGetStats();
+  const { data: engrams, isLoading: engramsLoading } = useListEngrams();
+  const { data: liveStates, isLoading: statesLoading } = useGetEngramStates({
+    query: {
+      refetchInterval: 4000,
+      queryKey: getGetEngramStatesQueryKey(),
+    },
+  });
+
+  const liveById = new Map((liveStates ?? []).map((state) => [state.engramId, state]));
+  const rosterLoading = engramsLoading || statesLoading;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -52,6 +66,96 @@ export default function Analytics() {
           </Card>
         ))}
       </div>
+
+      {/* Fleet pressure overview */}
+      <Card className="bg-card/40 border-border/50 backdrop-blur-sm" data-testid="pressure-roster">
+        <CardHeader className="pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2 font-display tracking-widest text-sm text-primary/80">
+                <Gauge className="h-4 w-4" />
+                {t("pressureOverview")}
+              </CardTitle>
+              <p className="mt-1 font-mono text-[10px] text-muted-foreground/60">{t("pressureOverviewSubtitle")}</p>
+            </div>
+            <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground/50">
+              <Activity className="h-3 w-3" />
+              {t("pressureOverviewLive")}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {rosterLoading ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {[0, 1, 2].map((item) => (
+                <Skeleton key={item} className="h-28 bg-primary/5" />
+              ))}
+            </div>
+          ) : !engrams?.length ? (
+            <p className="py-6 text-center font-mono text-xs uppercase tracking-wider text-muted-foreground/60">
+              {t("pressureOverviewEmpty")}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {engrams.map((engram) => {
+                const live = liveById.get(engram.id);
+                const threshold = live?.initiationThreshold ?? engram.initiationThreshold;
+                const topCharge = live?.topCharge ?? 0;
+                const percent = Math.min(100, Math.round((topCharge / Math.max(0.01, threshold)) * 100));
+                const topDrive = live?.drives.reduce(
+                  (best, drive) => (!best || drive.charge > best.charge ? drive : best),
+                  live.drives[0],
+                );
+                const status = getRosterStatus(live);
+                const statusStyle = ROSTER_STATUS_STYLES[status];
+
+                return (
+                  <div
+                    key={engram.id}
+                    className="border border-border/40 bg-background/20 p-3.5"
+                    data-testid={`pressure-roster-item-${engram.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span className="text-xl leading-none" aria-hidden="true">{engram.symbol}</span>
+                        <div className="min-w-0">
+                          <div className="truncate font-mono text-xs uppercase tracking-wider text-foreground/90">{engram.name}</div>
+                          <div className="truncate font-mono text-[9px] uppercase text-muted-foreground/50">{topDrive?.label ?? t("pressureUnavailable")}</div>
+                        </div>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`font-mono text-[8px] uppercase ${statusStyle.badge}`}
+                        data-testid={`pressure-status-${engram.id}`}
+                      >
+                        {t(statusStyle.label)}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 space-y-1.5">
+                      <div className="flex items-center justify-between font-mono text-[10px]">
+                        <span className="uppercase tracking-wider text-muted-foreground/60">{t("pressure")}</span>
+                        <span className="tabular-nums text-foreground/70">
+                          {topCharge.toFixed(2)} / {threshold.toFixed(2)} · {percent}%
+                        </span>
+                      </div>
+                      <div
+                        className="h-1.5 overflow-hidden bg-secondary"
+                        role="progressbar"
+                        aria-label={t("pressureProgressLabel", { name: engram.name })}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={percent}
+                      >
+                        <div className={`h-full transition-all ${status === "ready" ? "bg-rose-400/80" : "bg-primary/60"}`} style={{ width: `${percent}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Memory by layer */}
@@ -154,4 +258,20 @@ export default function Analytics() {
       </div>
     </div>
   );
+}
+
+type RosterStatus = "charging" | "ready" | "cooldown" | "paused";
+
+const ROSTER_STATUS_STYLES: Record<RosterStatus, { label: string; badge: string }> = {
+  charging: { label: "statusCharging", badge: "border-primary/40 text-primary/70" },
+  ready: { label: "statusReady", badge: "border-rose-500/50 text-rose-400" },
+  cooldown: { label: "statusCooldown", badge: "border-sky-500/50 text-sky-400" },
+  paused: { label: "statusPaused", badge: "border-amber-500/50 text-amber-400" },
+};
+
+function getRosterStatus(live: EngramLiveState | undefined): RosterStatus {
+  if (!live?.autonomyEnabled || live.inBackoff) return "paused";
+  if (live.inCooldown) return "cooldown";
+  if (live.ready) return "ready";
+  return "charging";
 }
