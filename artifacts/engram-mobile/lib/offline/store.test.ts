@@ -24,7 +24,7 @@ describe("offline SQLite failure harness", () => {
     mocks.openDatabaseAsync.mockReset();
     ({
       getDb,
-       setOfflineStoreAccount,
+      setOfflineStoreAccount,
       buildPendingSyncBatch,
       markSyncBatchComplete,
       markTransmissionsSeen,
@@ -83,7 +83,9 @@ describe("offline SQLite failure harness", () => {
       runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
       getFirstAsync: vi.fn(async () => ({ id: 999 })),
     };
-    mocks.openDatabaseAsync.mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    mocks.openDatabaseAsync
+      .mockResolvedValueOnce(first)
+      .mockResolvedValueOnce(second);
 
     await setOfflineStoreAccount("user_A");
     await expect(getDb()).resolves.toBe(first);
@@ -107,7 +109,9 @@ describe("offline SQLite failure harness", () => {
 
     await getDb();
 
-    const migrations = database.execAsync.mock.calls.map(([sql]) => String(sql));
+    const migrations = database.execAsync.mock.calls.map(([sql]) =>
+      String(sql),
+    );
     expect(
       migrations.some((sql) =>
         sql.includes("conversations ADD COLUMN personaName TEXT"),
@@ -135,6 +139,8 @@ describe("offline SQLite failure harness", () => {
               title: "Offline",
               mode: "companion",
               engramSlug: "pyri",
+              personaName: "Night Analyst",
+              customEngram: "Be concise and evidence-led.",
               createdAt: "2026-09-04T12:00:00.000Z",
               archivedAt: "2026-09-04T12:05:00.000Z",
               syncVersion: 1,
@@ -175,6 +181,8 @@ describe("offline SQLite failure harness", () => {
       conversations: [
         {
           syncId: "conversation:7",
+          personaName: "Night Analyst",
+          customEngram: "Be concise and evidence-led.",
           archivedAt: "2026-09-04T12:05:00.000Z",
           messages: [{ syncId: "message:9" }],
         },
@@ -195,9 +203,9 @@ describe("offline SQLite failure harness", () => {
       .map(([sql]) => String(sql))
       .filter((sql) => sql.includes("JOIN engrams"));
     expect(engramQueries).not.toHaveLength(0);
-    expect(
-      engramQueries.every((sql) => sql.includes("$.isArchival")),
-    ).toBe(true);
+    expect(engramQueries.every((sql) => sql.includes("$.isArchival"))).toBe(
+      true,
+    );
   });
 
   it("defers observations for conversations omitted by the message budget", async () => {
