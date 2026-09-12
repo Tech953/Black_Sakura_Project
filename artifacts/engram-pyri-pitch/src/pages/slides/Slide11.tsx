@@ -2,7 +2,7 @@ import { SlideShell, SlideTitle } from "../../components/SlidePrimitives";
 
 export default function Slide11() {
   return (
-    <SlideShell number="11" section="SURFACES / 10">
+    <SlideShell number="20" section="SURFACES / 19">
       <div className="px-[7vw] pt-[14vh]">
         <SlideTitle eyebrow="WEB">Web: the operator&apos;s cognitive dashboard</SlideTitle>
         <div className="mt-[5vh] grid grid-cols-[0.28fr_1fr] overflow-hidden border border-line bg-surface">

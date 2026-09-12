@@ -2,7 +2,7 @@ import { CornerMark, SlideShell } from "../../components/SlidePrimitives";
 
 export default function Slide16() {
   return (
-    <SlideShell number="16" section="CLOSING / 15">
+    <SlideShell number="30" section="CLOSING / 29">
       <CornerMark className="left-[10vw] top-[18vh]" />
       <div className="flex h-full flex-col justify-center px-[10vw]">
         <div className="deck-mono text-[1.1vw] text-primary">THE PROPOSITION</div>

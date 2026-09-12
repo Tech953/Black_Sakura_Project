@@ -2,7 +2,7 @@ import { Bullet, SlideShell, SlideTitle } from "../../components/SlidePrimitives
 
 export default function Slide7() {
   return (
-    <SlideShell number="07" section="AGENCY / 06">
+    <SlideShell number="11" section="AGENCY / 10">
       <div className="px-[8vw] pt-[14vh]">
         <SlideTitle eyebrow="AUTONOMY">Autonomous engrams have a reason to speak</SlideTitle>
         <div className="mt-[6vh] grid grid-cols-[0.8fr_1.2fr] gap-[6vw]">

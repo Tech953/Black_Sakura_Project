@@ -2,7 +2,7 @@ import { Node, SlideShell, SlideTitle } from "../../components/SlidePrimitives";
 
 export default function Slide14() {
   return (
-    <SlideShell number="14" section="SIMULATION / 13">
+    <SlideShell number="26" section="SIMULATION / 25">
       <div className="px-[8vw] pt-[14vh]">
         <SlideTitle eyebrow="CONTAINED POSSIBILITY">Simulation is where possibilities stay contained</SlideTitle>
         <div className="mt-[6vh] grid grid-cols-[1.12fr_0.88fr] gap-[5vw]">

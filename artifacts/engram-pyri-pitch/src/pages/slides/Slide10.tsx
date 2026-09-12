@@ -2,7 +2,7 @@ import { SlideShell, SlideTitle } from "../../components/SlidePrimitives";
 
 export default function Slide10() {
   return (
-    <SlideShell number="10" section="EXPERIENCE / 09">
+    <SlideShell number="17" section="EXPERIENCE / 16">
       <div className="px-[8vw] pt-[14vh]">
         <SlideTitle eyebrow="IN-VOICE CHAT">The in-voice chat experience</SlideTitle>
         <div className="mt-[5vh] grid grid-cols-[1.15fr_0.85fr] gap-[5vw]">

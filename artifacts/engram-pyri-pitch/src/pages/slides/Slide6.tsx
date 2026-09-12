@@ -2,7 +2,7 @@ import { Bullet, SlideShell, SlideTitle } from "../../components/SlidePrimitives
 
 export default function Slide6() {
   return (
-    <SlideShell number="06" section="BELIEF / 05">
+    <SlideShell number="09" section="BELIEF / 08">
       <div className="grid h-full grid-cols-[0.82fr_1.18fr] gap-[6vw] px-[8vw] pt-[16vh]">
         <div>
           <SlideTitle eyebrow="BELIEF REGISTRY">
