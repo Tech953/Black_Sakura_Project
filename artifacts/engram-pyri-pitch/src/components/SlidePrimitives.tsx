@@ -23,7 +23,7 @@ export function SlideShell({
         <span className="deck-mono text-[1vw] text-muted">{section}</span>
       </div>
       <div className="absolute right-[6vw] top-[4.4vh] z-20 deck-mono text-[1vw] text-muted">
-        {number} / 16
+        {number} / 30
       </div>
       <div className="relative z-10 h-full w-full">{children}</div>
     </div>

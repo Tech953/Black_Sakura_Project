@@ -2,7 +2,7 @@ import { SlideShell, SlideTitle } from "../../components/SlidePrimitives";
 
 export default function Slide12() {
   return (
-    <SlideShell number="12" section="SURFACES / 11">
+    <SlideShell number="22" section="SURFACES / 21">
       <div className="grid h-full grid-cols-[0.95fr_1.05fr] gap-[8vw] px-[9vw] pt-[14vh]">
         <div>
           <SlideTitle eyebrow="MOBILE">Mobile: the companion in the flow of life</SlideTitle>

@@ -2,7 +2,7 @@ import { SlideShell, SlideTitle } from "../../components/SlidePrimitives";
 
 export default function Slide15() {
   return (
-    <SlideShell number="15" section="SAFETY / 14">
+    <SlideShell number="28" section="SAFETY / 27">
       <div className="px-[8vw] pt-[14vh]">
         <SlideTitle eyebrow="SAFETY BY CONSTRUCTION">Safety is part of the architecture</SlideTitle>
         <div className="mt-[6vh] grid grid-cols-2 gap-[1.2vw]">

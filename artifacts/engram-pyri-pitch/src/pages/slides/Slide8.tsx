@@ -2,7 +2,7 @@ import { Node, SlideShell, SlideTitle } from "../../components/SlidePrimitives";
 
 export default function Slide8() {
   return (
-    <SlideShell number="08" section="EXPRESSION / 07">
+    <SlideShell number="14" section="EXPRESSION / 13">
       <div className="px-[8vw] pt-[14vh]">
         <SlideTitle eyebrow="FROM STATE TO SIGNAL">From inner state to an in-voice response</SlideTitle>
         <div className="mt-[7vh] grid grid-cols-4 gap-[1.2vw]">
