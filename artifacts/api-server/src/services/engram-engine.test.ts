@@ -174,6 +174,7 @@ vi.mock("../lib/engram-generation", () => ({
 
 import {
   accrue,
+  projectDriveState,
   pickKind,
   runTick,
   COOLDOWN_MS,
@@ -346,6 +347,35 @@ describe("accrue — pressure accrual over time", () => {
     expect(charges[0].id).toBe("high");
     expect(charges[1].id).toBe("low");
     expect(charges[0].charge).toBeGreaterThan(charges[1].charge);
+  });
+});
+
+describe("projectDriveState — read-only live pressure projection", () => {
+  it("projects pressure from the persisted state and elapsed base rate", () => {
+    const now = 1_000_000_000_000;
+    const engram = makeEngram({
+      lastTickAt: new Date(now - 100_000),
+      driveState: { order: 0.2 },
+      drives: [{ id: "order", label: "Order", description: "", weight: 1, baseRate: 0.001 }],
+    });
+
+    expect(projectDriveState(engram, now).order).toBeCloseTo(0.3, 5);
+  });
+
+  it("caps projected elapsed time and pressure without mutating the engram", () => {
+    const now = 1_000_000_000_000;
+    const driveState = { order: 0.2 };
+    const engram = makeEngram({
+      lastTickAt: new Date(now - (MAX_ELAPSED_SEC + 10_000) * 1000),
+      driveState,
+      drives: [{ id: "order", label: "Order", description: "", weight: 1, baseRate: 1 }],
+    });
+
+    const projected = projectDriveState(engram, now);
+
+    expect(projected.order).toBe(1);
+    expect(engram.driveState).toBe(driveState);
+    expect(engram.driveState?.order).toBe(0.2);
   });
 });
 

@@ -61,6 +61,26 @@ export interface DriveCharge {
   charge: number; // pressure * weight
 }
 
+/**
+ * Project pressure for display without persisting it or consuming engine jitter.
+ * The engine's stochastic accrual remains the source of truth for initiation; this
+ * stable midpoint projection only makes read-only live-state displays move between
+ * persisted ticks.
+ */
+export function projectDriveState(engram: Engram, now: number): DriveState {
+  const last = engram.lastTickAt ? new Date(engram.lastTickAt).getTime() : now;
+  const elapsedSec = clamp((now - last) / 1000, 0, MAX_ELAPSED_SEC);
+  const state: DriveState = { ...(engram.driveState ?? {}) };
+
+  for (const drive of engram.drives) {
+    const prev = typeof state[drive.id] === "number" ? state[drive.id] : 0;
+    const gained = drive.baseRate * elapsedSec;
+    state[drive.id] = clamp(prev + gained, 0, 1);
+  }
+
+  return state;
+}
+
 /** Accrue per-drive pressure from elapsed time (no LLM). Returns the new state + ranked charges. */
 export function accrue(
   engram: Engram,

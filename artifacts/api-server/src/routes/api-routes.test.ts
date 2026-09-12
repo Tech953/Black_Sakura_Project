@@ -1450,6 +1450,38 @@ describe("CSV engram import", () => {
 // =============================================================================
 // Manual /tick and /transmit
 // =============================================================================
+describe("live engram state", () => {
+  it("projects pressure since the last tick without writing the stored state", async () => {
+    const engram = seedEngram({
+      lastTickAt: new Date(Date.now() - 100_000),
+      driveState: { order: 0.2 },
+      drives: [
+        { id: "order", label: "Order", description: "tidiness", weight: 1, baseRate: 0.001 },
+      ],
+    });
+
+    const res = await fetch(`${base}/api/engrams/state`);
+    expect(res.status).toBe(200);
+    const states = (await res.json()) as Array<{
+      engramId: number;
+      topCharge: number;
+      drives: Array<{ id: string; pressure: number; charge: number }>;
+    }>;
+    const state = states.find((item) => item.engramId === engram.id);
+
+    expect(state).toBeDefined();
+    expect(state?.topCharge).toBeCloseTo(0.3, 2);
+    expect(state?.drives).toEqual([
+      expect.objectContaining({
+        id: "order",
+        pressure: expect.closeTo(0.3, 2),
+        charge: expect.closeTo(0.3, 2),
+      }),
+    ]);
+    expect(engram.driveState).toEqual({ order: 0.2 });
+  });
+});
+
 describe("manual tick and transmit", () => {
   it("force-ticks and generates a transmission for an above-threshold engram", async () => {
     seedEngram({
