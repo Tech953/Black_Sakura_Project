@@ -58,6 +58,7 @@ import type {
   SettingsPayload,
   UpdateStatus,
 } from "./desktop-bridge";
+import { createAppInfo, createUpdateStatusStore } from "./update-status";
 
 // ---------------------------------------------------------------------------
 // Paths. In a packaged app, bundled resources live under process.resourcesPath
@@ -147,15 +148,16 @@ let quitting = false;
 // startup check stays quiet unless an update is actually downloaded).
 let manualUpdateCheck = false;
 
-let updateStatus: UpdateStatus = { state: "idle" };
-
-function setUpdateStatus(status: UpdateStatus): void {
-  updateStatus = status;
+const updateStatusStore = createUpdateStatusStore((status) => {
   for (const window of [mainWindow, settingsWindow]) {
     if (window && !window.isDestroyed()) {
       window.webContents.send("update:status", status);
     }
   }
+});
+
+function setUpdateStatus(status: UpdateStatus): void {
+  updateStatusStore.set(status);
 }
 
 const WINDOW_TITLE = "ENGRAM — PYRI";
@@ -1384,11 +1386,9 @@ ipcMain.handle("settings:close", () => {
 
 // App version + current auto-update status, read by the Settings window so it can
 // show which version is installed and reflect download/ready progress live.
-ipcMain.handle("app:info", () => ({
-  version: app.getVersion(),
-  updatesSupported: app.isPackaged,
-  updateStatus,
-}));
+ipcMain.handle("app:info", () =>
+  createAppInfo(app.getVersion(), app.isPackaged, updateStatusStore.get()),
+);
 
 // "Check for Updates" button in Settings — reuses the same flow as the menu item.
 ipcMain.handle("update:check", () => {
