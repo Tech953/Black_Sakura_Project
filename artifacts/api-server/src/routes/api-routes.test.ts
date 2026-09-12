@@ -25,6 +25,19 @@ vi.mock("../lib/llm", () => ({
     message: "The language-model provider is unavailable.",
   }),
 }));
+const simulationRouteMock = vi.hoisted(() => ({
+  openOperatorSimulation: vi.fn(),
+  kickSimulation: vi.fn(),
+  applySimulationControl: vi.fn(),
+  maybeRunSimulationStep: vi.fn(async () => null),
+}));
+vi.mock("../lib/simulations", () => ({
+  openOperatorSimulation: simulationRouteMock.openOperatorSimulation,
+  kickSimulation: simulationRouteMock.kickSimulation,
+  applySimulationControl: simulationRouteMock.applySimulationControl,
+  maybeRunSimulationStep: simulationRouteMock.maybeRunSimulationStep,
+  SimulationTransitionError: class SimulationTransitionError extends Error {},
+}));
 
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import openaiRouter from "./openai";
@@ -33,6 +46,7 @@ import engramWorldModelRouter from "./engram-world-model";
 import offlineSyncRouter from "./offline-sync";
 import messagesRouter from "./messages";
 import hubRouter from "./hub";
+import simulationsRouter from "./simulations";
 import {
   CreateOpenaiConversationResponse,
   ListOpenaiConversationsResponse,
@@ -83,6 +97,7 @@ function buildApp(): Express {
   app.use("/api", offlineSyncRouter);
   app.use("/api", messagesRouter);
   app.use("/api", hubRouter);
+  app.use("/api", simulationsRouter);
   return app;
 }
 
@@ -167,6 +182,10 @@ function resetStore() {
   h.failureState.nextInsertTable = null;
   h.updateCalls.length = 0;
   h.create.mockClear();
+  simulationRouteMock.openOperatorSimulation.mockReset();
+  simulationRouteMock.kickSimulation.mockReset();
+  simulationRouteMock.applySimulationControl.mockReset();
+  simulationRouteMock.maybeRunSimulationStep.mockReset();
   engramImportDraftStore.reset();
 }
 
@@ -1806,6 +1825,70 @@ describe("Hub controls routes", () => {
       body: JSON.stringify({ paused: "yes" }),
     });
     expect(response.status).toBe(400);
+  });
+});
+
+describe("operator simulation route", () => {
+  it("opens a guarded simulation without a premise so the service can generate one", async () => {
+    const engram = seedEngram({ name: "Scenario Guide", mode: "simulation", simulationEnabled: true });
+    h.store.hubSpacesTable.push({
+      id: 5,
+      ownerId: "test-owner",
+      slug: "simulation-chamber",
+      name: "Simulation Chamber",
+      kind: "simulation_chamber",
+      actionScope: "simulate",
+      allowsInitiative: true,
+      sortOrder: 1,
+    });
+    h.store.engramPresenceTable.push({
+      id: 1,
+      engramId: engram.id,
+      spaceId: 5,
+      status: "active",
+      enteredAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const created = {
+      id: 9,
+      ownerId: "test-owner",
+      engramId: engram.id,
+      spaceId: 5,
+      premise: "What if the vault flooded?",
+      status: "running",
+      currentStep: 0,
+      maxSteps: 5,
+      stepCooldownSeconds: 360,
+      lastSteppedAt: null,
+      exitSummary: null,
+      startedAt: new Date(),
+      pausedAt: null,
+      endedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    simulationRouteMock.openOperatorSimulation.mockResolvedValueOnce(created);
+
+    const response = await fetch(`${base}/api/simulations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ engramId: engram.id }),
+    });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      id: 9,
+      premise: "What if the vault flooded?",
+      status: "running",
+    });
+    expect(simulationRouteMock.openOperatorSimulation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        engram,
+        premise: undefined,
+        chamber: expect.objectContaining({ id: 5, actionScope: "simulate" }),
+      }),
+    );
+    expect(simulationRouteMock.kickSimulation).toHaveBeenCalledWith(created);
   });
 });
 
