@@ -73,8 +73,7 @@ function missingNativeLibraries(root) {
   });
 }
 
-function ensureLlamaNativeLibraries() {
-  const root = llamaRoot();
+export function ensureLlamaNativeLibraries({ root = llamaRoot(), runCommand = run } = {}) {
   let missing = missingNativeLibraries(root);
   if (missing.length > 0) {
     console.warn(
@@ -84,7 +83,7 @@ function ensureLlamaNativeLibraries() {
     if (!existsSync(downloader)) {
       throw new Error(`llama.rn native artifact downloader not found at ${downloader}`);
     }
-    run(process.execPath, ["./install/download-native-artifacts.js"], { cwd: root });
+    runCommand(process.execPath, ["./install/download-native-artifacts.js"], { cwd: root });
     missing = missingNativeLibraries(root);
   }
   if (missing.length > 0) {
@@ -275,9 +274,12 @@ function verifyCheckedInAndroidPrivacyPolicy() {
   console.log("Checked-in Android backup and permission policy is hardened.");
 }
 
-function verifyApkPrivacyPolicy(apkPath) {
-  const aapt = findAndroidBuildTool("aapt");
-  const manifest = run(aapt, ["dump", "xmltree", apkPath, "AndroidManifest.xml"], {
+function verifyApkPrivacyPolicy(
+  apkPath,
+  { runCommand = run, findTool = findAndroidBuildTool } = {},
+) {
+  const aapt = findTool("aapt");
+  const manifest = runCommand(aapt, ["dump", "xmltree", apkPath, "AndroidManifest.xml"], {
     capture: true,
   });
   const allowBackup = manifest.match(
@@ -293,7 +295,7 @@ function verifyApkPrivacyPolicy(apkPath) {
     throw new Error("Release APK is missing explicit Android backup exclusion rules.");
   }
 
-  const permissions = run(aapt, ["dump", "permissions", apkPath], { capture: true });
+  const permissions = runCommand(aapt, ["dump", "permissions", apkPath], { capture: true });
   for (const permission of requiredAndroidPermissions) {
     if (!permissions.includes(permission)) {
       throw new Error(`Release APK is missing required permission ${permission}.`);
@@ -305,7 +307,7 @@ function verifyApkPrivacyPolicy(apkPath) {
     }
   }
 
-  const resources = run(aapt, ["dump", "resources", apkPath], { capture: true });
+  const resources = runCommand(aapt, ["dump", "resources", apkPath], { capture: true });
   for (const resource of ["backup_rules", "data_extraction_rules"]) {
     if (!resources.includes(resource)) {
       throw new Error(`Release APK is missing XML resource ${resource}.`);
@@ -314,11 +316,17 @@ function verifyApkPrivacyPolicy(apkPath) {
   console.log("Release APK backup and permission policy is hardened.");
 }
 
-function verifyApkFreshness(apkPath) {
-  const aapt = findAndroidBuildTool("aapt");
-  const expected = currentAndroidBuildInputs();
-  const badging = run(aapt, ["dump", "badging", apkPath], { capture: true });
-  const manifest = run(aapt, ["dump", "xmltree", apkPath, "AndroidManifest.xml"], {
+function verifyApkFreshness(
+  apkPath,
+  {
+    runCommand = run,
+    findTool = findAndroidBuildTool,
+    expected = currentAndroidBuildInputs(),
+  } = {},
+) {
+  const aapt = findTool("aapt");
+  const badging = runCommand(aapt, ["dump", "badging", apkPath], { capture: true });
+  const manifest = runCommand(aapt, ["dump", "xmltree", apkPath, "AndroidManifest.xml"], {
     capture: true,
   });
   const actual = {
@@ -329,10 +337,10 @@ function verifyApkFreshness(apkPath) {
   console.log("Release APK matches current Android package, version, and privacy inputs.");
 }
 
-function verifyArm64ElfAlignment(apkPath) {
+function verifyArm64ElfAlignment(apkPath, { runCommand = run } = {}) {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "engram-apk-"));
   try {
-    run("unzip", ["-qq", apkPath, "lib/arm64-v8a/*.so", "-d", tempDir], {
+    runCommand("unzip", ["-qq", apkPath, "lib/arm64-v8a/*.so", "-d", tempDir], {
       capture: true,
     });
     const libraryDir = path.join(tempDir, "lib", "arm64-v8a");
@@ -343,7 +351,7 @@ function verifyArm64ElfAlignment(apkPath) {
       throw new Error("Release APK has no arm64-v8a shared libraries.");
     }
     for (const library of libraries) {
-      const output = run("readelf", ["-lW", path.join(libraryDir, library)], {
+      const output = runCommand("readelf", ["-lW", path.join(libraryDir, library)], {
         capture: true,
       });
       const alignments = output
@@ -371,14 +379,25 @@ function verifyArm64ElfAlignment(apkPath) {
   }
 }
 
-function verifyApk(apkPath) {
+export function verifyApk(
+  apkPath,
+  {
+    runCommand = run,
+    findTool = findAndroidBuildTool,
+    expected,
+  } = {},
+) {
   const resolved = path.resolve(process.cwd(), apkPath);
   if (!existsSync(resolved) || !statSync(resolved).isFile()) {
     throw new Error(`Release APK not found at ${resolved}`);
   }
-  verifyApkFreshness(resolved);
-  verifyApkPrivacyPolicy(resolved);
-  const entries = run("unzip", ["-Z1", resolved], { capture: true })
+  verifyApkFreshness(resolved, {
+    runCommand,
+    findTool,
+    expected: expected ?? currentAndroidBuildInputs(),
+  });
+  verifyApkPrivacyPolicy(resolved, { runCommand, findTool });
+  const entries = runCommand("unzip", ["-Z1", resolved], { capture: true })
     .split(/\r?\n/)
     .filter(Boolean);
   const packagedAbis = [
@@ -416,10 +435,10 @@ function verifyApk(apkPath) {
       entry.endsWith(".so"),
   );
   console.log(`Release APK contains ${packaged.length} librnllama libraries.`);
-  const zipalign = findAndroidBuildTool("zipalign");
-  run(zipalign, ["-c", "-P", "16", "-v", "4", resolved], { capture: true });
+  const zipalign = findTool("zipalign");
+  runCommand(zipalign, ["-c", "-P", "16", "-v", "4", resolved], { capture: true });
   console.log("Release APK passes 16 KB ZIP alignment verification.");
-  verifyArm64ElfAlignment(resolved);
+  verifyArm64ElfAlignment(resolved, { runCommand });
 }
 
 function parseArgs(argv) {
