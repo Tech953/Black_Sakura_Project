@@ -1012,6 +1012,7 @@
     "autoPremisePlaceholder": "engramが自身のドライブと世界の文脈からシナリオを生成します…",
     "premisePlaceholder": "シナリオ前提 — 例:『地下室の鏡写しの世界で目覚め、すべての画面に別々の年が映っている…』",
     "noCapableEngrams": "シミュレーション可能なengramがありません。シミュレーションを有効にし、シミュレーションまたはfull-boundedモードを使用してください。",
+    "sharedParticipants": "{{count}} engrams will alternate turns in this simulation.",
     "opening": "起動中…",
     "launchSimulation": "シミュレーション開始",
     "openedTitle": "シミュレーションを開始しました",

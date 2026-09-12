@@ -1012,6 +1012,7 @@
     "autoPremisePlaceholder": "L'engramme générera un scénario à partir de ses pulsions et du contexte de son monde…",
     "premisePlaceholder": "Prémisse du scénario — ex. « Vous vous réveillez dans une version miroir de votre sous-sol où chaque écran affiche une année différente… »",
     "noCapableEngrams": "Aucun engramme capable de simuler n'est disponible. Activez la simulation et utilisez le mode simulation ou le mode complet borné.",
+    "sharedParticipants": "{{count}} engrams will alternate turns in this simulation.",
     "opening": "Ouverture…",
     "launchSimulation": "Lancer la simulation",
     "openedTitle": "Simulation ouverte",

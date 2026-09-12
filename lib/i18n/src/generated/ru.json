@@ -1012,6 +1012,7 @@
     "autoPremisePlaceholder": "Engram создаст сценарий на основе своих стремлений и контекста мира…",
     "premisePlaceholder": "Основа сценария — напр. «Вы просыпаетесь в зеркальной версии своего подвала, где каждый экран показывает разный год…»",
     "noCapableEngrams": "Нет доступных engram, способных к симуляции. Включите симуляцию и используйте режим симуляции или full-bounded.",
+    "sharedParticipants": "{{count}} engrams will alternate turns in this simulation.",
     "opening": "Открытие…",
     "launchSimulation": "Запустить симуляцию",
     "openedTitle": "Симуляция открыта",

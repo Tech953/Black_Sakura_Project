@@ -1890,6 +1890,111 @@ describe("operator simulation route", () => {
     );
     expect(simulationRouteMock.kickSimulation).toHaveBeenCalledWith(created);
   });
+
+  it("opens one simulation for multiple co-present participants and returns their roster", async () => {
+    const first = seedEngram({ name: "First", symbol: "◇" });
+    const second = seedEngram({ name: "Second", symbol: "○" });
+    h.store.hubSpacesTable.push({
+      id: 5,
+      ownerId: "test-owner",
+      slug: "simulation-chamber",
+      name: "Simulation Chamber",
+      kind: "simulation_chamber",
+      actionScope: "simulate",
+      allowsInitiative: true,
+      sortOrder: 1,
+    });
+    for (const participant of [first, second]) {
+      h.store.engramPresenceTable.push({
+        id: h.store.engramPresenceTable.length + 1,
+        engramId: participant.id,
+        spaceId: 5,
+        status: "active",
+        enteredAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+    const created = {
+      id: 10,
+      ownerId: "test-owner",
+      engramId: first.id,
+      spaceId: 5,
+      premise: "What if the vault flooded?",
+      status: "running",
+      currentStep: 0,
+      maxSteps: 5,
+      stepCooldownSeconds: 360,
+      lastSteppedAt: null,
+      exitSummary: null,
+      startedAt: new Date(),
+      pausedAt: null,
+      endedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    simulationRouteMock.openOperatorSimulation.mockResolvedValueOnce(created);
+
+    const response = await fetch(`${base}/api/simulations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        engramId: first.id,
+        participantEngramIds: [first.id, second.id],
+        premise: "What if the vault flooded?",
+      }),
+    });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      id: 10,
+      participantEngramIds: [first.id, second.id],
+    });
+    expect(simulationRouteMock.openOperatorSimulation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        engram: first,
+        participants: [first, second],
+        premise: "What if the vault flooded?",
+      }),
+    );
+  });
+
+  it("rejects a shared simulation when a participant is not co-present", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Elsewhere" });
+    h.store.hubSpacesTable.push({
+      id: 5,
+      ownerId: "test-owner",
+      slug: "simulation-chamber",
+      name: "Simulation Chamber",
+      kind: "simulation_chamber",
+      actionScope: "simulate",
+      allowsInitiative: true,
+      sortOrder: 1,
+    });
+    h.store.engramPresenceTable.push({
+      id: 1,
+      engramId: first.id,
+      spaceId: 5,
+      status: "active",
+      enteredAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const response = await fetch(`${base}/api/simulations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        engramId: first.id,
+        participantEngramIds: [first.id, second.id],
+        premise: "What if the vault flooded?",
+      }),
+    });
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { error?: string };
+    expect(body.error).toContain("Elsewhere");
+    expect(simulationRouteMock.openOperatorSimulation).not.toHaveBeenCalled();
+  });
 });
 
 // =============================================================================

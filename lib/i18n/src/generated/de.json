@@ -1012,6 +1012,7 @@
     "autoPremisePlaceholder": "Das engram erzeugt ein Szenario aus seinen Trieben und seinem Weltkontext…",
     "premisePlaceholder": "Szenario-Prämisse — z. B. 'Du wachst in einer gespiegelten Version deines Kellers auf, wo jeder Bildschirm ein anderes Jahr zeigt…'",
     "noCapableEngrams": "Keine simulationsfähigen engrams verfügbar. Aktiviere Simulation und verwende den Simulations- oder den vollständig begrenzten Modus.",
+    "sharedParticipants": "{{count}} engrams will alternate turns in this simulation.",
     "opening": "Öffne…",
     "launchSimulation": "Simulation starten",
     "openedTitle": "Simulation geöffnet",

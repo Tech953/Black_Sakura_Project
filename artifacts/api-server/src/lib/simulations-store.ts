@@ -24,15 +24,25 @@ export async function loadSimulations(opts: {
   status?: SimulationStatus;
 }): Promise<EngramSimulation[]> {
   const filters = [eq(engramSimulationsTable.ownerId, opts.ownerId)];
-  if (typeof opts.engramId === "number")
-    filters.push(eq(engramSimulationsTable.engramId, opts.engramId));
   if (opts.status) filters.push(eq(engramSimulationsTable.status, opts.status));
   const where = filters.length ? and(...filters) : undefined;
-  return db
-    .select()
-    .from(engramSimulationsTable)
-    .where(where)
-    .orderBy(desc(engramSimulationsTable.createdAt));
+  const query = db.select().from(engramSimulationsTable);
+  if (typeof opts.engramId === "number") {
+    return query
+      .innerJoin(
+        engramSimulationParticipantsTable,
+        eq(engramSimulationParticipantsTable.simulationId, engramSimulationsTable.id),
+      )
+      .where(
+        and(
+          ...filters,
+          eq(engramSimulationParticipantsTable.engramId, opts.engramId),
+        ),
+      )
+      .orderBy(desc(engramSimulationsTable.createdAt))
+      .then((rows) => rows.map((row) => row.engram_simulations));
+  }
+  return query.where(where).orderBy(desc(engramSimulationsTable.createdAt));
 }
 
 export async function loadSimulationById(
@@ -243,7 +253,7 @@ export async function appendSimulationStep(opts: {
   confidence: number;
 }): Promise<{ step: EngramSimulationStep; worldModelEntry: EngramWorldModelEntry }> {
   const worldModelEntry = await appendWorldModelEntry({
-    engramId: opts.simulation.engramId,
+    engramId: opts.speakerEngramId ?? opts.simulation.engramId,
     provenance: "simulated",
     content: opts.narrative,
     confidence: opts.confidence,

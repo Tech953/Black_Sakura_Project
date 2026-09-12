@@ -1012,6 +1012,7 @@
     "autoPremisePlaceholder": "engram अपने drives और world context से एक scenario बनाएगा…",
     "premisePlaceholder": "परिदृश्य आधार — जैसे 'आप अपने बेसमेंट के एक दर्पण-जैसे संस्करण में जागते हैं जहाँ हर स्क्रीन एक अलग साल दिखाती है…'",
     "noCapableEngrams": "कोई simulation-capable engram उपलब्ध नहीं है। Simulation सक्षम करें और simulation या full-bounded mode का उपयोग करें।",
+    "sharedParticipants": "{{count}} engrams will alternate turns in this simulation.",
     "opening": "खोला जा रहा है…",
     "launchSimulation": "सिमुलेशन शुरू करें",
     "openedTitle": "सिमुलेशन खुल गया",
