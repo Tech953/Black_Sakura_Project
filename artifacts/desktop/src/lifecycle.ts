@@ -74,3 +74,22 @@ export async function stopDesktopWork(deps: {
   await deps.stopServer();
   await deps.stopLlama();
 }
+
+export type BeforeQuitEvent = {
+  preventDefault: () => void;
+};
+
+export function createBeforeQuitHandler(deps: {
+  hasWork: () => boolean;
+  isQuitting: () => boolean;
+  markQuitting: () => void;
+  stopDesktopWork: () => Promise<void>;
+  quit: () => void;
+}): (event: BeforeQuitEvent) => void {
+  return (event) => {
+    if (!deps.hasWork() || deps.isQuitting()) return;
+    event.preventDefault();
+    deps.markQuitting();
+    void deps.stopDesktopWork().finally(deps.quit);
+  };
+}
