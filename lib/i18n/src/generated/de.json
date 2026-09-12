@@ -1146,6 +1146,7 @@
     "override": "Überschreiben",
     "sendToQuiescence": "In Ruhestand senden",
     "incomingContact": "Eingehender Kontakt",
+    "digestSummary": "Periodic Digest",
     "newCount": "{{count}} neu",
     "markAllSeen": "Alle als gesehen markieren",
     "noEngramReachedOut": "Noch kein engram hat Kontakt aufgenommen",

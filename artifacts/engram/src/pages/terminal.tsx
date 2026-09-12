@@ -45,6 +45,7 @@ import {
   Power,
   FlaskConical,
   FileText,
+  Layers,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -579,6 +580,14 @@ function HumanMessageRow({
             <Badge variant="outline" className={`font-mono text-[8px] uppercase tracking-wider ${status.cls}`}>
               {t(status.labelKey)}
             </Badge>
+            {msg.isDigest && (
+              <Badge
+                variant="outline"
+                className="font-mono text-[8px] uppercase tracking-wider border-violet-500/40 text-violet-300"
+              >
+                <Layers className="w-2.5 h-2.5 mr-1" /> {t("digestSummary")}
+              </Badge>
+            )}
             {unseen && (
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title={t("unseen")} />
             )}
@@ -586,7 +595,15 @@ function HumanMessageRow({
               {relativeTime(msg.createdAt, t)}
             </span>
           </div>
-          <p className={`text-sm leading-relaxed font-sans ${blocked ? "text-rose-200/70 italic" : "text-foreground/85"}`}>
+          <p
+            className={`text-sm leading-relaxed font-sans ${
+              blocked
+                ? "text-rose-200/70 italic"
+                : msg.isDigest
+                  ? "text-violet-100/90 whitespace-pre-line"
+                  : "text-foreground/85"
+            }`}
+          >
             {msg.content}
           </p>
           {blocked && msg.reason && (

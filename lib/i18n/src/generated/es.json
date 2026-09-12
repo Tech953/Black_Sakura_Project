@@ -1146,6 +1146,7 @@
     "override": "Anulación",
     "sendToQuiescence": "Enviar a quiescencia",
     "incomingContact": "Contacto entrante",
+    "digestSummary": "Periodic Digest",
     "newCount": "{{count}} nuevos",
     "markAllSeen": "Marcar todo como visto",
     "noEngramReachedOut": "Ningún engram se ha comunicado aún",

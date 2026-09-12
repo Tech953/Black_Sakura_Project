@@ -1146,6 +1146,7 @@
     "override": "تجاوز",
     "sendToQuiescence": "إرسال إلى السكون",
     "incomingContact": "التواصل الوارد",
+    "digestSummary": "Periodic Digest",
     "newCount": "{{count}} جديد",
     "markAllSeen": "تحديد الكل كمقروء",
     "noEngramReachedOut": "لم يتواصل أي engram بعد",

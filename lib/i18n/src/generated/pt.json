@@ -1146,6 +1146,7 @@
     "override": "Sobrescrever",
     "sendToQuiescence": "Enviar para Quiescência",
     "incomingContact": "Contato Recebido",
+    "digestSummary": "Periodic Digest",
     "newCount": "{{count}} novos",
     "markAllSeen": "Marcar tudo como visto",
     "noEngramReachedOut": "Nenhum engram entrou em contato ainda",

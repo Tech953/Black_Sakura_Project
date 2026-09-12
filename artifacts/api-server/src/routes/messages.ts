@@ -20,6 +20,7 @@ function serializeMessage(m: EngramMessage) {
     content: m.content,
     reason: m.reason ?? null,
     seen: m.seen,
+    isDigest: m.isDigest,
     deliveredAt: m.deliveredAt ? m.deliveredAt.toISOString() : null,
     createdAt: m.createdAt.toISOString(),
   };

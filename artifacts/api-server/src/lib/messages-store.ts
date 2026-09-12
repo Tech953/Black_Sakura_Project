@@ -1,14 +1,20 @@
 import { db } from "@workspace/db";
-import { engramMessagesTable, engramsTable } from "@workspace/db/schema";
+import {
+  engramMessagesTable,
+  engramsTable,
+  SYSTEM_OWNER_ID,
+} from "@workspace/db/schema";
 import type {
   EngramMessage,
   EngramMessageChannel,
   NewEngramMessage,
 } from "@workspace/db";
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, ne } from "drizzle-orm";
 
 const MESSAGES_DEFAULT_LIMIT = 50;
 const MESSAGES_MAX_LIMIT = 500;
+const DIGEST_BATCH_LIMIT = 25;
+const DIGEST_PREVIEW_LIMIT = 280;
 
 /** Statuses that count as an actual contact reaching the human (for rate limiting). */
 const CONTACTED_STATUSES = ["delivered", "queued", "digest"] as const;
@@ -142,4 +148,102 @@ export async function recentHumanCounts(
     if (r.createdAt >= hourAgo) hour += 1;
   }
   return { hour, day: rows.length };
+}
+
+/**
+ * Collapse unseen social-priority contact into one auditable operator message.
+ * Source rows keep their original digest status for history, while digestedAt
+ * makes the operation retry-safe and the isDigest marker distinguishes the
+ * summary from an ordinary contact in the terminal.
+ */
+export async function createHumanDigest(
+  ownerId: string,
+  now: Date = new Date(),
+): Promise<EngramMessage | null> {
+  return db.transaction(async (tx) => {
+    const pending = await tx
+      .select({
+        message: engramMessagesTable,
+        engramName: engramsTable.name,
+      })
+      .from(engramMessagesTable)
+      .innerJoin(engramsTable, eq(engramMessagesTable.fromEngramId, engramsTable.id))
+      .where(
+        and(
+          eq(engramsTable.ownerId, ownerId),
+          eq(engramMessagesTable.channel, "human"),
+          eq(engramMessagesTable.status, "digest"),
+          eq(engramMessagesTable.seen, false),
+          eq(engramMessagesTable.isDigest, false),
+          isNull(engramMessagesTable.digestedAt),
+        ),
+      )
+      .orderBy(asc(engramMessagesTable.createdAt), asc(engramMessagesTable.id))
+      .limit(DIGEST_BATCH_LIMIT)
+      .for("update", { skipLocked: true });
+
+    if (pending.length === 0) return null;
+
+    const preview = pending
+      .map(({ message, engramName }) => {
+        const content = message.content.trim();
+        const excerpt =
+          content.length > DIGEST_PREVIEW_LIMIT
+            ? `${content.slice(0, DIGEST_PREVIEW_LIMIT - 1)}…`
+            : content;
+        return `• ${engramName}: ${excerpt}`;
+      })
+      .join("\n");
+    const sourceIds = pending.map(({ message }) => message.id);
+    const first = pending[0].message;
+    const [summary] = await tx
+      .insert(engramMessagesTable)
+      .values({
+        fromEngramId: first.fromEngramId,
+        toEngramId: null,
+        spaceId: null,
+        channel: "human",
+        priority: "social",
+        status: "digest",
+        content: `Periodic digest · ${pending.length} low-priority message${
+          pending.length === 1 ? "" : "s"
+        }\n${preview}`,
+        reason: "Bundled from unseen social-priority contact",
+        seen: false,
+        isDigest: true,
+        deliveredAt: now,
+      })
+      .returning();
+
+    await tx
+      .update(engramMessagesTable)
+      .set({ digestedAt: now })
+      .where(
+        and(
+          inArray(engramMessagesTable.id, sourceIds),
+          isNull(engramMessagesTable.digestedAt),
+        ),
+      );
+
+    return summary;
+  });
+}
+
+/** Find owners whose held social contact still needs a digest pass. */
+export async function listPendingHumanDigestOwners(): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ ownerId: engramsTable.ownerId })
+    .from(engramMessagesTable)
+    .innerJoin(engramsTable, eq(engramMessagesTable.fromEngramId, engramsTable.id))
+    .where(
+      and(
+        ne(engramsTable.ownerId, SYSTEM_OWNER_ID),
+        eq(engramMessagesTable.channel, "human"),
+        eq(engramMessagesTable.status, "digest"),
+        eq(engramMessagesTable.seen, false),
+        eq(engramMessagesTable.isDigest, false),
+        isNull(engramMessagesTable.digestedAt),
+      ),
+    );
+  return rows.map((row) => row.ownerId);
 }

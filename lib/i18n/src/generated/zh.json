@@ -1146,6 +1146,7 @@
     "override": "覆盖",
     "sendToQuiescence": "送入静默",
     "incomingContact": "传入联系",
+    "digestSummary": "Periodic Digest",
     "newCount": "{{count}} 条新消息",
     "markAllSeen": "全部标为已读",
     "noEngramReachedOut": "尚无 engram 主动联系",
