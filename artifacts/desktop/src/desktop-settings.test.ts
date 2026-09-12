@@ -28,6 +28,19 @@ describe("persisted desktop settings migration", () => {
     expect(normalizeCustomGgufMetadata(valid)).toEqual(valid);
   });
 
+  it("accepts the optional model-library display and usage metadata", () => {
+    expect(
+      normalizeCustomGgufMetadata({
+        ...valid,
+        displayName: "Qwen local",
+        lastUsedAt: "2026-09-12T12:00:00.000Z",
+      }),
+    ).toMatchObject({
+      displayName: "Qwen local",
+      lastUsedAt: "2026-09-12T12:00:00.000Z",
+    });
+  });
+
   it.each([
     { ...valid, path: "../outside.gguf" },
     { ...valid, path: "other.gguf" },
@@ -35,6 +48,9 @@ describe("persisted desktop settings migration", () => {
     { ...valid, originalFilename: "../outside.gguf" },
     { ...valid, ggufVersion: 4 },
     { ...valid, importedAt: "not-a-date" },
+    { ...valid, displayName: " " },
+    { ...valid, displayName: "x".repeat(129) },
+    { ...valid, lastUsedAt: "not-a-date" },
   ])("drops forged or malformed custom metadata", (candidate) => {
     expect(normalizeCustomGgufMetadata(candidate)).toBeUndefined();
   });

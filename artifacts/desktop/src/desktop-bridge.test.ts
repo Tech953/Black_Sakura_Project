@@ -27,6 +27,7 @@ describe("desktop renderer bridge", () => {
   it("exposes only allowlisted high-level operations", () => {
     const { ipc } = fakeIpc();
     expect(Object.keys(createEngramDesktopBridge(ipc)).sort()).toEqual([
+      "activateGguf",
       "cancelGgufImport",
       "cancelOfflineModelDownload",
       "checkForUpdates",
@@ -41,6 +42,7 @@ describe("desktop renderer bridge", () => {
       "onUpdateStatus",
       "removeGguf",
       "removeOfflineModel",
+      "renameGguf",
       "saveSettings",
     ]);
   });

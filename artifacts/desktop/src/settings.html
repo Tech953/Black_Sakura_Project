@@ -109,6 +109,21 @@
         transition: width 0.1s linear;
       }
       .error-text { color: #f87171; font-weight: 500; margin-top: 8px; font-size: 12px; }
+      .model-library { display: grid; gap: 10px; margin-top: 12px; }
+      .model-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 12px;
+        background: var(--bg);
+      }
+      .model-card.active { border-color: var(--cyan-dim); }
+      .model-card-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+      .model-card-name { color: var(--text); font-weight: 600; }
+      .model-card-status { color: var(--cyan); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+      .model-card-status.bad { color: #f87171; }
+      .model-card-file { color: var(--muted); font-size: 11px; margin-top: 4px; word-break: break-all; }
+      .model-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+      .model-card-actions button { padding: 6px 10px; font-size: 11px; }
     </style>
   </head>
   <body>
@@ -149,28 +164,18 @@
 
     <fieldset id="custom-panel" class="hidden">
       <legend>Custom — Managed GGUF</legend>
-      <p class="hint">Imported models are copied into ENGRAM storage and survive app updates. Compatibility is checked by starting the packaged engine.</p>
+      <p class="hint">Keep several imported models in ENGRAM storage. Compatibility is checked by starting the engine before a model becomes active.</p>
 
       <div id="custom-idle-view" class="panel-box">
-        <div id="custom-model-details" class="hidden">
-           <div class="data-grid">
-             <div class="lbl">Status</div><div class="val" id="cm-status"></div>
-             <div class="lbl">File</div><div class="val" id="cm-file"></div>
-             <div class="lbl">Size</div><div class="val" id="cm-size"></div>
-             <div class="lbl">GGUF v</div><div class="val" id="cm-version"></div>
-             <div class="lbl">SHA256</div><div class="val" id="cm-sha"></div>
-             <div class="lbl">Imported</div><div class="val" id="cm-date"></div>
-             <div class="lbl">Storage</div><div class="val" id="cm-storage" style="font-size:11px; color:var(--muted);"></div>
-           </div>
-        </div>
+        <div id="custom-library" class="model-library"></div>
         <div id="custom-no-model" class="hidden">
            <p style="margin:0 0 10px 0; color:var(--muted)">No custom model imported.</p>
         </div>
+        <p id="custom-storage" class="hint"></p>
         <div class="actions" style="margin-top:12px; justify-content: flex-start;">
-          <button id="btn-choose-gguf" type="button">Import GGUF...</button>
-          <button id="btn-remove-gguf" type="button" class="hidden">Remove Model</button>
+          <button id="btn-choose-gguf" type="button">Import another GGUF...</button>
         </div>
-         <div id="cm-error" class="error-text hidden"></div>
+        <div id="cm-error" class="error-text hidden"></div>
       </div>
 
       <div id="custom-selection-view" class="panel-box hidden">
@@ -294,6 +299,9 @@
         $("allow-lan").disabled = locked;
          $("btn-download-offline-model").disabled = locked;
          $("btn-remove-offline-model").disabled = locked;
+         document.querySelectorAll("#custom-library button").forEach((button) => {
+           button.disabled = locked;
+         });
       }
 
        function renderOfflineModel(model) {
@@ -335,51 +343,74 @@
          }
        }
 
-      function renderCustomModel(cm) {
-         if (!cm) return;
-         const isNone = cm.status === "none";
-         const customRadio = document.querySelector('input[name="mode"][value="custom"]');
-         customRadio.disabled = false;
+       function escapeHtml(value) {
+         return String(value)
+           .replaceAll("&", "&amp;")
+           .replaceAll("<", "&lt;")
+           .replaceAll(">", "&gt;")
+           .replaceAll('"', "&quot;")
+           .replaceAll("'", "&#039;");
+       }
 
-         if (isNone) {
-           $("custom-no-model").classList.remove("hidden");
-           $("custom-model-details").classList.add("hidden");
-           $("btn-choose-gguf").textContent = "Import GGUF...";
-           $("btn-remove-gguf").classList.add("hidden");
-         } else {
-           $("custom-no-model").classList.add("hidden");
-           $("custom-model-details").classList.remove("hidden");
+       function renderCustomModels(models, storageBytes, storageLimitBytes) {
+          const library = $("custom-library");
+          const customRadio = document.querySelector('input[name="mode"][value="custom"]');
+          customRadio.disabled = false;
+          library.replaceChildren();
+          const entries = Array.isArray(models) ? models : [];
+          $("custom-no-model").classList.toggle("hidden", entries.length > 0);
+          $("custom-storage").textContent =
+            `${entries.length} managed model${entries.length === 1 ? "" : "s"} · ` +
+            `${formatBytes(storageBytes || 0)} / ${formatBytes(storageLimitBytes || 0)} used`;
+          $("btn-choose-gguf").textContent =
+            entries.length > 0 ? "Import another GGUF..." : "Import GGUF...";
 
-           $("cm-status").textContent = cm.status.toUpperCase();
-           $("cm-status").style.color = (cm.status === "active" || cm.status === "available") ? "var(--cyan)" : "#f87171";
+          for (const model of entries) {
+            const metadata = model.metadata;
+            if (!metadata) continue;
+            const bad = model.compatibility !== "compatible";
+            const status = model.status === "active"
+              ? "ACTIVE"
+              : model.status === "available"
+                ? "READY"
+                : String(model.status || "UNKNOWN").toUpperCase();
+            const actions = model.status === "active"
+              ? `<button type="button" data-model-action="rename" data-sha256="${metadata.sha256}">Rename</button>
+                 <button type="button" data-model-action="remove" data-sha256="${metadata.sha256}">Remove (fallback first)</button>`
+              : `<button type="button" class="primary" data-model-action="activate" data-sha256="${metadata.sha256}" ${bad ? "disabled" : ""}>Use this model</button>
+                 <button type="button" data-model-action="rename" data-sha256="${metadata.sha256}">Rename</button>
+                 <button type="button" data-model-action="remove" data-sha256="${metadata.sha256}">Remove</button>`;
+            const card = document.createElement("div");
+            card.className = `model-card${model.status === "active" ? " active" : ""}`;
+            card.innerHTML = `
+              <div class="model-card-head">
+                <span class="model-card-name">${escapeHtml(metadata.displayName || metadata.filename)}</span>
+                <span class="model-card-status${bad ? " bad" : ""}">${escapeHtml(status)}</span>
+              </div>
+              <div class="model-card-file">${escapeHtml(metadata.filename)}</div>
+              <div class="data-grid">
+                <div class="lbl">Size</div><div class="val">${escapeHtml(formatBytes(metadata.byteSize))}</div>
+                <div class="lbl">GGUF</div><div class="val">v${escapeHtml(metadata.ggufVersion)}</div>
+                <div class="lbl">Fingerprint</div><div class="val">${escapeHtml(metadata.sha256.substring(0, 16))}…</div>
+                <div class="lbl">Compatibility</div><div class="val">${bad ? "Incompatible" : "Compatible"}</div>
+                <div class="lbl">Last used</div><div class="val">${escapeHtml(new Date(metadata.lastUsedAt).toLocaleString())}</div>
+              </div>
+              ${model.error ? `<div class="error-text">${escapeHtml(model.error)}</div>` : ""}
+              <div class="model-card-actions">${actions}</div>`;
+            library.appendChild(card);
+          }
+       }
 
-           $("cm-storage").textContent = cm.storageLocation || "Unknown";
-
-           if (cm.metadata) {
-             $("cm-file").textContent = cm.metadata.filename;
-             $("cm-size").textContent = formatBytes(cm.metadata.byteSize);
-             $("cm-version").textContent = cm.metadata.ggufVersion;
-             $("cm-sha").textContent = cm.metadata.sha256 ? cm.metadata.sha256.substring(0, 12) + "..." : "N/A";
-             $("cm-date").textContent = new Date(cm.metadata.importedAt).toLocaleString();
-           } else {
-             $("cm-file").textContent = "N/A";
-             $("cm-size").textContent = "N/A";
-             $("cm-version").textContent = "N/A";
-             $("cm-sha").textContent = "N/A";
-             $("cm-date").textContent = "N/A";
-           }
-
-           if (cm.error) {
-             $("cm-error").textContent = cm.error + " (Select Custom mode and click Save & Restart to retry)";
-             $("cm-error").classList.remove("hidden");
-           } else {
-             $("cm-error").classList.add("hidden");
-           }
-
-           $("btn-choose-gguf").textContent = "Replace GGUF...";
-           $("btn-remove-gguf").classList.remove("hidden");
+       async function refreshCustomModels() {
+         const st = await window.engram.getSettings();
+         renderCustomModels(st.customModels, st.customStorageBytes, st.customStorageLimitBytes);
+         const current = document.querySelector('input[name="mode"]:checked');
+         if (current && current.value === "custom" && st.mode !== "custom") {
+           document.querySelector('input[name="mode"][value="offline"]').checked = true;
+           applyMode("offline");
          }
-      }
+         return st;
+       }
 
       function applyMode(mode) {
         $("bundled-panel").classList.toggle("hidden", mode !== "bundled");
@@ -394,8 +425,8 @@
          bundledModelIncluded = s.bundledModelIncluded;
          renderOfflineModel(s.offlineModel);
         if (s.customModel) {
-          renderCustomModel(s.customModel);
-          if (s.mode === "custom" && s.customModel.status === "none") {
+          renderCustomModels(s.customModels, s.customStorageBytes, s.customStorageLimitBytes);
+          if (s.mode === "custom" && s.customModels.length === 0) {
             s.mode = "offline";
           }
         }
@@ -444,14 +475,14 @@
              $("custom-idle-view").classList.remove("hidden");
              document.querySelector('input[name="mode"][value="custom"]').checked = true;
              applyMode("custom");
-             window.engram.getSettings().then(st => renderCustomModel(st.customModel));
+             window.engram.getSettings().then(st => renderCustomModels(st.customModels, st.customStorageBytes, st.customStorageLimitBytes));
            } else if (status.state === "cancelled" || status.state === "error") {
              setUiLock(false);
              currentOperationId = null;
              $("custom-progress-view").classList.add("hidden");
              $("custom-idle-view").classList.remove("hidden");
              window.engram.getSettings().then(st => {
-               renderCustomModel(st.customModel);
+                renderCustomModels(st.customModels, st.customStorageBytes, st.customStorageLimitBytes);
                if (status.state === "error") {
                   $("cm-error").textContent = "Import error: " + (status.error || "unknown");
                   $("cm-error").classList.remove("hidden");
@@ -500,7 +531,55 @@
         el.addEventListener("change", (e) => applyMode(e.target.value)),
       );
 
-      // Custom model button handlers
+       $("custom-library").addEventListener("click", async (event) => {
+          const button = event.target.closest("button[data-model-action]");
+          if (!button) return;
+          const action = button.dataset.modelAction;
+          const sha256 = button.dataset.sha256;
+          if (!sha256) return;
+          $("cm-error").classList.add("hidden");
+          if (action === "rename") {
+            const current = button.closest(".model-card").querySelector(".model-card-name").textContent;
+            const displayName = window.prompt("Display name for this model", current);
+            if (displayName === null) return;
+            const result = await window.engram.renameGguf(sha256, displayName);
+            if (!result.ok) {
+              $("cm-error").textContent = "Rename error: " + (result.error || "unknown");
+              $("cm-error").classList.remove("hidden");
+            } else {
+              await refreshCustomModels();
+            }
+          } else if (action === "activate") {
+            setUiLock(true);
+            const result = await window.engram.activateGguf(sha256);
+            setUiLock(false);
+            if (!result.ok) {
+              $("cm-error").textContent = "Activation error: " + (result.error || "unknown");
+              $("cm-error").classList.remove("hidden");
+            } else {
+              const st = await refreshCustomModels();
+              document.querySelector('input[name="mode"][value="custom"]').checked = true;
+              applyMode(st.mode);
+            }
+          } else if (action === "remove") {
+            const active = button.closest(".model-card").classList.contains("active");
+            const prompt = active
+              ? "Remove the active model? ENGRAM will switch to its safe fallback first."
+              : "Remove this managed GGUF from ENGRAM storage? This cannot be undone.";
+            if (!window.confirm(prompt)) return;
+            setUiLock(true);
+            const result = await window.engram.removeGguf(sha256);
+            setUiLock(false);
+            if (!result.ok) {
+              $("cm-error").textContent = "Remove error: " + (result.error || "unknown");
+              $("cm-error").classList.remove("hidden");
+            } else {
+              await refreshCustomModels();
+            }
+          }
+       });
+
+       // Custom model import handler
       $("btn-choose-gguf").addEventListener("click", async () => {
          $("cm-error").classList.add("hidden");
          const res = await window.engram.chooseGguf();
@@ -524,24 +603,6 @@
          currentSelectionId = null;
          $("custom-selection-view").classList.add("hidden");
          $("custom-idle-view").classList.remove("hidden");
-      });
-
-      $("btn-remove-gguf").addEventListener("click", async () => {
-         if (!window.confirm("Remove this managed GGUF from ENGRAM storage? This reclaims its disk space and cannot be undone.")) return;
-         $("cm-error").classList.add("hidden");
-         const res = await window.engram.removeGguf();
-         if (res.ok) {
-           const s = await window.engram.getSettings();
-           renderCustomModel(s.customModel);
-           const customChecked = document.querySelector('input[name="mode"]:checked').value === "custom";
-           if (s.customModel.status === "none" && customChecked) {
-             document.querySelector('input[name="mode"][value="offline"]').checked = true;
-             applyMode("offline");
-           }
-         } else {
-           $("cm-error").textContent = "Remove error: " + (res.error || "unknown");
-           $("cm-error").classList.remove("hidden");
-         }
       });
 
       $("btn-import-gguf").addEventListener("click", async () => {
