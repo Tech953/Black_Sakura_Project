@@ -58,6 +58,11 @@ import { isOfflineMode, useOfflineMode } from "@/lib/offline/mode";
 import { sendOfflineMessage } from "@/lib/offline/chat";
 import { getArchivalConversationId } from "@/lib/offline/store";
 import { resolveReplyLanguage } from "@/lib/i18n";
+import {
+  consumeSseChunk,
+  flushSseChunk,
+  type SseParserState,
+} from "@/lib/mobile-flow-seams";
 import { isRtlLanguage } from "@/lib/layout-direction";
 import { OFFLINE_LIMITS } from "@/lib/offline/limits";
 import { resolveServerApiUrl } from "@/lib/server-url";
@@ -402,29 +407,19 @@ export default function ChatScreen() {
       if (!reader) throw new Error("no body");
 
       const decoder = new TextDecoder();
-      let buffer = "";
+      const parserState: SseParserState = { buffer: "" };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (data === "[DONE]" || data.length === 0) continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.done) continue;
-            if (parsed.error) throw new Error(parsed.error);
-            if (parsed.content) pushToken(parsed.content);
-          } catch {
-            // skip malformed line
-          }
-        }
+        const result = consumeSseChunk(
+          parserState,
+          decoder.decode(value, { stream: true }),
+        );
+        result.deltas.forEach(pushToken);
       }
+      const trailing = flushSseChunk(parserState);
+      trailing.deltas.forEach(pushToken);
     } catch {
       flushStream();
       setShowTyping(false);
