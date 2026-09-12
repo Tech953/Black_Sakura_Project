@@ -38,7 +38,9 @@ function downloadsDir(): string {
 
 /** Sanitize a filename for a Content-Disposition header (no quotes/control). */
 export function safeAttachment(filename: string): string {
-  const safe = filename.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
+  const safe = filename
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
   return `attachment; filename="${safe || "download"}"`;
 }
 
@@ -78,7 +80,11 @@ function extOf(name: string): string {
 // ---- Shared latest-release fetch (cached per repo) ------------------------
 
 type ReleaseAsset = { name: string; url: string; size: number };
-type ReleaseManifest = { tagName: string | null; assets: ReleaseAsset[] };
+type ReleaseManifest = {
+  tagName: string | null;
+  publishedAt: string | null;
+  assets: ReleaseAsset[];
+};
 
 const releaseCache = new Map<
   string,
@@ -116,6 +122,7 @@ async function getLatestRelease(repo: string): Promise<ReleaseManifest | null> {
     if (res.ok) {
       const json = (await res.json()) as {
         tag_name?: string;
+        published_at?: string;
         assets?: {
           name?: string;
           browser_download_url?: string;
@@ -124,6 +131,7 @@ async function getLatestRelease(repo: string): Promise<ReleaseManifest | null> {
       };
       value = {
         tagName: (json.tag_name ?? "").replace(/^v/, "") || null,
+        publishedAt: json.published_at ?? null,
         assets: (json.assets ?? [])
           .filter((a) => a.name && a.browser_download_url)
           .map((a) => ({
@@ -150,6 +158,7 @@ export type ResolvedApk =
       sizeBytes: number;
       localPath: string;
       version: string | null;
+      publishedAt: string | null;
     }
   | {
       kind: "github";
@@ -157,6 +166,7 @@ export type ResolvedApk =
       sizeBytes: number;
       url: string;
       version: string | null;
+      publishedAt: string | null;
     };
 
 export function resolveBundledApk(): ResolvedApk | null {
@@ -172,6 +182,7 @@ export function resolveBundledApk(): ResolvedApk | null {
           sizeBytes: st.size,
           localPath: explicit,
           version: deriveVersion(filename),
+          publishedAt: null,
         };
       }
     } catch {
@@ -204,6 +215,7 @@ export function resolveBundledApk(): ResolvedApk | null {
     sizeBytes: best.size,
     localPath: path.join(dir, best.file),
     version: deriveVersion(best.file),
+    publishedAt: null,
   };
 }
 
@@ -221,6 +233,7 @@ export async function resolveApk(): Promise<ResolvedApk | null> {
     sizeBytes: asset.size,
     url: asset.url,
     version: release?.tagName ?? deriveVersion(asset.name),
+    publishedAt: release?.publishedAt ?? null,
   };
 }
 
@@ -240,6 +253,7 @@ export type ResolvedDesktopFile = {
 export type DesktopResolution = {
   source: "bundled" | "storage" | "github" | null;
   version: string | null;
+  publishedAt: string | null;
   installers: ResolvedDesktopFile[];
 };
 
@@ -290,10 +304,11 @@ function resolveBundledDesktop(): ResolvedDesktopFile[] {
 
 async function resolveReleaseDesktop(): Promise<{
   version: string | null;
+  publishedAt: string | null;
   installers: ResolvedDesktopFile[];
 }> {
   const release = await getLatestRelease(downloadsRepo());
-  if (!release) return { version: null, installers: [] };
+  if (!release) return { version: null, publishedAt: null, installers: [] };
   const installers: ResolvedDesktopFile[] = [];
   for (const a of release.assets) {
     const os = desktopOsForFile(a.name);
@@ -307,7 +322,11 @@ async function resolveReleaseDesktop(): Promise<{
       url: a.url,
     });
   }
-  return { version: release.tagName, installers };
+  return {
+    version: release.tagName,
+    publishedAt: release.publishedAt,
+    installers,
+  };
 }
 
 export async function resolveDesktop(): Promise<DesktopResolution> {
@@ -315,7 +334,12 @@ export async function resolveDesktop(): Promise<DesktopResolution> {
   if (bundled.length > 0) {
     const version =
       bundled.map((b) => deriveVersion(b.filename)).find((v) => v) ?? null;
-    return { source: "bundled", version, installers: bundled };
+    return {
+      source: "bundled",
+      version,
+      publishedAt: null,
+      installers: bundled,
+    };
   }
   const stored = await resolveStoredDesktopDownload();
   if (stored) {
@@ -324,6 +348,7 @@ export async function resolveDesktop(): Promise<DesktopResolution> {
       return {
         source: "storage",
         version: deriveVersion(stored.filename),
+        publishedAt: null,
         installers: [
           {
             os,
@@ -342,10 +367,11 @@ export async function resolveDesktop(): Promise<DesktopResolution> {
     return {
       source: "github",
       version: release.version,
+      publishedAt: release.publishedAt,
       installers: release.installers,
     };
   }
-  return { source: null, version: null, installers: [] };
+  return { source: null, version: null, publishedAt: null, installers: [] };
 }
 
 /**

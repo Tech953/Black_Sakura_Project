@@ -350,6 +350,7 @@
     "title": "PYRI HERUNTERLADEN",
     "subtitleSlim": "Native Desktop-App — verbinde ein lokales Modell für private, komplett offline KI",
     "latestVersion": "Neueste v{{version}}",
+    "publishedOn": "Published {{date}}",
     "autoUpdateHeadline": "Einmal installieren — die Desktop-App hält sich selbst aktuell.",
     "autoUpdateBody": "Bei jedem Start prüft sie auf eine neuere Version und aktualisiert sich online lautlos im Hintergrund. Die Android-APK wird per Sideload installiert — hol dir hier die neueste Version, wann immer du aktualisieren willst.",
     "osMacName": "macOS",

@@ -350,6 +350,7 @@
     "title": "PYRIをダウンロード",
     "subtitleSlim": "ネイティブデスクトップアプリ — ローカルモデルを接続して、完全オフラインのプライベートAIを実現",
     "latestVersion": "最新 v{{version}}",
+    "publishedOn": "Published {{date}}",
     "autoUpdateHeadline": "一度インストールすれば — デスクトップアプリが自動で最新状態を保ちます。",
     "autoUpdateBody": "起動のたびに新しいリリースを確認し、オンライン時はバックグラウンドで静かに更新します。Android APKはサイドロード形式です — 更新したいときはここで最新ビルドを取得してください。",
     "osMacName": "macOS",

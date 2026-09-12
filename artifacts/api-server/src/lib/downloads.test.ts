@@ -77,4 +77,60 @@ describe("desktop download resolution", () => {
     });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it("returns the latest release date and matching installer assets", async () => {
+    resolveStoredDesktopDownload.mockResolvedValue(null);
+    process.env["DOWNLOADS_GITHUB_REPO"] = "Tech953/Ch-IO";
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        tag_name: "v1.0.24",
+        published_at: "2026-09-10T12:00:00Z",
+        assets: [
+          {
+            name: "ENGRAM-1.0.24-arm64.dmg",
+            browser_download_url:
+              "https://github.com/Tech953/Ch-IO/releases/download/v1.0.24/ENGRAM-1.0.24-arm64.dmg",
+            size: 100,
+          },
+          {
+            name: "ENGRAM-1.0.24-x64.AppImage",
+            browser_download_url:
+              "https://github.com/Tech953/Ch-IO/releases/download/v1.0.24/ENGRAM-1.0.24-x64.AppImage",
+            size: 200,
+          },
+        ],
+      }),
+    } as Response);
+
+    const resolved = await resolveDesktop();
+
+    expect(resolved).toMatchObject({
+      source: "github",
+      version: "1.0.24",
+      publishedAt: "2026-09-10T12:00:00Z",
+    });
+    expect(resolved.installers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          os: "mac",
+          filename: "ENGRAM-1.0.24-arm64.dmg",
+          url: "https://github.com/Tech953/Ch-IO/releases/download/v1.0.24/ENGRAM-1.0.24-arm64.dmg",
+        }),
+        expect.objectContaining({
+          os: "linux",
+          filename: "ENGRAM-1.0.24-x64.AppImage",
+          url: "https://github.com/Tech953/Ch-IO/releases/download/v1.0.24/ENGRAM-1.0.24-x64.AppImage",
+        }),
+      ]),
+    );
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://api.github.com/repos/Tech953/Ch-IO/releases/latest",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: "application/vnd.github+json",
+        }),
+      }),
+    );
+  });
 });

@@ -350,6 +350,7 @@
     "title": "DESCARGAR PYRI",
     "subtitleSlim": "App nativa de escritorio — conecta un modelo local para IA privada y totalmente offline",
     "latestVersion": "Última v{{version}}",
+    "publishedOn": "Published {{date}}",
     "autoUpdateHeadline": "Instala una vez — la app de escritorio se mantiene actualizada.",
     "autoUpdateBody": "En cada inicio busca una versión más nueva y se actualiza en segundo plano en silencio cuando está online. El APK de Android se instala por sideload — descarga aquí la compilación más reciente cuando quieras actualizar.",
     "osMacName": "macOS",

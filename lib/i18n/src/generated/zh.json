@@ -350,6 +350,7 @@
     "title": "下载 PYRI",
     "subtitleSlim": "原生桌面应用 — 连接本地模型，实现私密、完全离线的 AI",
     "latestVersion": "最新 v{{version}}",
+    "publishedOn": "Published {{date}}",
     "autoUpdateHeadline": "安装一次 — 桌面应用会自动保持最新。",
     "autoUpdateBody": "每次启动都会检查新版本，并在联网时静默后台更新。Android APK 需侧载 — 想更新时请在此获取最新构建。",
     "osMacName": "macOS",
