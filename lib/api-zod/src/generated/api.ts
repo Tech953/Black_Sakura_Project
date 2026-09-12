@@ -1741,8 +1741,13 @@ export const ReplyToEngramMessageResponse = zod.object({
 /**
  * @summary Open an operator-directed simulation with an optional scenario premise
  */
+export const createSimulationBodyParticipantEngramIdsMax = 8;
+
+
+
 export const CreateSimulationBody = zod.object({
   "engramId": zod.number(),
+  "participantEngramIds": zod.array(zod.number()).min(1).max(createSimulationBodyParticipantEngramIdsMax).optional(),
   "premise": zod.string().optional().describe('Optional specific scenario; omitted to generate one from the engram\'s context'),
   "maxSteps": zod.number().optional().describe('Optional step budget (capped server-side)')
 })
@@ -1750,6 +1755,7 @@ export const CreateSimulationBody = zod.object({
 export const CreateSimulationResponse = zod.object({
   "id": zod.number(),
   "engramId": zod.number(),
+  "participantEngramIds": zod.array(zod.number()),
   "spaceId": zod.number(),
   "premise": zod.string(),
   "status": zod.enum(['proposed', 'running', 'paused', 'ended']),
@@ -1777,6 +1783,7 @@ export const ListSimulationsQueryParams = zod.object({
 export const ListSimulationsResponseItem = zod.object({
   "id": zod.number(),
   "engramId": zod.number(),
+  "participantEngramIds": zod.array(zod.number()),
   "spaceId": zod.number(),
   "premise": zod.string(),
   "status": zod.enum(['proposed', 'running', 'paused', 'ended']),
@@ -1805,6 +1812,7 @@ export const ListSimulationStepsResponseItem = zod.object({
   "id": zod.number(),
   "simulationId": zod.number(),
   "stepNumber": zod.number(),
+  "speakerEngramId": zod.number().nullable(),
   "narrative": zod.string(),
   "worldModelEntryId": zod.number().nullable(),
   "createdAt": zod.string()
@@ -1826,6 +1834,7 @@ export const ControlSimulationBody = zod.object({
 export const ControlSimulationResponse = zod.object({
   "id": zod.number(),
   "engramId": zod.number(),
+  "participantEngramIds": zod.array(zod.number()),
   "spaceId": zod.number(),
   "premise": zod.string(),
   "status": zod.enum(['proposed', 'running', 'paused', 'ended']),

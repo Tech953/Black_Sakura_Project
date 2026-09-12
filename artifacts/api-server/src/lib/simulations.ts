@@ -20,7 +20,9 @@ import {
   createSimulation,
   loadActiveSimulationForEngram,
   loadRunningSimulations,
+  loadSimulationParticipants,
   loadSimulationSteps,
+  markSimulationParticipantSpoke,
   updateSimulation,
 } from "./simulations-store";
 
@@ -138,9 +140,12 @@ function canEngramSimulate(
  */
 async function advanceSimulation(
   sim: EngramSimulation,
-  engram: Engram,
+  participants: Array<{ engram: Engram; lastSpokeAt: Date | null }>,
   now: number,
 ): Promise<SimulationTickOutcome | null> {
+  const [{ engram }] = [...participants].sort(
+    (a, b) => (a.lastSpokeAt?.getTime() ?? 0) - (b.lastSpokeAt?.getTime() ?? 0),
+  );
   if (engram.ownerId !== sim.ownerId) {
     logger.warn({ simulationId: sim.id }, "simulation owner no longer matches its engram");
     return null;
@@ -171,9 +176,11 @@ async function advanceSimulation(
   await appendSimulationStep({
     simulation: sim,
     stepNumber: nextStep,
+    speakerEngramId: engram.id,
     narrative,
     confidence: SIMULATION_STEP_CONFIDENCE,
   });
+  await markSimulationParticipantSpoke(sim.id, engram.id, new Date(now));
 
   publishEvent({
     type: "simulation.step",
@@ -252,6 +259,7 @@ async function proposeSimulation(
  */
 export async function openOperatorSimulation(opts: {
   engram: Engram;
+  participants?: Engram[];
   chamber: HubSpace;
   premise?: string;
   maxSteps?: number;
@@ -259,31 +267,39 @@ export async function openOperatorSimulation(opts: {
   now?: number;
 }): Promise<EngramSimulation> {
   const { engram, chamber, controls } = opts;
+  const participants = [
+    engram,
+    ...(opts.participants ?? []).filter((candidate) => candidate.id !== engram.id),
+  ];
   const now = opts.now ?? Date.now();
   if (chamber.kind !== "simulation_chamber" || chamber.actionScope !== "simulate") {
     throw new SimulationTransitionError(
       "the selected space is not an operator-gated simulation chamber",
     );
   }
-  // Re-check DB-backed presence here (not only in the route) so the safety
-  // assertion is local to the write: the engram must actually be active in the
-  // chamber at creation time.
-  const presence = await loadPresenceForEngram(engram.id, chamber.ownerId);
-  if (!presence || presence.spaceId !== chamber.id || presence.status !== "active") {
-    throw new SimulationTransitionError(
-      `${engram.name} must be present in the simulation chamber to run a simulation`,
-    );
-  }
-  if (!canEngramSimulate(engram, chamber, controls)) {
-    throw new SimulationTransitionError(
-      "this engram cannot simulate right now (simulation disabled, paused, or mode disallows it)",
-    );
-  }
-  const active = await loadActiveSimulationForEngram(engram.id);
-  if (active) {
-    throw new SimulationTransitionError(
-      `engram already has an active simulation (#${active.id}) — end or pause it first`,
-    );
+  // Re-check every participant's DB-backed presence and capability here (not
+  // only in the route) so the safety assertions are local to the write.
+  for (const participant of participants) {
+    if (participant.ownerId !== chamber.ownerId) {
+      throw new SimulationTransitionError("all simulation participants must belong to this account");
+    }
+    const presence = await loadPresenceForEngram(participant.id, chamber.ownerId);
+    if (!presence || presence.spaceId !== chamber.id || presence.status !== "active") {
+      throw new SimulationTransitionError(
+        `${participant.name} must be present in the simulation chamber to run a simulation`,
+      );
+    }
+    if (!canEngramSimulate(participant, chamber, controls)) {
+      throw new SimulationTransitionError(
+        `${participant.name} cannot simulate right now (simulation disabled, paused, or mode disallows it)`,
+      );
+    }
+    const active = await loadActiveSimulationForEngram(participant.id);
+    if (active) {
+      throw new SimulationTransitionError(
+        `${participant.name} already has an active simulation (#${active.id}) — end or pause it first`,
+      );
+    }
   }
   let premise = opts.premise?.trim().slice(0, 1000) ?? "";
   if (!premise) {
@@ -302,7 +318,7 @@ export async function openOperatorSimulation(opts: {
     currentStep: 0,
     ...(opts.maxSteps ? { maxSteps: Math.min(opts.maxSteps, SIMULATION_MAX_STEPS_CAP) } : {}),
     startedAt: new Date(now),
-  });
+  }, participants.map((participant) => participant.id));
   try {
     await appendActivity({
       ownerId: chamber.ownerId,
@@ -330,15 +346,29 @@ export async function kickSimulation(sim: EngramSimulation): Promise<void> {
     const now = Date.now();
     const last = sim.lastSteppedAt ? sim.lastSteppedAt.getTime() : null;
     if (last !== null && now - last < sim.stepCooldownSeconds * 1000) return;
-    const engram = await loadEngramRow(sim.engramId);
-    if (!engram) return;
-    const presence = await loadPresenceForEngram(engram.id, sim.ownerId);
-    if (!presence || presence.spaceId !== sim.spaceId || presence.status !== "active") return;
     const space = await loadSpaceById(sim.spaceId, sim.ownerId);
     if (!space) return;
     const controls = await loadControls(sim.ownerId);
-    if (!canEngramSimulate(engram, space, controls)) return;
-    await advanceSimulation(sim, engram, now);
+    const participantRows = await loadSimulationParticipants(sim.id, sim.ownerId);
+    const participantIds = participantRows.length
+      ? participantRows.map((participant) => participant.engramId)
+      : [sim.engramId];
+    const participants: Array<{ engram: Engram; lastSpokeAt: Date | null }> = [];
+    for (const participantId of participantIds) {
+      const engram = await loadEngramRow(participantId);
+      if (!engram || engram.ownerId !== sim.ownerId) continue;
+      const presence = await loadPresenceForEngram(engram.id, sim.ownerId);
+      if (!presence || presence.spaceId !== sim.spaceId || presence.status !== "active") continue;
+      if (!canEngramSimulate(engram, space, controls)) continue;
+      participants.push({
+        engram,
+        lastSpokeAt:
+          participantRows.find((participant) => participant.engramId === participantId)?.lastSpokeAt ??
+          null,
+      });
+    }
+    if (!participants.length) return;
+    await advanceSimulation(sim, participants, now);
   } catch (err) {
     logger.warn({ err, simulationId: sim.id }, "immediate simulation step failed (will retry on tick)");
   }
@@ -373,10 +403,35 @@ export async function maybeRunSimulationStep(opts: {
   // 1) STEP PHASE — least-recently-stepped running sim first.
   const running = await loadRunningSimulations();
   for (const sim of running) {
-    const engram = engramById.get(sim.engramId);
-    if (!engram) continue;
-    const presence = presenceByEngram.get(engram.id);
-    if (!presence || presence.spaceId !== sim.spaceId || presence.status !== "active") {
+    const participantRows = await loadSimulationParticipants(sim.id, sim.ownerId);
+    const participantIds = participantRows.length
+      ? participantRows.map((participant) => participant.engramId)
+      : [sim.engramId];
+    const participants: Array<{ engram: Engram; lastSpokeAt: Date | null }> = [];
+    const space = spaceById.get(sim.spaceId);
+    for (const participantId of participantIds) {
+      const engram = engramById.get(participantId);
+      const presence = engram ? presenceByEngram.get(engram.id) : undefined;
+      if (
+        !engram ||
+        !presence ||
+        presence.spaceId !== sim.spaceId ||
+        presence.status !== "active" ||
+        !space ||
+        !canEngramSimulate(engram, space, controls)
+      ) {
+        continue;
+      }
+      participants.push({
+        engram,
+        lastSpokeAt:
+          participantRows.find((participant) => participant.engramId === participantId)?.lastSpokeAt ??
+          null,
+      });
+    }
+    if (!participants.length) {
+      const engram = engramById.get(sim.engramId);
+      if (!engram) continue;
       // The engram left the chamber mid-run. Auto-pause instead of silently
       // freezing so the operator sees an honest state and can resume later.
       try {
@@ -393,13 +448,11 @@ export async function maybeRunSimulationStep(opts: {
       }
       continue;
     }
-    const space = spaceById.get(sim.spaceId);
-    if (!space || !canEngramSimulate(engram, space, controls)) continue;
 
     const last = sim.lastSteppedAt ? sim.lastSteppedAt.getTime() : null;
     if (last !== null && now - last < sim.stepCooldownSeconds * 1000) continue;
 
-    const out = await advanceSimulation(sim, engram, now);
+    const out = await advanceSimulation(sim, participants, now);
     if (out) return out;
     continue;
   }

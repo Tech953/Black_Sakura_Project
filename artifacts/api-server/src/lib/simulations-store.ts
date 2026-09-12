@@ -1,8 +1,10 @@
 import { db } from "@workspace/db";
 import {
   engramSimulationsTable,
+  engramSimulationParticipantsTable,
   engramSimulationStepsTable,
   type EngramSimulation,
+  type EngramSimulationParticipant,
   type EngramSimulationStep,
   type NewEngramSimulation,
   type SimulationStatus,
@@ -44,6 +46,31 @@ export async function loadSimulationById(
   return row;
 }
 
+/** Load durable membership and turn-taking state for a simulation. */
+export async function loadSimulationParticipants(
+  simulationId: number,
+  ownerId?: string,
+): Promise<EngramSimulationParticipant[]> {
+  const filters = [eq(engramSimulationParticipantsTable.simulationId, simulationId)];
+  if (ownerId) filters.push(eq(engramSimulationParticipantsTable.ownerId, ownerId));
+  return db
+    .select()
+    .from(engramSimulationParticipantsTable)
+    .where(and(...filters))
+    .orderBy(asc(engramSimulationParticipantsTable.joinedAt));
+}
+
+/**
+ * Return participant IDs with a compatibility fallback for rows created before
+ * the participant table existed.
+ */
+export async function loadSimulationParticipantIds(
+  simulation: Pick<EngramSimulation, "id" | "engramId" | "ownerId">,
+): Promise<number[]> {
+  const participants = await loadSimulationParticipants(simulation.id, simulation.ownerId);
+  return participants.length ? participants.map((p) => p.engramId) : [simulation.engramId];
+}
+
 /**
  * The single non-ended simulation an engram currently owns, if any. The engine
  * enforces at most one active simulation per engram by consulting this before
@@ -53,17 +80,21 @@ export async function loadActiveSimulationForEngram(
   engramId: number,
 ): Promise<EngramSimulation | undefined> {
   const [row] = await db
-    .select()
+    .select({ simulation: engramSimulationsTable })
     .from(engramSimulationsTable)
+    .innerJoin(
+      engramSimulationParticipantsTable,
+      eq(engramSimulationParticipantsTable.simulationId, engramSimulationsTable.id),
+    )
     .where(
       and(
-        eq(engramSimulationsTable.engramId, engramId),
+        eq(engramSimulationParticipantsTable.engramId, engramId),
         ne(engramSimulationsTable.status, "ended"),
       ),
     )
     .orderBy(desc(engramSimulationsTable.createdAt))
     .limit(1);
-  return row;
+  return row?.simulation;
 }
 
 /** All currently-running simulations, least-recently-stepped first (turn-taking). */
@@ -85,9 +116,13 @@ export async function countActiveSimulations(engramId: number): Promise<number> 
   const rows = await db
     .select({ id: engramSimulationsTable.id })
     .from(engramSimulationsTable)
+    .innerJoin(
+      engramSimulationParticipantsTable,
+      eq(engramSimulationParticipantsTable.simulationId, engramSimulationsTable.id),
+    )
     .where(
       and(
-        eq(engramSimulationsTable.engramId, engramId),
+        eq(engramSimulationParticipantsTable.engramId, engramId),
         ne(engramSimulationsTable.status, "ended"),
       ),
     );
@@ -96,12 +131,20 @@ export async function countActiveSimulations(engramId: number): Promise<number> 
 
 export async function createSimulation(
   values: NewEngramSimulation,
+  participantEngramIds: number[] = [values.engramId],
 ): Promise<EngramSimulation> {
-  const [row] = await db
-    .insert(engramSimulationsTable)
-    .values(values)
-    .returning();
-  return row;
+  return db.transaction(async (tx) => {
+    const [row] = await tx.insert(engramSimulationsTable).values(values).returning();
+    const participantIds = [...new Set([values.engramId, ...participantEngramIds])];
+    await tx.insert(engramSimulationParticipantsTable).values(
+      participantIds.map((engramId) => ({
+        simulationId: row.id,
+        engramId,
+        ownerId: values.ownerId,
+      })),
+    );
+    return row;
+  });
 }
 
 /** Patch a simulation row, always stamping updatedAt. Never touches step/world-model rows. */
@@ -158,6 +201,23 @@ export async function claimSimulationStep(
   return row ?? null;
 }
 
+/** Stamp the participant who just took the turn for least-recently-spoken ordering. */
+export async function markSimulationParticipantSpoke(
+  simulationId: number,
+  engramId: number,
+  at: Date,
+): Promise<void> {
+  await db
+    .update(engramSimulationParticipantsTable)
+    .set({ lastSpokeAt: at })
+    .where(
+      and(
+        eq(engramSimulationParticipantsTable.simulationId, simulationId),
+        eq(engramSimulationParticipantsTable.engramId, engramId),
+      ),
+    );
+}
+
 export async function loadSimulationSteps(
   simulationId: number,
 ): Promise<EngramSimulationStep[]> {
@@ -178,6 +238,7 @@ export async function loadSimulationSteps(
 export async function appendSimulationStep(opts: {
   simulation: EngramSimulation;
   stepNumber: number;
+  speakerEngramId?: number;
   narrative: string;
   confidence: number;
 }): Promise<{ step: EngramSimulationStep; worldModelEntry: EngramWorldModelEntry }> {
@@ -195,6 +256,7 @@ export async function appendSimulationStep(opts: {
     .values({
       simulationId: opts.simulation.id,
       stepNumber: opts.stepNumber,
+      speakerEngramId: opts.speakerEngramId ?? opts.simulation.engramId,
       narrative: opts.narrative,
       worldModelEntryId: worldModelEntry.id,
     })
