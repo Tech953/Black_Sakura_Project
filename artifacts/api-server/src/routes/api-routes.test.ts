@@ -362,6 +362,7 @@ import {
 } from "@workspace/api-zod";
 import { engramImportDraftStore } from "../lib/engram-import-store";
 import { subscribe } from "../lib/events";
+import { COOLDOWN_MS } from "../services/engram-engine";
 
 // --- Minimal app: the real routers under /api, with a req.log shim ------------
 let server: Server;
@@ -1451,6 +1452,22 @@ describe("CSV engram import", () => {
 // Manual /tick and /transmit
 // =============================================================================
 describe("live engram state", () => {
+  async function loadStates() {
+    const res = await fetch(`${base}/api/engrams/state`);
+    expect(res.status).toBe(200);
+    return (await res.json()) as Array<{
+      engramId: number;
+      initiationThreshold: number;
+      topCharge: number;
+      ready: boolean;
+      inCooldown: boolean;
+      cooldownUntil: string | null;
+      inBackoff: boolean;
+      backoffUntil: string | null;
+      drives: Array<{ id: string; pressure: number; weight: number; charge: number }>;
+    }>;
+  }
+
   it("projects pressure since the last tick without writing the stored state", async () => {
     const engram = seedEngram({
       lastTickAt: new Date(Date.now() - 100_000),
@@ -1479,6 +1496,78 @@ describe("live engram state", () => {
       }),
     ]);
     expect(engram.driveState).toEqual({ order: 0.2 });
+  });
+
+  it("calculates weighted charges, selects the top charge, and reports readiness at the threshold", async () => {
+    const threshold = 0.6 * 0.75;
+    const ready = seedEngram({
+      initiationThreshold: threshold,
+      driveState: { order: 0.8, connection: 0.6 },
+      drives: [
+        { id: "order", label: "Order", description: "", weight: 0.5, baseRate: 0 },
+        { id: "connection", label: "Connection", description: "", weight: 0.75, baseRate: 0 },
+      ],
+    });
+    const notReady = seedEngram({
+      initiationThreshold: threshold + 0.01,
+      driveState: { order: 0.8, connection: 0.6 },
+      drives: [
+        { id: "order", label: "Order", description: "", weight: 0.5, baseRate: 0 },
+        { id: "connection", label: "Connection", description: "", weight: 0.75, baseRate: 0 },
+      ],
+    });
+
+    const states = await loadStates();
+    const readyState = states.find((state) => state.engramId === ready.id);
+    const notReadyState = states.find((state) => state.engramId === notReady.id);
+
+    expect(readyState).toMatchObject({ topCharge: threshold, ready: true });
+    expect(readyState?.drives).toEqual([
+      expect.objectContaining({ id: "order", pressure: 0.8, weight: 0.5, charge: 0.4 }),
+      expect.objectContaining({
+        id: "connection",
+        pressure: 0.6,
+        weight: 0.75,
+        charge: expect.closeTo(threshold, 12),
+      }),
+    ]);
+    expect(notReadyState).toMatchObject({ topCharge: threshold, ready: false });
+  });
+
+  it("reports cooldown on the active side of the COOLDOWN_MS boundary only", async () => {
+    const now = Date.now();
+    const cooling = seedEngram({
+      lastTransmissionAt: new Date(now - COOLDOWN_MS + 1_000),
+    });
+    const cooled = seedEngram({
+      lastTransmissionAt: new Date(now - COOLDOWN_MS - 1_000),
+    });
+
+    const states = await loadStates();
+    const coolingState = states.find((state) => state.engramId === cooling.id);
+    const cooledState = states.find((state) => state.engramId === cooled.id);
+
+    expect(coolingState).toMatchObject({ inCooldown: true });
+    expect(coolingState?.cooldownUntil).toBeTruthy();
+    expect(cooledState).toMatchObject({ inCooldown: false, cooldownUntil: null });
+  });
+
+  it("reports backoff only before backoffUntil expires", async () => {
+    const now = Date.now();
+    const backingOff = seedEngram({
+      backoffUntil: new Date(now + 1_000),
+    });
+    const backoffExpired = seedEngram({
+      backoffUntil: new Date(now - 1_000),
+    });
+
+    const states = await loadStates();
+    const backingOffState = states.find((state) => state.engramId === backingOff.id);
+    const expiredState = states.find((state) => state.engramId === backoffExpired.id);
+
+    expect(backingOffState).toMatchObject({ inBackoff: true });
+    expect(backingOffState?.backoffUntil).toBeTruthy();
+    expect(expiredState).toMatchObject({ inBackoff: false, backoffUntil: null });
   });
 });
 
