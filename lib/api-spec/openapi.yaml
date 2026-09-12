@@ -57,6 +57,8 @@ paths:
       operationId: syncOfflineHistory
       tags: [mobile]
       summary: Import locally-created mobile history after reconnecting
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -70,6 +72,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OfflineSyncResult"
+        "401":
+          description: Authentication is required to synchronize offline history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
         "400":
           description: Invalid offline history payload
           content:
@@ -1639,6 +1647,10 @@ paths:
                 $ref: "#/components/schemas/OpenaiError"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
   schemas:
     HealthStatus:
       type: object
