@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  OFFLINE_MODEL,
   downloadOfflineModel,
   hasOfflineModelSync,
   offlineModelPartialPath,
@@ -85,6 +86,15 @@ function modelBytes(size = 8_192): Buffer {
 }
 
 describe("offline model download", () => {
+  it("keeps the desktop baseline pinned to the verified Qwen3 artifact", () => {
+    expect(OFFLINE_MODEL).toMatchObject({
+      filename: "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+      expectedBytes: 2_497_281_120,
+      sha256: "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+    });
+    expect(OFFLINE_MODEL.filename).not.toMatch(/^mmproj-/);
+  });
+
   it("resumes a partial file with an HTTP range and atomically verifies it", async () => {
     const body = modelBytes();
     const { spec, ranges } = await serve(body, { supportsRange: true });

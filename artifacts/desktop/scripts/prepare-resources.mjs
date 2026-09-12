@@ -9,7 +9,11 @@ import {
   statSync,
   copyFileSync,
   readFileSync,
+  openSync,
+  readSync,
+  closeSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -176,7 +180,51 @@ chmodSync(ffprobeOut, 0o755);
 const llamaCache = path.join(repoRoot, ".llama");
 const llamaTarget = pkgTarget;
 const LLAMA_MODEL_FILE = "Qwen3-4B-Instruct-2507-Q4_K_M.gguf";
+const LLAMA_MODEL_BYTES = 2_497_281_120;
+const LLAMA_MODEL_SHA256 =
+  "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597";
 const modelSrc = path.join(llamaCache, LLAMA_MODEL_FILE);
+
+function verifyBaselineModel(filePath) {
+  let fd;
+  try {
+    fd = openSync(filePath, "r");
+    const header = Buffer.alloc(16);
+    const headerBytes = readSync(fd, header, 0, header.length, 0);
+    if (
+      headerBytes < 8 ||
+      header.subarray(0, 4).toString("ascii") !== "GGUF" ||
+      header.readUInt32LE(4) !== 3
+    ) {
+      throw new Error(
+        `[desktop] baseline model is not a supported GGUF v3 file: ${filePath}`,
+      );
+    }
+
+    const hash = createHash("sha256");
+    const buffer = Buffer.allocUnsafe(1024 * 1024);
+    let bytes = 0;
+    let read;
+    do {
+      read = readSync(fd, buffer, 0, buffer.length, null);
+      if (read > 0) {
+        hash.update(buffer.subarray(0, read));
+        bytes += read;
+      }
+    } while (read > 0);
+
+    const sha256 = hash.digest("hex");
+    if (bytes !== LLAMA_MODEL_BYTES || sha256 !== LLAMA_MODEL_SHA256) {
+      throw new Error(
+        `[desktop] baseline model verification failed for ${filePath}: ` +
+          `expected ${LLAMA_MODEL_BYTES} bytes with SHA-256 ${LLAMA_MODEL_SHA256}, ` +
+          `received ${bytes} bytes with SHA-256 ${sha256}.`,
+      );
+    }
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
 
 function stageLlama(includeDefaultModel) {
   const llamaOut = path.join(resources, "llama");
@@ -271,19 +319,22 @@ function stageLlama(includeDefaultModel) {
     console.warn(message);
     return false;
   }
-  if (includeDefaultModel && existsSync(modelSrc)) {
-    cpSync(modelSrc, path.join(llamaOut, "model.gguf"));
-  } else if (includeDefaultModel) {
-    console.warn(
-      `[desktop] default GGUF missing at ${modelSrc}; only the trusted llama.cpp runtime was staged.`,
+  if (includeDefaultModel && !existsSync(modelSrc)) {
+    throw new Error(
+      `[desktop] baseline GGUF missing at ${modelSrc}; ` +
+        `stage ${LLAMA_MODEL_FILE} before building a full desktop package.`,
     );
+  }
+  if (includeDefaultModel) {
+    verifyBaselineModel(modelSrc);
+    cpSync(modelSrc, path.join(llamaOut, "model.gguf"));
   }
   if (llamaTarget !== "win32") {
     const serverBin = path.join(binOutDir, "llama-server");
     if (existsSync(serverBin)) chmodSync(serverBin, 0o755);
   }
   console.log(
-    `[desktop] llama.cpp runtime staged (${llamaTarget}, default model: ${includeDefaultModel && existsSync(modelSrc) ? "yes" : "no"}) -> ${llamaOut}`,
+    `[desktop] llama.cpp runtime staged (${llamaTarget}, default model: ${includeDefaultModel ? "verified" : "omitted"}) -> ${llamaOut}`,
   );
   return true;
 }
