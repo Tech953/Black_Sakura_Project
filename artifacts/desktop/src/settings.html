@@ -241,6 +241,17 @@
         <span class="about-label">Updates</span>
         <span id="update-status" class="about-value">…</span>
       </div>
+      <div
+        id="update-progress"
+        class="progress-track hidden"
+        role="progressbar"
+        aria-label="Update download progress"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+      >
+        <div id="update-progress-fill" class="progress-fill"></div>
+      </div>
       <div class="update-actions">
         <button id="check-updates" type="button">Check for Updates</button>
       </div>
@@ -606,9 +617,17 @@
       function renderUpdateStatus(info, status) {
         const el = $("update-status");
         const btn = $("check-updates");
+         const progress = $("update-progress");
+         const progressFill = $("update-progress-fill");
+         const hideProgress = () => {
+           progress.classList.add("hidden");
+           progressFill.style.width = "0%";
+           progress.setAttribute("aria-valuenow", "0");
+         };
         if (!info.updatesSupported) {
           el.textContent = "Not available in this build";
           btn.disabled = true;
+           hideProgress();
           return;
         }
         const s = status || { state: "idle" };
@@ -624,8 +643,12 @@
             btn.disabled = true;
             break;
           case "downloading":
-            el.textContent = `Downloading update… ${s.percent}%`;
+             const percent = Math.min(100, Math.max(0, Number(s.percent) || 0));
+             el.textContent = `Downloading update… ${percent}%`;
             btn.disabled = true;
+             progress.classList.remove("hidden");
+             progressFill.style.width = `${percent}%`;
+             progress.setAttribute("aria-valuenow", String(percent));
             break;
           case "downloaded":
             el.textContent = "Restart to update";
@@ -640,8 +663,10 @@
           default:
             el.textContent = "Up to date";
             btn.disabled = false;
+             hideProgress();
             break;
         }
+         if (s.state !== "downloading") hideProgress();
       }
       async function initAbout() {
         const info = await window.engram.getAppInfo();
