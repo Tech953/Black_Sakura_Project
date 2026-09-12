@@ -144,6 +144,12 @@ win:
     signingHashAlgorithms:
       - sha256
     rfc3161TimeStampServer: http://timestamp.digicert.com
+  # Explicitly include extraResources executables in electron-builder's
+  # Authenticode signing pass. This keeps ffmpeg.exe and ffprobe.exe signed
+  # with the same certificate and RFC 3161 timestamp as the main executable.
+  # With no WIN_CSC_LINK, electron-builder leaves the manual build unsigned.
+  signExts:
+    - .exe
 
 nsis:
   oneClick: false
