@@ -74,7 +74,10 @@ function streamLocalFile(
   let readOpts: { start: number; end: number } | undefined;
   if (range) {
     res.status(206);
-    res.setHeader("Content-Range", `bytes ${range.start}-${range.end}/${sizeBytes}`);
+    res.setHeader(
+      "Content-Range",
+      `bytes ${range.start}-${range.end}/${sizeBytes}`,
+    );
     res.setHeader("Content-Length", String(range.end - range.start + 1));
     readOpts = range;
   } else {
@@ -163,6 +166,7 @@ router.get("/download/android", async (_req, res) => {
       version: null,
       filename: null,
       sizeBytes: null,
+      publishedAt: null,
       downloadPath: null,
     });
     return;
@@ -173,6 +177,7 @@ router.get("/download/android", async (_req, res) => {
     version: apk.version,
     filename: apk.filename,
     sizeBytes: apk.sizeBytes,
+    publishedAt: apk.publishedAt,
     downloadPath: "/api/download/android.apk",
   });
 });
@@ -180,24 +185,41 @@ router.get("/download/android", async (_req, res) => {
 router.get("/download/android.apk", async (req, res) => {
   const apk = await resolveApk();
   if (!apk) {
-    res.status(404).json({ error: "No Android APK is available for download." });
+    res
+      .status(404)
+      .json({ error: "No Android APK is available for download." });
     return;
   }
   if (apk.kind === "bundled") {
-    streamLocalFile(req, res, apk.localPath, apk.filename, APK_MIME, apk.sizeBytes);
+    streamLocalFile(
+      req,
+      res,
+      apk.localPath,
+      apk.filename,
+      APK_MIME,
+      apk.sizeBytes,
+    );
   } else {
-    await proxyDownload(req, res, apk.url, apk.filename, APK_MIME, apk.sizeBytes);
+    await proxyDownload(
+      req,
+      res,
+      apk.url,
+      apk.filename,
+      APK_MIME,
+      apk.sizeBytes,
+    );
   }
 });
 
 // ---- Desktop ----
 
 router.get("/download/desktop", async (_req, res) => {
-  const { source, version, installers } = await resolveDesktop();
+  const { source, version, publishedAt, installers } = await resolveDesktop();
   res.json({
     available: installers.length > 0,
     source,
     version,
+    publishedAt,
     installers: installers.map((i) => ({
       os: i.os,
       ext: i.ext,
