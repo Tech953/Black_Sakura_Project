@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation, Trans } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { trackEvent } from "@/lib/analytics";
 import {
   Download,
   Apple,
@@ -65,6 +66,7 @@ type DownloadLink = {
   key: string;
   href: string;
   label: string;
+  installerType: string;
   size?: number;
 };
 
@@ -171,6 +173,7 @@ export default function DownloadPage() {
         key: inst.filename,
         href: inst.downloadPath,
         label: t("downloadExt", { ext: inst.ext }),
+        installerType: inst.ext.replace(/^\./, "").toLowerCase(),
         size: inst.sizeBytes,
       });
     }
@@ -189,6 +192,7 @@ export default function DownloadPage() {
         key: android.filename ?? "engram.apk",
         href: android.downloadPath ?? ANDROID_APK_URL,
         label: t("installApk"),
+        installerType: "apk",
         size: android.sizeBytes ?? undefined,
       },
     ];
@@ -310,6 +314,13 @@ export default function DownloadPage() {
                       key={link.key}
                       href={link.href}
                       download={link.key}
+                      onClick={() =>
+                        trackEvent("installer_clicked", {
+                          location: "download_page",
+                          os,
+                          installer_type: link.installerType,
+                        })
+                      }
                       className={`flex items-center gap-2 px-3 py-2.5 font-mono text-xs uppercase tracking-wider transition-colors border ${
                         isRecommended
                           ? "border-primary/50 text-primary bg-primary/10 hover:bg-primary/20"

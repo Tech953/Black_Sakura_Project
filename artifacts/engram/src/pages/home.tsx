@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGetStats, useGetPersonality } from "@workspace/api-client-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
+import { trackEvent } from "@/lib/analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -38,6 +39,9 @@ export default function Home() {
 
   const dismissDesktopPromo = () => {
     setShowDesktopPromo(false);
+    trackEvent("desktop_promo_dismissed", {
+      location: "overview_callout",
+    });
     try {
       window.localStorage.setItem(DESKTOP_PROMO_DISMISSED_KEY, "1");
     } catch {
@@ -78,6 +82,11 @@ export default function Home() {
             <div className="flex items-center gap-2 sm:ml-auto">
               <Link
                 href="/download"
+                onClick={() =>
+                  trackEvent("desktop_promo_clicked", {
+                    location: "overview_callout",
+                  })
+                }
                 className="inline-flex h-9 items-center gap-2 border border-primary/40 bg-primary/10 px-3 font-mono text-[11px] uppercase tracking-widest text-primary transition-colors hover:bg-primary/20"
               >
                 {t("desktopPromoAction")}
