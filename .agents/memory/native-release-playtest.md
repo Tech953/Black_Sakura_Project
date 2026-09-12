@@ -14,3 +14,11 @@ Portable ZIPs can also lag behind a newer unpacked Windows directory; compare re
 **Why:** The unpacked Windows build contained the llama runtime while the dated portable ZIP contained no llama entries, so the ZIP required regeneration before its static contents were trustworthy.
 
 **How to apply:** Validate `unzip -tq`, artifact hash/timestamp, and critical `resources/llama`, server, and media entries for the exact ZIP intended for release.
+
+## Android manifest verification
+
+Dependency manifests can add legacy storage permissions even when the app does not use them. Keep explicit `tools:node="remove"` rules in the app manifest and make source-policy checks treat those rules as denylist enforcement, not grants. `aapt dump resources` can exceed Node's default `spawnSync` capture buffer, so packaged-resource verification needs an explicit larger buffer.
+
+**Why:** Expo image and file-system dependencies reintroduced storage permissions into the merged manifest, and the first APK verifier run also hit `ENOBUFS` before it could finish its resource check.
+
+**How to apply:** Verify both the merged APK permissions and the source manifest policy after every native dependency or Expo SDK change; do not rely on source-only permission inspection.
