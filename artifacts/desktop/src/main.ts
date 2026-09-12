@@ -16,6 +16,7 @@ import {
   stopProcess,
   installDownloadedUpdate,
   stopDesktopWork,
+  createBeforeQuitHandler,
 } from "./lifecycle";
 import {
   readFileSync,
@@ -58,6 +59,7 @@ import type {
   SettingsPayload,
   UpdateStatus,
 } from "./desktop-bridge";
+import { setupAutoUpdates as setupAutoUpdateFlow } from "./auto-update";
 import { createAppInfo, createUpdateStatusStore } from "./update-status";
 
 // ---------------------------------------------------------------------------
@@ -143,10 +145,9 @@ let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let currentPort = 0;
 let quitting = false;
-// True while a user-initiated "Check for Updates…" is in flight, so we surface
-// the "you're up to date" / error dialogs only for manual checks (the silent
-// startup check stays quiet unless an update is actually downloaded).
-let manualUpdateCheck = false;
+let updateController: ReturnType<typeof setupAutoUpdateFlow> = {
+  checkForUpdatesManually: () => undefined,
+};
 
 const updateStatusStore = createUpdateStatusStore((status) => {
   for (const window of [mainWindow, settingsWindow]) {
@@ -1407,162 +1408,30 @@ ipcMain.handle("update:check", () => {
 // never interferes with `electron .` development.
 // ---------------------------------------------------------------------------
 function setupAutoUpdates(): void {
-  if (!app.isPackaged) return;
-
-  // We drive the install ourselves via a restart prompt, so don't auto-install
-  // on quit (would surprise the user). Downloads still happen automatically.
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = false;
-
-  autoUpdater.on("checking-for-update", () => {
-    setUpdateStatus({ state: "checking", manual: manualUpdateCheck });
+  updateController = setupAutoUpdateFlow({
+    isPackaged: app.isPackaged,
+    updater: autoUpdater,
+    getMainWindow: () => mainWindow,
+    showMessageBox: (window, options) =>
+      dialog.showMessageBox(window as BrowserWindow, options),
+    setStatus: setUpdateStatus,
+    resetWindowTitle,
+    stopDesktopWork: () =>
+      stopDesktopWork({
+        stopImports: cancelAllDesktopDownloads,
+        stopServer,
+        stopLlama,
+      }),
+    installDownloadedUpdate,
+    markQuitting: () => {
+      quitting = true;
+    },
+    logError: (message, error) => console.error(message, error),
   });
-
-  autoUpdater.on("update-available", (info) => {
-    setUpdateStatus({ state: "available", version: info?.version });
-    if (manualUpdateCheck && mainWindow && !mainWindow.isDestroyed()) {
-      void dialog.showMessageBox(mainWindow, {
-        type: "info",
-        title: "Update available",
-        message: "A new version of ENGRAM is available.",
-        detail:
-          "It is downloading now and you'll be prompted to restart when it's ready.",
-        buttons: ["OK"],
-      });
-    }
-  });
-
-  autoUpdater.on("update-not-available", () => {
-    setUpdateStatus({
-      state: "not-available",
-      manual: manualUpdateCheck,
-    });
-    if (manualUpdateCheck && mainWindow && !mainWindow.isDestroyed()) {
-      void dialog.showMessageBox(mainWindow, {
-        type: "info",
-        title: "You're up to date",
-        message: "ENGRAM is already running the latest version.",
-        buttons: ["OK"],
-      });
-    }
-    manualUpdateCheck = false;
-  });
-
-  // Unobtrusive progress feedback while the installer downloads: mirror the
-  // percentage to the Settings window and reflect it in the main window title
-  // (and the macOS dock/taskbar progress bar). Cleared on completion and on
-  // error so it never lingers.
-  autoUpdater.on("download-progress", (progress) => {
-    const percent = Math.max(
-      0,
-      Math.min(100, Math.round(progress?.percent ?? 0)),
-    );
-    setUpdateStatus({ state: "downloading", percent });
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.setTitle(`${WINDOW_TITLE} — Downloading update… ${percent}%`);
-      mainWindow.setProgressBar(percent / 100);
-    }
-  });
-
-  autoUpdater.on("error", (error) => {
-    setUpdateStatus({ state: "error", message: String(error) });
-    // Clear any in-progress download indicator so it doesn't linger on failure.
-    resetWindowTitle();
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.setProgressBar(-1);
-    }
-    // eslint-disable-next-line no-console
-    console.error("[desktop] auto-update error:", error);
-    if (manualUpdateCheck && mainWindow && !mainWindow.isDestroyed()) {
-      void dialog.showMessageBox(mainWindow, {
-        type: "error",
-        title: "Update check failed",
-        message: "Could not check for updates.",
-        detail: String(error),
-        buttons: ["OK"],
-      });
-    }
-    manualUpdateCheck = false;
-  });
-
-  autoUpdater.on("update-downloaded", (info) => {
-    setUpdateStatus({ state: "downloaded", version: info?.version });
-    manualUpdateCheck = false;
-    // Clear the progress indicator now that the download is complete; the
-    // "Restart now / Later" prompt below takes over.
-    resetWindowTitle();
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    mainWindow.setProgressBar(-1);
-    void dialog
-      .showMessageBox(mainWindow, {
-        type: "info",
-        title: "Update ready",
-        message: `ENGRAM ${info.version} has been downloaded.`,
-        detail:
-          "Restart now to apply the update, or keep working and it'll install the next time you quit.",
-        buttons: ["Restart now", "Later"],
-        defaultId: 0,
-        cancelId: 1,
-      })
-      .then((result) => {
-        if (result.response === 0) {
-          // The server child holds the PGlite DB open, so it must shut down
-          // cleanly BEFORE the installer swaps app files. installDownloadedUpdate
-          // awaits stopServer() (shared SIGTERM→SIGKILL path) before quitAndInstall.
-          void installDownloadedUpdate({
-            // Stop BOTH children: the api-server (holds the PGlite DB open)
-            // and the bundled llama-server (multi-GB resident process that
-            // would otherwise survive the update swap as an orphan).
-            stopServer: () =>
-              stopDesktopWork({
-                stopImports: cancelAllDesktopDownloads,
-                stopServer,
-                stopLlama,
-              }),
-            quitAndInstall: () => autoUpdater.quitAndInstall(),
-            setAutoInstallOnAppQuit: (value) => {
-              autoUpdater.autoInstallOnAppQuit = value;
-            },
-            markQuitting: () => {
-              quitting = true;
-            },
-          });
-        } else {
-          // Honor the deferral: install silently on the next normal quit.
-          autoUpdater.autoInstallOnAppQuit = true;
-        }
-      });
-  });
-
-  // Silent check shortly after startup so it never blocks the window opening.
-  setTimeout(() => {
-    void autoUpdater.checkForUpdates().catch((error) => {
-      // eslint-disable-next-line no-console
-      console.error("[desktop] initial update check failed:", error);
-    });
-  }, 5000);
 }
 
 function checkForUpdatesManually(): void {
-  if (!app.isPackaged) {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      void dialog.showMessageBox(mainWindow, {
-        type: "info",
-        title: "Updates unavailable",
-        message: "Automatic updates only run in the packaged app.",
-        buttons: ["OK"],
-      });
-    }
-    return;
-  }
-  manualUpdateCheck = true;
-  setUpdateStatus({ state: "checking", manual: true });
-  void autoUpdater.checkForUpdates().catch((error) => {
-    setUpdateStatus({ state: "error", message: String(error) });
-    // eslint-disable-next-line no-console
-    console.error("[desktop] manual update check failed:", error);
-    manualUpdateCheck = false;
-  });
+  updateController.checkForUpdatesManually();
 }
 
 // ---------------------------------------------------------------------------
@@ -1616,18 +1485,22 @@ if (!gotLock) {
     if (process.platform !== "darwin") app.quit();
   });
 
-  app.on("before-quit", (event) => {
-    if (
-      (serverProcess || llamaProcess || hasRunningModelOperation()) &&
-      !quitting
-    ) {
-      event.preventDefault();
-      quitting = true;
-      void stopDesktopWork({
-        stopImports: cancelAllDesktopDownloads,
-        stopServer,
-        stopLlama,
-      }).finally(() => app.quit());
-    }
-  });
+  app.on(
+    "before-quit",
+    createBeforeQuitHandler({
+      hasWork: () =>
+        Boolean(serverProcess || llamaProcess || hasRunningModelOperation()),
+      isQuitting: () => quitting,
+      markQuitting: () => {
+        quitting = true;
+      },
+      stopDesktopWork: () =>
+        stopDesktopWork({
+          stopImports: cancelAllDesktopDownloads,
+          stopServer,
+          stopLlama,
+        }),
+      quit: () => app.quit(),
+    }),
+  );
 }
