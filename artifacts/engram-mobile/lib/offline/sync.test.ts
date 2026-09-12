@@ -41,6 +41,8 @@ const pendingBatch = {
         title: "Offline",
         mode: "companion",
         engramSlug: "pyri",
+        personaName: "Night Analyst",
+        customEngram: "Be concise and evidence-led.",
         createdAt: "2026-09-04T12:00:00.000Z",
         messages: [
           {
@@ -175,7 +177,9 @@ describe("offline reconnect synchronization", () => {
 
     const first = syncOfflineData();
     const second = syncOfflineData();
-    await vi.waitFor(() => expect(mocks.syncOfflineHistory).toHaveBeenCalledOnce());
+    await vi.waitFor(() =>
+      expect(mocks.syncOfflineHistory).toHaveBeenCalledOnce(),
+    );
     finishUpload();
 
     await expect(Promise.all([first, second])).resolves.toEqual([

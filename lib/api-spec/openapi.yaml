@@ -178,7 +178,8 @@ paths:
           in: query
           schema:
             type: string
-            enum: [working, episodic, semantic, preference, reflective, procedural]
+            enum:
+              [working, episodic, semantic, preference, reflective, procedural]
       responses:
         "200":
           description: List of memory entries
@@ -1698,6 +1699,12 @@ components:
         engramSlug:
           type: [string, "null"]
           maxLength: 120
+        personaName:
+          type: [string, "null"]
+          maxLength: 200
+        customEngram:
+          type: [string, "null"]
+          maxLength: 40000
         createdAt:
           type: string
           format: date-time
@@ -1788,7 +1795,22 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [syncId, engramSlug, kind, drive, content, mood, importanceScore, confidenceScore, noveltyScore, overallScore, wasDelivered, seen, createdAt]
+      required:
+        [
+          syncId,
+          engramSlug,
+          kind,
+          drive,
+          content,
+          mood,
+          importanceScore,
+          confidenceScore,
+          noveltyScore,
+          overallScore,
+          wasDelivered,
+          seen,
+          createdAt,
+        ]
 
     OfflineSyncObservedEntry:
       type: object
@@ -1816,7 +1838,8 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [syncId, engramSlug, conversationSyncId, content, confidence, createdAt]
+      required:
+        [syncId, engramSlug, conversationSyncId, content, confidence, createdAt]
 
     OfflineSyncInput:
       type: object
@@ -1846,7 +1869,8 @@ components:
           maxItems: 100
           items:
             $ref: "#/components/schemas/OfflineSyncObservedEntry"
-      required: [deviceId, conversations, inquiries, transmissions, observedEntries]
+      required:
+        [deviceId, conversations, inquiries, transmissions, observedEntries]
 
     OfflineSyncCounts:
       type: object
@@ -1861,7 +1885,8 @@ components:
           type: integer
         observedEntries:
           type: integer
-      required: [conversations, messages, inquiries, transmissions, observedEntries]
+      required:
+        [conversations, messages, inquiries, transmissions, observedEntries]
 
     OfflineSyncResult:
       type: object
@@ -1941,7 +1966,8 @@ components:
           type: integer
         layer:
           type: string
-          enum: [working, episodic, semantic, preference, reflective, procedural]
+          enum:
+            [working, episodic, semantic, preference, reflective, procedural]
         content:
           type: string
         confidence:
@@ -1964,7 +1990,8 @@ components:
       properties:
         layer:
           type: string
-          enum: [working, episodic, semantic, preference, reflective, procedural]
+          enum:
+            [working, episodic, semantic, preference, reflective, procedural]
         content:
           type: string
         confidence:
@@ -2677,7 +2704,15 @@ components:
           type: boolean
         mode:
           type: string
-          enum: [orientation, social, simulation, initiative_limited, full_bounded, quiescent]
+          enum:
+            [
+              orientation,
+              social,
+              simulation,
+              initiative_limited,
+              full_bounded,
+              quiescent,
+            ]
         humanContactEnabled:
           type: boolean
         simulationEnabled:
@@ -2729,7 +2764,15 @@ components:
           type: number
         mode:
           type: string
-          enum: [orientation, social, simulation, initiative_limited, full_bounded, quiescent]
+          enum:
+            [
+              orientation,
+              social,
+              simulation,
+              initiative_limited,
+              full_bounded,
+              quiescent,
+            ]
         humanContactEnabled:
           type: boolean
         simulationEnabled:
@@ -2855,7 +2898,8 @@ components:
 
     EngramImportSourceSummary:
       type: object
-      required: [filename, rowsAccepted, rowsSkipped, charactersAccepted, warnings]
+      required:
+        [filename, rowsAccepted, rowsSkipped, charactersAccepted, warnings]
       properties:
         filename:
           type: string
@@ -2872,7 +2916,15 @@ components:
 
     EngramImportMemoryCandidate:
       type: object
-      required: [id, content, provenance, operatorVerified, operatorVerifiedContent, sourceRows]
+      required:
+        [
+          id,
+          content,
+          provenance,
+          operatorVerified,
+          operatorVerifiedContent,
+          sourceRows,
+        ]
       properties:
         id:
           type: string
@@ -2966,7 +3018,15 @@ components:
           type: number
         mode:
           type: string
-          enum: [orientation, social, simulation, initiative_limited, full_bounded, quiescent]
+          enum:
+            [
+              orientation,
+              social,
+              simulation,
+              initiative_limited,
+              full_bounded,
+              quiescent,
+            ]
         humanContactEnabled:
           type: boolean
         simulationEnabled:
@@ -3289,7 +3349,16 @@ components:
           type: string
         kind:
           type: string
-          enum: [commons, private_room, simulation_chamber, studio, archive, terminal, quiescence]
+          enum:
+            [
+              commons,
+              private_room,
+              simulation_chamber,
+              studio,
+              archive,
+              terminal,
+              quiescence,
+            ]
         description:
           type: string
         visibilityScope:

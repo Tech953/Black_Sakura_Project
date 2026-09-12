@@ -159,6 +159,8 @@ router.post("/mobile/offline-sync", async (req, res) => {
               ownerId,
               title: conversation.title ?? "Offline conversation",
               mode: conversation.mode,
+              personaName: conversation.personaName ?? null,
+              customEngram: conversation.customEngram ?? null,
               engramId: engram?.id ?? null,
               createdAt: new Date(conversation.createdAt),
               archivedAt:
@@ -175,15 +177,27 @@ router.post("/mobile/offline-sync", async (req, res) => {
             conversationClaim.receipt,
             conversation.syncId,
           );
+          const conversationUpdates: {
+            archivedAt?: Date | null;
+            personaName?: string | null;
+            customEngram?: string | null;
+          } = {};
           if (conversation.archivedAt !== undefined) {
+            conversationUpdates.archivedAt =
+              conversation.archivedAt == null
+                ? null
+                : new Date(conversation.archivedAt);
+          }
+          if (conversation.personaName !== undefined) {
+            conversationUpdates.personaName = conversation.personaName;
+          }
+          if (conversation.customEngram !== undefined) {
+            conversationUpdates.customEngram = conversation.customEngram;
+          }
+          if (Object.keys(conversationUpdates).length > 0) {
             await tx
               .update(conversations)
-              .set({
-                archivedAt:
-                  conversation.archivedAt == null
-                    ? null
-                    : new Date(conversation.archivedAt),
-              })
+              .set(conversationUpdates)
               .where(
                 and(
                   eq(conversations.id, remoteConversationId),

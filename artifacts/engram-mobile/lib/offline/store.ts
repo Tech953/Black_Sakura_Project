@@ -30,8 +30,11 @@ let accountId: string | null = null;
  * be read or uploaded by another account. The GGUF model remains device-wide;
  * it contains no account history and can only be used after the auth gate.
  */
-export async function setOfflineStoreAccount(nextAccountId: string): Promise<void> {
-  if (!nextAccountId) throw new Error("An authenticated account is required for offline data.");
+export async function setOfflineStoreAccount(
+  nextAccountId: string,
+): Promise<void> {
+  if (!nextAccountId)
+    throw new Error("An authenticated account is required for offline data.");
   if (accountId === nextAccountId) return;
   const previous = db;
   db = null;
@@ -49,7 +52,9 @@ export function getOfflineStoreAccountId(): string | null {
 
 function databaseName(id: string | null = accountId): string {
   if (!id) {
-    throw new Error("Offline data cannot be accessed before an account is selected.");
+    throw new Error(
+      "Offline data cannot be accessed before an account is selected.",
+    );
   }
   // Clerk user IDs are opaque identifiers. Keep filenames filesystem-safe
   // without making the user ID part of a shared SQLite database.
@@ -129,7 +134,11 @@ async function seedFullRezzArchive(
     // Chunked multi-row statements keep first-run seeding fast while staying
     // comfortably below SQLite's host-parameter limit.
     const chunkSize = 100;
-    for (let offset = 0; offset < fullRezzTranscript.length; offset += chunkSize) {
+    for (
+      let offset = 0;
+      offset < fullRezzTranscript.length;
+      offset += chunkSize
+    ) {
       const chunk = fullRezzTranscript.slice(offset, offset + chunkSize);
       const placeholders = chunk.map(() => "(?, ?, ?, ?, ?)").join(", ");
       const values = chunk.flatMap((message, index) => {
@@ -163,7 +172,9 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   }
   const selectedAccountId = accountId;
   if (!selectedAccountId) {
-    throw new Error("Offline data cannot be accessed before an account is selected.");
+    throw new Error(
+      "Offline data cannot be accessed before an account is selected.",
+    );
   }
   if (db && dbAccountId === selectedAccountId) return db;
   if (!dbPromise || dbPromiseAccountId !== selectedAccountId) {
@@ -190,8 +201,12 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   }
 }
 
-async function initializeDb(selectedAccountId: string): Promise<SQLite.SQLiteDatabase> {
-  const opened = await SQLite.openDatabaseAsync(databaseName(selectedAccountId));
+async function initializeDb(
+  selectedAccountId: string,
+): Promise<SQLite.SQLiteDatabase> {
+  const opened = await SQLite.openDatabaseAsync(
+    databaseName(selectedAccountId),
+  );
   await opened.execAsync(`
     PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS engrams (
@@ -276,7 +291,8 @@ async function initializeDb(selectedAccountId: string): Promise<SQLite.SQLiteDat
     try {
       await opened.execAsync(`ALTER TABLE ${table} ADD COLUMN syncedAt TEXT;`);
     } catch (error) {
-      if (!String(error).toLowerCase().includes("duplicate column")) throw error;
+      if (!String(error).toLowerCase().includes("duplicate column"))
+        throw error;
     }
   }
   try {
@@ -292,7 +308,8 @@ async function initializeDb(selectedAccountId: string): Promise<SQLite.SQLiteDat
         `ALTER TABLE conversations ADD COLUMN ${column} TEXT;`,
       );
     } catch (error) {
-      if (!String(error).toLowerCase().includes("duplicate column")) throw error;
+      if (!String(error).toLowerCase().includes("duplicate column"))
+        throw error;
     }
   }
   try {
@@ -311,7 +328,8 @@ async function initializeDb(selectedAccountId: string): Promise<SQLite.SQLiteDat
         `ALTER TABLE conversations ADD COLUMN ${column} ${definition};`,
       );
     } catch (error) {
-      if (!String(error).toLowerCase().includes("duplicate column")) throw error;
+      if (!String(error).toLowerCase().includes("duplicate column"))
+        throw error;
     }
   }
   // Seed personas once (keyed on slug, like the server's idempotent seed).
@@ -439,13 +457,20 @@ function serializeEngram(row: EngramRow): Record<string, unknown> {
 
 export async function listEngrams(): Promise<Record<string, unknown>[]> {
   const d = await getDb();
-  const rows = await d.getAllAsync<EngramRow>("SELECT * FROM engrams ORDER BY id");
+  const rows = await d.getAllAsync<EngramRow>(
+    "SELECT * FROM engrams ORDER BY id",
+  );
   return rows.map(serializeEngram);
 }
 
-export async function getEngram(id: number): Promise<Record<string, unknown> | null> {
+export async function getEngram(
+  id: number,
+): Promise<Record<string, unknown> | null> {
   const d = await getDb();
-  const row = await d.getFirstAsync<EngramRow>("SELECT * FROM engrams WHERE id = ?", id);
+  const row = await d.getFirstAsync<EngramRow>(
+    "SELECT * FROM engrams WHERE id = ?",
+    id,
+  );
   return row ? serializeEngram(row) : null;
 }
 
@@ -454,10 +479,17 @@ export async function getEngramPersona(
   id: number,
 ): Promise<(NewEngram & { id: number; currentMood: string | null }) | null> {
   const d = await getDb();
-  const row = await d.getFirstAsync<EngramRow>("SELECT * FROM engrams WHERE id = ?", id);
+  const row = await d.getFirstAsync<EngramRow>(
+    "SELECT * FROM engrams WHERE id = ?",
+    id,
+  );
   if (!row) return null;
   const seed = JSON.parse(row.data) as NewEngram;
-  return { ...seed, id: row.id, currentMood: row.currentMood ?? (seed.currentMood as string | null) ?? null };
+  return {
+    ...seed,
+    id: row.id,
+    currentMood: row.currentMood ?? (seed.currentMood as string | null) ?? null,
+  };
 }
 
 export async function isArchivalEngram(id: number): Promise<boolean> {
@@ -523,11 +555,19 @@ async function assertWritableConversation(id: number): Promise<void> {
   }
 }
 
-export async function activateEngram(id: number): Promise<Record<string, unknown> | null> {
+export async function activateEngram(
+  id: number,
+): Promise<Record<string, unknown> | null> {
   await assertWritableEngram(id);
   const d = await getDb();
-  await d.runAsync("UPDATE engrams SET isChatActive = 0 WHERE isChatActive = 1");
-  await d.runAsync("UPDATE engrams SET isChatActive = 1, updatedAt = ? WHERE id = ?", nowIso(), id);
+  await d.runAsync(
+    "UPDATE engrams SET isChatActive = 0 WHERE isChatActive = 1",
+  );
+  await d.runAsync(
+    "UPDATE engrams SET isChatActive = 1, updatedAt = ? WHERE id = ?",
+    nowIso(),
+    id,
+  );
   return getEngram(id);
 }
 
@@ -572,7 +612,9 @@ export async function createConversation(opts: {
   };
 }
 
-export async function getConversation(id: number): Promise<Record<string, unknown> | null> {
+export async function getConversation(
+  id: number,
+): Promise<Record<string, unknown> | null> {
   const d = await getDb();
   const conv = await d.getFirstAsync<Record<string, unknown>>(
     "SELECT * FROM conversations WHERE id = ?",
@@ -585,25 +627,23 @@ export async function getConversation(id: number): Promise<Record<string, unknow
   );
   return {
     ...conv,
-    title:
-      typeof conv.title === "string" ? conv.title : "New conversation",
+    title: typeof conv.title === "string" ? conv.title : "New conversation",
     personaName:
       typeof conv.personaName === "string" ? conv.personaName : undefined,
     customEngram:
       typeof conv.customEngram === "string" ? conv.customEngram : undefined,
-    engramId:
-      typeof conv.engramId === "number" ? conv.engramId : undefined,
-    engramIds:
-      typeof conv.engramId === "number" ? [conv.engramId] : [],
-    archivedAt:
-      typeof conv.archivedAt === "string" ? conv.archivedAt : null,
+    engramId: typeof conv.engramId === "number" ? conv.engramId : undefined,
+    engramIds: typeof conv.engramId === "number" ? [conv.engramId] : [],
+    archivedAt: typeof conv.archivedAt === "string" ? conv.archivedAt : null,
     messages: msgs,
   };
 }
 
-export async function listConversations(opts: {
-  archived?: boolean;
-} = {}): Promise<Record<string, unknown>[]> {
+export async function listConversations(
+  opts: {
+    archived?: boolean;
+  } = {},
+): Promise<Record<string, unknown>[]> {
   const d = await getDb();
   const archivedClause = opts.archived
     ? "c.archivedAt IS NOT NULL"
@@ -618,18 +658,14 @@ export async function listConversations(opts: {
   );
   return rows.map((conv) => ({
     ...conv,
-    title:
-      typeof conv.title === "string" ? conv.title : "New conversation",
+    title: typeof conv.title === "string" ? conv.title : "New conversation",
     personaName:
       typeof conv.personaName === "string" ? conv.personaName : undefined,
     customEngram:
       typeof conv.customEngram === "string" ? conv.customEngram : undefined,
-    engramId:
-      typeof conv.engramId === "number" ? conv.engramId : undefined,
-    engramIds:
-      typeof conv.engramId === "number" ? [conv.engramId] : [],
-    archivedAt:
-      typeof conv.archivedAt === "string" ? conv.archivedAt : null,
+    engramId: typeof conv.engramId === "number" ? conv.engramId : undefined,
+    engramIds: typeof conv.engramId === "number" ? [conv.engramId] : [],
+    archivedAt: typeof conv.archivedAt === "string" ? conv.archivedAt : null,
   }));
 }
 
@@ -661,7 +697,10 @@ export async function listMessages(
   conversationId: number,
 ): Promise<{ id: number; role: string; content: string }[]> {
   const d = await getDb();
-  return d.getAllAsync("SELECT id, role, content FROM messages WHERE conversationId = ? ORDER BY id", conversationId);
+  return d.getAllAsync(
+    "SELECT id, role, content FROM messages WHERE conversationId = ? ORDER BY id",
+    conversationId,
+  );
 }
 
 export async function appendMessage(
@@ -704,7 +743,9 @@ export async function removeLastMessage(
 // Inquiries
 // ---------------------------------------------------------------------------
 
-export async function listInquiries(engramId: number): Promise<Record<string, unknown>[]> {
+export async function listInquiries(
+  engramId: number,
+): Promise<Record<string, unknown>[]> {
   const d = await getDb();
   return d.getAllAsync(
     "SELECT * FROM inquiries WHERE engramId = ? ORDER BY id DESC",
@@ -736,7 +777,9 @@ export async function insertInquiry(opts: {
 // Transmissions
 // ---------------------------------------------------------------------------
 
-export async function listTransmissions(engramId: number): Promise<Record<string, unknown>[]> {
+export async function listTransmissions(
+  engramId: number,
+): Promise<Record<string, unknown>[]> {
   const d = await getDb();
   const rows = await d.getAllAsync<Record<string, unknown>>(
     "SELECT * FROM transmissions WHERE engramId = ? ORDER BY id DESC LIMIT 50",
@@ -868,9 +911,10 @@ export async function loadRecentWorldModel(
     ...TRUSTED_REBECCA_ADAPTIVE_SOURCES,
   );
   const recentIds = new Set(recent.map((entry) => entry.id));
-  return [...recent, ...adaptive.filter((entry) => !recentIds.has(entry.id))].map(
-    ({ id: _id, ...entry }) => entry,
-  );
+  return [
+    ...recent,
+    ...adaptive.filter((entry) => !recentIds.has(entry.id)),
+  ].map(({ id: _id, ...entry }) => entry);
 }
 
 // ---------------------------------------------------------------------------
@@ -949,10 +993,9 @@ function trimSyncBatchToByteBudget(
     if (conversation.messages.length > 0) {
       removeTail(conversation.messages);
       batch.localRows.messageIds.pop();
-      batch.localRows.conversationIds =
-        batch.localRows.conversationIds.filter(
-          (id) => id !== localConversationId,
-        );
+      batch.localRows.conversationIds = batch.localRows.conversationIds.filter(
+        (id) => id !== localConversationId,
+      );
       batch.localRows.conversationRevisions =
         batch.localRows.conversationRevisions?.filter(
           ({ id }) => id !== localConversationId,
@@ -976,6 +1019,8 @@ interface PendingConversationRow {
   title: string | null;
   mode: string;
   engramSlug: string | null;
+  personaName: string | null;
+  customEngram: string | null;
   createdAt: string;
   archivedAt: string | null;
   syncVersion: number;
@@ -1028,8 +1073,8 @@ export async function buildPendingSyncBatch(
 ): Promise<PendingOfflineSyncBatch> {
   const d = await getDb();
   const conversationRows = await d.getAllAsync<PendingConversationRow>(
-    `SELECT c.id, c.title, c.mode, e.slug AS engramSlug, c.createdAt,
-            c.archivedAt, c.syncVersion
+    `SELECT c.id, c.title, c.mode, c.personaName, c.customEngram,
+            e.slug AS engramSlug, c.createdAt, c.archivedAt, c.syncVersion
      FROM conversations c
      LEFT JOIN engrams e ON e.id = c.engramId
      WHERE (
@@ -1074,6 +1119,8 @@ export async function buildPendingSyncBatch(
       title: row.title,
       mode: row.mode,
       engramSlug: row.engramSlug,
+      personaName: row.personaName,
+      customEngram: row.customEngram,
       createdAt: row.createdAt,
       archivedAt: row.archivedAt,
       messages: messageRows.map((message) => ({
