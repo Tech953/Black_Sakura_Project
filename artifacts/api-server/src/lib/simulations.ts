@@ -193,8 +193,10 @@ async function advanceSimulation(
       ownerId: sim.ownerId,
       spaceId: sim.spaceId,
       engramId: engram.id,
-      kind: "system",
-      summary: `${engram.name} advanced a simulation (step ${nextStep}/${maxSteps}).`,
+      kind: "simulate",
+      summary: `${engram.name} advanced a simulation (step ${nextStep}/${maxSteps}): ${narrative
+        .replace(/\s+/g, " ")
+        .slice(0, 180)}`,
     });
   } catch (err) {
     logger.error({ err, engramId: engram.id }, "simulation step activity append failed");
@@ -232,7 +234,7 @@ async function proposeSimulation(
       ownerId: chamber.ownerId,
       spaceId: chamber.id,
       engramId: engram.id,
-      kind: "system",
+      kind: "simulate",
       summary: `${engram.name} opened a simulation: "${premise.slice(0, 80)}".`,
     });
   } catch (err) {
@@ -258,6 +260,11 @@ export async function openOperatorSimulation(opts: {
 }): Promise<EngramSimulation> {
   const { engram, chamber, premise, controls } = opts;
   const now = opts.now ?? Date.now();
+  if (chamber.kind !== "simulation_chamber" || chamber.actionScope !== "simulate") {
+    throw new SimulationTransitionError(
+      "the selected space is not an operator-gated simulation chamber",
+    );
+  }
   // Re-check DB-backed presence here (not only in the route) so the safety
   // assertion is local to the write: the engram must actually be active in the
   // chamber at creation time.
@@ -293,7 +300,7 @@ export async function openOperatorSimulation(opts: {
       ownerId: chamber.ownerId,
       spaceId: chamber.id,
       engramId: engram.id,
-      kind: "system",
+      kind: "simulate",
       summary: `Operator opened a simulation for ${engram.name}: "${premise.slice(0, 80)}".`,
     });
   } catch (err) {
@@ -351,6 +358,7 @@ export async function maybeRunSimulationStep(opts: {
 
   const chamber = [...spaceById.values()].find((s) => s.kind === "simulation_chamber");
   if (!chamber) return null;
+  if (chamber.actionScope !== "simulate") return null;
 
   const engramById = new Map<number, Engram>(engrams.map((e) => [e.id, e]));
 
@@ -369,7 +377,7 @@ export async function maybeRunSimulationStep(opts: {
           ownerId: sim.ownerId,
           spaceId: sim.spaceId,
           engramId: engram.id,
-          kind: "system",
+          kind: "simulate",
           summary: `${engram.name}'s simulation paused — they left the chamber.`,
         });
       } catch (err) {

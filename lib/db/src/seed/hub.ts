@@ -47,7 +47,7 @@ const spaces: NewHubSpace[] = [
     name: "Simulation Chamber",
     kind: "simulation_chamber",
     description:
-      "An operator-gated chamber for bounded scenarios. The chamber type only here — no simulations run yet; it stands ready as a space.",
+      "An operator-gated chamber for bounded scenarios. Every run is explicitly hypothetical and quarantined from observed reality.",
     visibilityScope: "operators",
     actionScope: "simulate",
     logged: true,

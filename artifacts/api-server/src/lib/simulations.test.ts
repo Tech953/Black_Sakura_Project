@@ -77,7 +77,12 @@ vi.mock("./engram-generation", () => ({
 vi.mock("./world-model-store", () => ({ loadRecentWorldModel: h.loadRecentWorldModel }));
 vi.mock("./hub-store", () => ({ appendActivity: h.appendActivity }));
 
-import { maybeRunSimulationStep, SIMULATION_STEP_CONFIDENCE } from "./simulations";
+import {
+  maybeRunSimulationStep,
+  openOperatorSimulation,
+  SIMULATION_STEP_CONFIDENCE,
+  SimulationTransitionError,
+} from "./simulations";
 
 // --- Fixtures -----------------------------------------------------------------
 const CHAMBER: HubSpace = {
@@ -179,6 +184,12 @@ describe("maybeRunSimulationStep — stepping", () => {
     expect(h.appendSimulationStep).toHaveBeenCalledWith(
       expect.objectContaining({ stepNumber: 2, confidence: SIMULATION_STEP_CONFIDENCE }),
     );
+    expect(h.appendActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "simulate",
+        summary: expect.stringContaining("The water rises another inch."),
+      }),
+    );
     // The step counter is bumped atomically via the CAS claim, not a blind update.
     expect(h.claimSimulationStep).toHaveBeenCalledWith(
       7,
@@ -263,6 +274,39 @@ describe("maybeRunSimulationStep — proposing", () => {
     expect(out).toBeNull();
     expect(h.loadRunningSimulations).not.toHaveBeenCalled();
     expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+  });
+
+  it("does not run in a simulation-chamber-shaped space without simulate action scope", async () => {
+    const restrictedChamber = {
+      ...CHAMBER,
+      actionScope: "observe",
+    } as HubSpace;
+    const out = await maybeRunSimulationStep(
+      makeOpts({
+        engrams: [makeEngram()],
+        spaces: [restrictedChamber],
+        presence: [{ engramId: 1, spaceId: restrictedChamber.id, status: "active" } as EngramPresence],
+      }),
+    );
+
+    expect(out).toBeNull();
+    expect(h.loadRunningSimulations).not.toHaveBeenCalled();
+    expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+    expect(h.createSimulation).not.toHaveBeenCalled();
+  });
+
+  it("rejects operator starts outside a simulate-scoped chamber", async () => {
+    const restrictedChamber = { ...CHAMBER, actionScope: "observe" } as HubSpace;
+
+    await expect(
+      openOperatorSimulation({
+        engram: makeEngram(),
+        chamber: restrictedChamber,
+        premise: "What if the lights fail?",
+        controls: { paused: false, quietMode: false },
+      }),
+    ).rejects.toBeInstanceOf(SimulationTransitionError);
+    expect(h.createSimulation).not.toHaveBeenCalled();
   });
 });
 

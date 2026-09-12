@@ -76,6 +76,7 @@ const ACTIVITY_META: Record<string, { icon: typeof LogIn; color: string }> = {
   rest: { icon: Moon, color: "text-indigo-400" },
   wake: { icon: Sunrise, color: "text-amber-400" },
   converse: { icon: MessageCircle, color: "text-cyan-300" },
+  simulate: { icon: FlaskConical, color: "text-rose-300" },
   system: { icon: Cpu, color: "text-muted-foreground" },
 };
 
