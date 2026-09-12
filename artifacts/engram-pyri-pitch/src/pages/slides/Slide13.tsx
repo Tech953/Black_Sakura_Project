@@ -2,7 +2,7 @@ import { SlideShell, SlideTitle } from "../../components/SlidePrimitives";
 
 export default function Slide13() {
   return (
-    <SlideShell number="13" section="SURFACES / 12">
+    <SlideShell number="25" section="SURFACES / 24">
       <div className="px-[8vw] pt-[14vh]">
         <SlideTitle eyebrow="ONE ARCHITECTURE">One architecture, two surfaces</SlideTitle>
         <div className="mt-[6vh] grid grid-cols-2 gap-[1.2vw]">

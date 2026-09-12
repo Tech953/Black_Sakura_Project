@@ -2,7 +2,7 @@ import { SlideShell, SlideTitle } from "../../components/SlidePrimitives";
 
 export default function Slide9() {
   return (
-    <SlideShell number="09" section="EXPRESSION / 08">
+    <SlideShell number="15" section="EXPRESSION / 14">
       <div className="px-[8vw] pt-[14vh]">
         <SlideTitle eyebrow="HIERO-CODE">Hiero-Code: expression with a safety boundary</SlideTitle>
         <div className="mt-[6vh] grid grid-cols-[1fr_1fr] gap-[5vw]">

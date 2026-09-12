@@ -2,7 +2,7 @@ import { Node, SlideShell, SlideTitle } from "../../components/SlidePrimitives";
 
 export default function Slide4() {
   return (
-    <SlideShell number="04" section="ARCHITECTURE / 03">
+    <SlideShell number="05" section="ARCHITECTURE / 04">
       <div className="px-[7vw] pt-[13vh]">
         <SlideTitle eyebrow="THE LOOP">The ENGRAM cognitive loop</SlideTitle>
         <div className="mt-[7vh] grid grid-cols-5 items-center gap-[0.8vw]">

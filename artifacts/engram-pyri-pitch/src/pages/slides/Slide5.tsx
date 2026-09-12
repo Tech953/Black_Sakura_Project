@@ -2,7 +2,7 @@ import { FooterTag, SlideShell, SlideTitle } from "../../components/SlidePrimiti
 
 export default function Slide5() {
   return (
-    <SlideShell number="05" section="MEMORY / 04">
+    <SlideShell number="07" section="MEMORY / 06">
       <div className="px-[8vw] pt-[14vh]">
         <SlideTitle eyebrow="LAYERED MEMORY">Layered memory keeps context usable</SlideTitle>
         <div className="mt-[6vh] grid grid-cols-[1fr_0.9fr] gap-[5vw]">
