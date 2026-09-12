@@ -43,3 +43,4 @@
 - [Android nested-route dismissal](android-nested-route-dismissal.md) — dismiss nested Expo Router screens to the root route instead of assuming Android back-stack state.
 - [Validation gate reviews cumulative diff](validation-gate-cumulative-diff.md) — mark_task_complete's code-review sees ALL merged work, so it can reject on unrelated pre-existing failures; verify isolation and skip with a reason.
 - [Native release playtest constraints](native-release-playtest.md) — native sign-off needs fresh artifact inspection and real Android/Windows execution; Linux/static checks are only proxies.
+- [Android release packaging](android-release-packaging.md) — release builds need an explicit META-INF collision exclusion for okhttp/jspecify dependency metadata.

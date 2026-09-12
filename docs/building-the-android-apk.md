@@ -179,6 +179,25 @@ Endpoints (API server, `artifacts/api-server/src/routes/download.ts`):
 > would rather not commit a binary, skip bundling and rely on the GitHub release
 > fallback (Option A).
 
+### Keep an update-test predecessor
+
+`scripts/build-installers.sh --android` builds the current signed APK and also
+creates a lower-version predecessor at:
+
+```text
+downloads/ENGRAM-android-previous-<prior-version>.apk
+```
+
+The predecessor is built from the same Android source and release keystore with
+the previous `versionCode`. The script verifies that both APKs have the same
+package name and signer, that the predecessor's version is lower, and that the
+files are not byte-identical. It fails instead of silently retaining a stale or
+missing predecessor.
+
+Use the predecessor first on a device, create representative local state, then
+install the current APK with `adb install -r` to exercise the real in-place
+upgrade path without uninstalling the app.
+
 ### Relevant environment variables
 
 | Variable | Default | Purpose |
