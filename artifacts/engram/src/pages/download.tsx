@@ -47,6 +47,7 @@ type DesktopMeta = {
   available: boolean;
   source: "bundled" | "github" | null;
   version: string | null;
+  publishedAt: string | null;
   installers: DesktopInstaller[];
 };
 
@@ -56,6 +57,7 @@ type AndroidMeta = {
   version: string | null;
   filename: string | null;
   sizeBytes: number | null;
+  publishedAt: string | null;
   downloadPath: string | null;
 };
 
@@ -66,11 +68,18 @@ type DownloadLink = {
   size?: number;
 };
 
-const OS_META: Record<Os, { nameKey: string; icon: typeof Apple; noteKey: string }> = {
+const OS_META: Record<
+  Os,
+  { nameKey: string; icon: typeof Apple; noteKey: string }
+> = {
   mac: { nameKey: "osMacName", icon: Apple, noteKey: "osMacNote" },
   win: { nameKey: "osWinName", icon: MonitorDown, noteKey: "osWinSlimNote" },
   linux: { nameKey: "osLinuxName", icon: TerminalIcon, noteKey: "osLinuxNote" },
-  android: { nameKey: "osAndroidName", icon: Smartphone, noteKey: "osAndroidNote" },
+  android: {
+    nameKey: "osAndroidName",
+    icon: Smartphone,
+    noteKey: "osAndroidNote",
+  },
 };
 
 const OS_ORDER: Os[] = ["mac", "win", "linux", "android"];
@@ -91,6 +100,15 @@ function formatSize(bytes?: number | null): string {
   if (!bytes) return "";
   const mb = bytes / (1024 * 1024);
   return `${mb.toFixed(mb >= 100 ? 0 : 1)} MB`;
+}
+
+function formatReleaseDate(date: string | null | undefined): string | null {
+  if (!date) return null;
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+    parsed,
+  );
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -120,7 +138,11 @@ export default function DownloadPage() {
   });
 
   const desktopByOs = useMemo(() => {
-    const map: Record<DesktopOs, DownloadLink[]> = { mac: [], win: [], linux: [] };
+    const map: Record<DesktopOs, DownloadLink[]> = {
+      mac: [],
+      win: [],
+      linux: [],
+    };
     for (const inst of desktopQuery.data?.installers ?? []) {
       if (!map[inst.os]) continue;
       map[inst.os].push({
@@ -162,6 +184,9 @@ export default function DownloadPage() {
   const isError = desktopQuery.isError && androidQuery.isError;
 
   const version = desktopQuery.data?.version ?? android?.version ?? null;
+  const publishedAt =
+    desktopQuery.data?.publishedAt ?? android?.publishedAt ?? null;
+  const releaseDate = formatReleaseDate(publishedAt);
 
   const orderedOs = useMemo(
     () =>
@@ -187,10 +212,19 @@ export default function DownloadPage() {
         <div className="flex items-center gap-3 font-mono text-xs">
           {isLoading ? (
             <Skeleton className="h-6 w-28 bg-primary/10" />
-          ) : version ? (
-            <span className="px-3 py-1.5 border border-primary/30 text-primary uppercase tracking-widest bg-primary/5">
-              {t("latestVersion", { version })}
-            </span>
+          ) : version || releaseDate ? (
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {version ? (
+                <span className="px-3 py-1.5 border border-primary/30 text-primary uppercase tracking-widest bg-primary/5">
+                  {t("latestVersion", { version })}
+                </span>
+              ) : null}
+              {releaseDate ? (
+                <span className="text-muted-foreground">
+                  {t("publishedOn", { date: releaseDate })}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
