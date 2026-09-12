@@ -17,6 +17,11 @@
     "blocked": "Refused"
   },
   "digestSummary": "Periodic Digest",
+  "operatorLabel": "Operator",
+  "reply": "Reply",
+  "replyPlaceholder": "Write a short reply…",
+  "toastReplySent": "Reply sent",
+  "toastReplyFailed": "Could not send reply",
   "priority": {
     "urgent": "Urgent",
     "meaningful": "Meaningful",

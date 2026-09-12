@@ -1107,6 +1107,14 @@ export const EngramMessageChannel = {
   human: 'human',
 } as const;
 
+export type EngramMessageAuthor = typeof EngramMessageAuthor[keyof typeof EngramMessageAuthor];
+
+
+export const EngramMessageAuthor = {
+  engram: 'engram',
+  operator: 'operator',
+} as const;
+
 export type EngramMessagePriority = typeof EngramMessagePriority[keyof typeof EngramMessagePriority];
 
 
@@ -1134,6 +1142,7 @@ export interface EngramMessage {
   /** @nullable */
   spaceId: number | null;
   channel: EngramMessageChannel;
+  author: EngramMessageAuthor;
   priority: EngramMessagePriority;
   status: EngramMessageStatus;
   content: string;
@@ -1152,6 +1161,14 @@ export interface MarkMessagesSeenInput {
 
 export interface MarkMessagesSeenResult {
   updated: number;
+}
+
+export interface ReplyToEngramMessageInput {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  content: string;
 }
 
 export type MediaAssetModality = typeof MediaAssetModality[keyof typeof MediaAssetModality];

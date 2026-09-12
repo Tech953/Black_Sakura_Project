@@ -6,6 +6,7 @@ import {
   useUpdateEngramConfig,
   useListEngramMessages,
   useMarkEngramMessagesSeen,
+  useReplyToEngramMessage,
   useListHubSpaces,
   useMoveEngramPresence,
   getGetHubControlsQueryKey,
@@ -46,8 +47,10 @@ import {
   FlaskConical,
   FileText,
   Layers,
+  Send,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 const MODE_META: Record<string, { labelKey: string; cls: string }> = {
   orientation: { labelKey: "modes.orientation", cls: "text-sky-400" },
@@ -112,9 +115,12 @@ export default function Terminal() {
   const updateControls = useUpdateHubControls();
   const updateEngram = useUpdateEngramConfig();
   const markSeen = useMarkEngramMessagesSeen();
+  const replyToMessage = useReplyToEngramMessage();
   const move = useMoveEngramPresence();
 
   const [pendingEngramId, setPendingEngramId] = useState<number | null>(null);
+  const [replyingMessageId, setReplyingMessageId] = useState<number | null>(null);
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
 
   const humanMessagesKey = getListEngramMessagesQueryKey({ channel: "human", limit: 100 });
 
@@ -250,6 +256,24 @@ export default function Terminal() {
           toast({ title: t("toastMarkedSeen", { count: res.updated }) });
         },
         onError: () => toast({ title: t("toastMarkSeenFailed"), variant: "destructive" }),
+      },
+    );
+  }
+
+  function handleReply(messageId: number) {
+    const content = (replyDrafts[messageId] ?? "").trim();
+    if (!content) return;
+    setReplyingMessageId(messageId);
+    replyToMessage.mutate(
+      { id: messageId, data: { content } },
+      {
+        onSuccess: () => {
+          setReplyDrafts((drafts) => ({ ...drafts, [messageId]: "" }));
+          queryClient.invalidateQueries({ queryKey: humanMessagesKey });
+          toast({ title: t("toastReplySent") });
+        },
+        onError: () => toast({ title: t("toastReplyFailed"), variant: "destructive" }),
+        onSettled: () => setReplyingMessageId(null),
       },
     );
   }
@@ -491,7 +515,17 @@ export default function Terminal() {
         ) : (
           <div className="space-y-3">
             {ordered.map((msg) => (
-              <HumanMessageRow key={msg.id} msg={msg} engramById={engramById} />
+              <HumanMessageRow
+                key={msg.id}
+                msg={msg}
+                engramById={engramById}
+                replyDraft={replyDrafts[msg.id] ?? ""}
+                replying={replyingMessageId === msg.id}
+                onReplyDraftChange={(content) =>
+                  setReplyDrafts((drafts) => ({ ...drafts, [msg.id]: content }))
+                }
+                onReply={() => handleReply(msg.id)}
+              />
             ))}
           </div>
         )}
@@ -549,9 +583,17 @@ function ControlToggle({
 function HumanMessageRow({
   msg,
   engramById,
+  replyDraft,
+  replying,
+  onReplyDraftChange,
+  onReply,
 }: {
   msg: EngramMessage;
   engramById: Map<number, Engram>;
+  replyDraft: string;
+  replying: boolean;
+  onReplyDraftChange: (content: string) => void;
+  onReply: () => void;
 }) {
   const { t } = useTranslation("terminal");
   const from = engramById.get(msg.fromEngramId);
@@ -559,10 +601,11 @@ function HumanMessageRow({
   const priority = PRIORITY_META[msg.priority] ?? PRIORITY_META.social;
   const blocked = msg.status === "blocked";
   const unseen = !msg.seen && !blocked;
+  const operatorAuthored = msg.author === "operator";
 
   return (
     <Card
-      className={`bg-card/40 border-border/50 backdrop-blur-sm ${unseen ? "border-primary/30" : ""} ${blocked ? "border-rose-500/30 bg-rose-500/[0.03]" : ""}`}
+      className={`bg-card/40 border-border/50 backdrop-blur-sm ${unseen ? "border-primary/30" : ""} ${blocked ? "border-rose-500/30 bg-rose-500/[0.03]" : ""} ${operatorAuthored ? "border-cyan-500/30 bg-cyan-500/[0.03]" : ""}`}
       data-testid={`human-message-${msg.id}`}
     >
       <CardContent className="p-4 flex gap-3 items-start">
@@ -572,7 +615,9 @@ function HumanMessageRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-display tracking-wider text-sm text-foreground">
-              {from?.name ?? t("engramFallbackName", { id: msg.fromEngramId })}
+              {operatorAuthored
+                ? `${t("operatorLabel")} → ${from?.name ?? t("engramFallbackName", { id: msg.fromEngramId })}`
+                : from?.name ?? t("engramFallbackName", { id: msg.fromEngramId })}
             </span>
             <Badge variant="outline" className={`font-mono text-[8px] uppercase tracking-wider ${priority.cls}`}>
               {t(priority.labelKey)}
@@ -586,6 +631,14 @@ function HumanMessageRow({
                 className="font-mono text-[8px] uppercase tracking-wider border-violet-500/40 text-violet-300"
               >
                 <Layers className="w-2.5 h-2.5 mr-1" /> {t("digestSummary")}
+              </Badge>
+            )}
+            {operatorAuthored && (
+              <Badge
+                variant="outline"
+                className="font-mono text-[8px] uppercase tracking-wider border-cyan-500/40 text-cyan-300"
+              >
+                {t("operatorLabel")}
               </Badge>
             )}
             {unseen && (
@@ -610,6 +663,29 @@ function HumanMessageRow({
             <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-rose-400/80 flex items-center gap-1.5">
               <ShieldAlert className="w-3 h-3 shrink-0" /> {msg.reason}
             </p>
+          )}
+          {!operatorAuthored && !blocked && !msg.isDigest && (
+            <div className="mt-3 flex gap-2 items-end">
+              <Textarea
+                value={replyDraft}
+                onChange={(event) => onReplyDraftChange(event.target.value)}
+                placeholder={t("replyPlaceholder")}
+                maxLength={2000}
+                rows={2}
+                disabled={replying}
+                className="min-h-0 resize-y bg-background/40 border-border/50 font-sans text-sm"
+                data-testid={`textarea-reply-${msg.id}`}
+              />
+              <Button
+                size="sm"
+                onClick={onReply}
+                disabled={!replyDraft.trim() || replying}
+                className="shrink-0 font-mono text-[10px] uppercase tracking-wider"
+                data-testid={`button-reply-${msg.id}`}
+              >
+                <Send className="w-3 h-3 mr-1.5" /> {t("reply")}
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

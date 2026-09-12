@@ -81,6 +81,7 @@ import type {
   PersonalityInput,
   PersonalityProfile,
   PushTokenInput,
+  ReplyToEngramMessageInput,
   Simulation,
   SimulationControlInput,
   SimulationCreateInput,
@@ -4255,6 +4256,77 @@ export const useMarkEngramMessagesSeen = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getMarkEngramMessagesSeenMutationOptions(options));
+    }
+
+export const getReplyToEngramMessageUrl = (id: number,) => {
+
+
+
+
+  return `/api/messages/${id}/reply`
+}
+
+/**
+ * @summary Reply to an engram's human-channel message
+ */
+export const replyToEngramMessage = async (id: number,
+    replyToEngramMessageInput: ReplyToEngramMessageInput, options?: RequestInit): Promise<EngramMessage> => {
+
+  return customFetch<EngramMessage>(getReplyToEngramMessageUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(replyToEngramMessageInput)
+  }
+);}
+
+
+
+
+export const getReplyToEngramMessageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replyToEngramMessage>>, TError,{id: number;data: BodyType<ReplyToEngramMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replyToEngramMessage>>, TError,{id: number;data: BodyType<ReplyToEngramMessageInput>}, TContext> => {
+
+const mutationKey = ['replyToEngramMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replyToEngramMessage>>, {id: number;data: BodyType<ReplyToEngramMessageInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  replyToEngramMessage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplyToEngramMessageMutationResult = NonNullable<Awaited<ReturnType<typeof replyToEngramMessage>>>
+    export type ReplyToEngramMessageMutationBody = BodyType<ReplyToEngramMessageInput>
+    export type ReplyToEngramMessageMutationError = ErrorType<void>
+
+    /**
+ * @summary Reply to an engram's human-channel message
+ */
+export const useReplyToEngramMessage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replyToEngramMessage>>, TError,{id: number;data: BodyType<ReplyToEngramMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replyToEngramMessage>>,
+        TError,
+        {id: number;data: BodyType<ReplyToEngramMessageInput>},
+        TContext
+      > => {
+      return useMutation(getReplyToEngramMessageMutationOptions(options));
     }
 
 export const getCreateSimulationUrl = () => {
