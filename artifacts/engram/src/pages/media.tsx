@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useListMedia,
   useGetMediaAsset,
@@ -36,6 +36,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { useLocation } from "wouter";
 
 const STATUS_META: Record<
   string,
@@ -79,6 +80,7 @@ function formatBytes(n: number): string {
 }
 
 export default function Media() {
+  const [location] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("media");
@@ -88,6 +90,11 @@ export default function Media() {
   const [selectedEngramId, setSelectedEngramId] = useState<number | "">("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const focusedAssetId = useMemo(() => {
+    const query = location.split("?")[1];
+    const id = Number(new URLSearchParams(query ?? "").get("asset"));
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+  }, [location]);
 
   const { data: assets, isLoading } = useListMedia(undefined, {
     query: {
@@ -259,6 +266,7 @@ export default function Media() {
               key={asset.id}
               asset={asset}
               engram={asset.engramId == null ? undefined : engramById.get(asset.engramId)}
+              focused={asset.id === focusedAssetId}
             />
           ))
         )}
@@ -267,11 +275,23 @@ export default function Media() {
   );
 }
 
-function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
+function MediaCard({
+  asset,
+  engram,
+  focused = false,
+}: {
+  asset: MediaAsset;
+  engram?: Engram;
+  focused?: boolean;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("media");
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(focused);
+
+  useEffect(() => {
+    if (focused) setExpanded(true);
+  }, [focused]);
 
   const retry = useRetryMediaAsset();
   const remove = useDeleteMediaAsset();
@@ -325,6 +345,7 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
     <Card
       className="bg-card/40 border-primary/25 backdrop-blur-sm"
       data-testid={`media-${asset.id}`}
+      data-focused={focused ? "true" : undefined}
     >
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start gap-3">
