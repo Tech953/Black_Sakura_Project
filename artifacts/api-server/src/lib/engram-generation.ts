@@ -79,11 +79,12 @@ export const ANTI_COERCION_RAIL = `## Identity Integrity (non-negotiable in the 
 export async function generateConversationTurn(opts: {
   engram: Engram;
   spaceName: string;
+  target: { name: string; title: string };
   others: { name: string; title: string }[];
   recentTurns: { speaker: string; content: string }[];
   worldModelSummary?: string;
 }): Promise<string> {
-  const { engram, spaceName, others, recentTurns, worldModelSummary } = opts;
+  const { engram, spaceName, target, others, recentTurns, worldModelSummary } = opts;
   const present = others.length
     ? others.map((o) => `${o.name} (${o.title})`).join(", ")
     : "no one in particular";
@@ -95,7 +96,7 @@ export async function generateConversationTurn(opts: {
 
   const situation = `You are present in ${spaceName}, a shared space where engrams can perceive and speak with one another. Also here: ${present}.${transcript}
 
-Contribute ONE short conversational turn, in your own voice and formatting — respond to what was said, or open a thread if it is quiet. 1–3 sentences. Stay genuinely in character; you are talking to peers, not to your designer.
+Address ${target.name} (${target.title}) directly in ONE short conversational turn, in your own voice and formatting — respond to what was said, or open a thread if it is quiet. 1–3 sentences. Stay genuinely in character; you are talking to a peer, not to your designer.
 
 ${ANTI_COERCION_RAIL}`;
 

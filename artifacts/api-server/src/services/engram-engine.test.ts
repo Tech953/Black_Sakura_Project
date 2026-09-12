@@ -751,13 +751,15 @@ describe("runTick — commons turn-taking", () => {
     expect(messageInserts[0].channel).toBe("engram");
     expect(messageInserts[0].status).toBe("delivered");
     expect(messageInserts[0].spaceId).toBe(7);
+    expect(messageInserts[0].toEngramId).toBe(2);
     // The speaker is the least-recently-spoken (tie → first in list).
     expect(messageInserts[0].fromEngramId).toBe(1);
 
     // Plus a system activity entry logging the turn.
     const activityInserts = h.state.inserts.filter((r) => r.__table === h.hubActivityLogTable);
     expect(activityInserts).toHaveLength(1);
-    expect(activityInserts[0].kind).toBe("system");
+    expect(activityInserts[0].kind).toBe("converse");
+    expect(activityInserts[0].summary).toContain("Rebecca");
   });
 
   it("does not run a commons turn with fewer than two converse-capable engrams present", async () => {
@@ -784,5 +786,73 @@ describe("runTick — commons turn-taking", () => {
     await runTick();
     const messageInserts = h.state.inserts.filter((r) => r.__table === h.engramMessagesTable);
     expect(messageInserts).toHaveLength(0);
+  });
+
+  it("does not converse in a non-converse or resting space", async () => {
+    const now = Date.now();
+    h.state.engrams = [
+      makeEngram({ id: 1, name: "Arezo", lastTickAt: new Date(now - 100_000), driveState: { order: 0 }, initiationThreshold: 0.9 }),
+      makeEngram({ id: 2, name: "Rebecca", lastTickAt: new Date(now - 100_000), driveState: { order: 0 }, initiationThreshold: 0.9 }),
+    ];
+    h.state.spaces = [{ id: 7, kind: "private_room", name: "Private Room", actionScope: "reflect", allowsInitiative: true }];
+    h.state.presence = [
+      { engramId: 1, spaceId: 7, status: "active" },
+      { engramId: 2, spaceId: 7, status: "active" },
+    ];
+
+    await runTick();
+    expect(h.state.inserts.filter((r) => r.__table === h.engramMessagesTable)).toHaveLength(0);
+
+    h.state.spaces = [{ id: 7, kind: "commons", name: "The Commons", actionScope: "converse", allowsInitiative: false }];
+    await runTick();
+    expect(h.state.inserts.filter((r) => r.__table === h.engramMessagesTable)).toHaveLength(0);
+  });
+
+  it("paces the commons with the shared cooldown", async () => {
+    const now = Date.now();
+    h.state.engrams = [
+      makeEngram({ id: 1, lastTickAt: new Date(now - 100_000), driveState: { order: 0 }, initiationThreshold: 0.9 }),
+      makeEngram({ id: 2, lastTickAt: new Date(now - 100_000), driveState: { order: 0 }, initiationThreshold: 0.9 }),
+    ];
+    h.state.spaces = [{ id: 7, kind: "commons", name: "The Commons", actionScope: "converse", allowsInitiative: true }];
+    h.state.presence = [
+      { engramId: 1, spaceId: 7, status: "active" },
+      { engramId: 2, spaceId: 7, status: "active" },
+    ];
+    h.state.messages = [
+      {
+        fromEngramId: 1,
+        toEngramId: 2,
+        spaceId: 7,
+        channel: "engram",
+        createdAt: new Date(now - 1_000),
+      },
+    ];
+
+    await runTick();
+    expect(h.state.inserts.filter((r) => r.__table === h.engramMessagesTable)).toHaveLength(0);
+  });
+
+  it("applies the autonomous hourly cap to Commons turns", async () => {
+    const now = Date.now();
+    h.state.engrams = [
+      makeEngram({ id: 1, lastTickAt: new Date(now - 100_000), driveState: { order: 0 }, initiationThreshold: 0.9 }),
+      makeEngram({ id: 2, lastTickAt: new Date(now - 100_000), driveState: { order: 0 }, initiationThreshold: 0.9 }),
+    ];
+    h.state.spaces = [{ id: 7, kind: "commons", name: "The Commons", actionScope: "converse", allowsInitiative: true }];
+    h.state.presence = [
+      { engramId: 1, spaceId: 7, status: "active" },
+      { engramId: 2, spaceId: 7, status: "active" },
+    ];
+    h.state.messages = Array.from({ length: 10 }, (_, index) => ({
+      fromEngramId: 1,
+      toEngramId: 2,
+      spaceId: 7,
+      channel: "engram",
+      createdAt: new Date(now - (index + 1) * 4 * 60_000),
+    }));
+
+    await runTick();
+    expect(h.state.inserts.filter((r) => r.__table === h.engramMessagesTable)).toHaveLength(0);
   });
 });
