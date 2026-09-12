@@ -830,6 +830,12 @@
       "details": "تفاصيل التعطل",
       "copyHint": "اضغط مطولًا على التفاصيل أعلاه لتحديدها ونسخها.",
       "continue": "متابعة"
+    },
+    "notifications": {
+      "permissionDeniedTitle": "Notifications are off",
+      "permissionDeniedBody": "Allow ENGRAM notifications in system settings to know when an engram reaches out.",
+      "openSettings": "Open Settings",
+      "notNow": "Not now"
     }
   },
   "nav": {

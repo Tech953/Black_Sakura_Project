@@ -830,6 +830,12 @@
       "details": "クラッシュ詳細",
       "copyHint": "上の詳細を長押しして選択・コピーしてください。",
       "continue": "続行"
+    },
+    "notifications": {
+      "permissionDeniedTitle": "Notifications are off",
+      "permissionDeniedBody": "Allow ENGRAM notifications in system settings to know when an engram reaches out.",
+      "openSettings": "Open Settings",
+      "notNow": "Not now"
     }
   },
   "nav": {

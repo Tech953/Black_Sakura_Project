@@ -153,6 +153,40 @@ export const SyncOfflineHistoryResponse = zod.object({
 
 
 /**
+ * @summary Register an Expo push token for the signed-in mobile account
+ */
+export const registerPushTokenBodyTokenMax = 512;
+
+
+export const registerPushTokenBodyTokenRegExp = new RegExp('^(Expo|Exponent)PushToken\\[[^\\]]+\\]$');
+
+
+export const RegisterPushTokenBody = zod.object({
+  "token": zod.string().min(1).max(registerPushTokenBodyTokenMax).regex(registerPushTokenBodyTokenRegExp),
+  "platform": zod.enum(['ios', 'android'])
+})
+
+export const RegisterPushTokenResponse = zod.void()
+
+
+/**
+ * @summary Remove an Expo push token from the signed-in mobile account
+ */
+export const unregisterPushTokenBodyTokenMax = 512;
+
+
+export const unregisterPushTokenBodyTokenRegExp = new RegExp('^(Expo|Exponent)PushToken\\[[^\\]]+\\]$');
+
+
+export const UnregisterPushTokenBody = zod.object({
+  "token": zod.string().min(1).max(unregisterPushTokenBodyTokenMax).regex(unregisterPushTokenBodyTokenRegExp),
+  "platform": zod.enum(['ios', 'android'])
+})
+
+export const UnregisterPushTokenResponse = zod.void()
+
+
+/**
  * Returns the current ENGRAM personality trait values
  * @summary Get personality traits
  */

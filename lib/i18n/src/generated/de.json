@@ -830,6 +830,12 @@
       "details": "ABSTURZDETAILS",
       "copyHint": "Halte die obigen Details gedrückt, um sie auszuwählen und zu kopieren.",
       "continue": "Weiter"
+    },
+    "notifications": {
+      "permissionDeniedTitle": "Notifications are off",
+      "permissionDeniedBody": "Allow ENGRAM notifications in system settings to know when an engram reaches out.",
+      "openSettings": "Open Settings",
+      "notNow": "Not now"
     }
   },
   "nav": {
