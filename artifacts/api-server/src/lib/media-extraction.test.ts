@@ -84,6 +84,8 @@ vi.mock("node:fs/promises", () => ({
 }));
 
 import {
+  contentMatchesMime,
+  detectContentType,
   detectModality,
   MEDIA_MIME_ALLOWLIST,
   extractFromMedia,
@@ -131,6 +133,38 @@ describe("detectModality — MIME allowlist drives modality (never client input)
     for (const modality of Object.values(MEDIA_MIME_ALLOWLIST)) {
       expect(allowed.has(modality)).toBe(true);
     }
+  });
+});
+
+describe("detectContentType — uploaded bytes must match the claimed MIME", () => {
+  it("recognizes representative signatures for all four modalities", () => {
+    expect(detectContentType(Buffer.from("the harbor was quiet"))).toBe("text/plain");
+    expect(detectContentType(Buffer.from('{"harbor":"quiet"}'))).toBe("application/json");
+    expect(detectContentType(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe(
+      "image/png",
+    );
+    expect(detectContentType(Buffer.from([0x49, 0x44, 0x33, 0x04, 0x00, 0x00]))).toBe(
+      "audio/mpeg",
+    );
+    expect(
+      detectContentType(
+        Buffer.from([
+          0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d,
+        ]),
+      ),
+    ).toBe("video/mp4");
+  });
+
+  it("accepts valid aliases and rejects mislabeled or executable bytes", () => {
+    const mp3 = Buffer.from([0x49, 0x44, 0x33, 0x04, 0x00, 0x00]);
+    expect(contentMatchesMime(mp3, "audio/mpeg")).toBe(true);
+    expect(contentMatchesMime(mp3, "audio/mp3")).toBe(true);
+    expect(contentMatchesMime(mp3, "image/png")).toBe(false);
+
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(contentMatchesMime(png, "image/png")).toBe(true);
+    expect(contentMatchesMime(png, "text/plain")).toBe(false);
+    expect(contentMatchesMime(Buffer.from([0x4d, 0x5a, 0x90, 0x00]), "text/plain")).toBe(false);
   });
 });
 

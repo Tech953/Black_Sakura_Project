@@ -26,5 +26,10 @@ Deleting a media asset cascades the blob + observation MAPPING rows but PRESERVE
 ## Bytes live apart from metadata
 Raw bytes are in a separate 1:1 `media_blobs` table so list/status/poll queries never load megabytes. Only the `/raw` streaming route loads bytes.
 
+## Upload type checks need complete signatures
+Upload validation uses byte signatures for binary formats and UTF-8/parser checks for text; tests that represent valid binaries must include the full signature, not just a truncated prefix.
+**Why:** accepting only a partial magic header creates a false-positive test and would let malformed media reach the worker.
+**How to apply:** when adding an allowlisted format, add a minimally complete signature fixture and a mislabeled-byte rejection case at both detector and upload-route levels.
+
 ## Vitest mocking gotcha (worker/route tests)
 All `vi.fn()` mocks referenced inside `vi.mock(...)` factories must be created inside `vi.hoisted(() => ...)` and referenced via the returned handle, or you hit a TDZ error (the factory is hoisted above the consts). When a test destructures `mock.calls[0]` (e.g. `const [id, patch] = updateMediaAsset.mock.calls[0]`), give the mock an explicit arg signature (`vi.fn(async (_id: number, _patch: Record<string, unknown>) => ...)`) — otherwise tsc infers an empty-tuple call type and the destructure fails the api-server typecheck even though the test runs green. `await res.json()` from `fetch` is typed `unknown`; cast it in route tests.
