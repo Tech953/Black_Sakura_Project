@@ -15,6 +15,7 @@
   "autoPremisePlaceholder": "The engram will generate a scenario from its drives and world context…",
   "premisePlaceholder": "Scenario premise — e.g. 'You wake in a mirrored version of your basement where every screen shows a different year…'",
   "noCapableEngrams": "No simulation-capable engrams are available. Enable simulation and use simulation or full-bounded mode.",
+  "sharedParticipants": "{{count}} engrams will alternate turns in this simulation.",
   "opening": "Opening…",
   "launchSimulation": "Launch simulation",
   "openedTitle": "Simulation opened",

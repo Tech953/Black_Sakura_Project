@@ -1012,6 +1012,7 @@
     "autoPremisePlaceholder": "L'engram genererà uno scenario dai suoi impulsi e dal contesto del suo mondo…",
     "premisePlaceholder": "Premessa dello scenario — es. 'Ti svegli in una versione specchiata del tuo seminterrato dove ogni schermo mostra un anno diverso…'",
     "noCapableEngrams": "Nessun engram capace di simulare è disponibile. Abilita la simulazione e usa la modalità simulazione o full-bounded.",
+    "sharedParticipants": "{{count}} engrams will alternate turns in this simulation.",
     "opening": "Apertura…",
     "launchSimulation": "Avvia simulazione",
     "openedTitle": "Simulazione aperta",

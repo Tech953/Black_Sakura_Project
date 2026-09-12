@@ -177,12 +177,14 @@ router.post("/simulations", async (req, res) => {
     res.status(409).json({ error: "No simulation chamber with simulate action scope exists" });
     return;
   }
-  const presence = await loadPresenceForEngram(engram.id, req.userId!);
-  if (!presence || presence.spaceId !== chamber.id || presence.status !== "active") {
-    res.status(409).json({
-      error: `${engram.name} must be present in the simulation chamber ("${chamber.name}") to run a simulation — move them there first`,
-    });
-    return;
+  for (const participant of participantEngrams) {
+    const presence = await loadPresenceForEngram(participant.id, req.userId!);
+    if (!presence || presence.spaceId !== chamber.id || presence.status !== "active") {
+      res.status(409).json({
+        error: `${participant.name} must be present in the simulation chamber ("${chamber.name}") to run a simulation — move them there first`,
+      });
+      return;
+    }
   }
   try {
     const controls = await loadControls(req.userId!);
