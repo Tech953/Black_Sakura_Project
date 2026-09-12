@@ -30,6 +30,10 @@ export const syncOfflineHistoryBodyConversationsItemModeMax = 40;
 
 export const syncOfflineHistoryBodyConversationsItemEngramSlugMax = 120;
 
+export const syncOfflineHistoryBodyConversationsItemPersonaNameMax = 200;
+
+export const syncOfflineHistoryBodyConversationsItemCustomEngramMax = 40000;
+
 export const syncOfflineHistoryBodyConversationsItemMessagesItemSyncIdMax = 80;
 
 export const syncOfflineHistoryBodyConversationsItemMessagesItemContentMax = 20000;
@@ -98,6 +102,8 @@ export const SyncOfflineHistoryBody = zod.object({
   "title": zod.string().max(syncOfflineHistoryBodyConversationsItemTitleMax).nullable(),
   "mode": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemModeMax),
   "engramSlug": zod.string().max(syncOfflineHistoryBodyConversationsItemEngramSlugMax).nullable(),
+  "personaName": zod.string().max(syncOfflineHistoryBodyConversationsItemPersonaNameMax).nullish(),
+  "customEngram": zod.string().max(syncOfflineHistoryBodyConversationsItemCustomEngramMax).nullish(),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullish(),
   "messages": zod.array(zod.object({

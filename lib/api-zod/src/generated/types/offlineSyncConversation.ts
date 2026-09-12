@@ -28,6 +28,16 @@ export interface OfflineSyncConversation {
      * @nullable
      */
   engramSlug: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  personaName?: string | null;
+  /**
+     * @maxLength 40000
+     * @nullable
+     */
+  customEngram?: string | null;
   createdAt: Date;
   /** @nullable */
   archivedAt?: Date | null;
