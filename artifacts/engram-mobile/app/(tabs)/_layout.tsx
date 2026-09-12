@@ -18,7 +18,8 @@ type FeatherName = React.ComponentProps<typeof Feather>["name"];
 
 const TABS: {
   name: string;
-  labelKey: string;
+  labelKey?: string;
+  label?: string;
   feather: FeatherName;
   sf: string;
   sfSelected: string;
@@ -26,6 +27,7 @@ const TABS: {
   { name: "index", labelKey: "tabs.personas", feather: "cpu", sf: "cpu", sfSelected: "cpu.fill" },
   { name: "hub", labelKey: "tabs.hub", feather: "activity", sf: "waveform.path.ecg", sfSelected: "waveform.path.ecg" },
   { name: "feed", labelKey: "tabs.feed", feather: "radio", sf: "dot.radiowaves.left.and.right", sfSelected: "dot.radiowaves.left.and.right" },
+  { name: "media", label: "Media", feather: "eye", sf: "eye", sfSelected: "eye.fill" },
   { name: "chat", labelKey: "tabs.chat", feather: "message-circle", sf: "bubble.left", sfSelected: "bubble.left.fill" },
   { name: "inquiry", labelKey: "tabs.inquiry", feather: "help-circle", sf: "questionmark.circle", sfSelected: "questionmark.circle.fill" },
 ];
@@ -41,7 +43,7 @@ function NativeTabLayout() {
       {tabs.map((tab) => (
         <NativeTabs.Trigger key={tab.name} name={tab.name}>
           <Icon sf={{ default: tab.sf as never, selected: tab.sfSelected as never }} />
-          <Label>{t(tab.labelKey)}</Label>
+           <Label>{tab.label ?? t(tab.labelKey ?? "")}</Label>
         </NativeTabs.Trigger>
       ))}
     </NativeTabs>
@@ -99,7 +101,7 @@ function ClassicTabLayout() {
           key={tab.name}
           name={tab.name}
           options={{
-            title: t(tab.labelKey),
+            title: tab.label ?? t(tab.labelKey ?? ""),
             tabBarIcon: ({ color }) =>
               isIOS ? (
                 <SymbolView name={tab.sf as never} tintColor={color} size={24} />
