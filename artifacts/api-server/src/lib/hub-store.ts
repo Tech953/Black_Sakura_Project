@@ -122,13 +122,17 @@ export async function movePresence(args: {
 }): Promise<EngramPresence> {
   const { ownerId, engram, targetSpace, note } = args;
   const status = statusForSpace(targetSpace);
-  const now = new Date();
 
   return db.transaction(async (tx) => {
     const [ownedEngram] = await tx
       .select({ id: engramsTable.id })
       .from(engramsTable)
-      .where(and(eq(engramsTable.id, engram.id), eq(engramsTable.ownerId, ownerId)));
+      .where(and(eq(engramsTable.id, engram.id), eq(engramsTable.ownerId, ownerId)))
+      // Lock the parent row as well as the presence row below. A first
+      // placement has no presence row to lock, so the engram lock is what
+      // serializes competing first placements and prevents duplicate "enter"
+      // events or stale enteredAt values.
+      .for("update");
     if (!ownedEngram) throw new Error("Cannot move presence for a foreign or missing engram");
 
     const [ownedTarget] = await tx
@@ -140,7 +144,8 @@ export async function movePresence(args: {
     const [previous] = await tx
       .select()
       .from(engramPresenceTable)
-      .where(eq(engramPresenceTable.engramId, engram.id));
+      .where(eq(engramPresenceTable.engramId, engram.id))
+      .for("update");
 
     let previousSpace: HubSpace | undefined;
     if (previous) {
@@ -151,6 +156,9 @@ export async function movePresence(args: {
     }
 
     const sameSpace = previous?.spaceId === targetSpace.id;
+    // Take the timestamp after waiting for the per-engram lock so a queued
+    // move cannot write an older enteredAt/updatedAt than the move before it.
+    const now = new Date();
 
     const [presence] = await tx
       .insert(engramPresenceTable)
