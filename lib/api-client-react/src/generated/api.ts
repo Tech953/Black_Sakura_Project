@@ -4338,7 +4338,7 @@ export const getCreateSimulationUrl = () => {
 }
 
 /**
- * @summary Open an operator-directed simulation with a specific scenario premise
+ * @summary Open an operator-directed simulation with an optional scenario premise
  */
 export const createSimulation = async (simulationCreateInput: SimulationCreateInput, options?: RequestInit): Promise<Simulation> => {
 
@@ -4386,7 +4386,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateSimulationMutationError = ErrorType<OpenaiError>
 
     /**
- * @summary Open an operator-directed simulation with a specific scenario premise
+ * @summary Open an operator-directed simulation with an optional scenario premise
  */
 export const useCreateSimulation = <TError = ErrorType<OpenaiError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSimulation>>, TError,{data: BodyType<SimulationCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}

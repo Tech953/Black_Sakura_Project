@@ -97,13 +97,20 @@ router.get("/simulations/:id/steps", async (req, res) => {
 router.post("/simulations", async (req, res) => {
   const body = req.body as { engramId?: unknown; premise?: unknown; maxSteps?: unknown };
   const engramId = typeof body.engramId === "number" ? body.engramId : NaN;
-  const premise = typeof body.premise === "string" ? body.premise.trim().slice(0, 1000) : "";
+  const premise =
+    body.premise === undefined
+      ? undefined
+      : typeof body.premise === "string"
+        ? body.premise.trim().slice(0, 1000) || undefined
+        : null;
   const maxSteps =
-    typeof body.maxSteps === "number" && Number.isFinite(body.maxSteps)
-      ? Math.max(1, Math.round(body.maxSteps))
-      : undefined;
-  if (!Number.isInteger(engramId) || !premise) {
-    res.status(400).json({ error: "engramId (integer) and premise (non-empty string) are required" });
+    typeof body.maxSteps === "number" && Number.isInteger(body.maxSteps) && body.maxSteps > 0
+      ? body.maxSteps
+      : body.maxSteps === undefined
+        ? undefined
+        : null;
+  if (!Number.isInteger(engramId) || premise === null || maxSteps === null) {
+    res.status(400).json({ error: "engramId (integer) and optional premise/maxSteps are invalid" });
     return;
   }
   const engram = await loadOwnedEngram(engramId, req.userId!);

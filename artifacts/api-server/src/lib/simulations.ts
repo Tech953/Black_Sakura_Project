@@ -253,12 +253,12 @@ async function proposeSimulation(
 export async function openOperatorSimulation(opts: {
   engram: Engram;
   chamber: HubSpace;
-  premise: string;
+  premise?: string;
   maxSteps?: number;
   controls: GlobalControls;
   now?: number;
 }): Promise<EngramSimulation> {
-  const { engram, chamber, premise, controls } = opts;
+  const { engram, chamber, controls } = opts;
   const now = opts.now ?? Date.now();
   if (chamber.kind !== "simulation_chamber" || chamber.actionScope !== "simulate") {
     throw new SimulationTransitionError(
@@ -284,6 +284,14 @@ export async function openOperatorSimulation(opts: {
     throw new SimulationTransitionError(
       `engram already has an active simulation (#${active.id}) — end or pause it first`,
     );
+  }
+  let premise = opts.premise?.trim().slice(0, 1000) ?? "";
+  if (!premise) {
+    const worldModelSummary = summarizeWorldModel(await loadRecentWorldModel(engram.id));
+    premise = (await generateSimulationPremise({ engram, worldModelSummary })).trim().slice(0, 1000);
+  }
+  if (!premise) {
+    throw new SimulationTransitionError("Could not generate a simulation premise");
   }
   const sim = await createSimulation({
     ownerId: engram.ownerId!,
