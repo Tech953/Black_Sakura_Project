@@ -10,3 +10,9 @@ The rule: anything the engine path imports from the schema barrel must be presen
 **Why:** the engine tick (controls-store → loadControls) imports the non-table constant `HUB_CONTROLS_ID` from the schema; when the mock lacked it, loadControls threw and `/tick` returned 500, `/transmit` 503 — with no obvious link to the real cause, costing real debugging time. Owner-scoped routes fail just as opaquely when fixtures omit the authenticated owner.
 
 **How to apply:** when you add a table, a non-table export, or a new drizzle builder method used on the engine path, update this mock: new tables → add to `TABLE_NAMES`; non-table constants (e.g. `HUB_CONTROLS_ID`) → set directly on the `schema` object; new builder methods (including `selectDistinct` and `innerJoin`) → add to the fake query builder. Set fixture `ownerId` values and install the test user middleware whenever a route enforces ownership. Also keep engram columns in sync with required fields (mode, humanContactEnabled, simulationEnabled, …).
+
+World-model route coverage additionally depends on the fake query builder preserving table-qualified rows across `innerJoin` and honoring projected selects such as `{ entry: engramWorldModelTable }`; otherwise ownership checks and route serializers receive the wrong row shape.
+
+**Why:** the world-model routes join entries to their owning engram and select the entry under a named property. A mock that only filters one flat table can make valid entries look missing or bypass the route's expected response shape.
+
+**How to apply:** for new joined route tests, keep join predicates table-aware and return projected objects matching the router's Drizzle query shape. Add schema table exports used by asynchronous side effects too, such as push-token delivery.
