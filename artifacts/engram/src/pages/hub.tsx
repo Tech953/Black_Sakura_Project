@@ -49,6 +49,7 @@ import {
   EyeOff,
   MoveRight,
   Activity,
+  MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -74,6 +75,7 @@ const ACTIVITY_META: Record<string, { icon: typeof LogIn; color: string }> = {
   move: { icon: ArrowRightLeft, color: "text-violet-400" },
   rest: { icon: Moon, color: "text-indigo-400" },
   wake: { icon: Sunrise, color: "text-amber-400" },
+  converse: { icon: MessageCircle, color: "text-cyan-300" },
   system: { icon: Cpu, color: "text-muted-foreground" },
 };
 

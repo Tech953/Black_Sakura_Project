@@ -10,6 +10,7 @@ import { appendActivity } from "./hub-store";
 import { summarizeWorldModel } from "./world-model";
 import { loadRecentWorldModel } from "./world-model-store";
 import { logger } from "./logger";
+import { ENGRAM_DAILY_CAP, ENGRAM_HOURLY_CAP } from "./engram-rate-limits";
 
 /**
  * Cooldowns that keep the commons from turning into an unbounded LLM loop. The
@@ -22,7 +23,7 @@ export const ENGRAM_CONVO_COOLDOWN_MS = 10 * 60_000;
 
 /** How many recent turns to feed the model, and how far back to scan for turn-taking. */
 const RECENT_TURNS_FOR_PROMPT = 6;
-const RECENT_WINDOW = 24;
+const RECENT_WINDOW = 500;
 
 /** A commons participant: an engram present in the commons that may converse. */
 interface Participant {
@@ -99,10 +100,27 @@ export async function maybeRunCommonsTurn(opts: {
   // Least-recently-spoken takes the floor (never-spoken first).
   eligible.sort((a, b) => (a.lastSpokeAt ?? 0) - (b.lastSpokeAt ?? 0));
   const speaker = eligible[0].engram;
+  const speakerMessages = recent.filter((message) => message.fromEngramId === speaker.id);
+  const hourCount = speakerMessages.filter(
+    (message) => now - message.createdAt.getTime() < 60 * 60_000,
+  ).length;
+  if (hourCount >= ENGRAM_HOURLY_CAP) return null;
+  const dayCount = speakerMessages.filter(
+    (message) => now - message.createdAt.getTime() < 24 * 60 * 60_000,
+  ).length;
+  if (dayCount >= ENGRAM_DAILY_CAP) return null;
 
   const others = ownedCandidates
     .filter((e) => e.id !== speaker.id)
     .map((e) => ({ name: e.name, title: e.title }));
+  // Prefer replying to the most recent other speaker; otherwise address the first
+  // available peer. This keeps a quiet room deterministic while making an ongoing
+  // exchange a real directed turn rather than an undirected broadcast.
+  const recipient =
+    ownedCandidates
+      .filter((e) => e.id !== speaker.id)
+      .sort((a, b) => (lastSpoke.get(b.id) ?? 0) - (lastSpoke.get(a.id) ?? 0))[0] ??
+    ownedCandidates.find((e) => e.id !== speaker.id)!;
   const otherNames = others.map((o) => o.name);
 
   const recentTurns = recent
@@ -118,6 +136,7 @@ export async function maybeRunCommonsTurn(opts: {
   const content = await generateConversationTurn({
     engram: speaker,
     spaceName: commons.name,
+    target: { name: recipient.name, title: recipient.title },
     others,
     recentTurns,
     worldModelSummary,
@@ -129,7 +148,7 @@ export async function maybeRunCommonsTurn(opts: {
   if (verdict.coercive) {
     const blocked = await recordMessage(ownerId, {
       fromEngramId: speaker.id,
-      toEngramId: null,
+      toEngramId: recipient.id,
       spaceId: commons.id,
       channel: "engram",
       priority: "meaningful",
@@ -144,8 +163,8 @@ export async function maybeRunCommonsTurn(opts: {
         ownerId: speaker.ownerId!,
         spaceId: commons.id,
         engramId: speaker.id,
-        kind: "system",
-        summary: `${speaker.name}'s commons turn was refused (${verdict.reason ?? "identity-integrity violation"}).`,
+        kind: "converse",
+        summary: `${speaker.name}'s turn to ${recipient.name} was refused (${verdict.reason ?? "identity-integrity violation"}).`,
       });
     } catch (err) {
       logger.error({ err, engramId: speaker.id }, "commons refusal activity append failed");
@@ -159,7 +178,7 @@ export async function maybeRunCommonsTurn(opts: {
 
   const delivered = await recordMessage(ownerId, {
     fromEngramId: speaker.id,
-    toEngramId: null,
+    toEngramId: recipient.id,
     spaceId: commons.id,
     channel: "engram",
     priority: "meaningful",
@@ -174,8 +193,8 @@ export async function maybeRunCommonsTurn(opts: {
       ownerId: speaker.ownerId!,
       spaceId: commons.id,
       engramId: speaker.id,
-      kind: "system",
-      summary: `${speaker.name} spoke in ${commons.name}.`,
+      kind: "converse",
+      summary: `${speaker.name} spoke to ${recipient.name} in ${commons.name}.`,
     });
   } catch (err) {
     logger.error({ err, engramId: speaker.id }, "commons activity append failed");

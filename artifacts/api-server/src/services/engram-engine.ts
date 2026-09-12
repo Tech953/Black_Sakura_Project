@@ -24,13 +24,19 @@ import {
   claimTransmissionPush,
   sendTransmissionPush,
 } from "../lib/mobile-push";
+import {
+  ENGRAM_COOLDOWN_MS,
+  ENGRAM_HOURLY_CAP,
+  ENGRAM_DAILY_CAP,
+  ENGRAM_MAX_ELAPSED_SEC,
+} from "../lib/engram-rate-limits";
 
 // --- Tunable constants (cost & cadence guards) ---
 const GLOBAL_TICK_MS = 20_000; // how often the engine wakes up
-export const COOLDOWN_MS = 90_000; // minimum gap between an engram's transmissions
-export const HOURLY_CAP = 10; // max transmissions per engram per rolling hour
-export const DAILY_CAP = 60; // max transmissions per engram per rolling day
-export const MAX_ELAPSED_SEC = 600; // cap accrual after long downtime / clock jumps
+export const COOLDOWN_MS = ENGRAM_COOLDOWN_MS; // minimum gap between an engram's transmissions
+export const HOURLY_CAP = ENGRAM_HOURLY_CAP; // max transmissions per engram per rolling hour
+export const DAILY_CAP = ENGRAM_DAILY_CAP; // max transmissions per engram per rolling day
+export const MAX_ELAPSED_SEC = ENGRAM_MAX_ELAPSED_SEC; // cap accrual after long downtime / clock jumps
 const ERROR_BACKOFF_MS = 120_000; // skip generation for an engram after a failure
 
 const OUTREACH_HINT = /(connection|devotion|loyal|protect|chaos|fun|reach|company)/i;
