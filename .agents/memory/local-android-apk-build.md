@@ -8,6 +8,9 @@ description: How to build the Expo release APK locally (no CI), and the Babel/He
 - Generate the android project with `npx expo prebuild --platform android --clean --no-install` in the mobile package.
 - A release build can exceed five minutes when Metro's cache is cold and native CMake targets rebuild; use a durable background Gradle task and monitor its log to completion instead of treating a shell timeout as a build failure. Gradle's cache carries progress across runs. With Gradle 8.14/Kotlin 2.1, use at least 640 MB metaspace and one local worker; the old 384 MB/two-worker limit can mark app Kotlin compilation failed while parallel release tasks exhaust metaspace.
 - Output: `android/app/build/outputs/apk/release/app-release.apk` (debug-signed, sideloadable, not update-safe without a keystore).
+- A signing-backup drill should compare the keystore's exported certificate fingerprint with a known release APK before rebuilding. If the dual-ABI native build daemon is killed by workspace memory pressure, an arm64-only build can prove key continuity but cannot prove full release-ABI coverage; keep those claims separate.
+  **Why:** the full arm64-v8a/x86_64 build exceeded the local memory ceiling during CMake, while the constrained arm64 build completed with the same restored certificate.
+  **How to apply:** use `NODE_OPTIONS=--max-old-space-size=768`, one worker, no Gradle parallelism, and `-PreactNativeArchitectures=arm64-v8a` only as a diagnostic fallback; schedule full-ABI confirmation in CI or a larger native environment.
 
 ## The Hermes/Babel trap (why a plain build fails)
 The bundled `hermesc` (react-native sdks/hermesc) does NOT accept, by default:
