@@ -21,6 +21,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetEngramQueryKey,
   getListEngramsQueryKey,
+  useListBeliefs,
+  useListMemories,
   useActivateEngram,
   useGetEngram,
 } from "@workspace/api-client-react";
@@ -34,6 +36,8 @@ export default function EngramDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
   const { selectedEngramId, setSelectedEngramId } = useEngram();
+  const { data: memories } = useListMemories();
+  const { data: beliefs } = useListBeliefs();
 
   const { data: engram, isLoading, isError, refetch } = useGetEngram(id, {
     query: { enabled: !Number.isNaN(id), queryKey: getGetEngramQueryKey(id) },
@@ -206,6 +210,70 @@ export default function EngramDetailScreen() {
               />
             </View>
           </Section>
+
+          <Section label={t("detail.memory")} colors={colors}>
+            {(memories ?? []).slice(0, 5).map((memory) => (
+              <View key={memory.id} style={styles.dataRow}>
+                <View style={styles.dataRowTop}>
+                  <Chip label={memory.layer} tone="primary" />
+                  <Text style={[styles.dataMeta, { color: colors.mutedForeground }]}>
+                    {Math.round(memory.confidence * 100)}%
+                  </Text>
+                </View>
+                <Text style={[styles.body, { color: colors.foreground }]}>
+                  {memory.content}
+                </Text>
+              </View>
+            ))}
+            {!memories?.length ? (
+              <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
+                {t("detail.noMemory")}
+              </Text>
+            ) : null}
+          </Section>
+
+          <Section label={t("detail.beliefs")} colors={colors}>
+            {(beliefs ?? []).slice(0, 5).map((belief) => (
+              <View key={belief.id} style={styles.dataRow}>
+                <View style={styles.dataRowTop}>
+                  <Text style={[styles.dataMeta, { color: colors.accent }]}>
+                    {Math.round(belief.confidence * 100)}% {t("detail.confident")}
+                  </Text>
+                  <Text style={[styles.dataMeta, { color: colors.mutedForeground }]}>
+                    {t("detail.revisions", { count: belief.revisionCount })}
+                  </Text>
+                </View>
+                <Text style={[styles.body, { color: colors.foreground }]}>
+                  {belief.statement}
+                </Text>
+              </View>
+            ))}
+            {!beliefs?.length ? (
+              <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
+                {t("detail.noBeliefs")}
+              </Text>
+            ) : null}
+          </Section>
+
+          <Section label={t("detail.environment")} colors={colors}>
+            <Text style={[styles.body, { color: colors.foreground }]}>
+              {engram.environmentAnchor.description}
+            </Text>
+            <View style={{ marginTop: 14, gap: 8 }}>
+              <Text style={[styles.dataMeta, { color: colors.primary }]}>
+                {engram.environmentAnchor.name}
+              </Text>
+              <Text style={[styles.dataMeta, { color: colors.mutedForeground }]}>
+                {engram.environmentAnchor.ambient}
+              </Text>
+            </View>
+            <PrimaryButton
+              label={t("detail.openEnvironment")}
+              tone="outline"
+              onPress={() => router.push(`/engram/environment?id=${id}`)}
+              style={{ marginTop: 14 }}
+            />
+          </Section>
         </ScrollView>
       )}
 
@@ -340,6 +408,10 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     lineHeight: 21,
   },
+  dataRow: { gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "rgba(148,163,184,0.14)" },
+  dataRowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  dataMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, textTransform: "uppercase" },
+  emptyData: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 20 },
   driveRow: {
     flexDirection: "row",
     justifyContent: "space-between",
