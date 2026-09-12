@@ -3384,6 +3384,8 @@ components:
           type: ["string", "null"]
         seen:
           type: boolean
+        isDigest:
+          type: boolean
         deliveredAt:
           type: ["string", "null"]
         createdAt:
@@ -3399,6 +3401,7 @@ components:
         - content
         - reason
         - seen
+        - isDigest
         - deliveredAt
         - createdAt
 

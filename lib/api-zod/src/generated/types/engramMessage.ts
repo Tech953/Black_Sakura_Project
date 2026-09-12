@@ -23,6 +23,7 @@ export interface EngramMessage {
   /** @nullable */
   reason: string | null;
   seen: boolean;
+  isDigest: boolean;
   /** @nullable */
   deliveredAt: string | null;
   createdAt: string;

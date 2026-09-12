@@ -56,3 +56,15 @@ type = "unspecified"
 title = "ENGRAM Android APK — Galaxy Z Flip 8 build"
 description = "Rebuilt for reliable modern Android/foldable installation: version 1.0.1 (versionCode 2), resizable activity enabled, aligned Expo dependencies, 16 KB ZIP/ELF native-library compatibility verified, arm64-v8a and x86_64 llama.rn libraries included. SHA-256: d7d622d9e57dc2df5cac548a965c910985724aa0b44a274b7f23da7c4e9f3221."
 logical_id = "f933e010-ebee-4435-b2c4-9e0483f67bdc"
+
+[[outputs]]
+id = "vZN-jEpEjD1lPjrdQ0FI2"
+uri = "file://.local/outputs/-PYRI---Pitch-Deck.pdf"
+type = "pdf"
+title = "ENGRAM // PYRI — Pitch Deck.pdf"
+
+[[outputs]]
+id = "Aq0eZukj1etJX-7nOKzNo"
+uri = "file://.local/outputs/-PYRI---Pitch-Deck.pptx"
+type = "slides"
+title = "ENGRAM // PYRI — Pitch Deck.pptx"

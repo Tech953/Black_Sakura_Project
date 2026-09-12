@@ -63,6 +63,10 @@ export const engramMessagesTable = pgTable(
     /** Audit note: why a message was blocked, queued, or digested. */
     reason: text("reason"),
     seen: boolean("seen").notNull().default(false),
+    /** True for the single operator-facing summary created from digest messages. */
+    isDigest: boolean("is_digest").notNull().default(false),
+    /** Set when this digest-status source message has been included in a summary. */
+    digestedAt: timestamp("digested_at", { withTimezone: true }),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

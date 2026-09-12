@@ -16,6 +16,7 @@
     "digest": "Digest",
     "blocked": "Refused"
   },
+  "digestSummary": "Periodic Digest",
   "priority": {
     "urgent": "Urgent",
     "meaningful": "Meaningful",

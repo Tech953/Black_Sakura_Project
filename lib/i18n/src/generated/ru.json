@@ -1146,6 +1146,7 @@
     "override": "Переопределение",
     "sendToQuiescence": "Отправить в покой",
     "incomingContact": "Входящий контакт",
+    "digestSummary": "Periodic Digest",
     "newCount": "{{count}} новых",
     "markAllSeen": "Отметить всё просмотренным",
     "noEngramReachedOut": "Ни один engram ещё не вышел на связь",

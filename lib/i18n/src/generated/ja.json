@@ -1146,6 +1146,7 @@
     "override": "オーバーライド",
     "sendToQuiescence": "静止へ送る",
     "incomingContact": "受信コンタクト",
+    "digestSummary": "Periodic Digest",
     "newCount": "新着 {{count}}",
     "markAllSeen": "すべて既読にする",
     "noEngramReachedOut": "まだengramからの接触はありません",

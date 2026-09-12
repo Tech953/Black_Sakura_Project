@@ -19,6 +19,10 @@ import { attemptOperatorContact } from "../lib/operator-contact";
 import { maybeRunCommonsTurn } from "../lib/commons";
 import { maybeRunSimulationStep } from "../lib/simulations";
 import { maybeRunArtifactGeneration } from "../lib/artifacts-scheduler";
+import {
+  createHumanDigest,
+  listPendingHumanDigestOwners,
+} from "../lib/messages-store";
 import { normalizeLLMProviderError } from "../lib/llm";
 import {
   claimTransmissionPush,
@@ -283,12 +287,19 @@ export interface TickResult {
  */
 export async function runTick(opts: { force?: boolean; ownerId?: string } = {}): Promise<TickResult> {
   if (!opts.ownerId) {
-    const owners = await db
+    const autonomousOwners = await db
       .selectDistinct({ ownerId: engramsTable.ownerId })
       .from(engramsTable)
       .where(and(eq(engramsTable.autonomyEnabled, true), ne(engramsTable.ownerId, SYSTEM_OWNER_ID)));
+    const digestOwners = await listPendingHumanDigestOwners();
+    const owners = Array.from(
+      new Set([
+        ...autonomousOwners.map(({ ownerId }) => ownerId),
+        ...digestOwners,
+      ]),
+    );
     const results: TickResult[] = [];
-    for (const { ownerId } of owners) {
+    for (const ownerId of owners) {
       results.push(await runTick({ ...opts, ownerId }));
     }
     return {
@@ -470,6 +481,15 @@ export async function runTick(opts: { force?: boolean; ownerId?: string } = {}):
       });
     } catch (err) {
       logger.error({ err }, "artifact generation step failed");
+    }
+
+    // Surface held social contact as one operator-facing summary. The source
+    // rows are claimed and marked inside one transaction, so another tick or
+    // server instance cannot bundle the same messages twice.
+    try {
+      await createHumanDigest(opts.ownerId, new Date(now));
+    } catch (err) {
+      logger.error({ err, ownerId: opts.ownerId }, "human contact digest failed");
     }
   } finally {
     ticking = false;

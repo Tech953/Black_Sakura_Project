@@ -579,6 +579,69 @@ describe("runTick — global controls & modes", () => {
   });
 });
 
+describe("runTick — human contact digest", () => {
+  it("bundles unseen digest messages once and marks their source rows", async () => {
+    const now = new Date();
+    h.state.engrams = [makeEngram({ id: 1, name: "Testra" })];
+    h.state.messages = [
+      {
+        id: 10,
+        fromEngramId: 1,
+        toEngramId: null,
+        spaceId: null,
+        channel: "human",
+        priority: "social",
+        status: "digest",
+        content: "A low-priority hello",
+        reason: "social contact",
+        seen: false,
+        isDigest: false,
+        digestedAt: null,
+        deliveredAt: now,
+        createdAt: now,
+      },
+      {
+        id: 11,
+        fromEngramId: 1,
+        toEngramId: null,
+        spaceId: null,
+        channel: "human",
+        priority: "social",
+        status: "digest",
+        content: "A second low-priority hello",
+        reason: "social contact",
+        seen: false,
+        isDigest: false,
+        digestedAt: null,
+        deliveredAt: now,
+        createdAt: now,
+      },
+    ];
+
+    await runTick({ force: true, ownerId: "test-owner" });
+
+    const summaries = h.store.engramMessagesTable.filter((message) => message.isDigest === true);
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]).toMatchObject({
+      status: "digest",
+      priority: "social",
+      fromEngramId: 1,
+      seen: false,
+    });
+    expect(summaries[0].content).toContain("Periodic digest · 2 low-priority messages");
+    expect(summaries[0].content).toContain("A low-priority hello");
+    expect(h.state.messages.filter((message) => message.isDigest === false)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 10, digestedAt: expect.any(Date) }),
+        expect.objectContaining({ id: 11, digestedAt: expect.any(Date) }),
+      ]),
+    );
+
+    await runTick({ force: true, ownerId: "test-owner" });
+    expect(h.store.engramMessagesTable.filter((message) => message.isDigest === true)).toHaveLength(1);
+  });
+});
+
 // --- commons conversation -----------------------------------------------------
 describe("runTick — commons turn-taking", () => {
   it("records one engram-to-engram turn when >=2 converse-capable engrams share the commons", async () => {
