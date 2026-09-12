@@ -592,12 +592,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      # Find the draft Release for this tag and un-draft it. electron-builder
-      # draft releases are not yet attached to a real git tag, so resolve the
-      # draft by its name (electron-builder names it after the tag/version) and
-      # edit that release id to draft=false. Setting draft=false makes the
-      # release public; downloads need no GitHub login.
-      - name: Un-draft the release
+      # Find the draft Release for this tag and verify every required installer
+      # and electron-updater manifest before making it public. electron-builder
+      # drafts are not yet attached to a real git tag, so resolve by name too.
+      - name: Verify draft release assets
+        id: verify_assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
@@ -610,9 +609,45 @@ jobs:
             --jq ".[] | select(.draft == true and (.tag_name == \"$TAG\" or .name == \"$TAG\")) | .id" \
             | head -n1)"
           if [ -z "$RELEASE_ID" ]; then
-            echo "No draft release found for tag '$TAG' — nothing to publish." >&2
+            echo "No draft release found for tag '$TAG'." >&2
             exit 1
           fi
+          ASSET_NAMES="$(gh api "repos/$REPO/releases/$RELEASE_ID/assets" --paginate \
+            --jq '.[].name')"
+          echo "Assets in draft release $RELEASE_ID:"
+          printf '%s\n' "$ASSET_NAMES"
+
+          require_asset() {
+            local label="$1"
+            local pattern="$2"
+            if ! grep -Eq "$pattern" <<< "$ASSET_NAMES"; then
+              echo "Missing required $label (pattern: $pattern)." >&2
+              exit 1
+            fi
+          }
+
+          require_asset "Linux AppImage" '\.AppImage$'
+          require_asset "Linux deb package" '\.deb$'
+          require_asset "macOS DMG" '\.dmg$'
+          require_asset "Windows installer" '\.exe$'
+          require_asset "Windows update manifest" '^latest\.yml$'
+          require_asset "Linux update manifest" '^latest-linux\.yml$'
+          require_asset "macOS update manifest" '^latest-mac\.yml$'
+
+          echo "All required desktop installers and update manifests are present."
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+
+      # The draft is now known to be complete. Setting draft=false makes the
+      # release public; downloads need no GitHub login.
+      - name: Un-draft the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          RELEASE_ID: ${{ steps.verify_assets.outputs.release_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
           echo "Publishing draft release id $RELEASE_ID"
           gh api -X PATCH "repos/$REPO/releases/$RELEASE_ID" \
             -F draft=false \
