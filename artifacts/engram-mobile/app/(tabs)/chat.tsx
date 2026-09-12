@@ -4,6 +4,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
@@ -65,7 +66,11 @@ import {
 } from "@/lib/mobile-flow-seams";
 import { isRtlLanguage } from "@/lib/layout-direction";
 import { OFFLINE_LIMITS } from "@/lib/offline/limits";
-import { resolveServerApiUrl } from "@/lib/server-url";
+import {
+  getServerUrlOverride,
+  resolveServerApiUrl,
+  subscribeServerUrl,
+} from "@/lib/server-url";
 import {
   buildMarkdownTranscript,
   buildPlainTextTranscript,
@@ -82,6 +87,7 @@ export default function ChatScreen() {
   const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const {
     selectedEngramId,
     getConversationId,
@@ -91,6 +97,24 @@ export default function ChatScreen() {
   const queryClient = useQueryClient();
   // Conversation IDs are backend-specific; re-resolve when the mode flips.
   const offlineActive = useOfflineMode();
+  const [serverOverride, setServerOverride] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const refreshServerOverride = () => {
+      void getServerUrlOverride().then((override) => {
+        if (active) setServerOverride(override);
+      });
+    };
+    refreshServerOverride();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => subscribeServerUrl(() => {
+    void getServerUrlOverride().then(setServerOverride);
+  }), []);
 
   const enabled = selectedEngramId != null;
   const engramId = selectedEngramId ?? 0;
@@ -460,6 +484,17 @@ export default function ChatScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const archivalReadOnly =
     engram?.isArchival === true || Boolean(conversation?.archivedAt);
+  const serverMode = offlineActive
+    ? "offline"
+    : serverOverride
+      ? "custom"
+      : "builtIn";
+  const serverLabel =
+    serverMode === "offline"
+      ? t("chat.serverOffline")
+      : serverMode === "custom"
+        ? t("chat.serverCustom")
+        : t("chat.serverBuiltIn");
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -510,6 +545,44 @@ export default function ChatScreen() {
             )}
           </View>
         </View>
+        <Pressable
+          accessibilityRole={serverMode === "custom" ? "button" : "text"}
+          accessibilityLabel={
+            serverMode === "custom" ? t("chat.openServerSettings") : undefined
+          }
+          disabled={serverMode !== "custom"}
+          onPress={() => router.push("/server-settings")}
+          style={({ pressed }) => [
+            styles.connectionIndicator,
+            {
+              borderColor: colors.border,
+              opacity: serverMode === "custom" && pressed ? 0.65 : 1,
+            },
+          ]}
+        >
+          <Feather
+            name={serverMode === "offline" ? "smartphone" : "server"}
+            size={13}
+            color={
+              serverMode === "offline"
+                ? colors.mutedForeground
+                : colors.primary
+            }
+          />
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.connectionIndicatorText,
+              rtl && styles.rtlText,
+              { color: colors.mutedForeground },
+            ]}
+          >
+            {serverLabel}
+          </Text>
+          {serverMode === "custom" ? (
+            <Feather name="chevron-right" size={13} color={colors.primary} />
+          ) : null}
+        </Pressable>
       </View>
 
       <KeyboardAvoidingView
@@ -857,6 +930,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+  },
+  connectionIndicator: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    maxWidth: "100%",
+  },
+  connectionIndicatorText: {
+    fontFamily: "JetBrainsMono_500Medium",
+    fontSize: 10,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
   headerButton: {
     width: 34,
