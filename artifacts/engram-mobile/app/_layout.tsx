@@ -41,6 +41,7 @@ import "@/lib/i18n";
 import { i18nReady } from "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PreviousCrashScreen } from "@/components/PreviousCrashScreen";
+import { MobilePushNotifications } from "@/components/MobilePushNotifications";
 import { EngramProvider } from "@/context/engram-context";
 import {
   setAuthTokenGetter,
@@ -181,6 +182,7 @@ function AuthenticatedApp() {
       <GestureHandlerRootView>
         <KeyboardProvider>
           <StatusBar style="light" />
+          <MobilePushNotifications accountReady={accountReady} />
           <RootLayoutNav />
         </KeyboardProvider>
       </GestureHandlerRootView>

@@ -20,6 +20,10 @@ import { maybeRunCommonsTurn } from "../lib/commons";
 import { maybeRunSimulationStep } from "../lib/simulations";
 import { maybeRunArtifactGeneration } from "../lib/artifacts-scheduler";
 import { normalizeLLMProviderError } from "../lib/llm";
+import {
+  claimTransmissionPush,
+  sendTransmissionPush,
+} from "../lib/mobile-push";
 
 // --- Tunable constants (cost & cadence guards) ---
 const GLOBAL_TICK_MS = 20_000; // how often the engine wakes up
@@ -207,6 +211,32 @@ async function emit(
     });
   } catch (err) {
     logger.error({ err, engramId: engram.id }, "engram world-model DESIRED append failed");
+  }
+
+  // Only a delivered outreach may contact the operator's phone. Claim before
+  // dispatch so a retry/restart cannot send the same transmission twice.
+  if (kind === "outreach" && wasDelivered) {
+    try {
+      if (await claimTransmissionPush(row.id)) {
+        void sendTransmissionPush({
+          ownerId: engram.ownerId!,
+          engramId: engram.id,
+          engramName: engram.name,
+          transmissionId: row.id,
+          content: row.content,
+        }).catch((err) => {
+          logger.warn(
+            { err, transmissionId: row.id },
+            "mobile outreach push delivery failed",
+          );
+        });
+      }
+    } catch (err) {
+      logger.warn(
+        { err, transmissionId: row.id },
+        "mobile outreach push claim failed",
+      );
+    }
   }
 
   return row;

@@ -830,6 +830,12 @@
       "details": "DETALHES DA FALHA",
       "copyHint": "Pressione e segure os detalhes acima para selecioná-los e copiá-los.",
       "continue": "Continuar"
+    },
+    "notifications": {
+      "permissionDeniedTitle": "Notifications are off",
+      "permissionDeniedBody": "Allow ENGRAM notifications in system settings to know when an engram reaches out.",
+      "openSettings": "Open Settings",
+      "notNow": "Not now"
     }
   },
   "nav": {

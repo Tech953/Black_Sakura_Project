@@ -159,6 +159,12 @@
     "resumeDownload": "Resume download ({{size}} so far)",
     "downloadModel": "Download model"
   },
+  "notifications": {
+    "permissionDeniedTitle": "Notifications are off",
+    "permissionDeniedBody": "Allow ENGRAM notifications in system settings to know when an engram reaches out.",
+    "openSettings": "Open Settings",
+    "notNow": "Not now"
+  },
   "notFound": {
     "title": "Oops!",
     "message": "This screen doesn't exist.",
