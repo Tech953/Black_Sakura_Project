@@ -34,6 +34,7 @@ const h = vi.hoisted(() => {
     "mediaBlobsTable",
     "mediaObservationsTable",
     "mobileOfflineSyncReceiptsTable",
+    "mobilePushTokensTable",
   ] as const;
 
   const store: Record<string, Row[]> = {};
@@ -67,14 +68,29 @@ const h = vi.hoisted(() => {
     return (t as { __table: string }).__table;
   }
 
+  function isColumn(value: unknown): value is { __table: string; __col: string } {
+    return Boolean(
+      value &&
+        typeof value === "object" &&
+        "__table" in value &&
+        "__col" in value,
+    );
+  }
+
+  function readColumn(row: Row, column: { __table: string; __col: string }) {
+    const tables = row.__tables as Record<string, Row> | undefined;
+    return tables?.[column.__table]?.[column.__col] ?? row[column.__col];
+  }
+
   // drizzle-orm operator fakes. eq/and/inArray/gte return row predicates;
   // desc returns an ordering descriptor consumed by orderBy.
   const norm = (v: unknown) => (v instanceof Date ? v.getTime() : v);
   const drizzle = {
     eq:
-      (col: { __col: string }, val: unknown) =>
+      (col: { __table: string; __col: string }, val: unknown) =>
       (row: Row) =>
-        norm(row[col.__col]) === norm(val),
+        norm(readColumn(row, col)) ===
+        norm(isColumn(val) ? readColumn(row, val) : val),
     gte:
       (col: { __col: string }, val: unknown) =>
       (row: Row) =>
@@ -112,12 +128,12 @@ const h = vi.hoisted(() => {
   };
 
   type OrderSpec = { __order: "desc" | "asc"; col: { __col: string } };
-  function selectChain() {
+  function selectChain(selection?: Record<string, unknown>) {
     let rows: Row[] = [];
+    let baseTable: string | null = null;
     let pred: ((row: Row) => boolean) | null = null;
     let order: { col: string; dir: "asc" | "desc" } | null = null;
     let lim: number | null = null;
-    let joined = false;
     const run = () => {
       let out = rows.slice();
       if (pred) out = out.filter(pred);
@@ -131,18 +147,51 @@ const h = vi.hoisted(() => {
         });
       }
       if (lim != null) out = out.slice(0, lim);
-      if (joined && rows === store.engramPresenceTable) {
-        out = out.map((presence) => ({ presence }));
+      if (selection) {
+        out = out.map((row) => {
+          const tables = row.__tables as Record<string, Row> | undefined;
+          return Object.fromEntries(
+            Object.entries(selection).map(([key, value]) => {
+              if (isColumn(value)) return [key, readColumn(row, value)];
+              if (
+                value &&
+                typeof value === "object" &&
+                "__table" in value &&
+                typeof (value as { __table?: unknown }).__table === "string"
+              ) {
+                const table = (value as { __table: string }).__table;
+                return [key, tables?.[table] ?? row];
+              }
+              return [key, value];
+            }),
+          );
+        });
       }
       return out;
     };
     const chain = {
       from(t: unknown) {
-        rows = store[tableName(t)];
+        baseTable = tableName(t);
+        rows = store[baseTable];
         return chain;
       },
-      innerJoin() {
-        joined = true;
+      innerJoin(t: unknown, joinPredicate: (row: Row) => boolean) {
+        const joinedTable = tableName(t);
+        const leftRows = rows;
+        rows = leftRows.flatMap((left): Row[] =>
+          store[joinedTable].flatMap((right): Row[] => {
+            const combined: Row = {
+                ...left,
+                ...right,
+                __tables: {
+                  ...(left.__tables as Record<string, Row> | undefined),
+                  ...(baseTable ? { [baseTable]: left } : {}),
+                  [joinedTable]: right,
+                },
+            };
+            return joinPredicate(combined) ? [combined] : [];
+          }),
+        );
         return chain;
       },
       where(p: (row: Row) => boolean) {
@@ -254,8 +303,10 @@ const h = vi.hoisted(() => {
   }
 
   const db: Record<string, (...args: never[]) => unknown> = {
-    select: () => selectChain(),
-    selectDistinct: () => selectChain(),
+    select: (selection?: unknown) =>
+      selectChain(selection as Record<string, unknown> | undefined),
+    selectDistinct: (selection?: unknown) =>
+      selectChain(selection as Record<string, unknown> | undefined),
     insert: (t: unknown) => insertBuilder(t),
     update: (t: unknown) => updateBuilder(t),
     delete: (t: unknown) => deleteBuilder(t),
@@ -348,6 +399,7 @@ vi.mock("../lib/llm", () => ({
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import openaiRouter from "./openai";
 import engramsRouter from "./engrams";
+import engramWorldModelRouter from "./engram-world-model";
 import offlineSyncRouter from "./offline-sync";
 import {
   CreateOpenaiConversationResponse,
@@ -359,6 +411,9 @@ import {
   CreateEngramInquiryResponse,
   PreviewEngramCsvImportResponse,
   ConfirmEngramCsvImportResponse,
+  ListEngramWorldModelResponse,
+  CreateEngramWorldModelEntryResponse,
+  UpdateEngramWorldModelEntryResponse,
 } from "@workspace/api-zod";
 import { engramImportDraftStore } from "../lib/engram-import-store";
 import { subscribe } from "../lib/events";
@@ -389,6 +444,7 @@ function buildApp(): Express {
   });
   app.use("/api", openaiRouter);
   app.use("/api", engramsRouter);
+  app.use("/api", engramWorldModelRouter);
   app.use("/api", offlineSyncRouter);
   return app;
 }
@@ -1620,6 +1676,100 @@ describe("manual tick and transmit", () => {
       code: "unavailable",
     });
     expect(body.message).toContain("language-model provider");
+  });
+});
+
+// =============================================================================
+// Engram world model
+// =============================================================================
+describe("engram world-model routes", () => {
+  it("appends, lists, and patches entries while preserving provenance", async () => {
+    const engram = seedEngram();
+
+    const createResponse = await fetch(`${base}/api/engrams/${engram.id}/world-model`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provenance: "observed",
+        content: "The operator prefers concise answers.",
+        confidence: 2,
+        scope: "private",
+        source: "operator-note",
+      }),
+    });
+    expect(createResponse.status).toBe(201);
+    const createdBody = await createResponse.json();
+    expect(() => CreateEngramWorldModelEntryResponse.parse(createdBody)).not.toThrow();
+    const created = CreateEngramWorldModelEntryResponse.parse(createdBody);
+    expect(created).toMatchObject({
+      engramId: engram.id,
+      provenance: "observed",
+      confidence: 1,
+      scope: "private",
+      source: "operator-note",
+    });
+
+    const listResponse = await fetch(`${base}/api/engrams/${engram.id}/world-model`);
+    expect(listResponse.status).toBe(200);
+    const listedBody = await listResponse.json();
+    expect(() => ListEngramWorldModelResponse.parse(listedBody)).not.toThrow();
+    const listed = ListEngramWorldModelResponse.parse(listedBody);
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({
+      id: created.id,
+      provenance: "observed",
+      confidence: 1,
+    });
+
+    const patchResponse = await fetch(
+      `${base}/api/engrams/${engram.id}/world-model/${created.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: "The operator prefers concise, direct answers.",
+          confidence: -1,
+          scope: "shared",
+        }),
+      },
+    );
+    expect(patchResponse.status).toBe(200);
+    const patchedBody = await patchResponse.json();
+    expect(() => UpdateEngramWorldModelEntryResponse.parse(patchedBody)).not.toThrow();
+    const patched = UpdateEngramWorldModelEntryResponse.parse(patchedBody);
+    expect(patched).toMatchObject({
+      id: created.id,
+      provenance: "observed",
+      content: "The operator prefers concise, direct answers.",
+      confidence: 0,
+      scope: "shared",
+      source: "operator-note",
+    });
+
+    const relabelResponse = await fetch(
+      `${base}/api/engrams/${engram.id}/world-model/${created.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provenance: "simulated",
+          content: "This attempted relabel must not be stored.",
+        }),
+      },
+    );
+    expect(relabelResponse.status).toBe(409);
+    expect(await relabelResponse.json()).toMatchObject({
+      error: 'Provenance is immutable: cannot relabel "observed" as "simulated".',
+    });
+
+    const stored = h.store.engramWorldModelTable.find((row) => row.id === created.id);
+    expect(stored).toMatchObject({
+      provenance: "observed",
+      content: "The operator prefers concise, direct answers.",
+      confidence: 0,
+      scope: "shared",
+      source: "operator-note",
+    });
   });
 });
 
