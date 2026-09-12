@@ -34,6 +34,7 @@
         }
       ],
       "expo-font",
+      "expo-notifications",
       "expo-web-browser",
       "./plugins/withAndroidLaunchReliability",
        "./plugins/withAndroidReleaseSigning",

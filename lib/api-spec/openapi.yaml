@@ -89,6 +89,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/OpenaiError"
 
+  /mobile/push-tokens:
+    post:
+      operationId: registerPushToken
+      tags: [mobile]
+      summary: Register an Expo push token for the signed-in mobile account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenInput"
+      responses:
+        "204":
+          description: Push token registered
+        "400":
+          description: Invalid push token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+    delete:
+      operationId: unregisterPushToken
+      tags: [mobile]
+      summary: Remove an Expo push token from the signed-in mobile account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenInput"
+      responses:
+        "204":
+          description: Push token removed
+        "400":
+          description: Invalid push token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
   /personality:
     get:
       operationId: getPersonality
@@ -2404,6 +2444,20 @@ components:
         - archivedAt
         - groupContinuationMode
         - messages
+    PushTokenInput:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: "^(Expo|Exponent)PushToken\\[[^\\]]+\\]$"
+        platform:
+          type: string
+          enum: [ios, android]
+      required:
+        - token
+        - platform
     OpenaiError:
       type: object
       properties:

@@ -830,6 +830,12 @@
       "details": "충돌 세부정보",
       "copyHint": "위 세부정보를 길게 눌러 선택하고 복사하세요.",
       "continue": "계속"
+    },
+    "notifications": {
+      "permissionDeniedTitle": "Notifications are off",
+      "permissionDeniedBody": "Allow ENGRAM notifications in system settings to know when an engram reaches out.",
+      "openSettings": "Open Settings",
+      "notNow": "Not now"
     }
   },
   "nav": {

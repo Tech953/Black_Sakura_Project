@@ -119,6 +119,8 @@ export * from './persona';
 export * from './personaActivation';
 export * from './personalityInput';
 export * from './personalityProfile';
+export * from './pushTokenInput';
+export * from './pushTokenInputPlatform';
 export * from './simulation';
 export * from './simulationControlInput';
 export * from './simulationControlInputAction';

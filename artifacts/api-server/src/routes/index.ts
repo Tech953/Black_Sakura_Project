@@ -21,6 +21,7 @@ import artifactsRouter from "./artifacts";
 import eventsRouter from "./events";
 import downloadRouter from "./download";
 import offlineSyncRouter from "./offline-sync";
+import mobilePushRouter from "./mobile-push";
 import { requireAuth } from "../middlewares/require-auth";
 
 const router: IRouter = Router();
@@ -54,5 +55,6 @@ router.use(mediaRouter);
 router.use(artifactsRouter);
 router.use(eventsRouter);
 router.use(offlineSyncRouter);
+router.use(mobilePushRouter);
 
 export default router;

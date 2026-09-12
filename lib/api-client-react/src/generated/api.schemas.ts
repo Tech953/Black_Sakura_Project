@@ -516,6 +516,24 @@ export interface OpenaiConversationWithMessages {
   messages: OpenaiMessage[];
 }
 
+export type PushTokenInputPlatform = typeof PushTokenInputPlatform[keyof typeof PushTokenInputPlatform];
+
+
+export const PushTokenInputPlatform = {
+  ios: 'ios',
+  android: 'android',
+} as const;
+
+export interface PushTokenInput {
+  /**
+     * @minLength 1
+     * @maxLength 512
+     * @pattern ^(Expo|Exponent)PushToken\[[^\]]+\]$
+     */
+  token: string;
+  platform: PushTokenInputPlatform;
+}
+
 export interface OpenaiError {
   error: string;
 }
