@@ -116,9 +116,11 @@ router.post("/simulations", async (req, res) => {
     return;
   }
   const spaces = await loadSpaces(req.userId!);
-  const chamber = spaces.find((s) => s.kind === "simulation_chamber");
+  const chamber = spaces.find(
+    (s) => s.kind === "simulation_chamber" && s.actionScope === "simulate",
+  );
   if (!chamber) {
-    res.status(409).json({ error: "No simulation chamber space exists" });
+    res.status(409).json({ error: "No simulation chamber with simulate action scope exists" });
     return;
   }
   const presence = await loadPresenceForEngram(engram.id, req.userId!);
