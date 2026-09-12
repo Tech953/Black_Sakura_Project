@@ -109,9 +109,9 @@ export type OfflineModelDownloadStatus =
 
 export type UpdateStatus =
   | { state: "idle" }
-  | { state: "checking" }
+  | { state: "checking"; manual?: boolean }
   | { state: "available"; version?: string }
-  | { state: "not-available" }
+  | { state: "not-available"; manual?: boolean }
   | { state: "downloading"; percent: number }
   | { state: "downloaded"; version?: string }
   | { state: "error"; message: string };
@@ -128,7 +128,8 @@ export interface EngramDesktopBridge {
     payload: SettingsPayload,
   ) => Promise<{ ok: boolean; error?: string }>;
   chooseGguf: () => Promise<
-    { ok: true; selection: GgufSelectionView } | { ok: false; cancelled?: boolean; error?: string }
+    | { ok: true; selection: GgufSelectionView }
+    | { ok: false; cancelled?: boolean; error?: string }
   >;
   importGguf: (
     selectionId: string,
@@ -174,27 +175,28 @@ export function createEngramDesktopBridge(
   ipc: RendererIpc,
 ): EngramDesktopBridge {
   return {
-    getSettings: () =>
-      ipc.invoke("settings:get") as Promise<SettingsView>,
+    getSettings: () => ipc.invoke("settings:get") as Promise<SettingsView>,
     saveSettings: (payload) =>
       ipc.invoke("settings:save", payload) as Promise<{
         ok: boolean;
         error?: string;
       }>,
     chooseGguf: () =>
-      ipc.invoke("gguf:choose") as ReturnType<EngramDesktopBridge["chooseGguf"]>,
+      ipc.invoke("gguf:choose") as ReturnType<
+        EngramDesktopBridge["chooseGguf"]
+      >,
     importGguf: (selectionId) =>
-      ipc.invoke(
-        "gguf:import",
-        selectionId,
-      ) as ReturnType<EngramDesktopBridge["importGguf"]>,
+      ipc.invoke("gguf:import", selectionId) as ReturnType<
+        EngramDesktopBridge["importGguf"]
+      >,
     cancelGgufImport: (operationId) =>
-      ipc.invoke(
-        "gguf:cancel",
-        operationId,
-      ) as ReturnType<EngramDesktopBridge["cancelGgufImport"]>,
+      ipc.invoke("gguf:cancel", operationId) as ReturnType<
+        EngramDesktopBridge["cancelGgufImport"]
+      >,
     removeGguf: () =>
-      ipc.invoke("gguf:remove") as ReturnType<EngramDesktopBridge["removeGguf"]>,
+      ipc.invoke("gguf:remove") as ReturnType<
+        EngramDesktopBridge["removeGguf"]
+      >,
     onGgufImportStatus: (callback) => {
       const listener = (_event: unknown, payload: unknown): void =>
         callback(payload as GgufImportStatus);
@@ -208,10 +210,9 @@ export function createEngramDesktopBridge(
         EngramDesktopBridge["downloadOfflineModel"]
       >,
     cancelOfflineModelDownload: (operationId) =>
-      ipc.invoke(
-        "offline-model:cancel",
-        operationId,
-      ) as ReturnType<EngramDesktopBridge["cancelOfflineModelDownload"]>,
+      ipc.invoke("offline-model:cancel", operationId) as ReturnType<
+        EngramDesktopBridge["cancelOfflineModelDownload"]
+      >,
     removeOfflineModel: () =>
       ipc.invoke("offline-model:remove") as ReturnType<
         EngramDesktopBridge["removeOfflineModel"]
