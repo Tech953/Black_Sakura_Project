@@ -99,6 +99,13 @@
       "when": 1789175929621,
       "tag": "0013_special_bloodstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789218202128,
+      "tag": "0014_spooky_clea",
+      "breakpoints": true
     }
   ]
 }

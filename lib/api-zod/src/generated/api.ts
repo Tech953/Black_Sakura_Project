@@ -1685,6 +1685,7 @@ export const ListEngramMessagesResponseItem = zod.object({
   "content": zod.string(),
   "reason": zod.string().nullable(),
   "seen": zod.boolean(),
+  "isDigest": zod.boolean(),
   "deliveredAt": zod.string().nullable(),
   "createdAt": zod.string()
 })

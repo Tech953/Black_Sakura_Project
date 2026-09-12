@@ -1146,6 +1146,7 @@
     "override": "ओवरराइड",
     "sendToQuiescence": "निष्क्रियता में भेजें",
     "incomingContact": "आने वाला संपर्क",
+    "digestSummary": "Periodic Digest",
     "newCount": "{{count}} नए",
     "markAllSeen": "सभी को देखा चिह्नित करें",
     "noEngramReachedOut": "अभी तक किसी engram ने संपर्क नहीं किया",

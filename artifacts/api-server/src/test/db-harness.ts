@@ -276,6 +276,10 @@ export function createDbHarness() {
               updatedAt: new Date(),
               ...value,
             };
+            if (name === "engramMessagesTable") {
+              row.isDigest ??= false;
+              row.digestedAt ??= null;
+            }
             store[name].push(row);
             insertCalls.push({ ...row, __table: table });
             return row;
@@ -445,7 +449,11 @@ export function createDbHarness() {
       return store.engramMessagesTable;
     },
     set messages(rows: TestRow[]) {
-      store.engramMessagesTable = rows;
+      store.engramMessagesTable = rows.map((row) => ({
+        isDigest: false,
+        digestedAt: null,
+        ...row,
+      }));
     },
     get controls() {
       return store.hubControlsTable;

@@ -31,6 +31,7 @@ import openaiRouter from "./openai";
 import engramsRouter from "./engrams";
 import engramWorldModelRouter from "./engram-world-model";
 import offlineSyncRouter from "./offline-sync";
+import messagesRouter from "./messages";
 import {
   CreateOpenaiConversationResponse,
   ListOpenaiConversationsResponse,
@@ -44,6 +45,7 @@ import {
   ListEngramWorldModelResponse,
   CreateEngramWorldModelEntryResponse,
   UpdateEngramWorldModelEntryResponse,
+  ListEngramMessagesResponse,
 } from "@workspace/api-zod";
 import { engramImportDraftStore } from "../lib/engram-import-store";
 import { subscribe } from "../lib/events";
@@ -76,6 +78,7 @@ function buildApp(): Express {
   app.use("/api", engramsRouter);
   app.use("/api", engramWorldModelRouter);
   app.use("/api", offlineSyncRouter);
+  app.use("/api", messagesRouter);
   return app;
 }
 
@@ -1546,6 +1549,40 @@ describe("inquiry routes", () => {
       body: JSON.stringify({ kind: "probe", question: "x" }),
     });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("human contact messages route", () => {
+  it("serializes digest summaries distinctly from source contacts", async () => {
+    const engram = seedEngram({ name: "Digestor" });
+    h.store.engramMessagesTable.push({
+      id: 1,
+      fromEngramId: engram.id,
+      toEngramId: null,
+      spaceId: null,
+      channel: "human",
+      priority: "social",
+      status: "digest",
+      content: "Periodic digest · 2 low-priority messages\n• Digestor: Hello",
+      reason: "Bundled from unseen social-priority contact",
+      seen: false,
+      isDigest: true,
+      digestedAt: new Date(),
+      deliveredAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    const response = await fetch(`${base}/api/messages?channel=human`);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(() => ListEngramMessagesResponse.parse(body)).not.toThrow();
+    expect(body).toEqual([
+      expect.objectContaining({
+        fromEngramId: engram.id,
+        isDigest: true,
+        status: "digest",
+      }),
+    ]);
   });
 });
 
