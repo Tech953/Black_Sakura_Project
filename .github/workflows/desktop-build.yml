@@ -187,6 +187,21 @@ jobs:
         if: github.ref_type == 'tag' && matrix.platform == 'win'
         shell: pwsh
         run: |
+          $videoTools = @(
+            "artifacts/desktop/release/win-unpacked/resources/bin/ffmpeg.exe",
+            "artifacts/desktop/release/win-unpacked/resources/bin/ffprobe.exe"
+          )
+          foreach ($file in $videoTools) {
+            if (-not (Test-Path $file -PathType Leaf)) {
+              throw "Expected bundled video tool is missing: $file"
+            }
+            $signature = Get-AuthenticodeSignature (Resolve-Path $file).Path
+            if ($signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
+              throw "Bundled video tool Authenticode verification failed for $file`: $($signature.Status)"
+            }
+            Write-Host "Verified bundled video tool: $file ($($signature.SignerCertificate.Subject))"
+          }
+
           $files = Get-ChildItem artifacts/desktop/release -Recurse -File -Filter *.exe
           if ($files.Count -eq 0) { throw "No Windows executables found to verify." }
           foreach ($file in $files) {
