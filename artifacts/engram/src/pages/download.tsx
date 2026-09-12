@@ -15,15 +15,13 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-// GitHub repository (owner/repo) that hosts the releases produced by
-// .github/workflows/desktop-build.yml. Used here ONLY for the external
-// "release notes" link; the actual downloads are served same-origin by this
-// app's API (see below), so the browser never calls the GitHub API directly.
-const GITHUB_REPO =
-  (import.meta.env.VITE_GITHUB_REPO as string | undefined)?.trim() ||
-  "Tech953/Ch-IO";
-
-const RELEASES_PAGE = `https://github.com/${GITHUB_REPO}/releases`;
+// GitHub Releases URL used ONLY for the external "release notes" link; the
+// actual downloads are served same-origin by this app's API (see below), so
+// the browser never calls the GitHub API directly. The fallback is the public
+// repository that currently hosts ENGRAM's installers.
+const RELEASES_PAGE =
+  (import.meta.env.VITE_DESKTOP_RELEASES_URL as string | undefined)?.trim() ||
+  "https://github.com/Tech953/Ch-IO/releases/latest";
 
 // Same-origin download endpoints served by this app's API
 // (artifacts/api-server routes/download.ts). Each meta endpoint reports
