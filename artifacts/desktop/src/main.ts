@@ -56,6 +56,7 @@ import type {
   OfflineModelDownloadStatus,
   OfflineModelView,
   SettingsPayload,
+  UpdateStatus,
 } from "./desktop-bridge";
 
 // ---------------------------------------------------------------------------
@@ -115,8 +116,7 @@ const packagedSmokeGguf = packagedSmokeEnabled
   ? process.env.ENGRAM_PACKAGED_GGUF_FIXTURE
   : undefined;
 const packagedSmokeUsesRealRuntime =
-  packagedSmokeEnabled &&
-  process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1";
+  packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1";
 
 function bundledModelAvailable(): boolean {
   const spec = offlineModelSpec();
@@ -147,23 +147,14 @@ let quitting = false;
 // startup check stays quiet unless an update is actually downloaded).
 let manualUpdateCheck = false;
 
-// Live auto-update status, mirrored to the Settings window so the user can see
-// the installed version and whether an update is checking/downloading/ready.
-type UpdateStatus =
-  | { state: "idle" }
-  | { state: "checking" }
-  | { state: "available"; version?: string }
-  | { state: "not-available" }
-  | { state: "downloading"; percent: number }
-  | { state: "downloaded"; version?: string }
-  | { state: "error"; message: string };
-
 let updateStatus: UpdateStatus = { state: "idle" };
 
 function setUpdateStatus(status: UpdateStatus): void {
   updateStatus = status;
-  if (settingsWindow && !settingsWindow.isDestroyed()) {
-    settingsWindow.webContents.send("update:status", status);
+  for (const window of [mainWindow, settingsWindow]) {
+    if (window && !window.isDestroyed()) {
+      window.webContents.send("update:status", status);
+    }
   }
 }
 
@@ -234,9 +225,7 @@ const runningOfflineModelDownloads = new Map<
 >();
 
 function hasRunningModelOperation(): boolean {
-  return (
-    runningGgufImports.size > 0 || runningOfflineModelDownloads.size > 0
-  );
+  return runningGgufImports.size > 0 || runningOfflineModelDownloads.size > 0;
 }
 
 function errorMessage(error: unknown): string {
@@ -245,7 +234,9 @@ function errorMessage(error: unknown): string {
 
 function safeGgufError(error: unknown, sourcePath?: string): string {
   const message = errorMessage(error);
-  return sourcePath ? message.split(sourcePath).join("[selected GGUF]") : message;
+  return sourcePath
+    ? message.split(sourcePath).join("[selected GGUF]")
+    : message;
 }
 
 function customMetadataView(
@@ -291,9 +282,7 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 function customGgufStore(): CustomGgufStore {
-  customStoreInstance ??= new CustomGgufStore(
-    userDataPath("models", "custom"),
-  );
+  customStoreInstance ??= new CustomGgufStore(userDataPath("models", "custom"));
   return customStoreInstance;
 }
 
@@ -361,15 +350,10 @@ function resolveApiKey(settings: Settings): string {
   return sessionApiKey ?? "";
 }
 
-function buildServerEnv(
-  settings: Settings,
-  port: number,
-): NodeJS.ProcessEnv {
+function buildServerEnv(settings: Settings, port: number): NodeJS.ProcessEnv {
   const mode = effectiveMode(settings);
   const active =
-    (mode === "bundled" || mode === "custom") &&
-    llamaProcess &&
-    llamaPort > 0
+    (mode === "bundled" || mode === "custom") && llamaProcess && llamaPort > 0
       ? {
           baseUrl: `http://127.0.0.1:${llamaPort}/v1`,
           model: llamaModelAlias,
@@ -413,8 +397,7 @@ function findFreePort(): Promise<number> {
     srv.on("error", reject);
     srv.listen(0, "127.0.0.1", () => {
       const address = srv.address();
-      const port =
-        address && typeof address === "object" ? address.port : 0;
+      const port = address && typeof address === "object" ? address.port : 0;
       srv.close(() => resolve(port));
     });
   });
@@ -518,7 +501,10 @@ async function startLlama(settings: Settings): Promise<void> {
     llamaModelAlias = `custom-${settings.custom.sha256.slice(0, 12)}`;
   } else if (mode === "bundled" && !packagedBundledModelAvailable()) {
     const spec = offlineModelSpec();
-    const verifiedDownloaded = await verifyOfflineModel(offlineModelRoot(), spec);
+    const verifiedDownloaded = await verifyOfflineModel(
+      offlineModelRoot(),
+      spec,
+    );
     modelPath = verifiedDownloaded.path;
     llamaModelAlias = `downloaded-${spec.sha256.slice(0, 12)}`;
   }
@@ -539,10 +525,14 @@ async function startLlama(settings: Settings): Promise<void> {
       "res.writeHead(404);res.end();",
       "}).listen(port,'127.0.0.1');",
     ].join("");
-    const proc = spawn(process.execPath, ["-e", fixtureRuntime, String(llamaPort)], {
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const proc = spawn(
+      process.execPath,
+      ["-e", fixtureRuntime, String(llamaPort)],
+      {
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
     llamaProcess = proc;
     await waitForLlamaHealth(llamaPort);
     if (mode === "custom" && settings.custom) {
@@ -563,17 +553,13 @@ async function startLlama(settings: Settings): Promise<void> {
     // tightly as cross-platform pathname-based llama.cpp launching permits.
     await customGgufStore().assertLaunchIdentity(verifiedCustom);
   }
-  const proc = spawn(
-    llamaBin,
-    command.args,
-    {
-      // cwd = bin dir so the llama.cpp shared libraries/DLLs next to the
-      // executable resolve on every platform.
-      cwd: command.cwd,
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
+  const proc = spawn(llamaBin, command.args, {
+    // cwd = bin dir so the llama.cpp shared libraries/DLLs next to the
+    // executable resolve on every platform.
+    cwd: command.cwd,
+    env: process.env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
   llamaProcess = proc;
   proc.stdout?.on("data", (chunk: Buffer) => {
     process.stdout.write(`[llama] ${chunk.toString()}`);
@@ -716,7 +702,10 @@ async function startServer(
     // Windows Defender and first-run PGlite initialization can make the
     // embedded child take substantially longer than a warm Linux launch.
     await Promise.race([
-      waitForHealth(currentPort, process.platform === "win32" ? 180_000 : 60_000),
+      waitForHealth(
+        currentPort,
+        process.platform === "win32" ? 180_000 : 60_000,
+      ),
       serverFailure,
     ]);
     startupSettled = true;
@@ -835,7 +824,9 @@ async function getCustomModelView(settings: Settings) {
   }
 }
 
-async function getOfflineModelView(settings: Settings): Promise<OfflineModelView> {
+async function getOfflineModelView(
+  settings: Settings,
+): Promise<OfflineModelView> {
   const root = offlineModelRoot();
   const spec = offlineModelSpec();
   let downloadedBytes = 0;
@@ -963,7 +954,9 @@ async function runGgufImport(
         saveSettings({ ...previous, custom: imported });
       } else if (previous.custom?.sha256 !== imported.sha256) {
         // A failed replacement must leave the old active model authoritative.
-        await customGgufStore().discard(imported).catch(() => undefined);
+        await customGgufStore()
+          .discard(imported)
+          .catch(() => undefined);
       }
       sendGgufImportStatus({
         operationId,
@@ -974,15 +967,14 @@ async function runGgufImport(
       return;
     }
 
-    if (
-      previous.custom &&
-      previous.custom.sha256 !== imported.sha256
-    ) {
-      await customGgufStore().discard(previous.custom).catch((error) => {
-        // The replacement is already active; cleanup can be retried manually.
-        // eslint-disable-next-line no-console
-        console.error("[desktop] old custom model cleanup failed:", error);
-      });
+    if (previous.custom && previous.custom.sha256 !== imported.sha256) {
+      await customGgufStore()
+        .discard(previous.custom)
+        .catch((error) => {
+          // The replacement is already active; cleanup can be retried manually.
+          // eslint-disable-next-line no-console
+          console.error("[desktop] old custom model cleanup failed:", error);
+        });
     }
     sendGgufImportStatus({
       operationId,
@@ -996,9 +988,7 @@ async function runGgufImport(
     sendGgufImportStatus({
       operationId,
       state: cancelled ? "cancelled" : "error",
-      error: cancelled
-        ? undefined
-        : safeGgufError(error, selection.sourcePath),
+      error: cancelled ? undefined : safeGgufError(error, selection.sourcePath),
       imported: false,
     });
   } finally {
@@ -1103,13 +1093,16 @@ ipcMain.handle("settings:get", async () => {
   return {
     mode: settings.mode,
     bundledAvailable: bundledModelAvailable(),
-      bundledModelIncluded: packagedBundledModelAvailable(),
+    bundledModelIncluded: packagedBundledModelAvailable(),
     allowLan: settings.allowLan === true,
     // LAN addresses the mobile app can use when LAN access is on.
     lanAddresses: Object.values(os.networkInterfaces())
       .flat()
       .filter((i) => i && i.family === "IPv4" && !i.internal)
-      .map((i) => `http://${(i as os.NetworkInterfaceInfo).address}:${currentPort}`),
+      .map(
+        (i) =>
+          `http://${(i as os.NetworkInterfaceInfo).address}:${currentPort}`,
+      ),
     offline: settings.offline,
     online: {
       baseUrl: settings.online.baseUrl,
@@ -1118,83 +1111,84 @@ ipcMain.handle("settings:get", async () => {
     hasApiKey: Boolean(settings.online.apiKeyEnc) || Boolean(sessionApiKey),
     encryptionAvailable: safeStorage.isEncryptionAvailable(),
     customModel: await getCustomModelView(settings),
-      offlineModel: await getOfflineModelView(settings),
+    offlineModel: await getOfflineModelView(settings),
   };
 });
 
-ipcMain.handle(
-  "settings:save",
-  async (_event, payload: SettingsPayload) => {
-    try {
-      if (hasRunningModelOperation()) {
-        throw new Error("Wait for the GGUF import to finish or cancel it first.");
-      }
-      if (
-        !payload ||
-        !["bundled", "custom", "offline", "online"].includes(payload.mode) ||
-        !payload.offline ||
-        !payload.online
-      ) {
-        throw new Error("Invalid settings payload.");
-      }
-      const previous = loadSettings();
-      const next: Settings = {
-        mode: normalizeDesktopMode(payload.mode),
-        allowLan: payload.allowLan === true,
-        custom: previous.custom,
-        offline: {
-          baseUrl:
-            String(payload.offline.baseUrl ?? "").trim().slice(0, 2048) ||
-            DEFAULT_SETTINGS.offline.baseUrl,
-          model:
-            String(payload.offline.model ?? "").trim().slice(0, 512) ||
-            DEFAULT_SETTINGS.offline.model,
-        },
-        online: {
-          baseUrl:
-            String(payload.online.baseUrl ?? "").trim().slice(0, 2048) ||
-            DEFAULT_SETTINGS.online.baseUrl,
-          model:
-            String(payload.online.model ?? "").trim().slice(0, 512) ||
-            DEFAULT_SETTINGS.online.model,
-          apiKeyEnc: previous.online.apiKeyEnc,
-        },
-      };
-      if (next.mode === "custom" && !next.custom) {
-        throw new Error("Import a GGUF model before selecting Custom GGUF.");
-      }
-
-      const previousSessionApiKey = sessionApiKey;
-      const newKey = String(payload.online.apiKey ?? "").slice(0, 8192);
-      if (typeof newKey === "string" && newKey.length > 0) {
-        if (safeStorage.isEncryptionAvailable()) {
-          next.online.apiKeyEnc = safeStorage
-            .encryptString(newKey)
-            .toString("base64");
-          sessionApiKey = null;
-        } else {
-          // No OS keychain: hold the key in memory for this session only.
-          // It is intentionally never written to settings.json in plaintext.
-          sessionApiKey = newKey;
-          delete next.online.apiKeyEnc;
-        }
-      }
-
-      try {
-        await activateDesktopSettings(previous, next);
-      } catch (error) {
-        sessionApiKey = previousSessionApiKey;
-        throw error;
-      }
-      if (settingsWindow && !settingsWindow.isDestroyed()) {
-        settingsWindow.close();
-      }
-      return { ok: true };
-    } catch (error) {
-      return { ok: false, error: String(error) };
+ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {
+  try {
+    if (hasRunningModelOperation()) {
+      throw new Error("Wait for the GGUF import to finish or cancel it first.");
     }
-  },
-);
+    if (
+      !payload ||
+      !["bundled", "custom", "offline", "online"].includes(payload.mode) ||
+      !payload.offline ||
+      !payload.online
+    ) {
+      throw new Error("Invalid settings payload.");
+    }
+    const previous = loadSettings();
+    const next: Settings = {
+      mode: normalizeDesktopMode(payload.mode),
+      allowLan: payload.allowLan === true,
+      custom: previous.custom,
+      offline: {
+        baseUrl:
+          String(payload.offline.baseUrl ?? "")
+            .trim()
+            .slice(0, 2048) || DEFAULT_SETTINGS.offline.baseUrl,
+        model:
+          String(payload.offline.model ?? "")
+            .trim()
+            .slice(0, 512) || DEFAULT_SETTINGS.offline.model,
+      },
+      online: {
+        baseUrl:
+          String(payload.online.baseUrl ?? "")
+            .trim()
+            .slice(0, 2048) || DEFAULT_SETTINGS.online.baseUrl,
+        model:
+          String(payload.online.model ?? "")
+            .trim()
+            .slice(0, 512) || DEFAULT_SETTINGS.online.model,
+        apiKeyEnc: previous.online.apiKeyEnc,
+      },
+    };
+    if (next.mode === "custom" && !next.custom) {
+      throw new Error("Import a GGUF model before selecting Custom GGUF.");
+    }
+
+    const previousSessionApiKey = sessionApiKey;
+    const newKey = String(payload.online.apiKey ?? "").slice(0, 8192);
+    if (typeof newKey === "string" && newKey.length > 0) {
+      if (safeStorage.isEncryptionAvailable()) {
+        next.online.apiKeyEnc = safeStorage
+          .encryptString(newKey)
+          .toString("base64");
+        sessionApiKey = null;
+      } else {
+        // No OS keychain: hold the key in memory for this session only.
+        // It is intentionally never written to settings.json in plaintext.
+        sessionApiKey = newKey;
+        delete next.online.apiKeyEnc;
+      }
+    }
+
+    try {
+      await activateDesktopSettings(previous, next);
+    } catch (error) {
+      sessionApiKey = previousSessionApiKey;
+      throw error;
+    }
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.close();
+    }
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: String(error) };
+  }
+});
 
 ipcMain.handle("gguf:choose", async () => {
   let sourcePath: string | undefined;
@@ -1210,7 +1204,9 @@ ipcMain.handle("gguf:choose", async () => {
       // source path stays in the main process and is never included in the
       // renderer-facing selection payload.
       if (!path.isAbsolute(packagedSmokeGguf)) {
-        throw new Error("Packaged GGUF smoke fixture must be an absolute path.");
+        throw new Error(
+          "Packaged GGUF smoke fixture must be an absolute path.",
+        );
       }
       sourcePath = packagedSmokeGguf;
     } else {
@@ -1252,10 +1248,7 @@ ipcMain.handle("gguf:choose", async () => {
 
 ipcMain.handle("gguf:import", (_event, selectionId: unknown) => {
   try {
-    if (
-      typeof selectionId !== "string" ||
-      selectionId.length > 128
-    ) {
+    if (typeof selectionId !== "string" || selectionId.length > 128) {
       throw new Error("Invalid GGUF selection.");
     }
     if (hasRunningModelOperation()) {
@@ -1286,7 +1279,8 @@ ipcMain.handle("gguf:cancel", (_event, operationId: unknown) => {
     return { ok: false, error: "Invalid GGUF import." };
   }
   const entry = runningGgufImports.get(operationId);
-  if (!entry) return { ok: false, error: "That GGUF import is no longer running." };
+  if (!entry)
+    return { ok: false, error: "That GGUF import is no longer running." };
   entry.controller.abort();
   return { ok: true };
 });
@@ -1350,7 +1344,10 @@ ipcMain.handle("offline-model:cancel", (_event, operationId: unknown) => {
   }
   const entry = runningOfflineModelDownloads.get(operationId);
   if (!entry) {
-    return { ok: false, error: "That offline model download is no longer running." };
+    return {
+      ok: false,
+      error: "That offline model download is no longer running.",
+    };
   }
   entry.controller.abort();
   return { ok: true };
@@ -1359,7 +1356,9 @@ ipcMain.handle("offline-model:cancel", (_event, operationId: unknown) => {
 ipcMain.handle("offline-model:remove", async () => {
   try {
     if (runningOfflineModelDownloads.size > 0) {
-      throw new Error("Wait for the offline model download to finish or cancel it first.");
+      throw new Error(
+        "Wait for the offline model download to finish or cancel it first.",
+      );
     }
     const previous = loadSettings();
     const usingDownloadedModel =
@@ -1416,7 +1415,7 @@ function setupAutoUpdates(): void {
   autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on("checking-for-update", () => {
-    setUpdateStatus({ state: "checking" });
+    setUpdateStatus({ state: "checking", manual: manualUpdateCheck });
   });
 
   autoUpdater.on("update-available", (info) => {
@@ -1426,14 +1425,18 @@ function setupAutoUpdates(): void {
         type: "info",
         title: "Update available",
         message: "A new version of ENGRAM is available.",
-        detail: "It is downloading now and you'll be prompted to restart when it's ready.",
+        detail:
+          "It is downloading now and you'll be prompted to restart when it's ready.",
         buttons: ["OK"],
       });
     }
   });
 
   autoUpdater.on("update-not-available", () => {
-    setUpdateStatus({ state: "not-available" });
+    setUpdateStatus({
+      state: "not-available",
+      manual: manualUpdateCheck,
+    });
     if (manualUpdateCheck && mainWindow && !mainWindow.isDestroyed()) {
       void dialog.showMessageBox(mainWindow, {
         type: "info",
@@ -1450,7 +1453,10 @@ function setupAutoUpdates(): void {
   // (and the macOS dock/taskbar progress bar). Cleared on completion and on
   // error so it never lingers.
   autoUpdater.on("download-progress", (progress) => {
-    const percent = Math.max(0, Math.min(100, Math.round(progress?.percent ?? 0)));
+    const percent = Math.max(
+      0,
+      Math.min(100, Math.round(progress?.percent ?? 0)),
+    );
     setUpdateStatus({ state: "downloading", percent });
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.setTitle(`${WINDOW_TITLE} — Downloading update… ${percent}%`);
@@ -1492,7 +1498,8 @@ function setupAutoUpdates(): void {
         type: "info",
         title: "Update ready",
         message: `ENGRAM ${info.version} has been downloaded.`,
-        detail: "Restart now to apply the update, or keep working and it'll install the next time you quit.",
+        detail:
+          "Restart now to apply the update, or keep working and it'll install the next time you quit.",
         buttons: ["Restart now", "Later"],
         defaultId: 0,
         cancelId: 1,
@@ -1549,7 +1556,7 @@ function checkForUpdatesManually(): void {
     return;
   }
   manualUpdateCheck = true;
-  setUpdateStatus({ state: "checking" });
+  setUpdateStatus({ state: "checking", manual: true });
   void autoUpdater.checkForUpdates().catch((error) => {
     setUpdateStatus({ state: "error", message: String(error) });
     // eslint-disable-next-line no-console
@@ -1578,7 +1585,9 @@ if (!gotLock) {
       await customGgufStore().cleanStalePartials();
       await startServer();
       if (packagedSmokeSimulatedFailure) {
-        console.error("[desktop] packaged upgrade rollback smoke: intentional startup failure");
+        console.error(
+          "[desktop] packaged upgrade rollback smoke: intentional startup failure",
+        );
         app.quit();
         return;
       }
@@ -1618,8 +1627,7 @@ if (!gotLock) {
         stopImports: cancelAllDesktopDownloads,
         stopServer,
         stopLlama,
-      })
-        .finally(() => app.quit());
+      }).finally(() => app.quit());
     }
   });
 }

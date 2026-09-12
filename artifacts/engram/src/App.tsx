@@ -1,5 +1,12 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { ClerkProvider, Show, SignIn, SignUp, useAuth, useClerk } from "@clerk/react";
+import {
+  ClerkProvider,
+  Show,
+  SignIn,
+  SignUp,
+  useAuth,
+  useClerk,
+} from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
@@ -43,6 +50,7 @@ import Media from "@/pages/media";
 import Studio from "@/pages/studio";
 import DownloadPage from "@/pages/download";
 import SettingsPage from "@/pages/settings";
+import DesktopUpdateBanner from "@/components/desktop-update-banner";
 
 const queryClient = new QueryClient();
 
@@ -327,6 +335,7 @@ function ClerkProviderWithRoutes() {
               </ProtectedDashboard>
             </Route>
           </Switch>
+          <DesktopUpdateBanner />
           <Toaster />
           <div className="scanline" />
         </TooltipProvider>
