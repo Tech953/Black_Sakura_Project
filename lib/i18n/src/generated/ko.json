@@ -1012,6 +1012,7 @@
     "autoPremisePlaceholder": "engram이 자신의 드라이브와 세계 맥락에서 시나리오를 생성합니다…",
     "premisePlaceholder": "시나리오 전제 — 예: '모든 화면에 서로 다른 연도가 표시되는, 지하실의 거울 같은 버전에서 깨어난다…'",
     "noCapableEngrams": "시뮬레이션 가능한 engram이 없습니다. 시뮬레이션을 활성화하고 시뮬레이션 또는 full-bounded 모드를 사용하세요.",
+    "sharedParticipants": "{{count}} engrams will alternate turns in this simulation.",
     "opening": "여는 중…",
     "launchSimulation": "시뮬레이션 시작",
     "openedTitle": "시뮬레이션 열림",

@@ -160,7 +160,11 @@ export default function Simulations() {
           </div>
         ) : (
           ordered.map((sim) => (
-            <SimulationCard key={sim.id} sim={sim} engram={engramById.get(sim.engramId)} />
+            <SimulationCard
+              key={sim.id}
+              sim={sim}
+              engramById={engramById}
+            />
           ))
         )}
       </div>
@@ -173,11 +177,21 @@ function LaunchSimulationPanel({ engrams }: { engrams: Engram[] }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const createSim = useCreateSimulation();
-  const [engramId, setEngramId] = useState<number | null>(null);
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
   const [premise, setPremise] = useState("");
   const [autoPremise, setAutoPremise] = useState(true);
 
-  const selectedId = engramId ?? engrams[0]?.id ?? null;
+  const selectedIds = participantIds.length ? participantIds : engrams[0] ? [engrams[0].id] : [];
+  const selectedId = selectedIds[0] ?? null;
+
+  function toggleParticipant(id: number) {
+    setParticipantIds((current) => {
+      const selected = current.length ? current : selectedId === null ? [] : [selectedId];
+      if (selected.includes(id)) return selected.filter((candidate) => candidate !== id);
+      if (selected.length >= 8) return selected;
+      return [...selected, id];
+    });
+  }
 
   function handleLaunch() {
     if (
@@ -187,8 +201,8 @@ function LaunchSimulationPanel({ engrams }: { engrams: Engram[] }) {
     )
       return;
     const data = autoPremise
-      ? { engramId: selectedId }
-      : { engramId: selectedId, premise: premise.trim() };
+      ? { engramId: selectedId, participantEngramIds: selectedIds }
+      : { engramId: selectedId, participantEngramIds: selectedIds, premise: premise.trim() };
     createSim.mutate(
       { data },
       {
@@ -220,18 +234,24 @@ function LaunchSimulationPanel({ engrams }: { engrams: Engram[] }) {
           {engrams.map((e) => (
             <button
               key={e.id}
-              onClick={() => setEngramId(e.id)}
+              onClick={() => toggleParticipant(e.id)}
               data-testid={`button-sim-engram-${e.id}`}
               className={`px-3 py-1.5 border font-mono text-xs transition-all ${
-                e.id === selectedId
+                selectedIds.includes(e.id)
                   ? "border-rose-500/60 bg-rose-500/10 text-rose-300"
                   : "border-border/40 text-muted-foreground hover:border-rose-500/30"
               }`}
             >
+              {selectedIds.includes(e.id) ? "✓ " : ""}
               {e.symbol} {e.name}
             </button>
           ))}
         </div>
+        {selectedIds.length > 1 && (
+          <p className="font-mono text-[10px] text-rose-300/70">
+            {t("sharedParticipants", { count: selectedIds.length })}
+          </p>
+        )}
         {!engrams.length && (
           <p className="font-mono text-[11px] text-amber-300/80">
             {t("noCapableEngrams")}
@@ -280,7 +300,13 @@ function LaunchSimulationPanel({ engrams }: { engrams: Engram[] }) {
   );
 }
 
-function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
+function SimulationCard({
+  sim,
+  engramById,
+}: {
+  sim: Simulation;
+  engramById: Map<number, Engram>;
+}) {
   const { t } = useTranslation("simulations");
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -291,6 +317,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
   const status = STATUS_META[sim.status] ?? STATUS_META.proposed;
   const ended = sim.status === "ended";
   const progress = sim.maxSteps > 0 ? Math.min(100, Math.round((sim.currentStep / sim.maxSteps) * 100)) : 0;
+  const participants = sim.participantEngramIds.map((id) => engramById.get(id)).filter(Boolean) as Engram[];
 
   const { data: steps, isLoading: stepsLoading } = useListSimulationSteps(sim.id, {
     query: {
@@ -327,8 +354,8 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="font-display tracking-wider text-sm text-foreground flex items-center gap-1.5">
-                <span className="text-rose-300/90">{engram?.symbol ?? "◇"}</span>
-                {engram?.name ?? `Engram #${sim.engramId}`}
+                <span className="text-rose-300/90">{engramById.get(sim.engramId)?.symbol ?? "◇"}</span>
+                {engramById.get(sim.engramId)?.name ?? `Engram #${sim.engramId}`}
               </span>
               <Badge
                 variant="outline"
@@ -336,6 +363,11 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
               >
                 {t("simulatedBadge")}
               </Badge>
+              {participants.length > 1 && (
+                <span className="font-mono text-[9px] text-muted-foreground/70">
+                  {participants.map((participant) => `${participant.symbol} ${participant.name}`).join(" · ")}
+                </span>
+              )}
               <Badge
                 variant="outline"
                 className={`font-mono text-[8px] uppercase tracking-wider ${status.cls}`}
@@ -454,7 +486,9 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
             ) : (
               [...steps]
                 .sort((a, b) => a.stepNumber - b.stepNumber)
-                .map((step) => <StepRow key={step.id} step={step} />)
+                .map((step) => (
+                  <StepRow key={step.id} step={step} speaker={step.speakerEngramId ? engramById.get(step.speakerEngramId) : undefined} />
+                ))
             )}
           </div>
         )}
@@ -463,7 +497,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
   );
 }
 
-function StepRow({ step }: { step: SimulationStep }) {
+function StepRow({ step, speaker }: { step: SimulationStep; speaker?: Engram }) {
   const { t } = useTranslation("simulations");
   return (
     <div className="flex gap-3 items-start" data-testid={`simulation-step-${step.id}`}>
@@ -473,6 +507,7 @@ function StepRow({ step }: { step: SimulationStep }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm leading-relaxed font-sans text-foreground/80">{step.narrative}</p>
         <span className="font-mono text-[8px] uppercase tracking-wider text-rose-400/50">
+          {speaker ? `${speaker.symbol} ${speaker.name} · ` : ""}
           {t("stepSimulated", { time: relativeTime(step.createdAt) })}
         </span>
       </div>

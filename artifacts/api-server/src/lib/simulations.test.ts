@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import type { Engram, EngramSimulation, EngramPresence, HubSpace } from "@workspace/db";
+import type {
+  Engram,
+  EngramSimulation,
+  EngramSimulationParticipant,
+  EngramPresence,
+  HubSpace,
+} from "@workspace/db";
 import type { GlobalControls } from "./engram-policy";
 
 // --- Hoisted mock state -------------------------------------------------------
@@ -23,9 +29,11 @@ const h = vi.hoisted(() => {
     db,
     appendSimulationStep: vi.fn(async () => ({ id: 1 })),
     createSimulation: vi.fn(async (v: Record<string, unknown>) => ({ id: 7, ...v })),
-    loadActiveSimulationForEngram: vi.fn(async () => null as EngramSimulation | null),
+    loadActiveSimulationForEngram: vi.fn(
+      async (_engramId?: number) => null as EngramSimulation | null,
+    ),
     loadRunningSimulations: vi.fn(async () => [] as EngramSimulation[]),
-    loadSimulationParticipants: vi.fn(async () => []),
+    loadSimulationParticipants: vi.fn(async (): Promise<EngramSimulationParticipant[]> => []),
     loadSimulationSteps: vi.fn(async () => [] as { narrative: string }[]),
     markSimulationParticipantSpoke: vi.fn(async () => undefined),
      updateSimulation: vi.fn(
@@ -53,11 +61,14 @@ const h = vi.hoisted(() => {
     generateSimulationExitSummary: vi.fn(async () => "I learned the drains hold."),
     loadRecentWorldModel: vi.fn(async () => [] as unknown[]),
     appendActivity: vi.fn(async () => undefined),
-    loadPresenceForEngram: vi.fn(async () => ({
-      engramId: 1,
-      spaceId: 5,
-      status: "active",
-    })),
+    loadPresenceForEngram: vi.fn(
+      async (_engramId?: number): Promise<EngramPresence | null> =>
+        ({
+          engramId: 1,
+          spaceId: 5,
+          status: "active",
+        }) as unknown as EngramPresence,
+    ),
   };
 });
 
@@ -179,6 +190,14 @@ beforeEach(() => {
   h.loadActiveSimulationForEngram.mockResolvedValue(null);
   h.loadRunningSimulations.mockResolvedValue([]);
   h.loadSimulationSteps.mockResolvedValue([]);
+  h.loadPresenceForEngram.mockImplementation(
+    async (_engramId?: number): Promise<EngramPresence | null> =>
+      ({
+        engramId: 1,
+        spaceId: 5,
+        status: "active",
+      }) as unknown as EngramPresence,
+  );
 });
 
 // --- Stepping a running simulation --------------------------------------------
@@ -195,7 +214,11 @@ describe("maybeRunSimulationStep — stepping", () => {
     // appendSimulationStep, and the engine never calls any other append.
     expect(h.appendSimulationStep).toHaveBeenCalledTimes(1);
     expect(h.appendSimulationStep).toHaveBeenCalledWith(
-      expect.objectContaining({ stepNumber: 2, confidence: SIMULATION_STEP_CONFIDENCE }),
+      expect.objectContaining({
+        stepNumber: 2,
+        confidence: SIMULATION_STEP_CONFIDENCE,
+        speakerEngramId: 1,
+      }),
     );
     expect(h.appendActivity).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -211,6 +234,53 @@ describe("maybeRunSimulationStep — stepping", () => {
       expect.any(Date),
     );
     expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+  });
+
+  it("alternates eligible participants by least-recently-spoken time and records the speaker", async () => {
+    const first = makeEngram({ id: 1, name: "First" });
+    const second = makeEngram({ id: 2, name: "Second" });
+    h.loadRunningSimulations.mockResolvedValue([makeSim({ currentStep: 1 })]);
+    h.loadSimulationParticipants.mockResolvedValue([
+      { simulationId: 7, engramId: 1, lastSpokeAt: new Date(2000) },
+      { simulationId: 7, engramId: 2, lastSpokeAt: new Date(1000) },
+    ] as EngramSimulationParticipant[]);
+
+    const out = await maybeRunSimulationStep(makeOpts({ engrams: [first, second] }));
+
+    expect(out).toEqual({ kind: "stepped", simulationId: 7 });
+    expect(h.generateSimulationStep).toHaveBeenCalledWith(
+      expect.objectContaining({ engram: second }),
+    );
+    expect(h.appendSimulationStep).toHaveBeenCalledWith(
+      expect.objectContaining({ speakerEngramId: 2 }),
+    );
+    expect(h.markSimulationParticipantSpoke).toHaveBeenCalledWith(
+      7,
+      2,
+      expect.any(Date),
+    );
+  });
+
+  it("does not step when every participant has left or lost capability", async () => {
+    const first = makeEngram({ id: 1 });
+    const second = makeEngram({ id: 2 });
+    h.loadRunningSimulations.mockResolvedValue([makeSim()]);
+
+    const out = await maybeRunSimulationStep(
+      makeOpts({
+        engrams: [first, second],
+        presence: [],
+      }),
+    );
+
+    expect(out).toBeNull();
+    expect(h.generateSimulationStep).not.toHaveBeenCalled();
+    expect(h.appendSimulationStep).not.toHaveBeenCalled();
+    expect(h.updateSimulation).toHaveBeenCalledWith(
+      7,
+      "test-owner",
+      expect.objectContaining({ status: "paused" }),
+    );
   });
 
   it("respects the per-step cooldown (does not step a recently-stepped sim)", async () => {
@@ -356,6 +426,55 @@ describe("maybeRunSimulationStep — proposing", () => {
       expect.objectContaining({ premise: "What if the lights fail?" }),
       [1],
     );
+  });
+
+  it("validates every shared participant before generating or creating", async () => {
+    const first = makeEngram({ id: 1 });
+    const second = makeEngram({ id: 2, name: "Elsewhere" });
+    h.loadPresenceForEngram.mockImplementation(async (engramId?: number) =>
+      engramId === second.id
+        ? null
+        : ({ engramId: 1, spaceId: 5, status: "active" } as unknown as EngramPresence),
+    );
+
+    await expect(
+      openOperatorSimulation({
+        engram: first,
+        participants: [second],
+        chamber: CHAMBER,
+        controls: { paused: false, quietMode: false },
+      }),
+    ).rejects.toThrow("Elsewhere");
+    expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+    expect(h.createSimulation).not.toHaveBeenCalled();
+  });
+
+  it("rejects an incapable or already-active shared participant", async () => {
+    const first = makeEngram({ id: 1 });
+    const incapable = makeEngram({ id: 2, mode: "quiescent" });
+
+    await expect(
+      openOperatorSimulation({
+        engram: first,
+        participants: [incapable],
+        chamber: CHAMBER,
+        controls: { paused: false, quietMode: false },
+      }),
+    ).rejects.toThrow("cannot simulate");
+
+    const active = makeEngram({ id: 3 });
+    h.loadActiveSimulationForEngram.mockImplementation(async (engramId?: number) =>
+      engramId === active.id ? makeSim({ id: 99 }) : null,
+    );
+    await expect(
+      openOperatorSimulation({
+        engram: first,
+        participants: [active],
+        chamber: CHAMBER,
+        controls: { paused: false, quietMode: false },
+      }),
+    ).rejects.toThrow("already has an active simulation");
+    expect(h.createSimulation).not.toHaveBeenCalled();
   });
 });
 
