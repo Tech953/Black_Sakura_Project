@@ -4,9 +4,10 @@ import type { EngramLiveState } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Cell } from "recharts";
-import { Activity, Gauge } from "lucide-react";
+import { Activity, Gauge, SlidersHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getGetEngramStatesQueryKey } from "@workspace/api-client-react";
+import { Link } from "wouter";
 
 const LAYER_COLORS: Record<string, string> = {
   working: "#22d3ee",
@@ -149,6 +150,15 @@ export default function Analytics() {
                         <div className={`h-full transition-all ${status === "ready" ? "bg-rose-400/80" : "bg-primary/60"}`} style={{ width: `${percent}%` }} />
                       </div>
                     </div>
+                    <Link
+                      href={`/environment?engramId=${engram.id}`}
+                      aria-label={t("openEnvironment", { name: engram.name })}
+                      data-testid={`button-open-environment-${engram.id}`}
+                      className="mt-3 flex min-h-8 items-center justify-center gap-1.5 border border-primary/25 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-primary/80 transition-colors hover:border-primary/60 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      <SlidersHorizontal className="h-3 w-3" aria-hidden="true" />
+                      {t("openEnvironment")}
+                    </Link>
                   </div>
                 );
               })}
