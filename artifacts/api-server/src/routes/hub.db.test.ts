@@ -24,6 +24,7 @@ import { eq } from "drizzle-orm";
 import hubRouter from "./hub";
 
 const OWNER_ID = "hub-route-movement-owner";
+const FOREIGN_OWNER_ID = "hub-route-foreign-owner";
 
 const ready = ensureDatabaseReady({ seed: false });
 let server: Server;
@@ -62,11 +63,11 @@ afterAll(async () => {
   await closeDb();
 });
 
-async function insertEngram() {
+async function insertEngram(ownerId = OWNER_ID) {
   const [row] = await db
     .insert(engramsTable)
     .values({
-      ownerId: OWNER_ID,
+      ownerId,
       slug: `route-movement-${Date.now()}-${Math.random()}`,
       name: "Route Test Engram",
       title: "Movement route test",
@@ -96,11 +97,11 @@ async function insertEngram() {
   return row.id;
 }
 
-async function insertSpace() {
+async function insertSpace(ownerId = OWNER_ID) {
   const [row] = await db
     .insert(hubSpacesTable)
     .values({
-      ownerId: OWNER_ID,
+      ownerId,
       slug: `route-space-${Date.now()}-${Math.random()}`,
       name: "Route Target",
       kind: "commons",
@@ -192,6 +193,40 @@ describe("PUT /hub/presence/:engramId", () => {
     expect(await response.json()).toEqual({ error: "Engram not found" });
   });
 
+  it("treats another owner's engram as not found without changing presence or activity", async () => {
+    const foreignEngramId = await insertEngram(FOREIGN_OWNER_ID);
+    const foreignSpaceId = await insertSpace(FOREIGN_OWNER_ID);
+    const targetSpaceId = await insertSpace();
+    const enteredAt = new Date("2026-09-13T12:00:00.000Z");
+    await db.insert(engramPresenceTable).values({
+      engramId: foreignEngramId,
+      spaceId: foreignSpaceId,
+      status: "active",
+      note: "foreign presence",
+      enteredAt,
+      updatedAt: enteredAt,
+    });
+    await db.insert(hubActivityLogTable).values({
+      spaceId: foreignSpaceId,
+      engramId: foreignEngramId,
+      kind: "enter",
+      summary: "Foreign engram entered its own space.",
+    });
+    const beforePresence = await db.select().from(engramPresenceTable);
+    const beforeActivity = await db.select().from(hubActivityLogTable);
+
+    const response = await fetch(`${base}/hub/presence/${foreignEngramId}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ spaceId: targetSpaceId }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "Engram not found" });
+    expect(await db.select().from(engramPresenceTable)).toEqual(beforePresence);
+    expect(await db.select().from(hubActivityLogTable)).toEqual(beforeActivity);
+  });
+
   it("returns 404 for an unknown space", async () => {
     const engramId = await insertEngram();
 
@@ -203,6 +238,40 @@ describe("PUT /hub/presence/:engramId", () => {
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: "Space not found" });
+  });
+
+  it("treats another owner's space as not found without changing presence or activity", async () => {
+    const engramId = await insertEngram();
+    const sourceSpaceId = await insertSpace();
+    const foreignSpaceId = await insertSpace(FOREIGN_OWNER_ID);
+    const enteredAt = new Date("2026-09-13T12:00:00.000Z");
+    await db.insert(engramPresenceTable).values({
+      engramId,
+      spaceId: sourceSpaceId,
+      status: "active",
+      note: "owned source",
+      enteredAt,
+      updatedAt: enteredAt,
+    });
+    await db.insert(hubActivityLogTable).values({
+      spaceId: sourceSpaceId,
+      engramId,
+      kind: "enter",
+      summary: "Route Test Engram entered its source space.",
+    });
+    const beforePresence = await db.select().from(engramPresenceTable);
+    const beforeActivity = await db.select().from(hubActivityLogTable);
+
+    const response = await fetch(`${base}/hub/presence/${engramId}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ spaceId: foreignSpaceId }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "Space not found" });
+    expect(await db.select().from(engramPresenceTable)).toEqual(beforePresence);
+    expect(await db.select().from(hubActivityLogTable)).toEqual(beforeActivity);
   });
 
   it("returns 400 for an invalid request body", async () => {
