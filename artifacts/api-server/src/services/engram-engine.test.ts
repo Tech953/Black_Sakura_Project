@@ -209,6 +209,36 @@ describe("projectDriveState — read-only live pressure projection", () => {
     expect(projectDriveState(engram, now).order).toBeCloseTo(0.3, 5);
   });
 
+  it("does not accrue negative pressure when the persisted tick is in the future", () => {
+    const now = 1_000_000_000_000;
+    const engram = makeEngram({
+      lastTickAt: new Date(now + 120_000),
+      driveState: { order: 0.4 },
+      drives: [{ id: "order", label: "Order", description: "", weight: 1, baseRate: 0.001 }],
+    });
+    const before = structuredClone(engram);
+
+    const projected = projectDriveState(engram, now);
+
+    expect(projected.order).toBe(0.4);
+    expect(engram).toEqual(before);
+  });
+
+  it("preserves stored pressure when no persisted tick timestamp exists", () => {
+    const now = 1_000_000_000_000;
+    const engram = makeEngram({
+      lastTickAt: null,
+      driveState: { order: 0.37 },
+      drives: [{ id: "order", label: "Order", description: "", weight: 1, baseRate: 0.001 }],
+    });
+    const before = structuredClone(engram);
+
+    const projected = projectDriveState(engram, now);
+
+    expect(projected.order).toBe(0.37);
+    expect(engram).toEqual(before);
+  });
+
   it("caps projected elapsed time and pressure without mutating the engram", () => {
     const now = 1_000_000_000_000;
     const driveState = { order: 0.2 };
@@ -217,12 +247,12 @@ describe("projectDriveState — read-only live pressure projection", () => {
       driveState,
       drives: [{ id: "order", label: "Order", description: "", weight: 1, baseRate: 1 }],
     });
+    const before = structuredClone(engram);
 
     const projected = projectDriveState(engram, now);
 
     expect(projected.order).toBe(1);
-    expect(engram.driveState).toBe(driveState);
-    expect(engram.driveState?.order).toBe(0.2);
+    expect(engram).toEqual(before);
   });
 });
 
