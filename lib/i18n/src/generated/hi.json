@@ -752,6 +752,9 @@
       "exportedOn": "Exported on",
       "conversationCreated": "Conversation created",
       "shareConversation": "Share conversation",
+      "exportFailed": "Export could not be created. Tap a format to try again.",
+      "exportCancelled": "Sharing was cancelled. Tap a format to try again.",
+      "dismissExportError": "Dismiss export error",
       "you": "You",
       "perceivedContext": "Perceived context"
     },
