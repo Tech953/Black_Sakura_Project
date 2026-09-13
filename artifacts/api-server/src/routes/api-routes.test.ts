@@ -239,6 +239,7 @@ function resetStore() {
   abortAfterAutonomousWrite = false;
   autonomousWriteAbortTriggered = false;
   h.failureState.nextInsertTable = null;
+  h.failureState.nextUpdateTable = null;
   h.updateCalls.length = 0;
   h.create.mockClear();
   simulationRouteMock.openOperatorSimulation.mockReset();
@@ -2043,6 +2044,51 @@ describe("inquiry routes", () => {
       },
     });
     expect(h.updateCalls[0].patch.slug).toBeUndefined();
+  });
+
+  it("deduplicates repeated facts and evicts only the oldest facts past the limit", async () => {
+    const initialFacts = Array.from({ length: 29 }, (_, index) => `Fact ${index + 1}`);
+    const engram = seedEngram({
+      memorySeed: {
+        relationship: "designer",
+        facts: initialFacts,
+        summary: "",
+      },
+    });
+
+    async function develop(question: string, addFacts: string[]) {
+      h.llmState.completion = JSON.stringify({
+        response: "I remember.",
+        delta: { addFacts },
+      });
+      const res = await fetch(`${base}/api/engrams/${engram.id}/inquiries`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "develop", question }),
+      });
+      expect(res.status).toBe(201);
+      return (await res.json()) as Record<string, any>;
+    }
+
+    const first = await develop("Remember the thirtieth fact.", ["Fact 30"]);
+    const second = await develop("Remember the next facts.", ["Fact 30", "Fact 31", "Fact 32"]);
+
+    expect(first.configDelta).toEqual({ addFacts: ["Fact 30"] });
+    expect(second.configDelta).toEqual({
+      addFacts: ["Fact 30", "Fact 31", "Fact 32"],
+    });
+
+    const facts = (h.store.engramsTable[0].memorySeed as { facts: string[] }).facts;
+    expect(facts).toEqual(Array.from({ length: 30 }, (_, index) => `Fact ${index + 3}`));
+    expect(new Set(facts).size).toBe(facts.length);
+
+    expect(h.store.engramInquiriesTable).toHaveLength(2);
+    expect(
+      (h.store.engramInquiriesTable[0].configDelta as { addFacts: string[] }).addFacts,
+    ).toEqual(["Fact 30"]);
+    expect(
+      (h.store.engramInquiriesTable[1].configDelta as { addFacts: string[] }).addFacts,
+    ).toEqual(["Fact 30", "Fact 31", "Fact 32"]);
   });
 
   it("rolls back the config change when recording the develop inquiry fails", async () => {
