@@ -1,3 +1,5 @@
+import type { OfflineModelFailureKind } from "./offline-model";
+
 export type DesktopLlmMode = "bundled" | "custom" | "offline" | "online";
 
 export interface CustomModelMetadataView {
@@ -34,6 +36,7 @@ export interface OfflineModelView {
   storageLocation: string;
   status: OfflineModelStatus;
   downloadedBytes: number;
+  errorKind?: OfflineModelFailureKind;
   error?: string;
 }
 
@@ -109,6 +112,7 @@ export type OfflineModelDownloadStatus =
   | {
       operationId: string;
       state: "cancelled" | "error";
+      errorKind: OfflineModelFailureKind;
       error?: string;
       downloaded?: boolean;
     };
