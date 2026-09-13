@@ -31,7 +31,8 @@
       "confidenceDesc": "ما مدى موثوقية الملاحظة؟",
       "timingDesc": "هل المستخدم متقبّل الآن؟",
       "noveltyDesc": "هل ظهر هذا من قبل؟"
-    }
+    },
+    "openEnvironment": "Open environment"
   },
   "beliefs": {
     "title": "سجل المعتقدات",
