@@ -3602,6 +3602,9 @@ components:
           type: boolean
         isDigest:
           type: boolean
+        digestGroupId:
+          type: ["string", "null"]
+          description: Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.
         deliveredAt:
           type: ["string", "null"]
         createdAt:
@@ -3619,6 +3622,7 @@ components:
         - reason
         - seen
         - isDigest
+        - digestGroupId
         - deliveredAt
         - createdAt
 
