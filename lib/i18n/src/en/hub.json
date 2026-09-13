@@ -41,5 +41,9 @@
   },
   "toastPresenceUpdatedTitle": "Presence updated",
   "toastPresenceUpdatedDescription": "{{engram}} → {{space}}.",
-  "toastMoveFailed": "Failed to move engram"
+  "toastMoveFailed": "Failed to move engram",
+  "openTranscript": "Open transcript",
+  "transcriptTitle": "{{space}} transcript",
+  "transcriptUnavailable": "Could not load this transcript.",
+  "transcriptEmpty": "No Commons exchange has been recorded in this space yet."
 }

@@ -551,7 +551,11 @@
     },
     "toastPresenceUpdatedTitle": "उपस्थिति अपडेट हुई",
     "toastPresenceUpdatedDescription": "{{engram}} → {{space}}.",
-    "toastMoveFailed": "engram स्थानांतरित नहीं हो सका"
+    "toastMoveFailed": "engram स्थानांतरित नहीं हो सका",
+    "openTranscript": "ट्रांसक्रिप्ट खोलें",
+    "transcriptTitle": "{{space}} ट्रांसक्रिप्ट",
+    "transcriptUnavailable": "यह ट्रांसक्रिप्ट लोड नहीं हो सका।",
+    "transcriptEmpty": "इस स्थान में अभी तक कोई Commons exchange दर्ज नहीं किया गया है।"
   },
   "inquiry": {
     "probeLabel": "प्रोब",

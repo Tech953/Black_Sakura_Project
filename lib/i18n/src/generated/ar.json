@@ -551,7 +551,11 @@
     },
     "toastPresenceUpdatedTitle": "تم تحديث الوجود",
     "toastPresenceUpdatedDescription": "{{engram}} ← {{space}}.",
-    "toastMoveFailed": "فشل نقل engram"
+    "toastMoveFailed": "فشل نقل engram",
+    "openTranscript": "فتح النص الكامل",
+    "transcriptTitle": "النص الكامل لـ {{space}}",
+    "transcriptUnavailable": "تعذر تحميل هذا النص.",
+    "transcriptEmpty": "لم تُسجّل محادثة Commons في هذه المساحة بعد."
   },
   "inquiry": {
     "probeLabel": "استكشاف",

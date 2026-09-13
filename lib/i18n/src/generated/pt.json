@@ -551,7 +551,11 @@
     },
     "toastPresenceUpdatedTitle": "Presença atualizada",
     "toastPresenceUpdatedDescription": "{{engram}} → {{space}}.",
-    "toastMoveFailed": "Falha ao mover engram"
+    "toastMoveFailed": "Falha ao mover engram",
+    "openTranscript": "Abrir transcrição",
+    "transcriptTitle": "Transcrição de {{space}}",
+    "transcriptUnavailable": "Não foi possível carregar esta transcrição.",
+    "transcriptEmpty": "Nenhuma troca do Commons foi registrada neste espaço ainda."
   },
   "inquiry": {
     "probeLabel": "Sondar",

@@ -4,9 +4,11 @@ import {
   useListHubSpaces,
   useListHubPresence,
   useListHubActivity,
+  useListHubSpaceTranscript,
   useMoveEngramPresence,
   getListHubPresenceQueryKey,
   getListHubActivityQueryKey,
+  getListHubSpaceTranscriptQueryKey,
   type HubSpace,
   type EngramPresence,
   type HubActivityEntry,
@@ -289,7 +291,12 @@ export default function Hub() {
               ) : (
                 <ul className="space-y-1">
                   {activity.map((entry) => (
-                    <ActivityRow key={entry.id} entry={entry} />
+                    <ActivityRow
+                      key={entry.id}
+                      entry={entry}
+                      engramById={engramById}
+                      spaceName={spaces?.find((space) => space.id === entry.spaceId)?.name}
+                    />
                   ))}
                 </ul>
               )}
@@ -394,17 +401,107 @@ function SpaceCard({
   );
 }
 
-function ActivityRow({ entry }: { entry: HubActivityEntry }) {
+function ActivityRow({
+  entry,
+  engramById,
+  spaceName,
+}: {
+  entry: HubActivityEntry;
+  engramById: Map<number, Engram>;
+  spaceName?: string;
+}) {
   const { t } = useTranslation("hub");
   const meta = ACTIVITY_META[entry.kind] ?? ACTIVITY_META.system;
   const Icon = meta.icon;
+  const [open, setOpen] = useState(false);
+  const { data: transcript, isLoading: transcriptLoading, isError: transcriptError } =
+    useListHubSpaceTranscript(entry.spaceId, {
+      query: {
+        enabled: open,
+        queryKey: getListHubSpaceTranscriptQueryKey(entry.spaceId),
+      },
+    });
+  const orderedTranscript = useMemo(
+    () => [...(transcript ?? [])].reverse(),
+    [transcript],
+  );
+
   return (
-    <li className="flex items-start gap-2.5 px-2 py-2 hover:bg-white/5 transition-colors" data-testid={`activity-${entry.id}`}>
-      <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${meta.color}`} />
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-foreground/80 leading-snug font-sans break-words">{entry.summary}</p>
-        <span className="font-mono text-[9px] text-muted-foreground/40 uppercase tracking-wider">{relativeTime(t, entry.createdAt)}</span>
-      </div>
-    </li>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <li className="flex items-start gap-2.5 px-2 py-2 hover:bg-white/5 transition-colors" data-testid={`activity-${entry.id}`}>
+        <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${meta.color}`} />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-foreground/80 leading-snug font-sans break-words">{entry.summary}</p>
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <span className="font-mono text-[9px] text-muted-foreground/40 uppercase tracking-wider">{relativeTime(t, entry.createdAt)}</span>
+            {entry.kind === "converse" && (
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-1.5 font-mono text-[9px] uppercase tracking-wider text-primary/80 hover:text-primary"
+                  data-testid={`button-open-transcript-${entry.id}`}
+                >
+                  <MessageCircle className="w-3 h-3 mr-1" />
+                  {t("openTranscript")}
+                </Button>
+              </DialogTrigger>
+            )}
+          </div>
+        </div>
+      </li>
+      {entry.kind === "converse" && (
+        <DialogContent className="bg-card border-border/50 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-widest text-primary">
+              {t("transcriptTitle", { space: spaceName ?? t("fallbackSpace") })}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+            {transcriptLoading ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-16 bg-primary/5" />
+              ))
+            ) : transcriptError ? (
+              <p className="font-mono text-xs text-destructive text-center py-8">
+                {t("transcriptUnavailable")}
+              </p>
+            ) : !orderedTranscript.length ? (
+              <p className="font-mono text-xs text-muted-foreground text-center py-8">
+                {t("transcriptEmpty")}
+              </p>
+            ) : (
+              orderedTranscript.map((message) => {
+                const speaker = engramById.get(message.fromEngramId);
+                const recipient = message.toEngramId != null
+                  ? engramById.get(message.toEngramId)
+                  : undefined;
+                return (
+                  <div key={message.id} className="border border-border/40 bg-background/30 p-3" data-testid={`transcript-message-${message.id}`}>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-display text-sm text-foreground">
+                        {speaker?.name ?? t("fallbackEngram")}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground/60">
+                        →
+                      </span>
+                      <span className="font-display text-sm text-foreground">
+                        {recipient?.name ?? t("fallbackEngram")}
+                      </span>
+                      <span className="font-mono text-[9px] text-muted-foreground/40 ml-auto">
+                        {relativeTime(t, message.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-foreground/85 whitespace-pre-wrap break-words">
+                      {message.content}
+                    </p>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      )}
+    </Dialog>
   );
 }
