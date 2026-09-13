@@ -36,6 +36,19 @@ export const SIMULATION_MAX_STEPS_CAP = 10;
  */
 export const SIMULATION_STEP_CONFIDENCE = 0.5;
 
+/** Maximum narrative text copied into a single Hub activity summary. */
+export const SIMULATION_ACTIVITY_EXCERPT_MAX = 180;
+
+export function formatSimulationActivitySummary(
+  engramName: string,
+  step: number,
+  maxSteps: number,
+  narrative: string,
+): string {
+  const excerpt = narrative.replace(/\s+/g, " ").trim().slice(0, SIMULATION_ACTIVITY_EXCERPT_MAX);
+  return `${engramName} advanced a simulation (step ${step}/${maxSteps}): ${excerpt}`;
+}
+
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -201,9 +214,7 @@ async function advanceSimulation(
       spaceId: sim.spaceId,
       engramId: engram.id,
       kind: "simulate",
-      summary: `${engram.name} advanced a simulation (step ${nextStep}/${maxSteps}): ${narrative
-        .replace(/\s+/g, " ")
-        .slice(0, 180)}`,
+      summary: formatSimulationActivitySummary(engram.name, nextStep, maxSteps, narrative),
     });
   } catch (err) {
     logger.error({ err, engramId: engram.id }, "simulation step activity append failed");
