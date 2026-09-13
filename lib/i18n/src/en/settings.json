@@ -14,5 +14,20 @@
   "ggufTitle": "Custom GGUF models",
   "ggufBody": "Use your own .gguf model with ENGRAM's managed local engine. The desktop app copies the model into protected app storage, checks it before launch, and keeps it available across updates.",
   "ggufDesktopOnly": "Custom GGUF import runs in the ENGRAM desktop app. The web app can connect to a local server, but a browser cannot start or manage the desktop engine.",
-  "ggufDownloadAction": "Get the desktop app"
+  "ggufDownloadAction": "Get the desktop app",
+  "localServerSection": "Desktop engine",
+  "localServerTitle": "Local server connection",
+  "localServerBody": "Check whether this browser can reach a desktop-hosted ENGRAM server. The check only requests the public health endpoint and never sends credentials or local file paths.",
+  "localServerAddress": "Local server address",
+  "localServerAddressPlaceholder": "http://127.0.0.1:3000",
+  "localServerCheckAction": "Check connection",
+  "localServerNotConfigured": "Not configured",
+  "localServerNotConfiguredHint": "Enter the address shown by the desktop app, then check the connection.",
+  "localServerChecking": "Checking",
+  "localServerCheckingHint": "Waiting for the local server to respond.",
+  "localServerReachable": "Reachable",
+  "localServerReachableHint": "The local server responded. You can use this browser with the desktop engine.",
+  "localServerUnavailable": "Unavailable",
+  "localServerUnavailableHint": "Start the desktop app or local server, verify the address, then try again.",
+  "localServerInvalid": "Use an http:// or https:// origin without a path, query, fragment, username, or password."
 }
