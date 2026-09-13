@@ -16,7 +16,7 @@ import {
   hubActivityLogTable,
   hubSpacesTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { movePresence } from "./hub-store";
 
 const OWNER_ID = "hub-store-movement-owner";
@@ -210,6 +210,62 @@ describe("movePresence — logging rules", () => {
 
     await movePresence({ ownerId: OWNER_ID, engram, targetSpace: unloggedA });
     expect((await activityRows()).map((activity) => activity.kind)).toEqual(["move", "move"]);
+  });
+});
+
+describe("movePresence — activity transaction atomicity", () => {
+  it("rolls back the presence update when the activity insert fails", async () => {
+    const engram = await insertEngram();
+    const source = await insertSpace({
+      slug: "atomic-source",
+      name: "Atomic Source",
+      logged: true,
+      allowsInitiative: true,
+    });
+    const target = await insertSpace({
+      slug: "atomic-target",
+      name: "Atomic Target",
+      logged: true,
+      allowsInitiative: true,
+    });
+    const initialPresence = await movePresence({
+      ownerId: OWNER_ID,
+      engram,
+      targetSpace: source,
+      note: "before failed move",
+    });
+    const beforePresence = await presenceRows();
+    const beforeActivity = await activityRows();
+    const constraintName = "hub_store_activity_failure_test";
+
+    await db.execute(
+      sql.raw(
+        `ALTER TABLE "hub_activity_log" ADD CONSTRAINT "${constraintName}" CHECK (summary <> 'Arezo moved from Atomic Source to Atomic Target.')`,
+      ),
+    );
+    try {
+      await expect(
+        movePresence({
+          ownerId: OWNER_ID,
+          engram,
+          targetSpace: target,
+          note: "should not persist",
+        }),
+      ).rejects.toThrow();
+    } finally {
+      await db.execute(
+        sql.raw(`ALTER TABLE "hub_activity_log" DROP CONSTRAINT "${constraintName}"`),
+      );
+    }
+
+    expect(await presenceRows()).toEqual(beforePresence);
+    expect(await activityRows()).toEqual(beforeActivity);
+    expect((await presenceRows()).find((row) => row.engramId === engram.id)).toMatchObject({
+      id: initialPresence.id,
+      spaceId: source.id,
+      note: "before failed move",
+      enteredAt: initialPresence.enteredAt,
+    });
   });
 });
 
