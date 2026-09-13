@@ -32,7 +32,9 @@
       "timingDesc": "هل المستخدم متقبّل الآن؟",
       "noveltyDesc": "هل ظهر هذا من قبل؟"
     },
-    "openEnvironment": "Open environment"
+    "openEnvironment": "Open environment",
+    "pressureLiveStale": "Live pressure is stale",
+    "pressureLiveUnavailable": "Live pressure unavailable"
   },
   "beliefs": {
     "title": "سجل المعتقدات",
@@ -452,7 +454,9 @@
     "newCount": "{{count}} جديد",
     "markSeen": "تحديد كمقروء",
     "awaitingFirstTransmission": "بانتظار أول إرسال",
-    "awaitingFirstTransmissionHint": "ستتواصل عندما يتجاوز الضغط العتبة"
+    "awaitingFirstTransmissionHint": "ستتواصل عندما يتجاوز الضغط العتبة",
+    "liveStateStale": "Stale live data",
+    "liveStateUnavailable": "Live data unavailable"
   },
   "evolution": {
     "title": "سجل التطور",

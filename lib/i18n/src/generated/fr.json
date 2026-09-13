@@ -32,7 +32,9 @@
       "timingDesc": "L’utilisateur est-il réceptif en ce moment ?",
       "noveltyDesc": "Cela a-t-il déjà été remonté ?"
     },
-    "openEnvironment": "Open environment"
+    "openEnvironment": "Open environment",
+    "pressureLiveStale": "Live pressure is stale",
+    "pressureLiveUnavailable": "Live pressure unavailable"
   },
   "beliefs": {
     "title": "REGISTRE DES CROYANCES",
@@ -452,7 +454,9 @@
     "newCount": "{{count}} nouveau",
     "markSeen": "Marquer vu",
     "awaitingFirstTransmission": "En attente de la première transmission",
-    "awaitingFirstTransmissionHint": "Elle prendra contact quand la pression franchira le seuil"
+    "awaitingFirstTransmissionHint": "Elle prendra contact quand la pression franchira le seuil",
+    "liveStateStale": "Stale live data",
+    "liveStateUnavailable": "Live data unavailable"
   },
   "evolution": {
     "title": "JOURNAL D’ÉVOLUTION",

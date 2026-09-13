@@ -32,7 +32,9 @@
       "timingDesc": "用户此刻是否适合接收？",
       "noveltyDesc": "这之前是否已呈现过？"
     },
-    "openEnvironment": "Open environment"
+    "openEnvironment": "Open environment",
+    "pressureLiveStale": "Live pressure is stale",
+    "pressureLiveUnavailable": "Live pressure unavailable"
   },
   "beliefs": {
     "title": "信念登记簿",
@@ -452,7 +454,9 @@
     "newCount": "{{count}} 条新消息",
     "markSeen": "标为已读",
     "awaitingFirstTransmission": "等待首次传输",
-    "awaitingFirstTransmissionHint": "当压力越过阈值时，她会发起联络"
+    "awaitingFirstTransmissionHint": "当压力越过阈值时，她会发起联络",
+    "liveStateStale": "Stale live data",
+    "liveStateUnavailable": "Live data unavailable"
   },
   "evolution": {
     "title": "进化日志",

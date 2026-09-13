@@ -44,3 +44,9 @@ For async fixture-backed UI, wait for the query result that enables the next con
 **Why:** A browser can render the shell before a parallel query hydrates participant controls, and translated labels may be uppercase even when the source string is title case; fixed sleeps and exact-case selectors made the regression flaky.
 
 **How to apply:** Gate dialog interaction on the participant option being present, then select controls by normalized visible text and keep reload assertions on the rendered transcript.
+
+For polling-failure regressions, toggle the injected API failure while the page under test is actively observing the query; a shared React Query cache can mask the failure after an SPA route remount.
+
+**Why:** Route changes may reuse a successful cached query without immediately exposing a newly injected failure, making a cross-route assertion test cache/refetch timing instead of the user-visible stale-state contract.
+
+**How to apply:** Assert stale-data recovery on the active polling page. Cover another route's unavailable state with a dedicated initial-load fixture or a separate browser scenario rather than depending on remount refetch timing.

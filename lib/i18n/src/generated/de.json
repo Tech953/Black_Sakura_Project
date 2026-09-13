@@ -32,7 +32,9 @@
       "timingDesc": "Ist der Nutzer gerade aufnahmebereit?",
       "noveltyDesc": "Wurde das schon zuvor angezeigt?"
     },
-    "openEnvironment": "Open environment"
+    "openEnvironment": "Open environment",
+    "pressureLiveStale": "Live pressure is stale",
+    "pressureLiveUnavailable": "Live pressure unavailable"
   },
   "beliefs": {
     "title": "GLAUBENSREGISTER",
@@ -452,7 +454,9 @@
     "newCount": "{{count}} neu",
     "markSeen": "Als gesehen markieren",
     "awaitingFirstTransmission": "Warte auf erste Transmission",
-    "awaitingFirstTransmissionHint": "Sie meldet sich, wenn der Druck die Schwelle überschreitet"
+    "awaitingFirstTransmissionHint": "Sie meldet sich, wenn der Druck die Schwelle überschreitet",
+    "liveStateStale": "Stale live data",
+    "liveStateUnavailable": "Live data unavailable"
   },
   "evolution": {
     "title": "EVOLUTIONSPROTOKOLL",

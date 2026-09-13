@@ -32,7 +32,9 @@
       "timingDesc": "ユーザーは今受け入れやすいか？",
       "noveltyDesc": "これは以前に提示されたことがあるか？"
     },
-    "openEnvironment": "Open environment"
+    "openEnvironment": "Open environment",
+    "pressureLiveStale": "Live pressure is stale",
+    "pressureLiveUnavailable": "Live pressure unavailable"
   },
   "beliefs": {
     "title": "信念レジストリ",
@@ -452,7 +454,9 @@
     "newCount": "{{count}}件の新着",
     "markSeen": "既読にする",
     "awaitingFirstTransmission": "初回送信待機中",
-    "awaitingFirstTransmissionHint": "圧力がしきい値を超えると彼女から接触します"
+    "awaitingFirstTransmissionHint": "圧力がしきい値を超えると彼女から接触します",
+    "liveStateStale": "Stale live data",
+    "liveStateUnavailable": "Live data unavailable"
   },
   "evolution": {
     "title": "進化ログ",

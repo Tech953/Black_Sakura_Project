@@ -32,7 +32,9 @@
       "timingDesc": "क्या उपयोगकर्ता अभी ग्रहणशील है?",
       "noveltyDesc": "क्या यह पहले दिखाया गया है?"
     },
-    "openEnvironment": "Open environment"
+    "openEnvironment": "Open environment",
+    "pressureLiveStale": "Live pressure is stale",
+    "pressureLiveUnavailable": "Live pressure unavailable"
   },
   "beliefs": {
     "title": "विश्वास रजिस्ट्री",
@@ -452,7 +454,9 @@
     "newCount": "{{count}} नया",
     "markSeen": "देखा चिह्नित करें",
     "awaitingFirstTransmission": "पहले ट्रांसमिशन की प्रतीक्षा",
-    "awaitingFirstTransmissionHint": "pressure threshold पार होने पर वह संपर्क करेगी"
+    "awaitingFirstTransmissionHint": "pressure threshold पार होने पर वह संपर्क करेगी",
+    "liveStateStale": "Stale live data",
+    "liveStateUnavailable": "Live data unavailable"
   },
   "evolution": {
     "title": "इवोल्यूशन लॉग",

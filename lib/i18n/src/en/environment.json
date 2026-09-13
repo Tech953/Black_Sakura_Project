@@ -35,6 +35,8 @@
   "committing": "Committing...",
   "commitConfiguration": "Commit Configuration",
   "liveState": "Live State",
+  "liveStateStale": "Stale live data",
+  "liveStateUnavailable": "Live data unavailable",
   "backoffBadge": "Paused · backoff {{seconds}}s",
   "cooldownBadge": "Cooldown {{seconds}}s",
   "readyToInitiate": "Ready to initiate",
