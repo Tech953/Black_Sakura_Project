@@ -1194,6 +1194,90 @@ describe("chat message streaming", () => {
     expect(sys).toContain("Distant rain on a window.");
   });
 
+  it("filters intimate expression rows before the live PYRI model request", async () => {
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "pyri",
+      mode: "companion",
+      createdAt: new Date(),
+    });
+    h.seq.conversations = 1;
+    h.store.expressionsTable.push(
+      {
+        id: 1,
+        ownerId: "__engram_system_template__",
+        glyph: "^_^",
+        name: "Warmth",
+        family: "Joy",
+        eyes: "^ ^",
+        mouth: "_",
+        gesture: null,
+        valence: "Positive",
+        arousal: "Low",
+        intimacy: 0,
+        cognitiveRole: "rapport",
+        notes: "Safe structural warmth signal.",
+      },
+      {
+        id: 2,
+        ownerId: "__engram_system_template__",
+        glyph: "xoxo",
+        name: "Smooch",
+        family: "Affection",
+        eyes: "x x",
+        mouth: "o",
+        gesture: null,
+        valence: "Positive",
+        arousal: "Medium",
+        intimacy: 4,
+        cognitiveRole: "romantic-intimacy",
+        notes: "PRIVATE HIGH-INTIMACY NOTE",
+      },
+      {
+        id: 3,
+        ownerId: "__engram_system_template__",
+        glyph: ";)",
+        name: "Flirt",
+        family: "Affection",
+        eyes: "; )",
+        mouth: ")",
+        gesture: null,
+        valence: "Positive",
+        arousal: "High",
+        intimacy: 2,
+        cognitiveRole: "seduction",
+        notes: "PRIVATE FLIRTATION NOTE",
+      },
+    );
+    h.seq.expressionsTable = 3;
+
+    const res = await fetch(`${base}/api/openai/conversations/1/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "How are you?" }),
+    });
+    expect(res.status).toBe(200);
+    expect(parseSse(await res.text()).at(-1)).toEqual({ done: true });
+
+    const request = h.create.mock.calls.at(-1)![0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const systemPrompt = request.messages[0].content;
+
+    expect(systemPrompt).toContain("^_^");
+    expect(systemPrompt).toContain("signal: rapport");
+    expect(systemPrompt).not.toContain("xoxo");
+    expect(systemPrompt).not.toContain("Smooch");
+    expect(systemPrompt).not.toContain("romantic-intimacy");
+    expect(systemPrompt).not.toContain("PRIVATE HIGH-INTIMACY NOTE");
+    expect(systemPrompt).not.toContain(";)");
+    expect(systemPrompt).not.toContain("Flirt");
+    expect(systemPrompt).not.toContain("seduction");
+    expect(systemPrompt).not.toContain("PRIVATE FLIRTATION NOTE");
+    expect(systemPrompt).not.toContain("intimacy:");
+  });
+
   it("replays a persisted `context` message to the model as a system note", async () => {
     h.store.conversations.push({
       id: 1,
