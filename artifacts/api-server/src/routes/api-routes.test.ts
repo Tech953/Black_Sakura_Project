@@ -2562,6 +2562,7 @@ describe("human contact messages route", () => {
 
   it("serializes digest summaries distinctly from source contacts", async () => {
     const engram = seedEngram({ name: "Digestor" });
+    const digestAt = new Date("2026-09-13T12:00:00.000Z");
     h.store.engramMessagesTable.push({
       id: 1,
       fromEngramId: engram.id,
@@ -2575,22 +2576,48 @@ describe("human contact messages route", () => {
       reason: "Bundled from unseen social-priority contact",
       seen: false,
       isDigest: true,
-      digestedAt: new Date(),
-      deliveredAt: new Date(),
-      createdAt: new Date(),
+      digestedAt: null,
+      deliveredAt: digestAt,
+      createdAt: new Date("2026-09-13T12:00:01.000Z"),
+    });
+    h.store.engramMessagesTable.push({
+      id: 2,
+      fromEngramId: engram.id,
+      toEngramId: null,
+      spaceId: null,
+      channel: "human",
+      author: "engram",
+      priority: "social",
+      status: "digest",
+      content: "Original contact",
+      reason: null,
+      seen: false,
+      isDigest: false,
+      digestedAt: digestAt,
+      deliveredAt: new Date("2026-09-13T11:59:00.000Z"),
+      createdAt: new Date("2026-09-13T11:59:00.000Z"),
     });
 
     const response = await fetch(`${base}/api/messages?channel=human`);
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(() => ListEngramMessagesResponse.parse(body)).not.toThrow();
-    expect(body).toEqual([
-      expect.objectContaining({
-        fromEngramId: engram.id,
-        isDigest: true,
-        status: "digest",
-      }),
-    ]);
+    expect(body).toHaveLength(2);
+    expect(body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fromEngramId: engram.id,
+          isDigest: true,
+          digestGroupId: digestAt.toISOString(),
+          status: "digest",
+        }),
+        expect.objectContaining({
+          id: 2,
+          isDigest: false,
+          digestGroupId: digestAt.toISOString(),
+        }),
+      ]),
+    );
   });
 
   it("persists an owner-scoped operator reply and returns it in the audit stream", async () => {

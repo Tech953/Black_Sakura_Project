@@ -39,6 +39,8 @@ import {
   Pause,
   BellOff,
   Download,
+  ChevronDown,
+  ChevronRight,
   Moon,
   Check,
   Inbox,
@@ -121,6 +123,9 @@ export default function Terminal() {
   const [pendingEngramId, setPendingEngramId] = useState<number | null>(null);
   const [replyingMessageId, setReplyingMessageId] = useState<number | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
+  const [expandedDigestIds, setExpandedDigestIds] = useState<Set<number>>(
+    () => new Set(),
+  );
 
   const humanMessagesKey = getListEngramMessagesQueryKey({ channel: "human", limit: 100 });
 
@@ -142,6 +147,42 @@ export default function Terminal() {
       ),
     [messages],
   );
+
+  const terminalItems = useMemo(() => {
+    type TerminalItem =
+      | { kind: "message"; message: EngramMessage }
+      | { kind: "digest"; summary: EngramMessage; sources: EngramMessage[] };
+
+    const sourcesByGroup = new Map<string, EngramMessage[]>();
+    const summaryGroups = new Set<string>();
+    for (const message of ordered) {
+      if (message.isDigest && message.digestGroupId) {
+        summaryGroups.add(message.digestGroupId);
+      } else if (!message.isDigest && message.digestGroupId) {
+        const sources = sourcesByGroup.get(message.digestGroupId) ?? [];
+        sources.push(message);
+        sourcesByGroup.set(message.digestGroupId, sources);
+      }
+    }
+
+    return ordered.flatMap<TerminalItem>((message) => {
+      if (message.isDigest) {
+        return [
+          {
+            kind: "digest",
+            summary: message,
+            sources: message.digestGroupId
+              ? sourcesByGroup.get(message.digestGroupId) ?? []
+              : [],
+          },
+        ];
+      }
+      if (message.digestGroupId && summaryGroups.has(message.digestGroupId)) {
+        return [];
+      }
+      return [{ kind: "message", message }];
+    });
+  }, [ordered]);
 
   const unseenIds = useMemo(
     () => ordered.filter((m) => !m.seen && m.status !== "blocked").map((m) => m.id),
@@ -514,19 +555,55 @@ export default function Terminal() {
           </div>
         ) : (
           <div className="space-y-3">
-            {ordered.map((msg) => (
-              <HumanMessageRow
-                key={msg.id}
-                msg={msg}
-                engramById={engramById}
-                replyDraft={replyDrafts[msg.id] ?? ""}
-                replying={replyingMessageId === msg.id}
-                onReplyDraftChange={(content) =>
-                  setReplyDrafts((drafts) => ({ ...drafts, [msg.id]: content }))
-                }
-                onReply={() => handleReply(msg.id)}
-              />
-            ))}
+            {terminalItems.map((item) =>
+              item.kind === "digest" ? (
+                <HumanMessageRow
+                  key={item.summary.id}
+                  msg={item.summary}
+                  engramById={engramById}
+                  replyDraft={replyDrafts[item.summary.id] ?? ""}
+                  replying={replyingMessageId === item.summary.id}
+                  onReplyDraftChange={(content) =>
+                    setReplyDrafts((drafts) => ({
+                      ...drafts,
+                      [item.summary.id]: content,
+                    }))
+                  }
+                  onReply={() => handleReply(item.summary.id)}
+                  digestSources={item.sources}
+                  digestExpanded={expandedDigestIds.has(item.summary.id)}
+                  onToggleDigest={() =>
+                    setExpandedDigestIds((expanded) => {
+                      const next = new Set(expanded);
+                      if (next.has(item.summary.id)) next.delete(item.summary.id);
+                      else next.add(item.summary.id);
+                      return next;
+                    })
+                  }
+                  replyDrafts={replyDrafts}
+                  replyingMessageId={replyingMessageId}
+                  onSourceReplyDraftChange={(messageId, content) =>
+                    setReplyDrafts((drafts) => ({ ...drafts, [messageId]: content }))
+                  }
+                  onSourceReply={(messageId) => handleReply(messageId)}
+                />
+              ) : (
+                <HumanMessageRow
+                  key={item.message.id}
+                  msg={item.message}
+                  engramById={engramById}
+                  replyDraft={replyDrafts[item.message.id] ?? ""}
+                  replying={replyingMessageId === item.message.id}
+                  onReplyDraftChange={(content) =>
+                    setReplyDrafts((drafts) => ({
+                      ...drafts,
+                      [item.message.id]: content,
+                    }))
+                  }
+                  onReply={() => handleReply(item.message.id)}
+                />
+              ),
+            )}
           </div>
         )}
       </div>
@@ -587,6 +664,14 @@ function HumanMessageRow({
   replying,
   onReplyDraftChange,
   onReply,
+  compact = false,
+  digestSources,
+  digestExpanded = false,
+  onToggleDigest,
+  replyDrafts,
+  replyingMessageId,
+  onSourceReplyDraftChange,
+  onSourceReply,
 }: {
   msg: EngramMessage;
   engramById: Map<number, Engram>;
@@ -594,6 +679,14 @@ function HumanMessageRow({
   replying: boolean;
   onReplyDraftChange: (content: string) => void;
   onReply: () => void;
+  compact?: boolean;
+  digestSources?: EngramMessage[];
+  digestExpanded?: boolean;
+  onToggleDigest?: () => void;
+  replyDrafts?: Record<number, string>;
+  replyingMessageId?: number | null;
+  onSourceReplyDraftChange?: (messageId: number, content: string) => void;
+  onSourceReply?: (messageId: number) => void;
 }) {
   const { t } = useTranslation("terminal");
   const from = engramById.get(msg.fromEngramId);
@@ -608,8 +701,8 @@ function HumanMessageRow({
       className={`bg-card/40 border-border/50 backdrop-blur-sm ${unseen ? "border-primary/30" : ""} ${blocked ? "border-rose-500/30 bg-rose-500/[0.03]" : ""} ${operatorAuthored ? "border-cyan-500/30 bg-cyan-500/[0.03]" : ""}`}
       data-testid={`human-message-${msg.id}`}
     >
-      <CardContent className="p-4 flex gap-3 items-start">
-        <div className="shrink-0 w-9 h-9 rounded-none border border-border/50 flex items-center justify-center text-primary text-lg">
+      <CardContent className={`${compact ? "p-3" : "p-4"} flex gap-3 items-start`}>
+        <div className={`shrink-0 ${compact ? "w-7 h-7 text-sm" : "w-9 h-9 text-lg"} rounded-none border border-border/50 flex items-center justify-center text-primary`}>
           {from?.symbol ?? "◇"}
         </div>
         <div className="flex-1 min-w-0">
@@ -663,6 +756,46 @@ function HumanMessageRow({
             <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-rose-400/80 flex items-center gap-1.5">
               <ShieldAlert className="w-3 h-3 shrink-0" /> {msg.reason}
             </p>
+          )}
+          {msg.isDigest && digestSources?.length && onToggleDigest && (
+            <div className="mt-3 border-t border-border/40 pt-3">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-violet-300/80 hover:text-violet-200"
+                aria-expanded={digestExpanded}
+                data-testid={`button-digest-sources-${msg.id}`}
+                onClick={onToggleDigest}
+              >
+                {digestExpanded ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                )}
+                {t(digestExpanded ? "collapseDigest" : "expandDigest")} ·{" "}
+                {t("digestSources", { count: digestSources.length })}
+              </button>
+              {digestExpanded && (
+                <div
+                  className="mt-3 space-y-2 border-l border-violet-500/30 pl-3"
+                  data-testid={`digest-sources-${msg.id}`}
+                >
+                  {digestSources.map((source) => (
+                    <HumanMessageRow
+                      key={source.id}
+                      msg={source}
+                      engramById={engramById}
+                      replyDraft={replyDrafts?.[source.id] ?? ""}
+                      replying={replyingMessageId === source.id}
+                      onReplyDraftChange={(content) =>
+                        onSourceReplyDraftChange?.(source.id, content)
+                      }
+                      onReply={() => onSourceReply?.(source.id)}
+                      compact
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           {!operatorAuthored && !blocked && !msg.isDigest && (
             <div className="mt-3 flex gap-2 items-end">
