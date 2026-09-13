@@ -14,3 +14,9 @@ Continuation consent belongs on the conversation, not in request-local state. Ma
 **Why:** A client-supplied number or a UI-only preference can bypass the autonomy boundary, while a persisted mode survives reloads and makes the user's consent auditable.
 
 **How to apply:** Validate the mode through the API contract, default legacy/missing rows conservatively, and never let the stored mode raise the server maximum.
+
+After emitting an autonomous SSE event, yield once before starting the next bounded turn so a client disconnect can reach the server even when the model adapter resolves immediately.
+
+**Why:** Immediate test adapters can otherwise run the entire continuation cap before the socket-close event is processed, masking the disconnect boundary and allowing unnecessary turns.
+
+**How to apply:** Keep the yield inside the request-scoped continuation loop, after the event is emitted and before the next loop guard checks response state.
