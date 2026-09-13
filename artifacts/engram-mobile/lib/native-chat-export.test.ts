@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   exportNativeChatConversation,
+  getNativeChatExportFailureKind,
   type NativeChatExportDependencies,
 } from "./native-chat-export";
 
@@ -40,6 +41,15 @@ afterEach(async () => {
 });
 
 describe("native chat exports", () => {
+  it.each([
+    [new Error("Share was canceled"), "cancelled"],
+    [{ code: "ERR_USER_CANCELLED" }, "cancelled"],
+    [{ name: "AbortError" }, "cancelled"],
+    [new Error("Could not write export"), "failed"],
+  ] as const)("classifies %j as %s", (error, expected) => {
+    expect(getNativeChatExportFailureKind(error)).toBe(expected);
+  });
+
   it("creates non-empty files and shares each format with the right MIME type", async () => {
     const directory = await mkdtemp(join(tmpdir(), "engram-native-export-"));
     tempDirectories.push(directory);
