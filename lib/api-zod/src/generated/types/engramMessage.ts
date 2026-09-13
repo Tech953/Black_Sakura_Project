@@ -26,6 +26,11 @@ export interface EngramMessage {
   reason: string | null;
   seen: boolean;
   isDigest: boolean;
+  /**
+     * Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.
+     * @nullable
+     */
+  digestGroupId: string | null;
   /** @nullable */
   deliveredAt: string | null;
   createdAt: string;

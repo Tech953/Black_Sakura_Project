@@ -90,6 +90,8 @@ function serializeMessage(m: Awaited<ReturnType<typeof loadSpaceMessages>>[numbe
     reason: m.reason ?? null,
     seen: m.seen,
     isDigest: m.isDigest,
+    // Commons messages are not human-channel digest rows.
+    digestGroupId: null,
     deliveredAt: m.deliveredAt ? m.deliveredAt.toISOString() : null,
     createdAt: m.createdAt.toISOString(),
   };

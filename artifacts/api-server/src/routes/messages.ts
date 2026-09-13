@@ -24,6 +24,12 @@ function serializeMessage(m: EngramMessage) {
     reason: m.reason ?? null,
     seen: m.seen,
     isDigest: m.isDigest,
+    // Digest summaries use deliveredAt; their source rows use the transaction's
+    // matching digestedAt timestamp. This lets clients collapse the audit rows
+    // without changing or hiding the persisted messages.
+    digestGroupId: (
+      m.isDigest ? m.deliveredAt : m.digestedAt
+    )?.toISOString() ?? null,
     deliveredAt: m.deliveredAt ? m.deliveredAt.toISOString() : null,
     createdAt: m.createdAt.toISOString(),
   };

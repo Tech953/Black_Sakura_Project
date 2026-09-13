@@ -1690,6 +1690,7 @@ export const ListHubSpaceTranscriptResponseItem = zod.object({
   "reason": zod.string().nullable(),
   "seen": zod.boolean(),
   "isDigest": zod.boolean(),
+  "digestGroupId": zod.string().nullable().describe('Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.'),
   "deliveredAt": zod.string().nullable(),
   "createdAt": zod.string()
 })
@@ -1744,6 +1745,7 @@ export const ListEngramMessagesResponseItem = zod.object({
   "reason": zod.string().nullable(),
   "seen": zod.boolean(),
   "isDigest": zod.boolean(),
+  "digestGroupId": zod.string().nullable().describe('Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.'),
   "deliveredAt": zod.string().nullable(),
   "createdAt": zod.string()
 })
@@ -1790,6 +1792,7 @@ export const ReplyToEngramMessageResponse = zod.object({
   "reason": zod.string().nullable(),
   "seen": zod.boolean(),
   "isDigest": zod.boolean(),
+  "digestGroupId": zod.string().nullable().describe('Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.'),
   "deliveredAt": zod.string().nullable(),
   "createdAt": zod.string()
 })
