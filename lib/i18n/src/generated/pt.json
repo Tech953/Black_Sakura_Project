@@ -32,7 +32,9 @@
       "timingDesc": "O usuário está receptivo agora?",
       "noveltyDesc": "Isso já foi exibido antes?"
     },
-    "openEnvironment": "Open environment"
+    "openEnvironment": "Open environment",
+    "pressureLiveStale": "Live pressure is stale",
+    "pressureLiveUnavailable": "Live pressure unavailable"
   },
   "beliefs": {
     "title": "REGISTRO DE CRENÇAS",
@@ -452,7 +454,9 @@
     "newCount": "{{count}} novas",
     "markSeen": "Marcar como visto",
     "awaitingFirstTransmission": "Aguardando primeira transmissão",
-    "awaitingFirstTransmissionHint": "Ela entrará em contato quando a pressão cruzar o limite"
+    "awaitingFirstTransmissionHint": "Ela entrará em contato quando a pressão cruzar o limite",
+    "liveStateStale": "Stale live data",
+    "liveStateUnavailable": "Live data unavailable"
   },
   "evolution": {
     "title": "REGISTRO DE EVOLUÇÃO",

@@ -15,6 +15,8 @@
   "pressureUnavailable": "No live pressure",
   "pressure": "Top charge",
   "pressureProgressLabel": "{{name}} pressure relative to initiation threshold",
+  "pressureLiveStale": "Live pressure is stale",
+  "pressureLiveUnavailable": "Live pressure unavailable",
   "openEnvironment": "Open environment",
   "statusCharging": "Charging",
   "statusReady": "Ready",
