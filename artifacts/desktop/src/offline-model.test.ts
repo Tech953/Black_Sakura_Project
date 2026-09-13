@@ -6,6 +6,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   OFFLINE_MODEL,
+  classifyOfflineModelFailure,
   downloadOfflineModel,
   hasOfflineModelSync,
   offlineModelPartialPath,
@@ -15,6 +16,23 @@ import {
 } from "./offline-model";
 
 const servers: Server[] = [];
+
+describe("offline model failure classification", () => {
+  it("classifies verification failures separately from transport failures", () => {
+    expect(classifyOfflineModelFailure(new Error("SHA-256 mismatch"))).toBe(
+      "checksum",
+    );
+    expect(classifyOfflineModelFailure(new Error("HTTP 503 from model host"))).toBe(
+      "network",
+    );
+  });
+
+  it("classifies an aborted request as cancelled", () => {
+    const error = new Error("The operation was aborted.");
+    error.name = "AbortError";
+    expect(classifyOfflineModelFailure(error)).toBe("cancelled");
+  });
+});
 
 afterEach(async () => {
   await Promise.all(

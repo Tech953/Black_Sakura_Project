@@ -43,6 +43,7 @@ import {
 } from "./desktop-settings";
 import {
   downloadOfflineModel,
+  classifyOfflineModelFailure,
   hasOfflineModelSync,
   offlineModelPartialPath,
   offlineModelPath,
@@ -51,6 +52,7 @@ import {
   offlineModelSpec,
   verifyOfflineModel,
 } from "./offline-model";
+import type { OfflineModelFailureKind } from "./offline-model";
 import type {
   CustomModelMetadataView,
   GgufImportStatus,
@@ -194,6 +196,10 @@ interface Settings {
     model: string;
     apiKeyEnc?: string;
   };
+  offlineModelFailure?: {
+    kind: OfflineModelFailureKind;
+    message: string;
+  };
 }
 
 // Online API key kept in memory only when the OS keychain is unavailable, so it
@@ -234,6 +240,30 @@ function hasRunningModelOperation(): boolean {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function normalizeOfflineModelFailure(
+  value: unknown,
+): Settings["offlineModelFailure"] {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as { kind?: unknown; message?: unknown };
+  const kinds: OfflineModelFailureKind[] = [
+    "checksum",
+    "network",
+    "cancelled",
+    "storage",
+    "unknown",
+  ];
+  if (
+    typeof candidate.message !== "string" ||
+    !kinds.includes(candidate.kind as OfflineModelFailureKind)
+  ) {
+    return undefined;
+  }
+  return {
+    kind: candidate.kind as OfflineModelFailureKind,
+    message: candidate.message,
+  };
 }
 
 function safeGgufError(error: unknown, sourcePath?: string): string {
@@ -342,6 +372,9 @@ function loadSettings(): Settings {
       customModels,
       offline: { ...DEFAULT_SETTINGS.offline, ...(parsed.offline ?? {}) },
       online: { ...DEFAULT_SETTINGS.online, ...(parsed.online ?? {}) },
+      offlineModelFailure: normalizeOfflineModelFailure(
+        parsed.offlineModelFailure,
+      ),
     };
   } catch {
     return structuredClone(DEFAULT_SETTINGS);
@@ -930,6 +963,7 @@ async function getOfflineModelView(
   let status: OfflineModelView["status"] =
     downloadedBytes === 0 ? "none" : "downloading";
   let error: string | undefined;
+  let errorKind: OfflineModelFailureKind | undefined;
   try {
     if (hasOfflineModelSync(root, spec)) {
       status = usingDownloadedModel ? "active" : "available";
@@ -940,6 +974,11 @@ async function getOfflineModelView(
   } catch (viewError) {
     status = "error";
     error = errorMessage(viewError);
+    errorKind = classifyOfflineModelFailure(viewError);
+  }
+  if (settings.offlineModelFailure) {
+    error = settings.offlineModelFailure.message;
+    errorKind = settings.offlineModelFailure.kind;
   }
   return {
     filename: spec.filename,
@@ -948,6 +987,7 @@ async function getOfflineModelView(
     storageLocation: offlineModelStorageLocation(root),
     status,
     downloadedBytes,
+    ...(errorKind ? { errorKind } : {}),
     ...(error ? { error } : {}),
   };
 }
@@ -978,7 +1018,11 @@ async function runOfflineModelDownload(
 
     sendOfflineModelStatus({ operationId, state: "activating" });
     const previous = loadSettings();
-    await activateDesktopSettings(previous, { ...previous, mode: "bundled" });
+    await activateDesktopSettings(previous, {
+      ...previous,
+      mode: "bundled",
+      offlineModelFailure: undefined,
+    });
     sendOfflineModelStatus({
       operationId,
       state: "completed",
@@ -989,10 +1033,30 @@ async function runOfflineModelDownload(
     const cancelled =
       controller.signal.aborted ||
       (error instanceof Error && error.name === "AbortError");
+    const errorKind: OfflineModelFailureKind = cancelled
+      ? "cancelled"
+      : classifyOfflineModelFailure(error);
+    const failureMessage = cancelled
+      ? "Offline model download was cancelled. The partial download is safe to resume."
+      : errorMessage(error);
+    try {
+      const previous = loadSettings();
+      saveSettings({
+        ...previous,
+        offlineModelFailure: {
+          kind: errorKind,
+          message: failureMessage,
+        },
+      });
+    } catch {
+      // The download result remains visible through the IPC status even if the
+      // settings file cannot record the last failure.
+    }
     sendOfflineModelStatus({
       operationId,
       state: cancelled ? "cancelled" : "error",
-      error: cancelled ? undefined : errorMessage(error),
+      errorKind,
+      error: failureMessage,
       downloaded,
     });
   } finally {
@@ -1513,6 +1577,8 @@ ipcMain.handle("offline-model:download", () => {
     if (runningOfflineModelDownloads.size > 0) {
       throw new Error("An offline model download is already running.");
     }
+    const previous = loadSettings();
+    saveSettings({ ...previous, offlineModelFailure: undefined });
     const operationId = randomUUID();
     const controller = new AbortController();
     const entry: RunningOfflineModelDownload = {
@@ -1559,6 +1625,8 @@ ipcMain.handle("offline-model:remove", async () => {
       await activateDesktopSettings(previous, { ...previous, mode: "offline" });
     }
     await removeOfflineModel(offlineModelRoot(), offlineModelSpec());
+    const current = loadSettings();
+    saveSettings({ ...current, offlineModelFailure: undefined });
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };

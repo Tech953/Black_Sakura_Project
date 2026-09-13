@@ -158,6 +158,7 @@
           <button id="btn-cancel-offline-model" type="button" class="hidden">Cancel</button>
           <button id="btn-remove-offline-model" type="button" class="hidden">Remove downloaded model</button>
         </div>
+         <div id="offline-download-guidance" class="hint hidden"></div>
         <div id="offline-download-error" class="error-text hidden"></div>
       </div>
     </fieldset>
@@ -304,6 +305,48 @@
          });
       }
 
+       const offlineFailureCopy = {
+         checksum: {
+           label: "Verification failed",
+           guidance: "The downloaded file did not match ENGRAM's checksum and was not activated. Retry the download.",
+         },
+         network: {
+           label: "Download failed",
+           guidance: "The model could not be downloaded. Check your connection, then retry or resume the download.",
+         },
+         cancelled: {
+           label: "Download cancelled",
+           guidance: "The partial download is safe to resume. Start again when you are ready.",
+         },
+         storage: {
+           label: "Storage unavailable",
+           guidance: "ENGRAM could not write its model storage. Check available disk space and permissions, then retry.",
+         },
+         unknown: {
+           label: "Download failed",
+           guidance: "The offline model was not activated. Retry the download or remove its partial files.",
+         },
+       };
+
+       function renderOfflineFailure(kind, detail) {
+         const copy = offlineFailureCopy[kind] || offlineFailureCopy.unknown;
+         $("offline-download-state").textContent = copy.label;
+         $("offline-download-state").style.color = "#f87171";
+         $("offline-download-guidance").textContent = copy.guidance;
+         $("offline-download-guidance").classList.remove("hidden");
+         if (detail && detail !== copy.guidance) {
+           $("offline-download-error").textContent = "Details: " + detail;
+           $("offline-download-error").classList.remove("hidden");
+         } else {
+           $("offline-download-error").classList.add("hidden");
+         }
+       }
+
+       function clearOfflineFailure() {
+         $("offline-download-guidance").classList.add("hidden");
+         $("offline-download-error").classList.add("hidden");
+       }
+
        function renderOfflineModel(model) {
          if (!model || bundledModelIncluded) {
            $("offline-download-box").classList.add("hidden");
@@ -327,19 +370,28 @@
          $("offline-download-state").textContent = labels[state] || state;
          $("offline-download-state").style.color =
            state === "error" || state === "corrupt" ? "#f87171" : "var(--cyan)";
-         $("btn-download-offline-model").textContent =
-           state === "available" || state === "active" ? "Activate offline model" : "Download offline model";
+          $("btn-download-offline-model").textContent =
+            state === "available" || state === "active"
+              ? "Activate offline model"
+              : state === "partial" || model.errorKind === "cancelled"
+                ? "Resume download"
+                : model.errorKind
+                  ? "Retry download"
+                  : "Download offline model";
          $("btn-download-offline-model").classList.toggle("hidden", state === "downloading");
          $("btn-cancel-offline-model").classList.toggle("hidden", state !== "downloading");
          $("btn-remove-offline-model").classList.toggle(
            "hidden",
            !["available", "active", "partial", "corrupt", "error"].includes(state),
          );
-         if (model.error) {
+          if (model.errorKind) {
+            renderOfflineFailure(model.errorKind, model.error);
+          } else if (model.error) {
            $("offline-download-error").textContent = model.error;
            $("offline-download-error").classList.remove("hidden");
+            $("offline-download-guidance").classList.add("hidden");
          } else {
-           $("offline-download-error").classList.add("hidden");
+            clearOfflineFailure();
          }
        }
 
@@ -488,6 +540,9 @@
                   $("cm-error").classList.remove("hidden");
                }
              });
+          }
+        });
+
          window.engram.onOfflineModelStatus((status) => {
            if (status.state === "downloading") {
              $("offline-download-box").classList.remove("hidden");
@@ -517,14 +572,9 @@
              offlineModelOperationId = null;
              setUiLock(false);
              window.engram.getSettings().then((st) => renderOfflineModel(st.offlineModel));
-             if (status.state === "error") {
-               $("offline-download-error").textContent = status.error || "Offline model download failed.";
-               $("offline-download-error").classList.remove("hidden");
-             }
+              renderOfflineFailure(status.errorKind, status.error);
            }
          });
-           }
-        });
       }
 
       document.querySelectorAll('input[name="mode"]').forEach((el) =>
@@ -636,13 +686,12 @@
       });
 
        $("btn-download-offline-model").addEventListener("click", async () => {
-         $("offline-download-error").classList.add("hidden");
+          clearOfflineFailure();
          setUiLock(true);
          const res = await window.engram.downloadOfflineModel();
          if (!res.ok) {
            setUiLock(false);
-           $("offline-download-error").textContent = res.error || "Offline model download failed.";
-           $("offline-download-error").classList.remove("hidden");
+            renderOfflineFailure("unknown", res.error || "Offline model download failed.");
          } else {
            offlineModelOperationId = res.operationId;
          }
@@ -658,6 +707,7 @@
        $("btn-remove-offline-model").addEventListener("click", async () => {
          if (!window.confirm("Remove the downloaded offline model from ENGRAM storage? This reclaims its disk space and cannot be undone.")) return;
          $("offline-download-error").classList.add("hidden");
+          $("offline-download-guidance").classList.add("hidden");
          setUiLock(true);
          const res = await window.engram.removeOfflineModel();
          setUiLock(false);

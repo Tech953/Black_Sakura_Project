@@ -71,6 +71,43 @@ export interface OfflineModelProgress {
   fraction: number;
 }
 
+export type OfflineModelFailureKind =
+  | "checksum"
+  | "network"
+  | "cancelled"
+  | "storage"
+  | "unknown";
+
+export function classifyOfflineModelFailure(
+  error: unknown,
+): OfflineModelFailureKind {
+  const message = error instanceof Error ? error.message : String(error);
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String((error as { code?: unknown }).code ?? "")
+      : "";
+  if (error instanceof Error && error.name === "AbortError") {
+    return "cancelled";
+  }
+  if (/cancelled|canceled/i.test(message)) return "cancelled";
+  if (/SHA-256|checksum|size mismatch|changed during verification/i.test(message)) {
+    return "checksum";
+  }
+  if (/EACCES|EPERM|ENOSPC|EROFS|permission|cannot be replaced|write/i.test(
+    `${code} ${message}`,
+  )) {
+    return "storage";
+  }
+  if (
+    /ECONN|ENOTFOUND|ETIMEDOUT|EAI_AGAIN|certificate|redirect|HTTP \d+|network|socket/i.test(
+      `${code} ${message}`,
+    )
+  ) {
+    return "network";
+  }
+  return "unknown";
+}
+
 export interface VerifiedOfflineModel {
   path: string;
   size: number;
