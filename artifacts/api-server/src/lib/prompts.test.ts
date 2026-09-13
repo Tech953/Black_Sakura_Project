@@ -110,6 +110,33 @@ describe("buildExpressionSection — intimacy sanitization", () => {
     expect(section).not.toContain("emotionally intimate context");
   });
 
+  it("allowlists and normalizes neutral cognitive roles", () => {
+    const section = buildExpressionSection("companion", [
+      makeExpression({
+        glyph: "^_^",
+        cognitiveRole: "  REWARD-SIGNAL  ",
+      }),
+      makeExpression({
+        glyph: "o.o",
+        cognitiveRole: "unknown-model-instruction",
+      }),
+      makeExpression({
+        glyph: "<3",
+        cognitiveRole: "attachment",
+      }),
+      makeExpression({
+        glyph: ";)",
+        cognitiveRole: "romantic-intimacy",
+      }),
+    ]);
+
+    expect(section).toContain("signal: reward-signal");
+    expect(section).not.toContain("REWARD-SIGNAL");
+    expect(section).not.toContain("signal: unknown-model-instruction");
+    expect(section).not.toContain("signal: attachment");
+    expect(section).not.toContain("signal: romantic-intimacy");
+  });
+
   it("emits no micro-expressions in silent mode", () => {
     const section = buildExpressionSection("silent", [
       makeExpression({ glyph: "^_^", intimacy: 0 }),
