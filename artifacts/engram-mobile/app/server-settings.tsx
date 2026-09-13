@@ -39,6 +39,7 @@ import {
   getModelStatus,
   importCustomModel,
   ModelImportCancelledError,
+  ModelStorageUnavailableError,
   type CustomModelStorageCheck,
   type ModelStatus,
 } from "@/lib/offline/model";
@@ -231,7 +232,7 @@ export default function ServerSettingsScreen() {
   }, [t]);
 
   const onConfirmImport = useCallback(async () => {
-    if (!pendingGguf || !importStorage || importStorage.hasHeadroom === false) return;
+    if (!pendingGguf || !importStorage || importStorage.hasHeadroom !== true) return;
     setOfflineMsg(null);
     setImporting(true);
     setImportProgress(0);
@@ -255,6 +256,8 @@ export default function ServerSettingsScreen() {
       setOfflineMsg(
         err instanceof ModelImportCancelledError
           ? t("settings.importCancelled")
+          : err instanceof ModelStorageUnavailableError
+          ? t("settings.storageCheckUnavailable")
           : err instanceof Error
           ? err.message
           : t("settings.modelImportFailed"),
@@ -633,7 +636,14 @@ export default function ServerSettingsScreen() {
                     </Text>
                   </>
                 ) : (
-                  <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
+                  <Text
+                    testID="gguf-storage-warning"
+                    style={[
+                      styles.status,
+                      rtl && styles.rtlText,
+                      { color: colors.destructive },
+                    ]}
+                  >
                     {t("settings.storageCheckUnavailable")}
                   </Text>
                 )}
@@ -664,7 +674,7 @@ export default function ServerSettingsScreen() {
                   disabled={
                     checkingImportStorage ||
                     !importStorage ||
-                    importStorage.hasHeadroom === false
+                    importStorage.hasHeadroom !== true
                   }
                   style={[
                     styles.button,
@@ -672,7 +682,7 @@ export default function ServerSettingsScreen() {
                       backgroundColor:
                         checkingImportStorage ||
                         !importStorage ||
-                        importStorage.hasHeadroom === false
+                        importStorage.hasHeadroom !== true
                           ? colors.muted
                           : colors.primary,
                       borderColor: colors.primary,

@@ -200,7 +200,7 @@
     "checkingStorage": "Checking available storage…",
     "availableStorage": "Available storage: {{size}}",
     "requiredStorage": "Safe import threshold: {{size}}",
-    "storageCheckUnavailable": "Available storage could not be checked. It will be verified again before copying.",
+    "storageCheckUnavailable": "Available storage could not be checked. Import is blocked until storage can be measured.",
     "storageInsufficient": "Not enough free storage. Free at least {{size}} more before importing.",
     "chooseAnotherModel": "Choose another",
     "confirmImport": "Import model",
