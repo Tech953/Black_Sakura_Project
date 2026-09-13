@@ -841,6 +841,9 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
             autonomous: true,
           })}\n\n`,
         );
+        // Let a client disconnect reach the server before attempting the next
+        // bounded turn. This matters when the model adapter resolves immediately.
+        await new Promise<void>((resolve) => setImmediate(resolve));
         recentTurns.push({ speaker: speaker.name, content: response });
           if (recentTurns.length > 12) recentTurns.splice(0, recentTurns.length - 12);
         }

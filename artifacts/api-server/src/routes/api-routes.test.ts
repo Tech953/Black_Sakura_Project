@@ -85,6 +85,8 @@ import { COOLDOWN_MS } from "../services/engram-engine";
 let server: Server;
 let base = "";
 const diagnosticLogs: string[] = [];
+let abortAfterAutonomousWrite = false;
+let autonomousWriteAbortTriggered = false;
 
 function buildApp(): Express {
   const app = express();
@@ -106,6 +108,27 @@ function buildApp(): Express {
       },
       error: () => {},
     } as unknown as Request["log"];
+    next();
+  });
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (!abortAfterAutonomousWrite) {
+      next();
+      return;
+    }
+
+    const write = res.write.bind(res);
+    res.write = ((chunk: unknown, ...args: unknown[]) => {
+      const result = write(chunk as never, ...(args as never[]));
+      if (
+        typeof chunk === "string" &&
+        chunk.includes('"autonomous":true')
+      ) {
+        abortAfterAutonomousWrite = false;
+        autonomousWriteAbortTriggered = true;
+        res.destroy();
+      }
+      return result;
+    }) as Response["write"];
     next();
   });
   app.use("/api", openaiRouter);
@@ -213,6 +236,8 @@ function resetStore() {
   h.llmState.throwOnCreate = false;
   h.llmState.blockNextCreate = null;
   h.llmState.onCreateStarted = null;
+  abortAfterAutonomousWrite = false;
+  autonomousWriteAbortTriggered = false;
   h.failureState.nextInsertTable = null;
   h.updateCalls.length = 0;
   h.create.mockClear();
@@ -905,7 +930,7 @@ describe("conversation persistence routes", () => {
     });
     const created = (await createRes.json()) as { id: number };
 
-    let sawAutonomousTurn = false;
+    abortAfterAutonomousWrite = true;
     await new Promise<void>((resolve, reject) => {
       const request = httpRequest(
         new URL(`/api/openai/conversations/${created.id}/messages`, base),
@@ -914,19 +939,12 @@ describe("conversation persistence routes", () => {
           headers: { "Content-Type": "application/json" },
         },
         (response) => {
-          response.setEncoding("utf8");
-          response.on("data", (chunk: string) => {
-            if (!sawAutonomousTurn && chunk.includes('"autonomous":true')) {
-              sawAutonomousTurn = true;
-              request.destroy();
-            }
-          });
           response.on("close", () => resolve());
           response.on("end", () => resolve());
         },
       );
       request.on("error", (error: NodeJS.ErrnoException) => {
-        if (error.code === "ECONNRESET" || sawAutonomousTurn) {
+        if (error.code === "ECONNRESET") {
           resolve();
           return;
         }
@@ -935,7 +953,7 @@ describe("conversation persistence routes", () => {
       request.end(JSON.stringify({ content: "Stop after the first peer exchange." }));
     });
 
-    expect(sawAutonomousTurn).toBe(true);
+    expect(autonomousWriteAbortTriggered).toBe(true);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const storedMessages = h.store.messages.filter(
