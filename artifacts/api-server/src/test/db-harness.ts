@@ -29,10 +29,44 @@ const TABLE_NAMES = [
   "mobilePushTokensTable",
 ] as const;
 
+const REQUIRED_SCHEMA_SENTINELS = [
+  "conversations",
+  "conversationEngramParticipants",
+  "messages",
+  "personalityTable",
+  "personasTable",
+  "beliefsTable",
+  "expressionsTable",
+  "engramsTable",
+  "engramTransmissionsTable",
+  "engramInquiriesTable",
+  "engramWorldModelTable",
+  "hubSpacesTable",
+  "engramPresenceTable",
+  "hubActivityLogTable",
+  "hubControlsTable",
+  "engramMessagesTable",
+  "engramSimulationsTable",
+  "engramSimulationParticipantsTable",
+  "engramSimulationStepsTable",
+  "mediaAssetsTable",
+  "mediaBlobsTable",
+  "mediaObservationsTable",
+  "mobileOfflineSyncReceiptsTable",
+  "mobilePushTokensTable",
+  "HUB_CONTROLS_ID",
+  "SYSTEM_OWNER_ID",
+] as const;
+
 type TableName = (typeof TABLE_NAMES)[number];
 type Column = { __table: string; __col: string };
-type Table = { __table: string };
+type Table = { __table: string } & Record<string, Column>;
 type OrderSpec = { __order: "desc" | "asc"; col: Column };
+type ScalarSubquery = { __scalarValues: () => unknown[] };
+type HarnessSchema = Record<TableName, Table> & {
+  HUB_CONTROLS_ID: number;
+  SYSTEM_OWNER_ID: string;
+};
 
 export function createDbHarness() {
   const store: Record<string, TestRow[]> = {};
@@ -52,7 +86,7 @@ export function createDbHarness() {
 
   function makeTable(name: string): Table {
     return new Proxy(
-      { __table: name },
+      { __table: name } as Table,
       {
         get(target, prop) {
           if (prop === "__table") return name;
@@ -63,7 +97,7 @@ export function createDbHarness() {
     );
   }
 
-  const schema: Record<string, unknown> = {};
+  const schema = {} as HarnessSchema;
   for (const table of TABLE_NAMES) schema[table] = makeTable(table);
   schema.HUB_CONTROLS_ID = 1;
   schema.SYSTEM_OWNER_ID = "__engram_system_template__";
@@ -110,10 +144,16 @@ export function createDbHarness() {
         (norm(readColumn(row, column)) as number) >= (norm(value) as number),
     inArray:
       (column: Column, values: unknown) =>
-      (row: TestRow) =>
-        Array.isArray(values)
-          ? values.some((value) => norm(value) === norm(readColumn(row, column)))
-          : true,
+      (row: TestRow) => {
+        const candidates = Array.isArray(values)
+          ? values
+          : isScalarSubquery(values)
+            ? values.__scalarValues()
+            : [];
+        return candidates.some(
+          (value) => norm(value) === norm(readColumn(row, column)),
+        );
+      },
     isNull:
       (column: Column) =>
       (row: TestRow) =>
@@ -196,6 +236,17 @@ export function createDbHarness() {
     };
 
     const chain = {
+      __scalarValues(): unknown[] {
+        const output = run();
+        if (!selection) {
+          return output.flatMap((row) => Object.values(row));
+        }
+        const keys = Object.keys(selection);
+        if (keys.length === 1) {
+          return output.map((row) => row[keys[0]]);
+        }
+        return output.flatMap((row) => Object.values(row));
+      },
       from(table: unknown) {
         baseTable = tableName(table);
         rows = store[baseTable];
@@ -546,6 +597,111 @@ export function createDbHarness() {
     conversations: schema.conversations,
     messages: schema.messages,
   };
+}
+
+function isScalarSubquery(value: unknown): value is ScalarSubquery {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "__scalarValues" in value &&
+      typeof (value as { __scalarValues?: unknown }).__scalarValues === "function",
+  );
+}
+
+function requireHarnessMethod(
+  value: unknown,
+  methodName: string,
+  path: string,
+): (...args: unknown[]) => unknown {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    typeof (value as Record<string, unknown>)[methodName] !== "function"
+  ) {
+    throw new Error(
+      `db harness contract: missing ${path}.${methodName}(); update artifacts/api-server/src/test/db-harness.ts`,
+    );
+  }
+  return (value as Record<string, (...args: unknown[]) => unknown>)[methodName];
+}
+
+export function assertDbHarnessContract(
+  harness: ReturnType<typeof createDbHarness>,
+) {
+  const missingSentinels = REQUIRED_SCHEMA_SENTINELS.filter(
+    (name) => !(name in harness.schema) || harness.schema[name] == null,
+  );
+  if (missingSentinels.length > 0) {
+    throw new Error(
+      `db harness contract: missing schema sentinels: ${missingSentinels.join(", ")}; update the harness mock before debugging route failures`,
+    );
+  }
+  if (harness.schema.HUB_CONTROLS_ID !== 1) {
+    throw new Error(
+      "db harness contract: HUB_CONTROLS_ID must equal 1; update the harness mock before debugging route failures",
+    );
+  }
+  if (harness.schema.SYSTEM_OWNER_ID !== "__engram_system_template__") {
+    throw new Error(
+      "db harness contract: SYSTEM_OWNER_ID is missing or incorrect; update the harness mock before debugging route failures",
+    );
+  }
+
+  const select = requireHarnessMethod(harness.db, "select", "db");
+  const selectDistinct = requireHarnessMethod(harness.db, "selectDistinct", "db");
+  requireHarnessMethod(harness.db, "insert", "db");
+  requireHarnessMethod(harness.db, "update", "db");
+  requireHarnessMethod(harness.db, "delete", "db");
+  requireHarnessMethod(harness.db, "transaction", "db");
+
+  const query = select();
+  requireHarnessMethod(query, "from", "db.select()");
+  const fromQuery = requireHarnessMethod(query, "from", "db.select()")(
+    harness.schema.engramsTable,
+  );
+  for (const methodName of [
+    "innerJoin",
+    "where",
+    "orderBy",
+    "limit",
+    "for",
+    "then",
+    "__scalarValues",
+  ]) {
+    requireHarnessMethod(fromQuery, methodName, "db.select().from()");
+  }
+  const distinctQuery = selectDistinct();
+  requireHarnessMethod(distinctQuery, "from", "db.selectDistinct()");
+
+  const insert = requireHarnessMethod(harness.db, "insert", "db")(
+    harness.schema.mobilePushTokensTable,
+  );
+  const values = requireHarnessMethod(insert, "values", "db.insert()");
+  const inserted = values({});
+  for (const methodName of [
+    "returning",
+    "onConflictDoNothing",
+    "onConflictDoUpdate",
+    "then",
+  ]) {
+    requireHarnessMethod(inserted, methodName, "db.insert().values()");
+  }
+
+  const update = requireHarnessMethod(harness.db, "update", "db")(
+    harness.schema.mobilePushTokensTable,
+  );
+  const updated = requireHarnessMethod(update, "set", "db.update()")({});
+  const updatedWhere = requireHarnessMethod(updated, "where", "db.update().set()")(
+    () => false,
+  );
+  for (const methodName of ["returning", "then"]) {
+    requireHarnessMethod(updatedWhere, methodName, "db.update().set().where()");
+  }
+
+  const deletion = requireHarnessMethod(harness.db, "delete", "db")(
+    harness.schema.mobilePushTokensTable,
+  );
+  requireHarnessMethod(deletion, "where", "db.delete()");
 }
 
 export const routeHarness = createDbHarness();
