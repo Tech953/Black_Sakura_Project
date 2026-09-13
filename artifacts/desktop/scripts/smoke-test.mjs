@@ -28,7 +28,9 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
-import { createServer } from "node:http";
+import { execFileSync } from "node:child_process";
+import { createServer as createHttpServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,10 +55,76 @@ function createOfflineModelFixture(directory) {
   return fixture;
 }
 
-async function serveOfflineModelFixture(fixture) {
+function createFixtureCertificate(directory) {
+  const keyPath = path.join(directory, "packaged-smoke-fixture.key");
+  const certPath = path.join(directory, "packaged-smoke-fixture.crt");
+  const configPath = path.join(directory, "packaged-smoke-fixture.cnf");
+  writeFileSync(
+    configPath,
+    [
+      "[req]",
+      "distinguished_name = req_distinguished_name",
+      "x509_extensions = v3_req",
+      "prompt = no",
+      "",
+      "[req_distinguished_name]",
+      "CN = localhost",
+      "",
+      "[v3_req]",
+      "subjectAltName = @alt_names",
+      "",
+      "[alt_names]",
+      "DNS.1 = localhost",
+      "IP.1 = 127.0.0.1",
+      "",
+    ].join("\n"),
+  );
+  try {
+    execFileSync(
+      "openssl",
+      [
+        "req",
+        "-x509",
+        "-newkey",
+        "rsa:2048",
+        "-nodes",
+        "-keyout",
+        keyPath,
+        "-out",
+        certPath,
+        "-days",
+        "1",
+        "-config",
+        configPath,
+      ],
+      { stdio: "pipe" },
+    );
+  } catch (error) {
+    throw new Error(
+      `Windows HTTPS smoke fixture could not create its localhost certificate with OpenSSL: ${String(error?.message ?? error)}`,
+    );
+  }
+  return {
+    key: readFileSync(keyPath),
+    cert: readFileSync(certPath),
+    caCertPath: certPath,
+  };
+}
+
+async function serveOfflineModelFixture(fixture, { httpsRedirect = false } = {}) {
   const bytes = readFileSync(fixture);
-  const server = createServer((req, res) => {
-    if (req.url !== "/offline-model.gguf") {
+  const certificate = httpsRedirect ? createFixtureCertificate(path.dirname(fixture)) : null;
+  let redirectCount = 0;
+  const serverHandler = (req, res) => {
+    if (httpsRedirect && req.url === "/offline-model.gguf") {
+      redirectCount += 1;
+      res.writeHead(302, { Location: "/offline-model-target.gguf" }).end();
+      return;
+    }
+    const modelPath = httpsRedirect
+      ? "/offline-model-target.gguf"
+      : "/offline-model.gguf";
+    if (req.url !== modelPath) {
       res.writeHead(404).end();
       return;
     }
@@ -85,7 +153,10 @@ async function serveOfflineModelFixture(fixture) {
       "Content-Type": "application/octet-stream",
     });
     res.end(bytes);
-  });
+  };
+  const server = certificate
+    ? createHttpsServer(certificate, serverHandler)
+    : createHttpServer(serverHandler);
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolve);
@@ -97,9 +168,13 @@ async function serveOfflineModelFixture(fixture) {
   }
   return {
     server,
-    url: `http://127.0.0.1:${address.port}/offline-model.gguf`,
+    url: `${certificate ? "https" : "http"}://127.0.0.1:${address.port}/offline-model.gguf`,
     bytes: bytes.length,
     sha256: createHash("sha256").update(bytes).digest("hex"),
+    caCertPath: certificate?.caCertPath,
+    get redirectCount() {
+      return redirectCount;
+    },
   };
 }
 
@@ -243,9 +318,34 @@ async function main() {
   ) {
     fail(`invalid GGUF smoke fixture: ${ggufFixture}`);
   }
+  const useHttpsRedirectFixture =
+    process.env.ENGRAM_PACKAGED_OFFLINE_MODEL_HTTPS === "1";
+  if (useHttpsRedirectFixture && process.platform !== "win32") {
+    fail("the HTTPS redirect offline-model fixture is reserved for Windows smoke");
+  }
   const offlineFixture = await serveOfflineModelFixture(
     createOfflineModelFixture(userDataDir),
+    { httpsRedirect: useHttpsRedirectFixture },
   );
+  const offlineModelFixtureEnv = {
+    ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
+    ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
+    ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
+    ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256: offlineFixture.sha256,
+    ...(offlineFixture.caCertPath
+      ? { NODE_EXTRA_CA_CERTS: offlineFixture.caCertPath }
+      : {}),
+  };
+  const offlineModelPath = path.join(
+    userDataDir,
+    "models",
+    "offline",
+    "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+  );
+  const offlineModelPartialPath = `${offlineModelPath}.partial`;
+  if (useHttpsRedirectFixture) {
+    log("Windows offline-model fixture is HTTPS with a redirect and a trusted test certificate");
+  }
   const args = [`--user-data-dir=${userDataDir}`];
   // CI Linux runs under xvfb as a privileged user with no GPU; these switches
   // keep Electron from refusing to start. They are no-ops on the runtime paths
@@ -261,16 +361,13 @@ async function main() {
     timeout: LAUNCH_TIMEOUT_MS,
     env: {
       ...process.env,
+      ...offlineModelFixtureEnv,
       CI: "true",
       GITHUB_ACTIONS: "true",
       ENGRAM_PACKAGED_GGUF_SMOKE: "1",
       ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
       ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1",
       ENGRAM_PACKAGED_UPGRADE_STAGE: "A",
-      ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
-      ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
-      ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
-      ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256: offlineFixture.sha256,
     },
   });
 
@@ -469,6 +566,7 @@ async function main() {
       timeout: LAUNCH_TIMEOUT_MS,
       env: {
         ...process.env,
+        ...offlineModelFixtureEnv,
         CI: "true",
         GITHUB_ACTIONS: "true",
         ENGRAM_PACKAGED_GGUF_SMOKE: "1",
@@ -476,10 +574,6 @@ async function main() {
         ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE: "1",
         ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
         ENGRAM_PACKAGED_UPGRADE_STAGE: "custom-restart",
-        ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
-        ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
-        ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
-        ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256: offlineFixture.sha256,
       },
     });
     let customRestartedSettings;
@@ -600,6 +694,18 @@ async function main() {
           `offline model download/activation was not ${expectedOfflineStatus} in userData: ${JSON.stringify(downloadedStatus)}`,
         );
       }
+      if (!existsSync(offlineModelPath) || existsSync(offlineModelPartialPath)) {
+        throw new Error(
+          `offline model was not fully materialized in Electron userData: ${JSON.stringify({
+            offlineModelPath,
+            finalExists: existsSync(offlineModelPath),
+            partialExists: existsSync(offlineModelPartialPath),
+          })}`,
+        );
+      }
+      if (useHttpsRedirectFixture && offlineFixture.redirectCount < 1) {
+        throw new Error("Windows HTTPS offline-model smoke did not traverse its redirect");
+      }
       log(
         `offline model downloaded, verified, and stored below Electron userData (${expectedOfflineStatus} on this package)`,
       );
@@ -620,6 +726,7 @@ async function main() {
       timeout: LAUNCH_TIMEOUT_MS,
       env: {
         ...process.env,
+        ...offlineModelFixtureEnv,
         CI: "true",
         GITHUB_ACTIONS: "true",
         ENGRAM_PACKAGED_GGUF_SMOKE: "1",
@@ -627,10 +734,6 @@ async function main() {
         ENGRAM_PACKAGED_UPGRADE_FAIL_START: "1",
         ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
         ENGRAM_PACKAGED_UPGRADE_STAGE: "B-failed",
-        ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
-        ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
-        ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
-        ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256: offlineFixture.sha256,
       },
     });
     await new Promise((resolve, reject) => {
@@ -650,16 +753,13 @@ async function main() {
       timeout: LAUNCH_TIMEOUT_MS,
       env: {
         ...process.env,
+        ...offlineModelFixtureEnv,
         CI: "true",
         GITHUB_ACTIONS: "true",
         ENGRAM_PACKAGED_GGUF_SMOKE: "1",
         ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE: "1",
         ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
         ENGRAM_PACKAGED_UPGRADE_STAGE: "B",
-        ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
-        ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
-        ENGRAM_PACKAGED_OFFLINE_MODEL_BYTES: String(offlineFixture.bytes),
-        ENGRAM_PACKAGED_OFFLINE_MODEL_SHA256: offlineFixture.sha256,
       },
     });
 
@@ -749,6 +849,15 @@ async function main() {
       removedStatus.downloadedBytes !== 0
     ) {
       throw new Error(`offline model removal was not complete: ${JSON.stringify(removedStatus)}`);
+    }
+    if (existsSync(offlineModelPath) || existsSync(offlineModelPartialPath)) {
+      throw new Error(
+        `offline model files remained in Electron userData after removal: ${JSON.stringify({
+          offlineModelPath,
+          finalExists: existsSync(offlineModelPath),
+          partialExists: existsSync(offlineModelPartialPath),
+        })}`,
+      );
     }
     log("offline model cancellation-safe lifecycle completed through IPC");
     } finally {

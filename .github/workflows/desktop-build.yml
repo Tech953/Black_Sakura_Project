@@ -311,6 +311,10 @@ jobs:
         env:
           EXPECT_SLIM_LLM: ${{ matrix.platform == 'win' && '1' || '0' }}
           ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          # Windows must prove the slim downloader against HTTPS, a redirect,
+          # and a real Electron userData directory. Linux/macOS keep the fast
+          # loopback fixture for their packaged smoke.
+          ENGRAM_PACKAGED_OFFLINE_MODEL_HTTPS: ${{ matrix.platform == 'win' && '1' || '0' }}
         run: |
           if [ "${{ matrix.platform }}" = "linux" ]; then
             sudo apt-get update
