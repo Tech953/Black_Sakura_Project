@@ -74,6 +74,7 @@ import {
   CreateEngramWorldModelEntryResponse,
   UpdateEngramWorldModelEntryResponse,
   ListEngramMessagesResponse,
+  GetEngramStatesResponse,
   GetHubControlsResponse,
   UpdateHubControlsResponse,
 } from "@workspace/api-zod";
@@ -1651,22 +1652,14 @@ describe("live engram state", () => {
   async function loadStates() {
     const res = await fetch(`${base}/api/engrams/state`);
     expect(res.status).toBe(200);
-    return (await res.json()) as Array<{
-      engramId: number;
-      initiationThreshold: number;
-      topCharge: number;
-      ready: boolean;
-      inCooldown: boolean;
-      cooldownUntil: string | null;
-      inBackoff: boolean;
-      backoffUntil: string | null;
-      drives: Array<{
-        id: string;
-        pressure: number;
-        weight: number;
-        charge: number;
-      }>;
-    }>;
+    const body = await res.json();
+    const parsed = GetEngramStatesResponse.safeParse(body);
+    if (!parsed.success) {
+      throw new Error(
+        `/api/engrams/state response contract failed: ${parsed.error.message}`,
+      );
+    }
+    return parsed.data;
   }
 
   it("projects pressure since the last tick without writing the stored state", async () => {
