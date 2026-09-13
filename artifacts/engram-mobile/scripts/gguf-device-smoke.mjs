@@ -55,8 +55,8 @@ try {
     'testID="gguf-storage-warning"',
     'testID="confirm-gguf-import"',
     'testID="gguf-import-progress"',
-    "importStorage.hasHeadroom === false",
-    "if (!pendingGguf || !importStorage || importStorage.hasHeadroom === false) return;",
+    "importStorage.hasHeadroom !== true",
+    "if (!pendingGguf || !importStorage || importStorage.hasHeadroom !== true) return;",
     "onToggleOffline",
   ]);
   requireSource("lib/offline/model.ts", [

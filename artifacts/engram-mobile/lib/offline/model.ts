@@ -67,7 +67,10 @@ export type CustomModelStorageCheck = {
   byteSize: number;
   requiredBytes: number;
   freeBytes: number | null;
-  hasHeadroom: boolean | null;
+  /**
+   * Storage checks fail closed: an unavailable reading cannot authorize a copy.
+   */
+  hasHeadroom: boolean;
 };
 
 export class ModelImportCancelledError extends Error {
@@ -76,6 +79,15 @@ export class ModelImportCancelledError extends Error {
   constructor() {
     super("GGUF import was cancelled.");
     this.name = "ModelImportCancelledError";
+  }
+}
+
+export class ModelStorageUnavailableError extends Error {
+  readonly code = "MODEL_STORAGE_UNAVAILABLE";
+
+  constructor() {
+    super("Available storage could not be checked.");
+    this.name = "ModelStorageUnavailableError";
   }
 }
 
@@ -197,7 +209,7 @@ export async function getCustomModelStorageCheck(
     byteSize,
     requiredBytes,
     freeBytes,
-    hasHeadroom: freeBytes === null ? null : freeBytes >= requiredBytes,
+    hasHeadroom: freeBytes !== null && freeBytes >= requiredBytes,
   };
 }
 
@@ -402,7 +414,10 @@ export async function importCustomModel(
     await FileSystem.makeDirectoryAsync(MODEL_DIR, { intermediates: true });
     const storage = await getCustomModelStorageCheck(sourceUri, sourceBytes);
     const byteSize = storage.byteSize;
-    if (storage.hasHeadroom === false) {
+    if (storage.freeBytes === null) {
+      throw new ModelStorageUnavailableError();
+    }
+    if (!storage.hasHeadroom) {
       throw new Error(
         `Not enough storage: the model needs ~${Math.ceil(storage.requiredBytes / 1e9)} GB free.`,
       );
