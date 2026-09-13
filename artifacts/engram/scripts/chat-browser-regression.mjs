@@ -116,31 +116,75 @@ const devtools = new DevTools();
 const fixtureScript = String.raw`
 (() => {
   const originalFetch = window.fetch.bind(window);
-  let archived = false;
-  const conversation = {
-    id: 1,
-    title: "Browser Archive Room",
-    mode: "companion",
-    personaName: "Aster",
-    engramId: 1,
-    engramIds: [1, 2],
-    createdAt: "2026-09-05T12:00:00.000Z",
-    archivedAt: null,
+  const nestedButtonWarnings = [];
+  for (const method of ["warn", "error"]) {
+    const original = console[method].bind(console);
+    console[method] = (...args) => {
+      const text = args.map((arg) => typeof arg === "string" ? arg : String(arg)).join(" ");
+      if (/nested|descendant|validateDOMNesting/i.test(text)) nestedButtonWarnings.push(text);
+      original(...args);
+    };
+  }
+  window.__engramChatFixture = {
+    get nestedButtonWarnings() { return nestedButtonWarnings; },
   };
-  const messages = [
-    { id: 1, role: "user", content: "Human hello", createdAt: "2026-09-05T12:01:00.000Z" },
-    { id: 2, role: "context", content: "Context clue", createdAt: "2026-09-05T12:02:00.000Z" },
-    { id: 3, role: "assistant", speakerEngramId: 2, content: "Aster group reply", createdAt: "2026-09-05T12:03:00.000Z" },
-  ];
+  const conversations = new Map([
+    [1, {
+      id: 1,
+      title: "Browser Archive Room",
+      mode: "companion",
+      personaName: "Aster",
+      engramId: 1,
+      engramIds: [1, 2],
+      createdAt: "2026-09-05T12:00:00.000Z",
+    }],
+    [2, {
+      id: 2,
+      title: "Browser Selection Room",
+      mode: "companion",
+      personaName: "PYRI",
+      engramId: 1,
+      engramIds: [1],
+      createdAt: "2026-09-05T12:04:00.000Z",
+    }],
+    [3, {
+      id: 3,
+      title: "Browser Delete Room",
+      mode: "companion",
+      personaName: "PYRI",
+      engramId: 1,
+      engramIds: [1],
+      createdAt: "2026-09-05T12:05:00.000Z",
+    }],
+  ]);
+  const messageSets = new Map([
+    [1, [
+      { id: 1, role: "user", content: "Human hello", createdAt: "2026-09-05T12:01:00.000Z" },
+      { id: 2, role: "context", content: "Context clue", createdAt: "2026-09-05T12:02:00.000Z" },
+      { id: 3, role: "assistant", speakerEngramId: 2, content: "Aster group reply", createdAt: "2026-09-05T12:03:00.000Z" },
+    ]],
+    [2, [
+      { id: 4, role: "user", content: "Selection room hello", createdAt: "2026-09-05T12:04:00.000Z" },
+    ]],
+    [3, [
+      { id: 5, role: "user", content: "Delete room must stay closed", createdAt: "2026-09-05T12:05:00.000Z" },
+    ]],
+  ]);
+  const archivedIds = new Set();
+  const deletedIds = new Set();
   const response = (body, status = 200) =>
     new Response(JSON.stringify(body), {
       status,
       headers: { "Content-Type": "application/json" },
     });
-  const currentConversation = () => ({
-    ...conversation,
-    archivedAt: archived ? "2026-09-05T12:10:00.000Z" : null,
-  });
+  const currentConversation = (id) => {
+    const conversation = conversations.get(id);
+    if (!conversation || deletedIds.has(id)) return null;
+    return {
+      ...conversation,
+      archivedAt: archivedIds.has(id) ? "2026-09-05T12:10:00.000Z" : null,
+    };
+  };
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input.url;
     const method = String(init.method ?? (typeof input === "string" ? "GET" : input.method ?? "GET")).toUpperCase();
@@ -150,16 +194,34 @@ const fixtureScript = String.raw`
         { id: 2, name: "Aster", isArchival: false, isChatActive: true },
       ]);
     }
-    if (url.includes("/api/openai/conversations/1/archive") && method === "PATCH") {
-      archived = JSON.parse(init.body ?? "{}").archived === true;
-      return response(currentConversation());
-    }
-    if (url.includes("/api/openai/conversations/1") && method === "GET") {
-      return response({ ...currentConversation(), messages });
+    const conversationMatch = url.match(/\/api\/openai\/conversations\/(\d+)(?:\/archive)?$/);
+    if (conversationMatch) {
+      const id = Number(conversationMatch[1]);
+      if (method === "PATCH" && url.endsWith("/archive")) {
+        if (!currentConversation(id)) return response({ error: "Not found" }, 404);
+        const body = JSON.parse(init.body ?? "{}");
+        if (body.archived === true) archivedIds.add(id);
+        else archivedIds.delete(id);
+        return response(currentConversation(id));
+      }
+      if (method === "DELETE") {
+        if (!currentConversation(id)) return response({ error: "Not found" }, 404);
+        deletedIds.add(id);
+        return new Response(null, { status: 204 });
+      }
+      if (method === "GET") {
+        const conversation = currentConversation(id);
+        if (!conversation) return response({ error: "Not found" }, 404);
+        return response({ ...conversation, messages: messageSets.get(id) ?? [] });
+      }
     }
     if (url.includes("/api/openai/conversations") && method === "GET") {
       const wantsArchived = new URL(url, window.location.origin).searchParams.get("archived") === "true";
-      return response(wantsArchived === archived ? [currentConversation()] : []);
+      return response(
+        [...conversations.keys()]
+          .map((id) => currentConversation(id))
+          .filter((conversation) => conversation && Boolean(conversation.archivedAt) === wantsArchived),
+      );
     }
     if (url.includes("/api/events")) return response({});
     return originalFetch(input, init);
@@ -384,6 +446,51 @@ try {
     "chat conversation list",
     15000,
   );
+  if (!realClerkMode) {
+    for (const title of ["Browser Archive Room", "Browser Selection Room", "Browser Delete Room"]) {
+      await waitFor(`Boolean(document.body?.innerText.includes(${JSON.stringify(title)}))`, `${title} list row`);
+    }
+
+    const selectionControl = `Array.from(document.querySelectorAll('[role="button"],button')).find((node) => node.textContent.includes("Browser Selection Room"))`;
+    if (!(await devtools.evaluate(`(() => {
+      const node = ${selectionControl};
+      return node?.tagName === "BUTTON" && node.getAttribute("type") === "button";
+    })()`))) {
+      throw new Error("Conversation selection control is not a native button");
+    }
+    await click(selectionControl, "selection conversation pointer control");
+  await waitFor(`Boolean(document.body?.innerText.includes("Selection room hello"))`, "selected conversation transcript");
+  if (!(await devtools.evaluate(`document.body.innerText.includes("Browser Selection Room")`))) {
+    throw new Error("Selecting a conversation did not show its active title");
+  }
+
+  const rowAction = (ariaLabel, title) =>
+    `Array.from(document.querySelectorAll('[aria-label="${ariaLabel}"]')).find((node) => node.parentElement?.parentElement?.textContent?.includes(${JSON.stringify(title)}))`;
+  await click(rowAction("Delete conversation", "Browser Delete Room"), "delete inactive conversation");
+  await waitFor(`!document.body?.innerText.includes("Browser Delete Room")`, "deleted conversation removed from list");
+  if (!(await devtools.evaluate(`document.body.innerText.includes("Selection room hello")`))) {
+    throw new Error("Deleting an inactive conversation opened or replaced the active conversation");
+  }
+  console.log("Chat conversation controls check: inactive row delete kept selection open");
+
+  await click(rowAction("Archive conversation", "Browser Archive Room"), "archive inactive conversation");
+  await waitFor(`!document.body?.innerText.includes("Browser Archive Room")`, "archived conversation removed from active list");
+  if (!(await devtools.evaluate(`document.body.innerText.includes("Selection room hello")`))) {
+    throw new Error("Archiving an inactive conversation opened or replaced the active conversation");
+  }
+  await click(`document.querySelector('[aria-label="Show archived conversations"]')`, "archived conversation view");
+  await waitFor(`Boolean(document.querySelector('[aria-label="Show active conversations"]'))`, "archived conversation view");
+  await waitFor(`Boolean(document.body?.innerText.includes("Browser Archive Room"))`, "archived row");
+  await click(rowAction("Restore conversation", "Browser Archive Room"), "restore inactive conversation");
+  await waitFor(`!document.body?.innerText.includes("Browser Archive Room")`, "restored conversation removed from archived list");
+  if (!(await devtools.evaluate(`document.body.innerText.includes("Selection room hello")`))) {
+    throw new Error("Restoring an inactive conversation opened or replaced the active conversation");
+  }
+  await click(`document.querySelector('[aria-label="Show active conversations"]')`, "active conversation view");
+  await waitFor(`Boolean(document.body?.innerText.includes("Browser Archive Room"))`, "restored active-list row");
+    console.log("Chat conversation controls check: inactive row archive/restore kept selection open");
+  }
+
   await click(
     `Array.from(document.querySelectorAll('[role="button"],button')).find((node) => node.textContent.includes(${JSON.stringify(conversationTitle)}))`,
     "conversation",
@@ -465,6 +572,11 @@ try {
       }
     }
   }
+  const nestedButtonWarnings = await devtools.evaluate("window.__engramChatFixture?.nestedButtonWarnings ?? []");
+  if (nestedButtonWarnings.length > 0) {
+    throw new Error(`Nested-button browser warnings: ${JSON.stringify(nestedButtonWarnings)}`);
+  }
+  console.log("Chat conversation controls check: no nested-button console warnings");
   console.log(`Browser regression passed: ${files.join(", ")}`);
 } finally {
   if (realClerkMode && disposableClerk) {
