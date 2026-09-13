@@ -13,5 +13,6 @@ export interface WorldModelInput {
   content: string;
   confidence?: number;
   scope?: WorldModelInputScope;
+  /** Optional source label; omit when no source is available. */
   source?: string;
 }

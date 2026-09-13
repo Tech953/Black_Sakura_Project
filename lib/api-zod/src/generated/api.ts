@@ -1517,7 +1517,7 @@ export const ListEngramWorldModelResponseItem = zod.object({
   "content": zod.string(),
   "confidence": zod.number(),
   "scope": zod.enum(['private', 'shared']),
-  "source": zod.string().optional(),
+  "source": zod.string().optional().describe('Optional source label; omitted when the entry has no source.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -1536,7 +1536,7 @@ export const CreateEngramWorldModelEntryBody = zod.object({
   "content": zod.string(),
   "confidence": zod.number().optional(),
   "scope": zod.enum(['private', 'shared']).optional(),
-  "source": zod.string().optional()
+  "source": zod.string().optional().describe('Optional source label; omit when no source is available.')
 })
 
 export const CreateEngramWorldModelEntryResponse = zod.object({
@@ -1546,7 +1546,7 @@ export const CreateEngramWorldModelEntryResponse = zod.object({
   "content": zod.string(),
   "confidence": zod.number(),
   "scope": zod.enum(['private', 'shared']),
-  "source": zod.string().optional(),
+  "source": zod.string().optional().describe('Optional source label; omitted when the entry has no source.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -1564,7 +1564,7 @@ export const UpdateEngramWorldModelEntryBody = zod.object({
   "content": zod.string().optional(),
   "confidence": zod.number().optional(),
   "scope": zod.enum(['private', 'shared']).optional(),
-  "source": zod.string().optional()
+  "source": zod.string().optional().describe('Optional replacement source label; omit to keep the existing value.')
 })
 
 export const UpdateEngramWorldModelEntryResponse = zod.object({
@@ -1574,7 +1574,7 @@ export const UpdateEngramWorldModelEntryResponse = zod.object({
   "content": zod.string(),
   "confidence": zod.number(),
   "scope": zod.enum(['private', 'shared']),
-  "source": zod.string().optional(),
+  "source": zod.string().optional().describe('Optional source label; omitted when the entry has no source.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })

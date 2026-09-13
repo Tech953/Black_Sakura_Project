@@ -57,7 +57,7 @@ function serialize(row: EngramWorldModelEntry) {
     content: row.content,
     confidence: row.confidence,
     scope: row.scope,
-    source: row.source ?? null,
+    ...(row.source == null ? {} : { source: row.source }),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

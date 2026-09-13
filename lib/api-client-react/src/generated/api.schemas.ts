@@ -976,6 +976,7 @@ export interface WorldModelEntry {
   content: string;
   confidence: number;
   scope: WorldModelEntryScope;
+  /** Optional source label; omitted when the entry has no source. */
   source?: string;
   createdAt: string;
   updatedAt: string;
@@ -1005,6 +1006,7 @@ export interface WorldModelInput {
   content: string;
   confidence?: number;
   scope?: WorldModelInputScope;
+  /** Optional source label; omit when no source is available. */
   source?: string;
 }
 
@@ -1020,6 +1022,7 @@ export interface WorldModelPatch {
   content?: string;
   confidence?: number;
   scope?: WorldModelPatchScope;
+  /** Optional replacement source label; omit to keep the existing value. */
   source?: string;
 }
 
