@@ -75,9 +75,14 @@ export function createDbHarness() {
     nextInsertTable: null as string | null,
     nextUpdateTable: null as string | null,
   };
+  // Canonical DB operation logs used by route-level assertions.
   const insertCalls: TestRow[] = [];
   const updateCalls: Array<{ table: string; patch: TestRow }> = [];
+  // Compatibility logs used by older engine/store assertions. Keep these
+  // separate so resetting or inspecting one surface cannot alter the other.
+  const compatibilityInsertCalls: TestRow[] = [];
   const updatePatches: TestRow[] = [];
+  const compatibilityUpdatePatches: TestRow[] = [];
 
   for (const table of TABLE_NAMES) {
     store[table] = [];
@@ -341,7 +346,9 @@ export function createDbHarness() {
               row.quietMode ??= false;
             }
             store[name].push(row);
-            insertCalls.push({ ...row, __table: table });
+            const loggedRow = { ...row, __table: table };
+            insertCalls.push(loggedRow);
+            compatibilityInsertCalls.push({ ...loggedRow });
             return row;
           });
         return {
@@ -387,6 +394,7 @@ export function createDbHarness() {
           !Object.prototype.hasOwnProperty.call(patch, "pushNotifiedAt")
         ) {
           updatePatches.push(patch);
+          compatibilityUpdatePatches.push({ ...patch });
         }
         return {
           where(predicate: (row: TestRow) => boolean) {
@@ -535,16 +543,16 @@ export function createDbHarness() {
       store.conversations = rows;
     },
     get inserts() {
-      return insertCalls;
+      return compatibilityInsertCalls;
     },
     set inserts(rows: TestRow[]) {
-      insertCalls.splice(0, insertCalls.length, ...rows);
+      compatibilityInsertCalls.splice(0, compatibilityInsertCalls.length, ...rows);
     },
     get updates() {
-      return updatePatches;
+      return compatibilityUpdatePatches;
     },
     set updates(rows: TestRow[]) {
-      updatePatches.splice(0, updatePatches.length, ...rows);
+      compatibilityUpdatePatches.splice(0, compatibilityUpdatePatches.length, ...rows);
     },
   };
 
@@ -557,7 +565,9 @@ export function createDbHarness() {
     failureState.nextUpdateTable = null;
     insertCalls.length = 0;
     updateCalls.length = 0;
+    compatibilityInsertCalls.length = 0;
     updatePatches.length = 0;
+    compatibilityUpdatePatches.length = 0;
     llmState.streamChunks = ["Hello", " there"];
     llmState.completion = "a response";
     llmState.throwOnCreate = false;
@@ -583,7 +593,9 @@ export function createDbHarness() {
     failureState,
     insertCalls,
     updateCalls,
+    compatibilityInsertCalls,
     updatePatches,
+    compatibilityUpdatePatches,
     reset,
     engramsTable: schema.engramsTable,
     engramTransmissionsTable: schema.engramTransmissionsTable,
@@ -597,6 +609,17 @@ export function createDbHarness() {
     conversations: schema.conversations,
     messages: schema.messages,
   };
+}
+
+/**
+ * Create one isolated harness per test module.
+ *
+ * Call this at module scope, before Vitest's hoisted vi.mock factories refer to
+ * the instance. Do not create the instance inside vi.hoisted or inside a mock
+ * factory.
+ */
+export function createIsolatedDbHarness() {
+  return createDbHarness();
 }
 
 function isScalarSubquery(value: unknown): value is ScalarSubquery {
@@ -704,6 +727,7 @@ export function assertDbHarnessContract(
   requireHarnessMethod(deletion, "where", "db.delete()");
 }
 
-export const routeHarness = createDbHarness();
-export const engineHarness = createDbHarness();
+export const routeHarness = createIsolatedDbHarness();
+export const engineHarness = createIsolatedDbHarness();
+/** @deprecated Prefer createIsolatedDbHarness, routeHarness, or engineHarness. */
 export const dbHarness = routeHarness;
