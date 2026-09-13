@@ -55,7 +55,9 @@ import express, {
 } from "express";
 import openaiRouter from "./openai";
 import engramsRouter from "./engrams";
-import engramWorldModelRouter from "./engram-world-model";
+import engramWorldModelRouter, {
+  REBECCA_ADAPTIVE_SOURCE_READ_ONLY_ERROR,
+} from "./engram-world-model";
 import offlineSyncRouter from "./offline-sync";
 import messagesRouter from "./messages";
 import hubRouter from "./hub";
@@ -81,6 +83,8 @@ import {
 import { engramImportDraftStore } from "../lib/engram-import-store";
 import { subscribe } from "../lib/events";
 import { COOLDOWN_MS } from "../services/engram-engine";
+import { ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
+import { TRUSTED_REBECCA_ADAPTIVE_SOURCES } from "../lib/world-model";
 
 // --- Minimal app: the real routers under /api, with a req.log shim ------------
 let server: Server;
@@ -1936,6 +1940,25 @@ describe("manual tick and transmit", () => {
 // Engram world model
 // =============================================================================
 describe("engram world-model routes", () => {
+  function seedWorldModelEntry(overrides: Record<string, unknown> = {}) {
+    const id = ++h.seq.engramWorldModelTable;
+    const now = new Date();
+    const row = {
+      id,
+      engramId: 1,
+      provenance: "observed",
+      content: "The operator prefers concise answers.",
+      confidence: 0.8,
+      scope: "private",
+      source: null,
+      createdAt: now,
+      updatedAt: now,
+      ...overrides,
+    };
+    h.store.engramWorldModelTable.push(row);
+    return row;
+  }
+
   it("appends, lists, and patches entries while preserving provenance", async () => {
     const engram = seedEngram();
 
@@ -2035,6 +2058,93 @@ describe("engram world-model routes", () => {
       scope: "shared",
       source: "operator-note",
     });
+  });
+
+  it("deletes a world-model entry for its owning operator", async () => {
+    const engram = seedEngram();
+    const entry = seedWorldModelEntry({
+      engramId: engram.id,
+      source: "operator-note",
+    });
+
+    const response = await fetch(
+      `${base}/api/engrams/${engram.id}/world-model/${entry.id}`,
+      { method: "DELETE" },
+    );
+
+    expect(response.status).toBe(204);
+    expect(h.store.engramWorldModelTable).not.toContainEqual(entry);
+    const listResponse = await fetch(
+      `${base}/api/engrams/${engram.id}/world-model`,
+    );
+    expect(listResponse.status).toBe(200);
+    expect(await listResponse.json()).toEqual([]);
+  });
+
+  it("cannot discover or delete a world-model entry belonging to another operator", async () => {
+    const foreignEngram = seedEngram({ ownerId: "other-owner" });
+    const entry = seedWorldModelEntry({
+      engramId: foreignEngram.id,
+      content: "Foreign operator private belief.",
+      source: "foreign-private-source",
+    });
+    const before = structuredClone(entry);
+
+    const listResponse = await fetch(
+      `${base}/api/engrams/${foreignEngram.id}/world-model`,
+    );
+    expect(listResponse.status).toBe(404);
+    expect(await listResponse.json()).toMatchObject({
+      error: "Engram not found",
+    });
+
+    const deleteResponse = await fetch(
+      `${base}/api/engrams/${foreignEngram.id}/world-model/${entry.id}`,
+      { method: "DELETE" },
+    );
+    expect(deleteResponse.status).toBe(404);
+    expect(await deleteResponse.json()).toMatchObject({
+      error: "World-model entry not found",
+    });
+    expect(h.store.engramWorldModelTable).toContainEqual(before);
+  });
+
+  it("rejects deletion from an archival engram and preserves the entry", async () => {
+    const archival = seedEngram({ isArchival: true });
+    const entry = seedWorldModelEntry({
+      engramId: archival.id,
+      source: "operator-note",
+    });
+    const before = structuredClone(entry);
+
+    const response = await fetch(
+      `${base}/api/engrams/${archival.id}/world-model/${entry.id}`,
+      { method: "DELETE" },
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: ARCHIVAL_READ_ONLY_ERROR });
+    expect(h.store.engramWorldModelTable).toContainEqual(before);
+  });
+
+  it("rejects deletion of Rebecca source-authority entries and preserves them", async () => {
+    const engram = seedEngram();
+    const entry = seedWorldModelEntry({
+      engramId: engram.id,
+      source: TRUSTED_REBECCA_ADAPTIVE_SOURCES[0],
+    });
+    const before = structuredClone(entry);
+
+    const response = await fetch(
+      `${base}/api/engrams/${engram.id}/world-model/${entry.id}`,
+      { method: "DELETE" },
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: REBECCA_ADAPTIVE_SOURCE_READ_ONLY_ERROR,
+    });
+    expect(h.store.engramWorldModelTable).toContainEqual(before);
   });
 });
 
