@@ -17,8 +17,8 @@ World-model route coverage additionally depends on the fake query builder preser
 
 **How to apply:** for new joined route tests, keep join predicates table-aware and return projected objects matching the router's Drizzle query shape. Add schema table exports used by asynchronous side effects too, such as push-token delivery.
 
-Vitest mock factories are hoisted before test-module locals initialize. A shared harness must therefore be imported before the test's mocks; do not call an imported factory from inside `vi.hoisted` or close a per-test `const h` over a `vi.mock` factory. Route and engine modules use isolated module-level harness instances to avoid state leaking when Vitest runs both files in one worker.
+Vitest mock factories are hoisted before test-module locals initialize. Use `createIsolatedDbHarness()` once at module scope (or select the prebuilt `routeHarness` / `engineHarness`) before the test's mocks; do not call the factory from inside `vi.hoisted` or close a per-test `const h` over a `vi.mock` factory. Route and engine modules use isolated module-level harness instances to avoid state leaking when Vitest runs both files in one worker.
 
 **Why:** Vitest rejects exported hoisted variables and reports a temporal-dead-zone error when a local harness is captured by a hoisted mock. A single normal module singleton makes the two files contaminate one another.
 
-**How to apply:** put the harness import first, have each mock factory reference its imported module-level instance, and keep route-style `{ table, patch }` update logs separate from the engine compatibility log.
+**How to apply:** put the harness import first, have each mock factory reference its imported module-level instance, and keep canonical route DB operation logs separate from compatibility assertion logs exposed through `state.inserts` / `state.updates`.
