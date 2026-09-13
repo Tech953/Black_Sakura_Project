@@ -455,6 +455,23 @@ export interface OpenaiConversationArchiveInput {
   archived: boolean;
 }
 
+/**
+ * Consent for peer-generated turns after the human-triggered group reply.
+ */
+export type OpenaiConversationContinuationInputGroupContinuationMode = typeof OpenaiConversationContinuationInputGroupContinuationMode[keyof typeof OpenaiConversationContinuationInputGroupContinuationMode];
+
+
+export const OpenaiConversationContinuationInputGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
+
+export interface OpenaiConversationContinuationInput {
+  /** Consent for peer-generated turns after the human-triggered group reply. */
+  groupContinuationMode: OpenaiConversationContinuationInputGroupContinuationMode;
+}
+
 export interface OpenaiMessage {
   id: number;
   conversationId: number;

@@ -108,6 +108,8 @@ export * from './offlineSyncResult';
 export * from './offlineSyncTransmission';
 export * from './openaiConversation';
 export * from './openaiConversationArchiveInput';
+export * from './openaiConversationContinuationInput';
+export * from './openaiConversationContinuationInputGroupContinuationMode';
 export * from './openaiConversationGroupContinuationMode';
 export * from './openaiConversationInput';
 export * from './openaiConversationInputGroupContinuationMode';
