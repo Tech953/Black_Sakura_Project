@@ -104,6 +104,7 @@ import {
   maybeRunSimulationStep,
   openOperatorSimulation,
   SIMULATION_STEP_CONFIDENCE,
+  SIMULATION_ACTIVITY_EXCERPT_MAX,
   SimulationTransitionError,
 } from "./simulations";
 
@@ -234,6 +235,24 @@ describe("maybeRunSimulationStep — stepping", () => {
       expect.any(Date),
     );
     expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+  });
+
+  it("normalizes and bounds long activity excerpts without losing simulation metadata", async () => {
+    const longNarrative = `\n  first line\n\n\tsecond line   ${"x".repeat(300)}\n trailing text`;
+    h.generateSimulationStep.mockResolvedValueOnce(longNarrative);
+    h.loadRunningSimulations.mockResolvedValue([makeSim({ currentStep: 1, maxSteps: 5 })]);
+
+    await maybeRunSimulationStep(makeOpts({ engrams: [makeEngram({ name: "Longform" })] }));
+
+    const lastActivityCall = h.appendActivity.mock.calls.at(-1) as unknown[] | undefined;
+    const summary =
+      (lastActivityCall?.[0] as { summary?: string } | undefined)?.summary ?? "";
+    expect(summary).toMatch(/^Longform advanced a simulation \(step 2\/5\): /);
+    expect(summary).toContain("first line second line");
+    expect(summary).not.toContain("\n");
+    expect(summary).not.toContain("trailing text");
+    const excerpt = summary.slice(summary.indexOf(": ") + 2);
+    expect(excerpt.length).toBe(SIMULATION_ACTIVITY_EXCERPT_MAX);
   });
 
   it("alternates eligible participants by least-recently-spoken time and records the speaker", async () => {
