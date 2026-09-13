@@ -20,6 +20,7 @@ import { eq } from "drizzle-orm";
 import { movePresence } from "./hub-store";
 
 const OWNER_ID = "hub-store-movement-owner";
+const FOREIGN_OWNER_ID = "hub-store-foreign-owner";
 
 const ready = ensureDatabaseReady({ seed: false });
 
@@ -35,11 +36,14 @@ afterAll(async () => {
   await closeDb();
 });
 
-async function insertEngram(name = "Arezo"): Promise<{ id: number; name: string }> {
+async function insertEngram(
+  name = "Arezo",
+  ownerId = OWNER_ID,
+): Promise<{ id: number; name: string }> {
   const [row] = await db
     .insert(engramsTable)
     .values({
-      ownerId: OWNER_ID,
+      ownerId,
       slug: `movement-${name.toLowerCase()}-${Date.now()}-${Math.random()}`,
       name,
       title: "Movement test engram",
@@ -74,11 +78,12 @@ async function insertSpace(args: {
   name: string;
   logged: boolean;
   allowsInitiative: boolean;
+  ownerId?: string;
 }) {
   const [row] = await db
     .insert(hubSpacesTable)
     .values({
-      ownerId: OWNER_ID,
+      ownerId: args.ownerId ?? OWNER_ID,
       slug: args.slug,
       name: args.name,
       kind: args.allowsInitiative ? "commons" : "quiescence",
@@ -97,6 +102,13 @@ async function activityRows() {
     .select()
     .from(hubActivityLogTable)
     .orderBy(hubActivityLogTable.id);
+}
+
+async function presenceRows() {
+  return db
+    .select()
+    .from(engramPresenceTable)
+    .orderBy(engramPresenceTable.id);
 }
 
 describe("movePresence — first placement and same-space updates", () => {
@@ -233,5 +245,54 @@ describe("movePresence — rest and wake classification", () => {
       "rest",
       "wake",
     ]);
+  });
+});
+
+describe("movePresence — ownership boundaries", () => {
+  it("rejects a foreign engram without changing presence or activity", async () => {
+    const foreignEngram = await insertEngram("Foreign", FOREIGN_OWNER_ID);
+    const targetSpace = await insertSpace({
+      slug: "owned-target",
+      name: "Owned Target",
+      logged: true,
+      allowsInitiative: true,
+    });
+    const beforePresence = await presenceRows();
+    const beforeActivity = await activityRows();
+
+    await expect(
+      movePresence({
+        ownerId: OWNER_ID,
+        engram: foreignEngram,
+        targetSpace,
+      }),
+    ).rejects.toThrow("foreign or missing engram");
+
+    expect(await presenceRows()).toEqual(beforePresence);
+    expect(await activityRows()).toEqual(beforeActivity);
+  });
+
+  it("rejects a foreign target space without changing presence or activity", async () => {
+    const engram = await insertEngram();
+    const foreignSpace = await insertSpace({
+      slug: "foreign-target",
+      name: "Foreign Target",
+      logged: true,
+      allowsInitiative: true,
+      ownerId: FOREIGN_OWNER_ID,
+    });
+    const beforePresence = await presenceRows();
+    const beforeActivity = await activityRows();
+
+    await expect(
+      movePresence({
+        ownerId: OWNER_ID,
+        engram,
+        targetSpace: foreignSpace,
+      }),
+    ).rejects.toThrow("foreign or missing Hub space");
+
+    expect(await presenceRows()).toEqual(beforePresence);
+    expect(await activityRows()).toEqual(beforeActivity);
   });
 });
