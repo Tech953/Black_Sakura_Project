@@ -21,6 +21,7 @@ import {
   hubSpacesTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { subscribe, type EngramEvent } from "../lib/events";
 import hubRouter from "./hub";
 
 const OWNER_ID = "hub-route-movement-owner";
@@ -97,15 +98,15 @@ async function insertEngram(ownerId = OWNER_ID) {
   return row.id;
 }
 
-async function insertSpace(ownerId = OWNER_ID) {
+async function insertSpace(ownerId = OWNER_ID, name = "Route Target") {
   const [row] = await db
     .insert(hubSpacesTable)
     .values({
       ownerId,
       slug: `route-space-${Date.now()}-${Math.random()}`,
-      name: "Route Target",
+      name,
       kind: "commons",
-      description: "A route movement target",
+      description: `${name} movement target`,
       visibilityScope: "public",
       actionScope: "converse",
       logged: true,
@@ -178,6 +179,86 @@ describe("PUT /hub/presence/:engramId", () => {
         .from(engramPresenceTable)
         .where(eq(engramPresenceTable.engramId, engramId)),
     ).resolves.toHaveLength(1);
+  });
+
+  it("publishes one ordered event per concurrent committed move", async () => {
+    const engramId = await insertEngram();
+    const spaceA = await insertSpace(OWNER_ID, "Route A");
+    const spaceB = await insertSpace(OWNER_ID, "Route B");
+    const events: EngramEvent[] = [];
+    const unsubscribe = subscribe({ ownerId: OWNER_ID, engramId }, (event) => {
+      if (event.type === "presence.changed") events.push(event);
+    });
+
+    let bodies: Array<{
+      id: number;
+      engramId: number;
+      spaceId: number;
+      status: string;
+      note: string | null;
+      enteredAt: string;
+      updatedAt: string;
+    }>;
+    try {
+      const responses = await Promise.all([
+        fetch(`${base}/hub/presence/${engramId}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ spaceId: spaceA, note: "route A" }),
+        }),
+        fetch(`${base}/hub/presence/${engramId}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ spaceId: spaceB, note: "route B" }),
+        }),
+      ]);
+      expect(responses.map((response) => response.status)).toEqual([200, 200]);
+      bodies = (await Promise.all(responses.map((response) => response.json()))) as typeof bodies;
+    } finally {
+      unsubscribe();
+    }
+
+    const activities = await db
+      .select()
+      .from(hubActivityLogTable)
+      .where(eq(hubActivityLogTable.engramId, engramId))
+      .orderBy(hubActivityLogTable.id);
+    expect(activities).toHaveLength(2);
+    expect(events).toHaveLength(2);
+    expect(events.map((event) => event.type)).toEqual(["presence.changed", "presence.changed"]);
+
+    const eventPayloads = events.map((event) => {
+      const data = event.data as {
+        presence: (typeof bodies)[number];
+        spaceName: string;
+        engramName: string;
+      };
+      return { event, ...data };
+    });
+    expect(eventPayloads.map(({ presence }) => presence.spaceId)).toEqual(
+      activities.map((activity) => activity.spaceId),
+    );
+    expect(new Set(eventPayloads.map(({ presence }) => presence.spaceId)).size).toBe(2);
+
+    for (const { event, presence, spaceName, engramName } of eventPayloads) {
+      expect(event.ownerId).toBe(OWNER_ID);
+      expect(event.engramId).toBe(engramId);
+      expect(spaceName).toBe(presence.spaceId === spaceA ? "Route A" : "Route B");
+      expect(engramName).toBe("Route Test Engram");
+      expect(bodies).toContainEqual(presence);
+    }
+
+    const finalPresence = await db
+      .select()
+      .from(engramPresenceTable)
+      .where(eq(engramPresenceTable.engramId, engramId));
+    expect(finalPresence).toHaveLength(1);
+    const lastEventPresence = eventPayloads[eventPayloads.length - 1]!.presence;
+    expect({
+      ...finalPresence[0],
+      enteredAt: finalPresence[0]!.enteredAt.toISOString(),
+      updatedAt: finalPresence[0]!.updatedAt.toISOString(),
+    }).toMatchObject(lastEventPresence);
   });
 
   it("returns 404 for an unknown engram", async () => {
