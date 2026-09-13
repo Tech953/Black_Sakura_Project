@@ -1698,6 +1698,55 @@ describe("live engram state", () => {
     expect(engram.driveState).toEqual({ order: 0.2 });
   });
 
+  it("returns live drive state only for the authenticated owner's engrams", async () => {
+    const now = Date.now();
+    const ownerLastTickAt = new Date(now - 100_000);
+    const ownerLastTransmissionAt = new Date(now - 1_000);
+    const ownerBackoffUntil = new Date(now + 60_000);
+    const foreignLastTickAt = new Date(now - 200_000);
+    const foreignLastTransmissionAt = new Date(now - 2_000);
+    const foreignBackoffUntil = new Date(now + 120_000);
+    const owned = seedEngram({
+      ownerId: "test-owner",
+      currentMood: "owner-only-mood",
+      lastTickAt: ownerLastTickAt,
+      lastTransmissionAt: ownerLastTransmissionAt,
+      backoffUntil: ownerBackoffUntil,
+      driveState: { order: 0.21, connection: 0.31 },
+    });
+    const excluded = seedEngram({
+      ownerId: "other-owner",
+      currentMood: "foreign-secret-mood",
+      lastTickAt: foreignLastTickAt,
+      lastTransmissionAt: foreignLastTransmissionAt,
+      backoffUntil: foreignBackoffUntil,
+      driveState: { order: 0.91, connection: 0.83 },
+      drives: [
+        { id: "order", label: "Order", description: "tidiness", weight: 1, baseRate: 0 },
+        { id: "connection", label: "Connection", description: "reach", weight: 1, baseRate: 0 },
+      ],
+    });
+
+    const states = await loadStates();
+
+    expect(states).toHaveLength(1);
+    expect(states[0]).toMatchObject({
+      engramId: owned.id,
+      currentMood: "owner-only-mood",
+      lastTickAt: ownerLastTickAt.toISOString(),
+      lastTransmissionAt: ownerLastTransmissionAt.toISOString(),
+      backoffUntil: ownerBackoffUntil.toISOString(),
+      inBackoff: true,
+      inCooldown: true,
+    });
+    expect(states.some((state) => state.engramId === excluded.id)).toBe(false);
+    expect(states.some((state) => state.currentMood === "foreign-secret-mood")).toBe(false);
+    expect(states.some((state) => state.lastTickAt === foreignLastTickAt.toISOString())).toBe(false);
+    expect(states.some((state) => state.lastTransmissionAt === foreignLastTransmissionAt.toISOString())).toBe(false);
+    expect(states.some((state) => state.backoffUntil === foreignBackoffUntil.toISOString())).toBe(false);
+    expect(states.flatMap((state) => state.drives).some((drive) => drive.pressure === 0.91 || drive.pressure === 0.83)).toBe(false);
+  });
+
   it("calculates weighted charges, selects the top charge, and reports readiness at the threshold", async () => {
     const threshold = 0.6 * 0.75;
     const ready = seedEngram({
