@@ -95,6 +95,7 @@
     "toastUploadFailed": "فشل الرفع",
     "toastCouldNotReachApi": "تعذر الوصول إلى API",
     "toastConversationDeleted": "تم حذف المحادثة",
+    "toastDeleteFailed": "تعذر حذف المحادثة",
     "toastConversationArchived": "تمت أرشفة المحادثة",
     "toastConversationRestored": "تمت استعادة المحادثة",
     "toastArchiveFailed": "تعذر تحديث المحادثة",

@@ -95,6 +95,7 @@
     "toastUploadFailed": "अपलोड विफल",
     "toastCouldNotReachApi": "API तक पहुंचा नहीं जा सका",
     "toastConversationDeleted": "वार्तालाप हटाया गया",
+    "toastDeleteFailed": "वार्तालाप हटाया नहीं जा सका",
     "toastConversationArchived": "वार्तालाप संग्रहित",
     "toastConversationRestored": "वार्तालाप पुनर्स्थापित",
     "toastArchiveFailed": "वार्तालाप अपडेट नहीं हो सका",

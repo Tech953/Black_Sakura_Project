@@ -95,6 +95,7 @@
     "toastUploadFailed": "上传失败",
     "toastCouldNotReachApi": "无法连接到 API",
     "toastConversationDeleted": "对话已删除",
+    "toastDeleteFailed": "无法删除对话",
     "toastConversationArchived": "对话已归档",
     "toastConversationRestored": "对话已恢复",
     "toastArchiveFailed": "无法更新对话",

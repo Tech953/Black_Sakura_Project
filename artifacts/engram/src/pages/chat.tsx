@@ -363,14 +363,19 @@ export default function Chat() {
 
   async function handleDelete(id: number, e: React.MouseEvent) {
     e.stopPropagation();
-    await deleteConv.mutateAsync({ id });
-    queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
-    if (activeId === id) {
-      setActiveId(null);
-      setActiveConversation(null);
-      setMessages([]);
+    try {
+      await deleteConv.mutateAsync({ id });
+      queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
+      if (activeId === id) {
+        setActiveId(null);
+        setActiveConversation(null);
+        setMessages([]);
+      }
+      toast({ title: t("toastConversationDeleted") });
+    } catch (error) {
+      const description = error instanceof Error ? error.message : t("toastCouldNotReachApi");
+      toast({ title: t("toastDeleteFailed"), description, variant: "destructive" });
     }
-    toast({ title: t("toastConversationDeleted") });
   }
 
   async function handleArchive(id: number, archived: boolean, e: React.MouseEvent) {

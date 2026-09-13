@@ -95,6 +95,7 @@
     "toastUploadFailed": "アップロード失敗",
     "toastCouldNotReachApi": "API に接続できません",
     "toastConversationDeleted": "会話を削除",
+    "toastDeleteFailed": "会話を削除できません",
     "toastConversationArchived": "会話をアーカイブ",
     "toastConversationRestored": "会話を復元",
     "toastArchiveFailed": "会話を更新できません",
