@@ -356,6 +356,52 @@ jobs:
             artifacts/desktop/release/*.exe
             artifacts/desktop/release/*.zip
 
+  # Runtime archives for Linux ARM64 and both macOS architectures are checked
+  # independently of the full Electron packaging matrix. Linux ARM64 runs its
+  # ELF check on a native ARM runner; macOS can inspect either Mach-O target
+  # with otool even when the host architecture differs.
+  llama-runtime-contract:
+    name: llama runtime ${{ matrix.platform }}-${{ matrix.arch }}
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || github.ref_type == 'tag' || (github.event_name == 'push' && github.ref_type != 'tag')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+          - os: macos-latest
+            platform: darwin
+            arch: x64
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Download pinned target runtime
+        env:
+          LLAMA_TARGET: ${{ matrix.platform }}
+          LLAMA_ARCH: ${{ matrix.arch }}
+        run: pnpm --filter @workspace/desktop run prepare:llama-runtime
+
+      - name: Verify target runtime dependencies
+        env:
+          LLAMA_TARGET: ${{ matrix.platform }}
+          LLAMA_ARCH: ${{ matrix.arch }}
+        run: pnpm --filter @workspace/desktop run verify:llama-runtime
+
   # Fast pre-release signal for the packaged runtime. This intentionally uses
   # the same Linux build/staging/smoke path as the release matrix, but omits
   # release publishing, native OS builds, Android, and release-only checks.
