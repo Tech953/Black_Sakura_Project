@@ -137,8 +137,8 @@ const browserMock = String.raw`(() => {
       { id: 2, conversationId: 101, role: "assistant", content: "Current response", createdAt: "2026-09-10T12:00:01.000Z" },
     ],
     102: [
-      { id: 3, conversationId: 102, role: "user", content: "Hydrated history message — Café 你好 Привет مرحبا", createdAt: "2026-09-10T12:01:00.000Z" },
-      { id: 4, conversationId: 102, role: "assistant", content: "Hydrated history response — Café 你好 Привет مرحبا", createdAt: "2026-09-10T12:01:01.000Z" },
+      { id: 3, conversationId: 102, role: "user", content: "Hydrated history message — Café 你好 Привет مرحبا नमस्ते שלום Γειά σου", createdAt: "2026-09-10T12:01:00.000Z" },
+      { id: 4, conversationId: 102, role: "assistant", content: "Hydrated history response — Café 你好 Привет مرحبا नमस्ते שלום Γειά σου", createdAt: "2026-09-10T12:01:01.000Z" },
     ],
   };
   const conversations = new Map([
@@ -452,12 +452,12 @@ try {
     const extractedText = execFileSync("pdftotext", [pdfProbePath, "-"], {
       encoding: "utf8",
     });
-    for (const expectedText of ["Café", "你好", "Привет"]) {
+    for (const expectedText of ["Café", "你好", "Привет", "नमस्ते", "Γειά"]) {
       if (!extractedText.includes(expectedText)) {
         throw new Error(`PDF text extraction omitted ${expectedText}: ${JSON.stringify(extractedText)}`);
       }
     }
-    for (const expectedCharacter of Array.from("مرحبا")) {
+    for (const expectedCharacter of Array.from("مرحباשלום")) {
       if (!extractedText.includes(expectedCharacter)) {
         throw new Error(`PDF text extraction omitted Arabic character ${expectedCharacter}: ${JSON.stringify(extractedText)}`);
       }

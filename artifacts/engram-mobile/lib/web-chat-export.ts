@@ -1,6 +1,9 @@
 import notoSansArabic from "../assets/fonts/engram-noto-arabic.woff2";
 import notoSansCjk from "../assets/fonts/engram-noto-cjk.woff2";
 import notoSansCyrillic from "../assets/fonts/engram-noto-cyrillic.woff2";
+import notoSansDevanagari from "../assets/fonts/engram-noto-devanagari.woff2";
+import notoSansGreek from "../assets/fonts/engram-noto-greek.woff2";
+import notoSansHebrew from "../assets/fonts/engram-noto-hebrew.woff2";
 import notoSansLatin from "../assets/fonts/engram-noto-latin.woff2";
 import {
   buildDocxBytes,
@@ -36,7 +39,7 @@ export interface WebChatDownloadRuntime {
 }
 
 export const BROWSER_UNICODE_FONT_STACK =
-  '"Engram Noto CJK", "Engram Noto Arabic", "Engram Noto Cyrillic", "Engram Noto Latin", sans-serif';
+  '"Engram Noto CJK", "Engram Noto Arabic", "Engram Noto Cyrillic", "Engram Noto Devanagari", "Engram Noto Hebrew", "Engram Noto Greek", "Engram Noto Latin", sans-serif';
 
 let browserUnicodeFontsPromise: Promise<void> | null = null;
 
@@ -49,6 +52,18 @@ export function ensureBrowserUnicodeFonts(): Promise<void> {
       "Engram Noto Arabic": { uri: notoSansArabic, display: FontDisplay.BLOCK },
       "Engram Noto Cyrillic": {
         uri: notoSansCyrillic,
+        display: FontDisplay.BLOCK,
+      },
+      "Engram Noto Devanagari": {
+        uri: notoSansDevanagari,
+        display: FontDisplay.BLOCK,
+      },
+      "Engram Noto Hebrew": {
+        uri: notoSansHebrew,
+        display: FontDisplay.BLOCK,
+      },
+      "Engram Noto Greek": {
+        uri: notoSansGreek,
         display: FontDisplay.BLOCK,
       },
       "Engram Noto Latin": { uri: notoSansLatin, display: FontDisplay.BLOCK },
