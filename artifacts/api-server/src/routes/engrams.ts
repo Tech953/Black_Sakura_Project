@@ -47,6 +47,9 @@ import {
   sanitizeEngramImportConfirmation,
 } from "../lib/engram-import";
 import { engramImportDraftStore } from "../lib/engram-import-store";
+import { loadControls } from "../lib/controls-store";
+import { loadPresenceForEngram, loadSpaceById } from "../lib/hub-store";
+import { capabilitiesFor, continuationEligibilityFor } from "../lib/engram-policy";
 
 const router = Router();
 
@@ -96,7 +99,31 @@ function rejectIfArchival(engram: Engram, res: Parameters<Parameters<typeof rout
 
 router.get("/engrams", async (req, res) => {
   const rows = await db.select().from(engramsTable).where(eq(engramsTable.ownerId, req.userId!)).orderBy(engramsTable.id);
-  res.json(rows);
+  const controls = await loadControls(req.userId!);
+  const enriched = await Promise.all(
+    rows.map(async (engram) => {
+      const presence = await loadPresenceForEngram(engram.id, req.userId!);
+      const space = presence ? await loadSpaceById(presence.spaceId, req.userId!) : undefined;
+      const capabilities = capabilitiesFor({
+        mode: engram.mode,
+        controls,
+        space: space
+          ? { allowsInitiative: space.allowsInitiative, actionScope: space.actionScope }
+          : undefined,
+        humanContactEnabled: engram.humanContactEnabled,
+      });
+      return {
+        ...engram,
+        continuationEligibility: continuationEligibilityFor({
+          isArchival: engram.isArchival,
+          autonomyEnabled: engram.autonomyEnabled,
+          presenceStatus: presence?.status,
+          capabilities,
+        }),
+      };
+    }),
+  );
+  res.json(enriched);
 });
 
 // Must be registered before "/engrams/:id" so "tick" is not parsed as an id.
