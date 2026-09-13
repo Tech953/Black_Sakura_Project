@@ -2060,6 +2060,54 @@ describe("engram world-model routes", () => {
     });
   });
 
+  it("omits a missing source while keeping create, list, and update responses contract-valid", async () => {
+    const engram = seedEngram();
+
+    const createResponse = await fetch(
+      `${base}/api/engrams/${engram.id}/world-model`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provenance: "remembered",
+          content: "A source-less memory.",
+        }),
+      },
+    );
+    expect(createResponse.status).toBe(201);
+    const createdBody = await createResponse.json();
+    const created = CreateEngramWorldModelEntryResponse.parse(createdBody);
+    expect(created).not.toHaveProperty("source");
+
+    const listResponse = await fetch(
+      `${base}/api/engrams/${engram.id}/world-model`,
+    );
+    expect(listResponse.status).toBe(200);
+    const listedBody = await listResponse.json();
+    const listed = ListEngramWorldModelResponse.parse(listedBody);
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).not.toHaveProperty("source");
+
+    const updateResponse = await fetch(
+      `${base}/api/engrams/${engram.id}/world-model/${created.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: "An updated source-less memory.",
+        }),
+      },
+    );
+    expect(updateResponse.status).toBe(200);
+    const updatedBody = await updateResponse.json();
+    const updated = UpdateEngramWorldModelEntryResponse.parse(updatedBody);
+    expect(updated).toMatchObject({
+      id: created.id,
+      content: "An updated source-less memory.",
+    });
+    expect(updated).not.toHaveProperty("source");
+  });
+
   it("deletes a world-model entry for its owning operator", async () => {
     const engram = seedEngram();
     const entry = seedWorldModelEntry({

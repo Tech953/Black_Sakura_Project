@@ -15,6 +15,7 @@ export interface WorldModelEntry {
   content: string;
   confidence: number;
   scope: WorldModelEntryScope;
+  /** Optional source label; omitted when the entry has no source. */
   source?: string;
   createdAt: string;
   updatedAt: string;

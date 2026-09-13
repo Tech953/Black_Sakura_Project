@@ -3377,6 +3377,7 @@ components:
           enum: [private, shared]
         source:
           type: string
+          description: Optional source label; omitted when the entry has no source.
         createdAt:
           type: string
         updatedAt:
@@ -3406,6 +3407,7 @@ components:
           enum: [private, shared]
         source:
           type: string
+          description: Optional source label; omit when no source is available.
       required:
         - provenance
         - content
@@ -3422,6 +3424,7 @@ components:
           enum: [private, shared]
         source:
           type: string
+          description: Optional replacement source label; omit to keep the existing value.
 
     HubSpace:
       type: object
