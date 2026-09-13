@@ -31,7 +31,8 @@
       "confidenceDesc": "관측은 얼마나 신뢰할 수 있는가?",
       "timingDesc": "지금 사용자가 받아들일 상태인가?",
       "noveltyDesc": "이전에 이미 표시된 적이 있는가?"
-    }
+    },
+    "openEnvironment": "Open environment"
   },
   "beliefs": {
     "title": "신념 등록부",

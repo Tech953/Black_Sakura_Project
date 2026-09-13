@@ -31,7 +31,8 @@
       "confidenceDesc": "अवलोकन कितना विश्वसनीय है?",
       "timingDesc": "क्या उपयोगकर्ता अभी ग्रहणशील है?",
       "noveltyDesc": "क्या यह पहले दिखाया गया है?"
-    }
+    },
+    "openEnvironment": "Open environment"
   },
   "beliefs": {
     "title": "विश्वास रजिस्ट्री",

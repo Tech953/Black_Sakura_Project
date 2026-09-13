@@ -31,7 +31,8 @@
       "confidenceDesc": "Насколько надежно наблюдение?",
       "timingDesc": "Восприимчив ли пользователь сейчас?",
       "noveltyDesc": "Это уже показывалось раньше?"
-    }
+    },
+    "openEnvironment": "Open environment"
   },
   "beliefs": {
     "title": "РЕЕСТР УБЕЖДЕНИЙ",

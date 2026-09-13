@@ -31,7 +31,8 @@
       "confidenceDesc": "Quanto è affidabile l'osservazione?",
       "timingDesc": "L'utente è ricettivo in questo momento?",
       "noveltyDesc": "È già stato mostrato prima?"
-    }
+    },
+    "openEnvironment": "Open environment"
   },
   "beliefs": {
     "title": "REGISTRO DELLE CREDENZE",

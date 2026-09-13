@@ -31,7 +31,8 @@
       "confidenceDesc": "该观察有多可靠？",
       "timingDesc": "用户此刻是否适合接收？",
       "noveltyDesc": "这之前是否已呈现过？"
-    }
+    },
+    "openEnvironment": "Open environment"
   },
   "beliefs": {
     "title": "信念登记簿",

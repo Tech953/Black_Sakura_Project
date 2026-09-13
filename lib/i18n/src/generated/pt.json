@@ -31,7 +31,8 @@
       "confidenceDesc": "Quão confiável é a observação?",
       "timingDesc": "O usuário está receptivo agora?",
       "noveltyDesc": "Isso já foi exibido antes?"
-    }
+    },
+    "openEnvironment": "Open environment"
   },
   "beliefs": {
     "title": "REGISTRO DE CRENÇAS",
