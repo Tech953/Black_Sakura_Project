@@ -11,5 +11,6 @@ export interface WorldModelPatch {
   content?: string;
   confidence?: number;
   scope?: WorldModelPatchScope;
+  /** Optional replacement source label; omit to keep the existing value. */
   source?: string;
 }
