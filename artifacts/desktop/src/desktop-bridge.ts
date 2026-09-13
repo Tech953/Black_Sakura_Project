@@ -1,4 +1,5 @@
 import type { OfflineModelFailureKind } from "./offline-model";
+import type { LocalModelFailure } from "./desktop-settings";
 
 export type DesktopLlmMode = "bundled" | "custom" | "offline" | "online";
 
@@ -55,6 +56,7 @@ export interface SettingsView {
   customStorageBytes: number;
   customStorageLimitBytes: number;
   offlineModel: OfflineModelView;
+  localModelFailure?: LocalModelFailure;
 }
 
 export interface SettingsPayload {
@@ -136,7 +138,11 @@ export interface EngramDesktopBridge {
   getSettings: () => Promise<SettingsView>;
   saveSettings: (
     payload: SettingsPayload,
-  ) => Promise<{ ok: boolean; error?: string }>;
+  ) => Promise<{
+    ok: boolean;
+    error?: string;
+    localModelFailure?: LocalModelFailure;
+  }>;
   chooseGguf: () => Promise<
     | { ok: true; selection: GgufSelectionView }
     | { ok: false; cancelled?: boolean; error?: string }
@@ -199,6 +205,7 @@ export function createEngramDesktopBridge(
       ipc.invoke("settings:save", payload) as Promise<{
         ok: boolean;
         error?: string;
+        localModelFailure?: LocalModelFailure;
       }>,
     chooseGguf: () =>
       ipc.invoke("gguf:choose") as ReturnType<

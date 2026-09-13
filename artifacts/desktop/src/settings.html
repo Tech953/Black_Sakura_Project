@@ -143,6 +143,12 @@
     <fieldset id="bundled-panel">
       <legend>Built-in — bundled model</legend>
       <p class="hint" id="bundled-hint">Runs the AI model that ships inside this app. Chat, analysis, simulation and emulation all work fully offline with no setup, no account, and no internet connection.</p>
+        <div id="local-model-failure-box" class="panel-box hidden" role="alert" aria-live="polite">
+          <p id="local-model-failure-title" style="margin:0 0 8px 0; color:#f87171; font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:0.05em;"></p>
+          <p id="local-model-failure-message" class="error-text" style="margin-top:0;"></p>
+          <p id="local-model-failure-guidance" class="hint"></p>
+          <p id="local-model-failure-recovery" class="hint"></p>
+        </div>
       <div id="offline-download-box" class="panel-box hidden">
         <p style="margin:0 0 8px 0; color:var(--cyan); font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:0.05em;">Optional offline model</p>
         <p class="hint" id="offline-download-hint">This slim build keeps the installer small. Download the verified offline model into writable ENGRAM storage to enable the built-in mode.</p>
@@ -347,6 +353,41 @@
          $("offline-download-error").classList.add("hidden");
        }
 
+        function renderLocalModelFailure(failure) {
+          const box = $("local-model-failure-box");
+          if (!failure) {
+            box.classList.add("hidden");
+            return;
+          }
+          const missing = Array.isArray(failure.missingLibraries) && failure.missingLibraries.length
+            ? ` Missing: ${failure.missingLibraries.join(", ")}.`
+            : "";
+          const copy = failure.code === "missing-linux-dependencies"
+            ? {
+                title: "Built-in model needs Linux libraries",
+                guidance: "Install the missing runtime packages for your distribution, or use a local server or online provider instead.",
+                recovery: "Automatic repair is not available on Linux. Select Local server or Online, then choose Save & Restart.",
+              }
+            : failure.code === "missing-windows-dlls"
+              ? {
+                  title: "Built-in model runtime is incomplete",
+                  guidance: "The installed llama.cpp runtime is missing files. Reinstall or update ENGRAM, or use a local server or online provider instead.",
+                  recovery: "Automatic repair is not available for this installation. Select Local server or Online, then choose Save & Restart.",
+                }
+              : {
+                  title: "Built-in model could not start",
+                  guidance: "The built-in local model is unavailable, but the rest of ENGRAM can continue with another provider.",
+                  recovery: "Select Local server or Online, then choose Save & Restart. You can retry Built-in after fixing the runtime.",
+                };
+          $("local-model-failure-title").textContent = copy.title;
+          $("local-model-failure-message").textContent = (failure.message || "The local model could not start.") + missing;
+          $("local-model-failure-guidance").textContent = copy.guidance;
+          $("local-model-failure-recovery").textContent = failure.automaticFixAvailable
+            ? "Automatic repair is available on this platform. Retry Built-in after the repair completes."
+            : copy.recovery;
+          box.classList.remove("hidden");
+        }
+
        function renderOfflineModel(model) {
          if (!model || bundledModelIncluded) {
            $("offline-download-box").classList.add("hidden");
@@ -475,6 +516,7 @@
         const s = await window.engram.getSettings();
         bundledAvailable = s.bundledAvailable;
          bundledModelIncluded = s.bundledModelIncluded;
+         renderLocalModelFailure(s.localModelFailure);
          renderOfflineModel(s.offlineModel);
         if (s.customModel) {
           renderCustomModels(s.customModels, s.customStorageBytes, s.customStorageLimitBytes);
@@ -804,7 +846,10 @@
             apiKey: $("online-key").value,
           },
         });
-        if (!res.ok) $("status").textContent = "Error: " + (res.error || "unknown");
+         if (!res.ok) {
+           $("status").textContent = "Error: " + (res.error || "unknown");
+           renderLocalModelFailure(res.localModelFailure);
+         }
       });
       init();
       initAbout();

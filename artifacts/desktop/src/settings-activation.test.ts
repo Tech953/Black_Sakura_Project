@@ -49,6 +49,43 @@ describe("activateSettings", () => {
     expect(deps.persist).not.toHaveBeenCalled();
   });
 
+  it("keeps a structured local-model failure attached for Settings recovery", async () => {
+    const order: string[] = [];
+    const failure = Object.assign(
+      new Error("The built-in local model is missing Linux runtime libraries."),
+      {
+        localModelFailure: {
+          code: "missing-linux-dependencies",
+          platform: "linux",
+          message:
+            "The built-in local model is missing Linux runtime libraries.",
+          missingLibraries: ["libgomp.so.1"],
+          automaticFixAvailable: false,
+        },
+      },
+    );
+    const deps = dependencies(order);
+    vi.mocked(deps.start)
+      .mockRejectedValueOnce(failure)
+      .mockImplementationOnce(async (settings) => {
+        order.push(`start:${settings}`);
+      });
+
+    const activationError = await activateSettings("old", "new", deps).catch(
+      (error: unknown) => error,
+    );
+
+    expect(activationError).toMatchObject({
+      primaryError: {
+        localModelFailure: {
+          code: "missing-linux-dependencies",
+          missingLibraries: ["libgomp.so.1"],
+        },
+      },
+    });
+    expect(order).toEqual(["stop", "stop", "start:old"]);
+  });
+
   it("rolls runtime and disk back when persistence fails", async () => {
     const order: string[] = [];
     const deps = dependencies(order);
