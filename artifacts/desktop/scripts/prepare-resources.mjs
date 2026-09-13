@@ -17,6 +17,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+import { checkLlamaRuntime } from "./llama-runtime-check.mjs";
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -113,6 +114,7 @@ cpSync(drizzleSrc, path.join(resources, "drizzle"), { recursive: true });
 // Windows portable zip from a Linux workspace. The name is historical; it now
 // governs all target-specific resources.
 const pkgTarget = process.env.LLAMA_TARGET || process.platform;
+const llamaArchitecture = process.env.LLAMA_ARCH || process.arch;
 
 // 5. ffmpeg + ffprobe — the TARGET-platform binaries the media worker needs for
 //    the VIDEO modality (frame sampling + audio extraction). When packaging for
@@ -318,6 +320,28 @@ function stageLlama(includeDefaultModel) {
     if (requireLlamaRuntime) throw new Error(message);
     console.warn(message);
     return false;
+  }
+  if (
+    requireLlamaRuntime &&
+    llamaTarget === process.platform &&
+    llamaArchitecture === process.arch
+  ) {
+    const runtime = checkLlamaRuntime({
+      executablePath: stagedServer,
+      platform: llamaTarget,
+      architecture: llamaArchitecture,
+    });
+    if (!runtime.ok) {
+      throw new Error(runtime.message);
+    }
+    console.log(
+      `[desktop] llama.cpp native dependency preflight passed (${runtime.code})`,
+    );
+  } else if (requireLlamaRuntime) {
+    console.warn(
+      `[desktop] deferred llama.cpp dependency preflight for cross-target ` +
+        `${llamaTarget}-${llamaArchitecture}; run it on a matching runner.`,
+    );
   }
   if (includeDefaultModel && !existsSync(modelSrc)) {
     throw new Error(
