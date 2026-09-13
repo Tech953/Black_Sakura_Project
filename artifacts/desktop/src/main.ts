@@ -38,9 +38,12 @@ import {
 import { buildLlamaCommand } from "./llama-command";
 import { activateSettings } from "./settings-activation";
 import {
+  localModelFailureFromError,
   normalizeCustomGgufMetadata,
+  normalizeLocalModelFailure,
   normalizeDesktopMode,
 } from "./desktop-settings";
+import type { LocalModelFailure } from "./desktop-settings";
 import {
   downloadOfflineModel,
   classifyOfflineModelFailure,
@@ -200,6 +203,7 @@ interface Settings {
     kind: OfflineModelFailureKind;
     message: string;
   };
+  localModelFailure?: LocalModelFailure;
 }
 
 // Online API key kept in memory only when the OS keychain is unavailable, so it
@@ -240,6 +244,34 @@ function hasRunningModelOperation(): boolean {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function attachLocalModelFailure(
+  error: unknown,
+  failure: LocalModelFailure,
+): Error & { localModelFailure: LocalModelFailure } {
+  const wrapped = error instanceof Error ? error : new Error(String(error));
+  Object.defineProperty(wrapped, "localModelFailure", {
+    configurable: true,
+    enumerable: false,
+    value: failure,
+    writable: false,
+  });
+  return wrapped as Error & { localModelFailure: LocalModelFailure };
+}
+
+function localModelFailureOn(error: unknown): LocalModelFailure | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const candidate = error as {
+    localModelFailure?: unknown;
+    primaryError?: unknown;
+    cause?: unknown;
+  };
+  return (
+    normalizeLocalModelFailure(candidate.localModelFailure) ??
+    localModelFailureOn(candidate.primaryError) ??
+    localModelFailureOn(candidate.cause)
+  );
 }
 
 function normalizeOfflineModelFailure(
@@ -375,6 +407,7 @@ function loadSettings(): Settings {
       offlineModelFailure: normalizeOfflineModelFailure(
         parsed.offlineModelFailure,
       ),
+      localModelFailure: normalizeLocalModelFailure(parsed.localModelFailure),
     };
   } catch {
     return structuredClone(DEFAULT_SETTINGS);
@@ -657,12 +690,22 @@ async function startLlama(settings: Settings): Promise<void> {
     stdio: ["ignore", "pipe", "pipe"],
   });
   llamaProcess = proc;
+  let startupStderr = "";
   proc.stdout?.on("data", (chunk: Buffer) => {
     process.stdout.write(`[llama] ${chunk.toString()}`);
   });
   proc.stderr?.on("data", (chunk: Buffer) => {
+    startupStderr = `${startupStderr}${chunk.toString()}`.slice(-12_000);
     process.stderr.write(`[llama] ${chunk.toString()}`);
   });
+  const startupError = (message: string): Error => {
+    const failure = localModelFailureFromError(
+      new Error(`${message}${startupStderr ? ` ${startupStderr.trim()}` : ""}`),
+      process.platform,
+      startupStderr,
+    );
+    return attachLocalModelFailure(new Error(failure.message), failure);
+  };
   // Startup is transactional: any spawn error or early exit before health
   // rejects the promise, and the caller cleans up + falls back. `settled`
   // guards double-settlement between the racing handlers.
@@ -675,7 +718,7 @@ async function startLlama(settings: Settings): Promise<void> {
       }
       if (!settled) {
         settled = true;
-        reject(new Error(`Local model server failed to start: ${err.message}`));
+        reject(startupError(`Local model server failed to start: ${err.message}`));
       }
     });
     proc.on("exit", (code, signal) => {
@@ -686,7 +729,7 @@ async function startLlama(settings: Settings): Promise<void> {
       if (!settled) {
         settled = true;
         reject(
-          new Error(
+          startupError(
             `Local model server exited before becoming ready (code=${code}, signal=${signal}).`,
           ),
         );
@@ -708,7 +751,9 @@ async function startLlama(settings: Settings): Promise<void> {
   } catch (err) {
     settled = true;
     await stopLlama();
-    throw err;
+    if (localModelFailureOn(err)) throw err;
+    const failure = localModelFailureFromError(err, process.platform, startupStderr);
+    throw attachLocalModelFailure(err, failure);
   }
 }
 
@@ -736,14 +781,31 @@ async function startServer(
   // settings when no llama process is live, so the UI still opens and the
   // user can pick another mode.
   const mode = effectiveMode(settings);
+  let localModelFailure: LocalModelFailure | undefined;
   if ((mode === "bundled" || mode === "custom") && !llamaProcess) {
     try {
       await startLlama(settings);
     } catch (err) {
-      if (mode === "custom") customRuntimeError = errorMessage(err);
+      const failure =
+        localModelFailureOn(err) ??
+        localModelFailureFromError(err, process.platform);
+      localModelFailure = failure;
+      const failureError = attachLocalModelFailure(err, failure);
+      try {
+        saveSettings({ ...settings, localModelFailure: failure });
+      } catch (persistError) {
+        console.error(
+          "[desktop] could not persist local model startup failure:",
+          persistError,
+        );
+      }
+      if (mode === "custom") customRuntimeError = failure.message;
       // eslint-disable-next-line no-console
-      console.error("[desktop] local model unavailable, falling back:", err);
-      if (options.strictLocalModel) throw err;
+      console.error(
+        "[desktop] local model unavailable, falling back:",
+        failureError,
+      );
+      if (options.strictLocalModel) throw failureError;
     }
   }
   currentPort = await findFreePort();
@@ -805,6 +867,10 @@ async function startServer(
       serverFailure,
     ]);
     startupSettled = true;
+    const persisted = loadSettings();
+    if (!localModelFailure && persisted.localModelFailure) {
+      saveSettings({ ...persisted, localModelFailure: undefined });
+    }
   } catch (error) {
     startupSettled = true;
     await stopServer();
@@ -1105,18 +1171,20 @@ async function runGgufImport(
     try {
       await activateDesktopSettings(previous, candidate);
     } catch (error) {
-      customRuntimeError = errorMessage(error);
+      const failure = localModelFailureOn(error);
+      customRuntimeError = failure?.message ?? errorMessage(error);
       // Keep every validated import discoverable for explicit retry/removal,
       // while the previous provider remains active after a failed activation.
       saveSettings({
         ...previous,
         custom: previous.mode === "custom" ? previous.custom : importedModel,
         customModels,
+        ...(failure ? { localModelFailure: failure } : {}),
       });
       sendGgufImportStatus({
         operationId,
         state: "error",
-        error: errorMessage(error),
+        error: failure?.message ?? errorMessage(error),
         imported: true,
       });
       return;
@@ -1271,10 +1339,14 @@ ipcMain.handle("settings:get", async () => {
     customStorageBytes: await customGgufStore().getManagedBytes(),
     customStorageLimitBytes: customGgufStore().storageLimitBytes,
     offlineModel: await getOfflineModelView(settings),
+    localModelFailure: settings.localModelFailure,
   };
 });
 
 ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {
+  let previous: Settings | undefined;
+  let next: Settings | undefined;
+  let activationAttempted = false;
   try {
     if (hasRunningModelOperation()) {
       throw new Error("Wait for the GGUF import to finish or cancel it first.");
@@ -1287,8 +1359,8 @@ ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {
     ) {
       throw new Error("Invalid settings payload.");
     }
-    const previous = loadSettings();
-    const next: Settings = {
+    previous = loadSettings();
+    next = {
       mode: normalizeDesktopMode(payload.mode),
       allowLan: payload.allowLan === true,
       custom: previous.custom,
@@ -1314,6 +1386,7 @@ ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {
             .slice(0, 512) || DEFAULT_SETTINGS.online.model,
         apiKeyEnc: previous.online.apiKeyEnc,
       },
+      localModelFailure: undefined,
     };
     if (next.mode === "custom" && !next.custom) {
       throw new Error("Import a GGUF model before selecting Custom GGUF.");
@@ -1336,6 +1409,7 @@ ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {
     }
 
     try {
+      activationAttempted = true;
       await activateDesktopSettings(previous, next);
     } catch (error) {
       sessionApiKey = previousSessionApiKey;
@@ -1346,7 +1420,27 @@ ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {
     }
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: String(error) };
+    const failure =
+      activationAttempted &&
+      next &&
+      (next.mode === "bundled" || next.mode === "custom")
+        ? localModelFailureOn(error)
+        : undefined;
+    if (failure && previous) {
+      try {
+        saveSettings({ ...previous, localModelFailure: failure });
+      } catch (persistError) {
+        console.error(
+          "[desktop] could not persist local model activation failure:",
+          persistError,
+        );
+      }
+    }
+    return {
+      ok: false,
+      error: failure?.message ?? errorMessage(error),
+      ...(failure ? { localModelFailure: failure } : {}),
+    };
   }
 });
 

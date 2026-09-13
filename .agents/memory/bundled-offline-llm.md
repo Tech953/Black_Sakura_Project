@@ -40,3 +40,9 @@ The pinned Linux llama.cpp binary is dynamically linked against host-provided `l
 **Why:** The NixOS workspace does not expose these libraries through the default loader path, while copying Nix store paths into a release would not be portable or reproducible.
 
 **How to apply:** Keep Linux dependency resolution as a release preflight contract, use `LD_LIBRARY_PATH` only for compatible local smoke hosts, and keep the Windows runtime self-contained with adjacent DLLs.
+
+Local llama startup failures must remain structured through fallback and Settings activation: preserve the failure code, platform, and missing libraries, persist it for the next Settings view, and clear it only after a healthy provider activation. The app should keep the embedded server usable with another provider instead of exiting.
+
+**Why:** A generic fallback hides the actionable reason, while persisting a failed candidate instead of the previous healthy provider can make recovery impossible.
+
+**How to apply:** Treat local-model startup errors as recoverable Settings state; show platform-specific manual guidance when automatic repair is unavailable, and keep Online/Local server activation transactional.
