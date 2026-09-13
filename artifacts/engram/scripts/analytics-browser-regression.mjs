@@ -172,6 +172,7 @@ const fixtureScript = String.raw`
     ]
   ];
   let stateVersion = 0;
+  let stateRequestsFailing = false;
   const response = (body, status = 200) =>
     new Response(JSON.stringify(body), {
       status,
@@ -180,6 +181,7 @@ const fixtureScript = String.raw`
   window.__analyticsBrowserFixture = {
     pageToken: String(Date.now()) + "-" + String(Math.random()),
     setStateVersion(version) { stateVersion = version; },
+    setStateFailure(value) { stateRequestsFailing = value; },
     getStateVersion() { return stateVersion; }
   };
   window.fetch = async (input, init = {}) => {
@@ -189,7 +191,11 @@ const fixtureScript = String.raw`
     ).toUpperCase();
     const pathname = new URL(url, window.location.origin).pathname;
     if (pathname === "/api/engrams" && method === "GET") return response(engrams);
-    if (pathname === "/api/engrams/state" && method === "GET") return response(states[stateVersion]);
+    if (pathname === "/api/engrams/state" && method === "GET") {
+      if (stateRequestsFailing) return response({ error: "fixture unavailable" }, 503);
+      return response(states[stateVersion]);
+    }
+    if (pathname === "/api/engrams/1/transmissions" && method === "GET") return response([]);
     if (pathname === "/api/stats" && method === "GET") {
       return response({
         totalMemories: 0,
@@ -283,6 +289,24 @@ try {
   if (narrowStatusCount !== 4) {
     throw new Error(`Narrow Analytics view hid pressure status chips: ${narrowStatusCount}`);
   }
+
+  await devtools.evaluate("window.__analyticsBrowserFixture.setStateFailure(true)");
+  await waitFor(
+    `document.querySelector('[data-testid="pressure-live-status"]')?.textContent?.toLowerCase().includes("stale")`,
+    "Analytics stale pressure warning",
+    12000,
+  );
+  const stalePressure = await devtools.evaluate(
+    `document.querySelector('[data-testid="pressure-roster-item-1"]')?.textContent?.includes("0.40 / 0.80 · 50%")`,
+  );
+  if (!stalePressure) throw new Error("Analytics hid the last pressure value while showing stale state");
+
+  await devtools.evaluate("window.__analyticsBrowserFixture.setStateFailure(false)");
+  await waitFor(
+    "!document.querySelector('[data-testid=\"pressure-live-status\"]')",
+    "Analytics stale pressure recovery",
+    12000,
+  );
 
   await devtools.evaluate("window.__analyticsBrowserFixture.setStateVersion(1)");
   await waitFor(

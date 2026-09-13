@@ -32,7 +32,9 @@
       "timingDesc": "지금 사용자가 받아들일 상태인가?",
       "noveltyDesc": "이전에 이미 표시된 적이 있는가?"
     },
-    "openEnvironment": "Open environment"
+    "openEnvironment": "Open environment",
+    "pressureLiveStale": "Live pressure is stale",
+    "pressureLiveUnavailable": "Live pressure unavailable"
   },
   "beliefs": {
     "title": "신념 등록부",
@@ -452,7 +454,9 @@
     "newCount": "{{count}}개 새로움",
     "markSeen": "읽음 처리",
     "awaitingFirstTransmission": "첫 전송 대기 중",
-    "awaitingFirstTransmissionHint": "압력이 임계값을 넘으면 연락할 거예요"
+    "awaitingFirstTransmissionHint": "압력이 임계값을 넘으면 연락할 거예요",
+    "liveStateStale": "Stale live data",
+    "liveStateUnavailable": "Live data unavailable"
   },
   "evolution": {
     "title": "진화 로그",

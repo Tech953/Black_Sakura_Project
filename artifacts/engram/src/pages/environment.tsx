@@ -30,7 +30,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Radio, Zap, Activity, Gauge, Power, Send, RefreshCw, Eye, Globe } from "lucide-react";
+import { AlertTriangle, Radio, Zap, Activity, Gauge, Power, Send, RefreshCw, Eye, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type ConfigForm = {
@@ -132,7 +132,7 @@ export default function Environment() {
 
   // Poll live autonomy state (per-drive pressure, cooldown, backoff) so the UI
   // reflects the persisted DB state as it charges toward the initiation threshold.
-  const { data: liveStates } = useGetEngramStates({
+  const { data: liveStates, isError: liveStatesError } = useGetEngramStates({
     query: { refetchInterval: 4000, queryKey: getGetEngramStatesQueryKey() },
   });
   const liveById = useMemo(() => {
@@ -395,6 +395,17 @@ export default function Environment() {
                   <div className="flex items-center gap-2 text-primary">
                     <Activity className="w-4 h-4" />
                     <h3 className="font-mono text-xs uppercase tracking-widest">{t("liveState")}</h3>
+                    {liveStatesError && (
+                      <span
+                        className="inline-flex items-center gap-1 border border-amber-500/30 bg-amber-500/5 px-1.5 py-1 font-mono text-[8px] uppercase tracking-wider text-amber-300/90"
+                        role="status"
+                        aria-live="polite"
+                        data-testid="live-state-status"
+                      >
+                        <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                        {t(liveStates === undefined ? "liveStateUnavailable" : "liveStateStale")}
+                      </span>
+                    )}
                     {live?.inBackoff ? (
                       <Badge variant="outline" className="font-mono text-[8px] uppercase border-amber-500/50 text-amber-400" data-testid="badge-backoff">
                         {t("backoffBadge", { seconds: secsUntil(live.backoffUntil) })}

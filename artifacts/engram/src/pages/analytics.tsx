@@ -4,7 +4,7 @@ import type { EngramLiveState } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Cell } from "recharts";
-import { Activity, Gauge, SlidersHorizontal } from "lucide-react";
+import { Activity, AlertTriangle, Gauge, SlidersHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getGetEngramStatesQueryKey } from "@workspace/api-client-react";
 import { Link } from "wouter";
@@ -31,7 +31,11 @@ export default function Analytics() {
   const { t } = useTranslation("analytics");
   const { data: stats, isLoading } = useGetStats();
   const { data: engrams, isLoading: engramsLoading } = useListEngrams();
-  const { data: liveStates, isLoading: statesLoading } = useGetEngramStates({
+  const {
+    data: liveStates,
+    isLoading: statesLoading,
+    isError: liveStatesError,
+  } = useGetEngramStates({
     query: {
       refetchInterval: 4000,
       queryKey: getGetEngramStatesQueryKey(),
@@ -84,6 +88,17 @@ export default function Analytics() {
               {t("pressureOverviewLive")}
             </div>
           </div>
+          {liveStatesError && (
+            <div
+              className="mt-3 flex items-center gap-1.5 border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 font-mono text-[9px] uppercase tracking-wider text-amber-300/90"
+              role="status"
+              aria-live="polite"
+              data-testid="pressure-live-status"
+            >
+              <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
+              {t(liveStates === undefined ? "pressureLiveUnavailable" : "pressureLiveStale")}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {rosterLoading ? (

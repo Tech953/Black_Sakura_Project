@@ -32,7 +32,9 @@
       "timingDesc": "Восприимчив ли пользователь сейчас?",
       "noveltyDesc": "Это уже показывалось раньше?"
     },
-    "openEnvironment": "Open environment"
+    "openEnvironment": "Open environment",
+    "pressureLiveStale": "Live pressure is stale",
+    "pressureLiveUnavailable": "Live pressure unavailable"
   },
   "beliefs": {
     "title": "РЕЕСТР УБЕЖДЕНИЙ",
@@ -452,7 +454,9 @@
     "newCount": "{{count}} новых",
     "markSeen": "Отметить просмотренным",
     "awaitingFirstTransmission": "Ожидание первой передачи",
-    "awaitingFirstTransmissionHint": "Она выйдет на связь, когда давление превысит порог"
+    "awaitingFirstTransmissionHint": "Она выйдет на связь, когда давление превысит порог",
+    "liveStateStale": "Stale live data",
+    "liveStateUnavailable": "Live data unavailable"
   },
   "evolution": {
     "title": "ЖУРНАЛ ЭВОЛЮЦИИ",
