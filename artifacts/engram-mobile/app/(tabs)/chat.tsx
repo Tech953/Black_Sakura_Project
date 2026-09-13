@@ -76,7 +76,11 @@ import {
   buildPlainTextTranscript,
   buildTranscriptEntries,
 } from "@/lib/chat-export";
-import { exportNativeChatConversation } from "@/lib/native-chat-export";
+import {
+  exportNativeChatConversation,
+  getNativeChatExportFailureKind,
+  type NativeChatExportFailureKind,
+} from "@/lib/native-chat-export";
 import {
   buildWebChatExport,
   downloadWebChatExport,
@@ -132,6 +136,8 @@ export default function ChatScreen() {
   const [showArchived, setShowArchived] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] =
+    useState<NativeChatExportFailureKind | null>(null);
   const inputRef = useRef<TextInput>(null);
   const initializedRef = useRef(false);
 
@@ -262,6 +268,8 @@ export default function ChatScreen() {
     async (format: "md" | "txt" | "pdf" | "docx") => {
       if (!conversation || messages.length === 0) return;
       setExporting(true);
+      setExportError(null);
+      let completed = false;
       try {
         const title = conversation.title ?? t("chat.fallbackTitle");
         const exportedAt = new Date().toISOString();
@@ -290,6 +298,7 @@ export default function ChatScreen() {
           downloadWebChatExport(
             await buildWebChatExport(format, exportInput, safeTitle),
           );
+          completed = true;
           return;
         }
         const fallback =
@@ -297,7 +306,12 @@ export default function ChatScreen() {
             ? buildMarkdownTranscript(exportInput)
             : buildPlainTextTranscript(exportInput);
         if (!(await Sharing.isAvailableAsync())) {
-          await Share.share({ title, message: fallback });
+          const result = await Share.share({ title, message: fallback });
+          if (result.action === Share.dismissedAction) {
+            setExportError("cancelled");
+            return;
+          }
+          completed = true;
           return;
         }
 
@@ -316,9 +330,15 @@ export default function ChatScreen() {
           shareAsync: (uri, options) => Sharing.shareAsync(uri, options),
           dialogTitle: t("chat.shareConversation"),
         });
+        completed = true;
+      } catch (error) {
+        setExportError(getNativeChatExportFailureKind(error));
       } finally {
         setExporting(false);
-        setExportOpen(false);
+        if (completed) {
+          setExportOpen(false);
+          setExportError(null);
+        }
       }
     },
     [conversation, engram?.name, messages, t],
@@ -527,7 +547,10 @@ export default function ChatScreen() {
             <Pressable
               accessibilityLabel={t("chat.exportConversation")}
               disabled={messages.length === 0 || isStreaming}
-              onPress={() => setExportOpen(true)}
+              onPress={() => {
+                setExportError(null);
+                setExportOpen(true);
+              }}
               style={({ pressed }) => [
                 styles.headerButton,
                 { opacity: messages.length === 0 || isStreaming ? 0.3 : pressed ? 0.6 : 1 },
@@ -849,12 +872,18 @@ export default function ChatScreen() {
         visible={exportOpen}
         transparent
         animationType="slide"
-        onRequestClose={() => setExportOpen(false)}
+        onRequestClose={() => {
+          setExportError(null);
+          setExportOpen(false);
+        }}
       >
         <View style={styles.modalBackdrop}>
           <Pressable
             style={StyleSheet.absoluteFill}
-            onPress={() => setExportOpen(false)}
+            onPress={() => {
+              setExportError(null);
+              setExportOpen(false);
+            }}
           />
           <View
             style={[
@@ -873,11 +902,41 @@ export default function ChatScreen() {
               </View>
               <Pressable
                 accessibilityLabel={t("chat.closeExport")}
-                onPress={() => setExportOpen(false)}
+                onPress={() => {
+                  setExportError(null);
+                  setExportOpen(false);
+                }}
               >
                 <Feather name="x" size={20} color={colors.mutedForeground} />
               </Pressable>
             </View>
+            {exportError && (
+              <View
+                accessibilityRole="alert"
+                style={[
+                  styles.exportError,
+                  {
+                    borderColor: colors.destructive,
+                    backgroundColor: colors.destructive + "18",
+                  },
+                ]}
+              >
+                <Feather name="alert-circle" size={18} color={colors.destructive} />
+                <Text style={[styles.exportErrorText, { color: colors.destructive }]}>
+                  {t(
+                    exportError === "cancelled"
+                      ? "chat.exportCancelled"
+                      : "chat.exportFailed",
+                  )}
+                </Text>
+                <Pressable
+                  accessibilityLabel={t("chat.dismissExportError")}
+                  onPress={() => setExportError(null)}
+                >
+                  <Feather name="x" size={18} color={colors.destructive} />
+                </Pressable>
+              </View>
+            )}
             {(
               [
                 ["md", "downloadMarkdown"],
@@ -1109,6 +1168,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.7,
+  },
+  exportError: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 10,
+  },
+  exportErrorText: {
+    flex: 1,
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+    lineHeight: 18,
   },
   rtlText: {
     writingDirection: "rtl",

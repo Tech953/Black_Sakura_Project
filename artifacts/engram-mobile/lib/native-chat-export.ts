@@ -7,6 +7,7 @@ import {
 } from "./chat-export";
 
 export type NativeChatExportFormat = "md" | "txt" | "pdf" | "docx";
+export type NativeChatExportFailureKind = "cancelled" | "failed";
 
 type NativeFileEncoding = "utf8" | "base64";
 
@@ -39,6 +40,32 @@ export interface NativeChatExportDependencies {
 export interface NativeChatExportResult {
   uri: string;
   mimeType: string;
+}
+
+export function getNativeChatExportFailureKind(
+  error: unknown,
+): NativeChatExportFailureKind {
+  if (!error || typeof error !== "object") return "failed";
+
+  const candidate = error as {
+    code?: unknown;
+    name?: unknown;
+    message?: unknown;
+  };
+  const code = typeof candidate.code === "string" ? candidate.code : "";
+  const name = typeof candidate.name === "string" ? candidate.name : "";
+  const message =
+    typeof candidate.message === "string" ? candidate.message : "";
+  const cancellationCode = /cancel|dismiss/i.test(code);
+  const cancellationName = /cancel|dismiss/i.test(name) || name === "AbortError";
+  const cancellationMessage =
+    /share(?:ing)?\s+(?:was\s+)?cancel|cancel(?:led|ed)\s+by\s+user|user\s+(?:cancel|dismiss)|dismissed/i.test(
+      message,
+    );
+
+  return cancellationCode || cancellationName || cancellationMessage
+    ? "cancelled"
+    : "failed";
 }
 
 function encodeBase64(bytes: Uint8Array): string {
