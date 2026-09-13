@@ -85,6 +85,16 @@ function mergeTrees(base: unknown, updates: unknown): unknown {
   return result;
 }
 
+function fillMissingEnglish(base: unknown, english: unknown): unknown {
+  if (!isObject(english)) return base === undefined ? english : base;
+  const result: Tree = isObject(base) ? { ...base } : {};
+  for (const [key, value] of Object.entries(english)) {
+    result[key] =
+      key in result ? fillMissingEnglish(result[key], value) : value;
+  }
+  return result;
+}
+
 function pickTreePaths(tree: unknown, paths: string[]): Tree {
   const result: Tree = {};
   for (const path of paths) {
@@ -109,6 +119,7 @@ function pickTreePaths(tree: unknown, paths: string[]): Tree {
 async function main() {
   const args = process.argv.slice(2).filter((arg) => arg !== "--");
   const refreshFallbacks = args.includes("--refresh-fallbacks");
+  const fallbackOnError = process.env.LOCALE_FALLBACK_ON_ERROR === "1";
   const refreshKeys = args
     .filter((arg) => arg.startsWith("--refresh-key="))
     .map((arg) => arg.slice("--refresh-key=".length));
@@ -158,7 +169,15 @@ async function main() {
         continue;
       }
       console.log(`translating ${ns} -> ${lang.code} (${Object.keys(tree).length} top-level keys)`);
-      result[ns] = await translateNamespace(ns, tree, lang);
+      try {
+        result[ns] = await translateNamespace(ns, tree, lang);
+      } catch (error) {
+        if (!fallbackOnError) throw error;
+        console.warn(
+          `  [${lang.code}/${ns}] translation unavailable; preserving existing values and adding English fallbacks`,
+        );
+        result[ns] = fillMissingEnglish(existing[ns], tree) as Tree;
+      }
     }
     writeFileSync(outPath, JSON.stringify(result, null, 2) + "\n");
     console.log(`wrote ${outPath}`);
