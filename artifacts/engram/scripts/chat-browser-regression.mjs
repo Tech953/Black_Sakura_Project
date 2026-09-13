@@ -18,9 +18,22 @@ const profileDir = await mkdtemp(join(tmpdir(), "engram-chat-profile-"));
 let disposableClerk;
 let realConversationId;
 let realConversationTitle;
+const chromiumPath =
+  process.env.CHROMIUM_PATH ??
+  ["/repl/tools/bin/chromium", "chromium", "chromium-browser", "google-chrome"]
+    .map((candidate) => {
+      if (candidate.startsWith("/") && existsSync(candidate)) return candidate;
+      const result = spawnSync("which", [candidate], { encoding: "utf8" });
+      return result.status === 0 ? result.stdout.trim() : "";
+    })
+    .find(Boolean);
+
+if (!chromiumPath) {
+  throw new Error("Could not find Chromium. Set CHROMIUM_PATH or install chromium.");
+}
 
 const chrome = spawn(
-  "/repl/tools/bin/chromium",
+  chromiumPath,
   [
     "--headless=new",
     "--no-sandbox",
@@ -396,6 +409,7 @@ try {
 
   await click(`document.querySelector('[aria-label="Download conversation"]')`, "download menu");
   for (const format of ["Markdown", "plain text", "PDF", "DOCX"]) {
+    console.log(`Chat archive/export check: export format=${format}`);
     await waitFor(`Boolean(document.querySelector('[role="menuitem"]'))`, `${format} export menu`);
     await click(
       `Array.from(document.querySelectorAll('[role="menuitem"]')).find((node) => node.textContent.includes(${JSON.stringify(format)}))`,
@@ -408,6 +422,7 @@ try {
   }
 
   await waitFor(`Boolean(document.querySelector('[aria-label="Archive conversation"]'))`, "archive control");
+  console.log("Chat archive/export check: archive state=active -> archived");
   await click(`document.querySelector('[aria-label="Archive conversation"]')`, "archive conversation");
   await waitFor(`document.querySelector('textarea')?.disabled === true`, "archived read-only composer");
   if (!(await devtools.evaluate(`document.body.innerText.includes("restore it to send")`))) {
@@ -436,15 +451,18 @@ try {
   );
   await click(`document.querySelector('[aria-label="Restore conversation"]')`, "restore conversation");
   await waitFor(`document.querySelector('textarea')?.disabled === false`, "restored composer");
+  console.log("Chat archive/export check: archive state=archived -> restored");
 
   const files = readdirSync(downloadsDir).filter((name) => !name.endsWith(".crdownload"));
   const expectedExtensions = [".md", ".txt", ".pdf", ".docx"];
   for (const extension of expectedExtensions) {
     const file = files.find((name) => name.endsWith(extension));
-    if (!file) throw new Error(`Missing ${extension} download`);
+    if (!file) throw new Error(`export format=${extension}: missing download`);
     const content = contentFor(join(downloadsDir, file));
     for (const message of requiredMessages) {
-      if (!content.includes(message)) throw new Error(`${file} is missing ${message}`);
+      if (!content.includes(message)) {
+        throw new Error(`export format=${extension}: ${file} is missing transcript text "${message}"`);
+      }
     }
   }
   console.log(`Browser regression passed: ${files.join(", ")}`);
