@@ -551,7 +551,11 @@
     },
     "toastPresenceUpdatedTitle": "位置已更新",
     "toastPresenceUpdatedDescription": "{{engram}} → {{space}}。",
-    "toastMoveFailed": "迁移 engram 失败"
+    "toastMoveFailed": "迁移 engram 失败",
+    "openTranscript": "打开文字记录",
+    "transcriptTitle": "{{space}}文字记录",
+    "transcriptUnavailable": "无法加载此文字记录。",
+    "transcriptEmpty": "此空间尚未记录 Commons 交流。"
   },
   "inquiry": {
     "probeLabel": "探查",

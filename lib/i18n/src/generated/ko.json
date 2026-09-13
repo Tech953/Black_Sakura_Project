@@ -551,7 +551,11 @@
     },
     "toastPresenceUpdatedTitle": "위치 업데이트됨",
     "toastPresenceUpdatedDescription": "{{engram}} → {{space}}.",
-    "toastMoveFailed": "engram 이동 실패"
+    "toastMoveFailed": "engram 이동 실패",
+    "openTranscript": "대화 기록 열기",
+    "transcriptTitle": "{{space}} 대화 기록",
+    "transcriptUnavailable": "이 대화 기록을 불러올 수 없음",
+    "transcriptEmpty": "이 공간에는 아직 Commons 교환 기록이 없음"
   },
   "inquiry": {
     "probeLabel": "탐문",

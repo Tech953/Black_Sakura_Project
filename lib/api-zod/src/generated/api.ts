@@ -1663,11 +1663,37 @@ export const ListHubActivityResponseItem = zod.object({
   "id": zod.number(),
   "spaceId": zod.number(),
   "engramId": zod.number().nullable(),
-  "kind": zod.enum(['enter', 'move', 'rest', 'wake', 'system']),
+  "kind": zod.enum(['enter', 'move', 'rest', 'wake', 'converse', 'simulate', 'system']),
   "summary": zod.string(),
   "createdAt": zod.string()
 })
 export const ListHubActivityResponse = zod.array(ListHubActivityResponseItem)
+
+
+/**
+ * @summary List the recent Commons transcript for a Hub space
+ */
+export const ListHubSpaceTranscriptParams = zod.object({
+  "spaceId": zod.coerce.number()
+})
+
+export const ListHubSpaceTranscriptResponseItem = zod.object({
+  "id": zod.number(),
+  "fromEngramId": zod.number(),
+  "toEngramId": zod.number().nullable(),
+  "spaceId": zod.number().nullable(),
+  "channel": zod.enum(['engram', 'human']),
+  "author": zod.enum(['engram', 'operator']),
+  "priority": zod.enum(['urgent', 'meaningful', 'social']),
+  "status": zod.enum(['delivered', 'queued', 'digest', 'blocked']),
+  "content": zod.string(),
+  "reason": zod.string().nullable(),
+  "seen": zod.boolean(),
+  "isDigest": zod.boolean(),
+  "deliveredAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+export const ListHubSpaceTranscriptResponse = zod.array(ListHubSpaceTranscriptResponseItem)
 
 
 /**
