@@ -101,8 +101,36 @@ const fixtureScript = String.raw`
     : { showInList: false, conversation: null, messages: [], createBody: null };
   const requests = [];
   const engrams = [
-    { id: 1, name: "Mira", title: "Signal Cartographer", symbol: "◇", isArchival: false, isChatActive: true },
-    { id: 2, name: "Aster", title: "Night Analyst", symbol: "△", isArchival: false, isChatActive: true },
+    {
+      id: 1,
+      name: "Mira",
+      title: "Signal Cartographer",
+      symbol: "◇",
+      isArchival: false,
+      isChatActive: true,
+      continuationEligibility: { eligible: true },
+    },
+    {
+      id: 2,
+      name: "Aster",
+      title: "Night Analyst",
+      symbol: "△",
+      isArchival: false,
+      isChatActive: true,
+      continuationEligibility: { eligible: true },
+    },
+    {
+      id: 3,
+      name: "Sol",
+      title: "Quiet Observer",
+      symbol: "○",
+      isArchival: false,
+      isChatActive: true,
+      continuationEligibility: {
+        eligible: false,
+        reason: "autonomy is disabled for this engram",
+      },
+    },
   ];
   const persist = () => window.localStorage.setItem(storageKey, JSON.stringify(state));
   window.__groupChatFixture = {
@@ -275,6 +303,10 @@ try {
   await waitFor(
     `Array.from(document.querySelectorAll('[role="dialog"] button')).some((node) => node.textContent?.includes("Mira"))`,
     "Mira participant option",
+  );
+  await waitFor(
+    `document.body?.innerText.includes("Peer continuation blocked") && document.body?.innerText.includes("Autonomy is disabled")`,
+    "blocked continuation explanation",
   );
   await fill(`document.querySelector('[role="dialog"] input')`, "First Message Group", "conversation title");
   await click(

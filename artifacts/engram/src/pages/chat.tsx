@@ -97,8 +97,33 @@ function describeEvent(ev: EngramEvent, t: TFunction): { label: string; tone: Ev
   }
 }
 
+function continuationReasonLabel(reason: string | undefined, t: TFunction): string {
+  if (!reason) return t("groupContinuationReasonGeneric");
+  if (reason.includes("archival")) return t("groupContinuationReasonArchival");
+  if (reason.includes("autonomy")) return t("groupContinuationReasonAutonomy");
+  if (reason.includes("paused")) return t("groupContinuationReasonPaused");
+  if (reason.includes("resting")) return t("groupContinuationReasonResting");
+  if (reason.includes("mode")) return t("groupContinuationReasonMode");
+  if (reason.includes("space")) return t("groupContinuationReasonSpace");
+  return t("groupContinuationReasonGeneric");
+}
+
 type ChatMode = "informational" | "alert" | "tutorial" | "companion" | "analyst" | "silent" | "custom";
 type GroupContinuationMode = "off" | "short" | "extended";
+
+interface ContinuationEligibility {
+  eligible: boolean;
+  reason?: string;
+}
+
+interface ChatEngram {
+  id: number;
+  name: string;
+  title: string;
+  symbol: string;
+  isArchival: boolean;
+  continuationEligibility?: ContinuationEligibility;
+}
 
 interface Message {
   id?: number;
@@ -151,7 +176,7 @@ export default function Chat() {
   const createConv = useCreateOpenaiConversation();
   const deleteConv = useDeleteOpenaiConversation();
   const archiveConv = useArchiveOpenaiConversation();
-  const { data: engrams } = useListEngrams();
+  const { data: engrams } = useListEngrams<ChatEngram[]>();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -674,21 +699,42 @@ export default function Chat() {
                         <span>◈</span>
                         <span className="uppercase tracking-wider text-[10px]">PYRI</span>
                       </button>
-                      {(engrams ?? []).filter((e) => !e.isArchival).map((e) => (
-                        <button
-                          key={e.id}
-                          onClick={() => toggleEngram(e.id)}
-                          className={`flex items-center gap-2 px-2.5 py-2 border font-mono text-xs transition-colors ${selectedEngramIds.includes(e.id) ? "border-primary/50 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
-                        >
-                          <span>{e.symbol}</span>
-                          <span className="uppercase tracking-wider text-[10px]">{e.name}</span>
-                        </button>
-                      ))}
+                      {(engrams ?? []).filter((e) => !e.isArchival).map((e) => {
+                        const eligibility = e.continuationEligibility;
+                        return (
+                          <div key={e.id} className="contents">
+                            <button
+                              onClick={() => toggleEngram(e.id)}
+                              className={`flex items-center gap-2 px-2.5 py-2 border font-mono text-xs transition-colors ${selectedEngramIds.includes(e.id) ? "border-primary/50 bg-primary/10 text-primary" : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
+                            >
+                              <span>{e.symbol}</span>
+                              <span className="uppercase tracking-wider text-[10px]">{e.name}</span>
+                            </button>
+                            <div className="col-span-2 -mt-1 px-2.5 pb-1 font-mono text-[9px] leading-relaxed">
+                              <span className={eligibility?.eligible ? "text-emerald-400/80" : "text-amber-300/80"}>
+                                {eligibility
+                                  ? eligibility.eligible
+                                    ? t("groupContinuationAvailable")
+                                    : t("groupContinuationBlocked")
+                                  : t("groupContinuationStatusUnknown")}
+                              </span>
+                              {eligibility && !eligibility.eligible && (
+                                <span className="ml-1 text-muted-foreground/60">
+                                  — {continuationReasonLabel(eligibility.reason, t)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                     <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">
                       {selectedEngramIds.length >= 2
                         ? t("groupChatHint", { count: selectedEngramIds.length })
                         : t("talkToHint")}
+                    </p>
+                    <p className="font-mono text-[9px] leading-relaxed text-muted-foreground/50 mt-1">
+                      {t("groupContinuationEligibilityNote")}
                     </p>
                     {selectedEngramIds.length >= 2 && (
                       <>
