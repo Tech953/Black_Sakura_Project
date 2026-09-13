@@ -38,3 +38,9 @@ Web PDF pages can remain visually image-backed while becoming searchable by addi
 When Firefox/WebKit binaries are unavailable, do not label the result as real cross-browser execution. Use an explicit engine-compatibility harness around the production download function, enforce each engine’s relevant DOM/object-URL constraint, and keep the limitation documented.
 
 **Why:** This workspace provides Chromium only; a compatibility contract is useful and repeatable, but it is not evidence that Safari or Firefox themselves ran the flow.
+
+For async fixture-backed UI, wait for the query result that enables the next control before opening or selecting from a dialog, and use case-insensitive visible-text assertions when localization or CSS transforms can change casing.
+
+**Why:** A browser can render the shell before a parallel query hydrates participant controls, and translated labels may be uppercase even when the source string is title case; fixed sleeps and exact-case selectors made the regression flaky.
+
+**How to apply:** Gate dialog interaction on the participant option being present, then select controls by normalized visible text and keep reload assertions on the rendered transcript.
