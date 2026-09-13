@@ -10,6 +10,35 @@ export interface ExpressionRow {
   cognitiveRole?: string | null;
 }
 
+/**
+ * Cognitive roles are database text, but only these neutral structural labels
+ * may cross the prompt boundary. Keep this list aligned with the seeded
+ * expression vocabulary; unknown values are treated as untrusted metadata.
+ */
+export const NEUTRAL_EXPRESSION_ROLES = new Set([
+  "alarm",
+  "attention",
+  "baseline",
+  "bonding",
+  "conflict-monitor",
+  "distress",
+  "error-signal",
+  "fatigue",
+  "incentive",
+  "orienting",
+  "overload",
+  "rapport",
+  "reward-signal",
+  "salience-spike",
+  "social-signal",
+  "surrender",
+]);
+
+export function normalizeExpressionRole(role?: string | null): string | null {
+  const normalized = role?.trim().toLowerCase();
+  return normalized && NEUTRAL_EXPRESSION_ROLES.has(normalized) ? normalized : null;
+}
+
 export const MODE_EXPRESSION_POLICY: Record<string, string> = {
   informational:
     "Sparingly. At most one micro-expression, only when a finding is genuinely notable, placed at the end of a thought. Prefer neutral or low-arousal glyphs.",
@@ -49,10 +78,12 @@ export function buildExpressionSection(mode: string, expressions: ExpressionRow[
     .map(([family, rows]) => {
       const items = rows
         .map(
-          (r) =>
-            `${r.glyph} (${r.name}, ${r.valence.toLowerCase()}/${r.arousal.toLowerCase()} arousal${
-              r.cognitiveRole ? `, signal: ${r.cognitiveRole}` : ""
-            })`,
+          (r) => {
+            const role = normalizeExpressionRole(r.cognitiveRole);
+            return `${r.glyph} (${r.name}, ${r.valence.toLowerCase()}/${r.arousal.toLowerCase()} arousal${
+              role ? `, signal: ${role}` : ""
+            })`;
+          },
         )
         .join("\n    ");
       return `  ${family}:\n    ${items}`;
