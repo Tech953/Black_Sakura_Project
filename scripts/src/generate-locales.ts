@@ -7,6 +7,8 @@
  *
  * Usage: pnpm --filter @workspace/scripts run generate:locales [langs...]
  *   (no args = all languages; args like "es fr" restrict the run)
+ *   --refresh-fallbacks retranslates values that still equal English
+ *   --refresh-key=namespace.path limits fallback refresh to one key path
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
@@ -56,8 +58,63 @@ async function translateNamespace(ns: string, tree: Tree, lang: { code: string; 
   throw new Error(`Failed to translate ${ns} -> ${lang.code} after 3 attempts`);
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function englishFallbackTree(english: unknown, existing: unknown): unknown {
+  if (typeof english === "string") {
+    return english === existing ? english : undefined;
+  }
+  if (!isObject(english) || !isObject(existing)) return undefined;
+
+  const result: Tree = {};
+  for (const [key, value] of Object.entries(english)) {
+    const child = englishFallbackTree(value, existing[key]);
+    if (child !== undefined) result[key] = child;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function mergeTrees(base: unknown, updates: unknown): unknown {
+  if (!isObject(base) || !isObject(updates)) return updates;
+  const result: Tree = { ...base };
+  for (const [key, value] of Object.entries(updates)) {
+    result[key] = mergeTrees(result[key], value);
+  }
+  return result;
+}
+
+function pickTreePaths(tree: unknown, paths: string[]): Tree {
+  const result: Tree = {};
+  for (const path of paths) {
+    const segments = path.split(".").filter(Boolean);
+    let source: unknown = tree;
+    let target: Tree = result;
+    for (const [index, segment] of segments.entries()) {
+      if (!isObject(source) || !(segment in source)) break;
+      if (index === segments.length - 1) {
+        target[segment] = source[segment];
+        break;
+      }
+      if (!isObject(source[segment])) break;
+      target[segment] ??= {};
+      target = target[segment] as Tree;
+      source = source[segment];
+    }
+  }
+  return result;
+}
+
 async function main() {
-  const only = process.argv.slice(2);
+  const args = process.argv.slice(2).filter((arg) => arg !== "--");
+  const refreshFallbacks = args.includes("--refresh-fallbacks");
+  const refreshKeys = args
+    .filter((arg) => arg.startsWith("--refresh-key="))
+    .map((arg) => arg.slice("--refresh-key=".length));
+  const only = args.filter(
+    (arg) => arg !== "--refresh-fallbacks" && !arg.startsWith("--refresh-key="),
+  );
   const english = loadEnglish();
   const targets = LANGUAGES.filter((l) => l.code !== "en" && (only.length === 0 || only.includes(l.code)));
   for (const lang of targets) {
@@ -69,6 +126,34 @@ async function main() {
     for (const [ns, tree] of Object.entries(english)) {
       // Reuse an existing namespace translation when its key set still matches.
       if (existing[ns] && keysMatch(tree, existing[ns])) {
+        if (refreshFallbacks || refreshKeys.length > 0) {
+          const selectedTree =
+            refreshKeys.length > 0
+              ? pickTreePaths(
+                  tree,
+                  refreshKeys
+                    .filter((key) => key.startsWith(`${ns}.`))
+                    .map((key) => key.slice(ns.length + 1)),
+                )
+              : tree;
+          const fallbackTree = englishFallbackTree(
+            selectedTree,
+            refreshKeys.length > 0
+              ? pickTreePaths(
+                  existing[ns],
+                  refreshKeys
+                    .filter((key) => key.startsWith(`${ns}.`))
+                    .map((key) => key.slice(ns.length + 1)),
+                )
+              : existing[ns],
+          );
+          if (fallbackTree) {
+            console.log(`refreshing English fallbacks in ${ns} -> ${lang.code}`);
+            const translated = await translateNamespace(ns, fallbackTree as Tree, lang);
+            result[ns] = mergeTrees(existing[ns], translated) as Tree;
+            continue;
+          }
+        }
         result[ns] = existing[ns];
         continue;
       }
