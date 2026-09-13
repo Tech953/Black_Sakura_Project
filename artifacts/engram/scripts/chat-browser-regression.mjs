@@ -1,14 +1,23 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
-const appUrl = process.env.ENGRAM_BROWSER_TEST_URL ?? "http://127.0.0.1:5188";
+const realClerkMode = process.env.ENGRAM_BROWSER_REAL_CLERK === "true";
+const appUrl =
+  process.env.ENGRAM_BROWSER_TEST_URL ??
+  (realClerkMode
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : "http://127.0.0.1:5188");
 const debugPort = Number(process.env.ENGRAM_BROWSER_DEBUG_PORT ?? 9229);
 const downloadsDir = await mkdtemp(join(tmpdir(), "engram-chat-downloads-"));
 const profileDir = await mkdtemp(join(tmpdir(), "engram-chat-profile-"));
+let disposableClerk;
+let realConversationId;
+let realConversationTitle;
 
 const chrome = spawn(
   "/repl/tools/bin/chromium",
@@ -149,13 +158,103 @@ const fixtureScript = String.raw`
 })();
 `;
 
+async function createDisposableClerkSession() {
+  const secret = process.env.CLERK_SECRET_KEY;
+  if (!secret || !process.env.REPLIT_DEV_DOMAIN) {
+    throw new Error("Real Clerk browser checks require Clerk and preview-domain configuration");
+  }
+  const clerkHeaders = {
+    Authorization: `Bearer ${secret}`,
+    "Content-Type": "application/json",
+  };
+  const email = `engram-browser-check-${randomUUID()}@example.com`;
+  const password = `E${randomUUID()}-browser-check-7!`;
+  let userId;
+  let sessionId;
+  let signInTokenId;
+  try {
+    const userResponse = await fetch("https://api.clerk.com/v1/users", {
+      method: "POST",
+      headers: clerkHeaders,
+      body: JSON.stringify({
+        email_address: [email],
+        password,
+        first_name: "ENGRAM",
+        last_name: "Browser Check",
+      }),
+    });
+    if (!userResponse.ok) throw new Error(`Could not create disposable Clerk user (${userResponse.status})`);
+    userId = (await userResponse.json()).id;
+
+    const sessionResponse = await fetch("https://api.clerk.com/v1/sessions", {
+      method: "POST",
+      headers: clerkHeaders,
+      body: JSON.stringify({ user_id: userId }),
+    });
+    if (!sessionResponse.ok) throw new Error(`Could not create disposable Clerk session (${sessionResponse.status})`);
+    sessionId = (await sessionResponse.json()).id;
+
+    const tokenResponse = await fetch(`https://api.clerk.com/v1/sessions/${sessionId}/tokens`, {
+      method: "POST",
+      headers: clerkHeaders,
+    });
+    if (!tokenResponse.ok) throw new Error(`Could not mint disposable Clerk API token (${tokenResponse.status})`);
+    const apiToken = (await tokenResponse.json()).jwt;
+
+    const signInTokenResponse = await fetch("https://api.clerk.com/v1/sign_in_tokens", {
+      method: "POST",
+      headers: clerkHeaders,
+      body: JSON.stringify({ user_id: userId, expires_in_seconds: 300 }),
+    });
+    if (!signInTokenResponse.ok) throw new Error(`Could not mint disposable Clerk sign-in token (${signInTokenResponse.status})`);
+    const signInTokenBody = await signInTokenResponse.json();
+    signInTokenId = signInTokenBody.id;
+
+    return {
+      userId,
+      sessionId,
+      signInTokenId,
+      signInToken: signInTokenBody.token,
+      apiToken,
+      clerkHeaders,
+    };
+  } catch (error) {
+    if (sessionId) {
+      await fetch(`https://api.clerk.com/v1/sessions/${sessionId}/revoke`, {
+        method: "POST",
+        headers: clerkHeaders,
+      });
+    }
+    if (userId) {
+      await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+        method: "DELETE",
+        headers: clerkHeaders,
+      });
+    }
+    throw error;
+  }
+}
+
+async function realApi(path, session, init = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${session.apiToken}`);
+  if (init.body !== undefined) headers.set("Content-Type", "application/json");
+  const response = await fetch(`${appUrl}${path}`, { ...init, headers });
+  return response;
+}
+
 async function waitFor(expression, label, timeout = 10000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     if (await devtools.evaluate(expression)) return;
     await delay(100);
   }
-  throw new Error(`Timed out waiting for ${label}`);
+  const state = await devtools.evaluate(`JSON.stringify({
+    url: location.href,
+    title: document.title,
+    body: (document.body?.innerText || "").slice(0, 900),
+  })`);
+  throw new Error(`Timed out waiting for ${label}: ${state}`);
 }
 
 async function click(expression, label) {
@@ -187,6 +286,9 @@ function contentFor(file) {
 }
 
 try {
+  if (realClerkMode) {
+    disposableClerk = await createDisposableClerkSession();
+  }
   await devtools.connect();
   await devtools.call("Page.enable");
   await devtools.call("Runtime.enable");
@@ -194,18 +296,99 @@ try {
     behavior: "allow",
     downloadPath: downloadsDir,
   });
-  await devtools.call("Page.addScriptToEvaluateOnNewDocument", {
-    source: fixtureScript,
-  });
-  await devtools.call("Page.navigate", { url: `${appUrl}/chat` });
-  await waitFor(`Boolean(document.body?.innerText.includes("Browser Archive Room"))`, "signed-in chat fixture");
-  await click(
-    `Array.from(document.querySelectorAll('[role="button"]')).find((node) => node.textContent.includes("Browser Archive Room"))`,
-    "fixture conversation",
+  if (!realClerkMode) {
+    await devtools.call("Page.addScriptToEvaluateOnNewDocument", {
+      source: fixtureScript,
+    });
+    await devtools.call("Page.navigate", { url: `${appUrl}/chat` });
+  } else {
+    await devtools.call("Page.navigate", {
+      url: `${appUrl}/sign-in?__clerk_ticket=${encodeURIComponent(disposableClerk.signInToken)}`,
+    });
+    await waitFor(`location.pathname === "/dashboard"`, "real Clerk sign-in", 15000);
+    const authState = await devtools.evaluate(`(async () => {
+      const userId = window.Clerk?.user?.id ?? null;
+      const token = await window.Clerk?.session?.getToken?.();
+      const response = await fetch("/api/openai/conversations", {
+        headers: token ? { Authorization: "Bearer " + token } : {},
+      });
+      const body = response.ok ? await response.json() : [];
+      return JSON.stringify({
+        userPresent: Boolean(userId),
+        userMatches: userId === ${JSON.stringify(disposableClerk.userId)},
+        status: response.status,
+        titles: body.map((conversation) => conversation.title),
+      });
+    })()`);
+    const parsedAuthState = JSON.parse(authState);
+    if (!parsedAuthState.userMatches || parsedAuthState.status !== 200) {
+      throw new Error(`Real Clerk browser session mismatch: ${authState}`);
+    }
+    const createdConversation = JSON.parse(await devtools.evaluate(`(async () => {
+      const token = await window.Clerk.session.getToken();
+      const title = "Real Clerk Archive Check " + crypto.randomUUID().slice(0, 8);
+      const response = await fetch("/api/openai/conversations", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title, mode: "companion" }),
+      });
+      return JSON.stringify({
+        status: response.status,
+        body: await response.json(),
+      });
+    })()`));
+    if (createdConversation.status !== 201) {
+      throw new Error(`Real Clerk conversation creation failed (${createdConversation.status})`);
+    }
+    realConversationId = createdConversation.body.id;
+    realConversationTitle = createdConversation.body.title;
+    const seededMessage = JSON.parse(await devtools.evaluate(`(async () => {
+      const token = await window.Clerk.session.getToken();
+      const response = await fetch("/api/openai/conversations/${realConversationId}/messages", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: "Real Clerk export fixture message" }),
+      });
+      return JSON.stringify({
+        status: response.status,
+        responseBytes: (await response.text()).length,
+      });
+    })()`));
+    if (seededMessage.status !== 200) {
+      throw new Error(`Real Clerk message creation failed (${seededMessage.status})`);
+    }
+    await devtools.call("Page.navigate", { url: `${appUrl}/chat` });
+  }
+  const conversationTitle = realClerkMode ? realConversationTitle : "Browser Archive Room";
+  await waitFor(
+    `Boolean(document.body?.innerText.includes(${JSON.stringify(conversationTitle)}))`,
+    "chat conversation list",
+    15000,
   );
-  await waitFor(`Boolean(document.body?.innerText.includes("Human hello"))`, "conversation transcript");
+  await click(
+    `Array.from(document.querySelectorAll('[role="button"],button')).find((node) => node.textContent.includes(${JSON.stringify(conversationTitle)}))`,
+    "conversation",
+  );
+  if (!realClerkMode) {
+    await waitFor(`Boolean(document.body?.innerText.includes("Human hello"))`, "conversation transcript");
+  } else {
+    await waitFor(`document.querySelector('textarea') !== null`, "real conversation composer");
+    await waitFor(
+      `Boolean(document.body?.innerText.includes("Real Clerk export fixture message"))`,
+      "real conversation transcript",
+      15000,
+    );
+  }
 
-  const requiredMessages = ["Browser Archive Room", "Human hello", "Context clue", "Aster group reply"];
+  const requiredMessages = realClerkMode
+    ? [conversationTitle, "Real Clerk export fixture message"]
+    : ["Browser Archive Room", "Human hello", "Context clue", "Aster group reply"];
   const visibleText = await devtools.evaluate("document.body.innerText");
   for (const message of requiredMessages) {
     if (!visibleText.includes(message)) throw new Error(`Missing visible transcript text: ${message}`);
@@ -230,11 +413,27 @@ try {
   if (!(await devtools.evaluate(`document.body.innerText.includes("restore it to send")`))) {
     throw new Error("Archived conversation did not show its read-only state");
   }
+  if (realClerkMode) {
+    const archivedSend = await realApi(
+      `/api/openai/conversations/${realConversationId}/messages`,
+      disposableClerk,
+      {
+        method: "POST",
+        body: JSON.stringify({ content: "This archived send must be rejected" }),
+      },
+    );
+    if (archivedSend.status !== 409) {
+      throw new Error(`Archived send returned ${archivedSend.status}, expected 409`);
+    }
+  }
 
   await click(`document.querySelector('[aria-label="Show archived conversations"]')`, "archived conversation view");
   await waitFor(`Boolean(document.querySelector('[aria-label="Show active conversations"]'))`, "archived conversation view");
   await waitFor(`Array.from(document.querySelectorAll("h2")).some((node) => node.textContent.includes("Archived conversations"))`, "archived list heading");
-  await waitFor(`document.body?.textContent?.includes("Browser Archive Room") === true`, "archived conversation list item");
+  await waitFor(
+    `document.body?.textContent?.includes(${JSON.stringify(conversationTitle)}) === true`,
+    "archived conversation list item",
+  );
   await click(`document.querySelector('[aria-label="Restore conversation"]')`, "restore conversation");
   await waitFor(`document.querySelector('textarea')?.disabled === false`, "restored composer");
 
@@ -250,6 +449,25 @@ try {
   }
   console.log(`Browser regression passed: ${files.join(", ")}`);
 } finally {
+  if (realClerkMode && disposableClerk) {
+    if (realConversationId) {
+      await realApi(`/api/openai/conversations/${realConversationId}`, disposableClerk, {
+        method: "DELETE",
+      }).catch(() => {});
+    }
+    await fetch(`https://api.clerk.com/v1/sign_in_tokens/${disposableClerk.signInTokenId}/revoke`, {
+      method: "POST",
+      headers: disposableClerk.clerkHeaders,
+    }).catch(() => {});
+    await fetch(`https://api.clerk.com/v1/sessions/${disposableClerk.sessionId}/revoke`, {
+      method: "POST",
+      headers: disposableClerk.clerkHeaders,
+    }).catch(() => {});
+    await fetch(`https://api.clerk.com/v1/users/${disposableClerk.userId}`, {
+      method: "DELETE",
+      headers: disposableClerk.clerkHeaders,
+    }).catch(() => {});
+  }
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");
   await Promise.race([
