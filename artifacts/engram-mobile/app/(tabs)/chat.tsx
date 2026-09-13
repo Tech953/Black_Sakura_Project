@@ -312,6 +312,7 @@ export default function ChatScreen() {
             }),
           printToFileAsync: ({ html }) => Print.printToFileAsync({ html }),
           getInfoAsync: (uri) => FileSystem.getInfoAsync(uri),
+          deleteAsync: (uri, options) => FileSystem.deleteAsync(uri, options),
           shareAsync: (uri, options) => Sharing.shareAsync(uri, options),
           dialogTitle: t("chat.shareConversation"),
         });
