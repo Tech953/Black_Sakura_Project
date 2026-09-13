@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   capabilitiesFor,
   classifyPriority,
+  continuationEligibilityFor,
   decideHumanContact,
   detectCoercion,
   priorityAllowed,
@@ -94,6 +95,78 @@ describe("capabilitiesFor — overrides win", () => {
     const c = capabilitiesFor({ mode: "full_bounded", controls: OPEN, humanContactEnabled: true });
     expect(c.canConverse).toBe(true);
     expect(c.canIdle).toBe(true);
+  });
+});
+
+describe("continuationEligibilityFor", () => {
+  it("allows peer continuation when autonomy and conversation policy are open", () => {
+    const capabilities = capabilitiesFor({
+      mode: "full_bounded",
+      controls: OPEN,
+      space: COMMONS,
+      humanContactEnabled: true,
+    });
+    expect(
+      continuationEligibilityFor({
+        isArchival: false,
+        autonomyEnabled: true,
+        presenceStatus: "active",
+        capabilities,
+      }),
+    ).toEqual({ eligible: true });
+  });
+
+  it("reports the specific participant gate without affecting human replies", () => {
+    const capabilities = capabilitiesFor({
+      mode: "orientation",
+      controls: OPEN,
+      space: ORIENTATION_ROOM,
+      humanContactEnabled: true,
+    });
+    expect(
+      continuationEligibilityFor({
+        isArchival: false,
+        autonomyEnabled: true,
+        presenceStatus: "active",
+        capabilities,
+      }),
+    ).toEqual({
+      eligible: false,
+      reason: 'mode "orientation" does not permit conversation',
+    });
+  });
+
+  it("prioritizes archival, autonomy, and resting-presence explanations", () => {
+    const capabilities = capabilitiesFor({
+      mode: "full_bounded",
+      controls: OPEN,
+      space: COMMONS,
+      humanContactEnabled: true,
+    });
+    expect(
+      continuationEligibilityFor({
+        isArchival: true,
+        autonomyEnabled: true,
+        presenceStatus: "active",
+        capabilities,
+      }).reason,
+    ).toMatch(/archival/i);
+    expect(
+      continuationEligibilityFor({
+        isArchival: false,
+        autonomyEnabled: false,
+        presenceStatus: "active",
+        capabilities,
+      }).reason,
+    ).toMatch(/autonomy/i);
+    expect(
+      continuationEligibilityFor({
+        isArchival: false,
+        autonomyEnabled: true,
+        presenceStatus: "resting",
+        capabilities,
+      }).reason,
+    ).toMatch(/resting/i);
   });
 });
 
