@@ -1010,7 +1010,22 @@
     "ggufTitle": "Modelos GGUF personalizados",
     "ggufBody": "Use seu próprio modelo .gguf com o mecanismo local gerenciado do ENGRAM. O app para desktop copia o modelo para o armazenamento protegido do app, verifica-o antes da inicialização e o mantém disponível entre atualizações.",
     "ggufDesktopOnly": "A importação de GGUF personalizado é executada no app para desktop do ENGRAM. O app web pode se conectar a um servidor local, mas um navegador não pode iniciar nem gerenciar o mecanismo desktop.",
-    "ggufDownloadAction": "Obter o app para desktop"
+    "ggufDownloadAction": "Obter o app para desktop",
+    "localServerSection": "Mecanismo para desktop",
+    "localServerTitle": "Conexão com o servidor local",
+    "localServerBody": "Verifique se este navegador consegue acessar um servidor ENGRAM hospedado no desktop. A verificação solicita apenas o endpoint público de saúde e nunca envia credenciais ou caminhos de arquivos locais.",
+    "localServerAddress": "Endereço do servidor local",
+    "localServerAddressPlaceholder": "http://127.0.0.1:3000",
+    "localServerCheckAction": "Verificar conexão",
+    "localServerNotConfigured": "Não configurado",
+    "localServerNotConfiguredHint": "Digite o endereço mostrado pelo app para desktop e verifique a conexão.",
+    "localServerChecking": "Verificando",
+    "localServerCheckingHint": "Aguardando a resposta do servidor local.",
+    "localServerReachable": "Acessível",
+    "localServerReachableHint": "O servidor local respondeu. Você pode usar este navegador com o mecanismo para desktop.",
+    "localServerUnavailable": "Indisponível",
+    "localServerUnavailableHint": "Inicie o app para desktop ou o servidor local, verifique o endereço e tente novamente.",
+    "localServerInvalid": "Use uma origem http:// ou https:// sem caminho, consulta, fragmento, nome de usuário ou senha."
   },
   "simulations": {
     "title": "CÂMARAS DE SIMULAÇÃO",

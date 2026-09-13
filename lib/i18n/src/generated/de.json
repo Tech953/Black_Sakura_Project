@@ -1010,7 +1010,22 @@
     "ggufTitle": "Benutzerdefinierte GGUF-Modelle",
     "ggufBody": "Nutze dein eigenes .gguf-Modell mit der verwalteten lokalen Engine von ENGRAM. Die Desktop-App kopiert das Modell in den geschützten App-Speicher, prüft es vor dem Start und hält es über Updates hinweg verfügbar.",
     "ggufDesktopOnly": "Der Import benutzerdefinierter GGUFs läuft in der ENGRAM-Desktop-App. Die Web-App kann sich mit einem lokalen Server verbinden, aber ein Browser kann die Desktop-Engine nicht starten oder verwalten.",
-    "ggufDownloadAction": "Desktop-App holen"
+    "ggufDownloadAction": "Desktop-App holen",
+    "localServerSection": "Desktop-Engine",
+    "localServerTitle": "Verbindung zum lokalen Server",
+    "localServerBody": "Prüfe, ob dieser Browser einen ENGRAM-Server auf dem Desktop erreichen kann. Die Prüfung fragt nur den öffentlichen Gesundheitsendpunkt ab und sendet weder Anmeldedaten noch lokale Dateipfade.",
+    "localServerAddress": "Adresse des lokalen Servers",
+    "localServerAddressPlaceholder": "http://127.0.0.1:3000",
+    "localServerCheckAction": "Verbindung prüfen",
+    "localServerNotConfigured": "Nicht konfiguriert",
+    "localServerNotConfiguredHint": "Gib die in der Desktop-App angezeigte Adresse ein und prüfe die Verbindung.",
+    "localServerChecking": "Wird geprüft",
+    "localServerCheckingHint": "Warte auf eine Antwort des lokalen Servers.",
+    "localServerReachable": "Erreichbar",
+    "localServerReachableHint": "Der lokale Server hat geantwortet. Du kannst diesen Browser mit der Desktop-Engine verwenden.",
+    "localServerUnavailable": "Nicht verfügbar",
+    "localServerUnavailableHint": "Starte die Desktop-App oder den lokalen Server, überprüfe die Adresse und versuche es erneut.",
+    "localServerInvalid": "Verwende einen http://- oder https://-Ursprung ohne Pfad, Abfrage, Fragment, Benutzernamen oder Passwort."
   },
   "simulations": {
     "title": "SIMULATIONSKAMMERN",

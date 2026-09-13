@@ -1010,7 +1010,22 @@
     "ggufTitle": "Modèles GGUF personnalisés",
     "ggufBody": "Utilisez votre propre modèle .gguf avec le moteur local géré d'ENGRAM. L'app de bureau copie le modèle dans le stockage protégé de l'app, le vérifie avant le lancement et le conserve disponible après les mises à jour.",
     "ggufDesktopOnly": "L'import de GGUF personnalisé s'exécute dans l'app de bureau ENGRAM. L'app web peut se connecter à un serveur local, mais un navigateur ne peut pas démarrer ni gérer le moteur de bureau.",
-    "ggufDownloadAction": "Obtenir l'app de bureau"
+    "ggufDownloadAction": "Obtenir l'app de bureau",
+    "localServerSection": "Moteur de bureau",
+    "localServerTitle": "Connexion au serveur local",
+    "localServerBody": "Vérifiez si ce navigateur peut joindre un serveur ENGRAM hébergé sur le bureau. La vérification demande uniquement le point de santé public et n’envoie jamais d’identifiants ni de chemins de fichiers locaux.",
+    "localServerAddress": "Adresse du serveur local",
+    "localServerAddressPlaceholder": "http://127.0.0.1:3000",
+    "localServerCheckAction": "Vérifier la connexion",
+    "localServerNotConfigured": "Non configuré",
+    "localServerNotConfiguredHint": "Saisissez l’adresse affichée par l’application de bureau, puis vérifiez la connexion.",
+    "localServerChecking": "Vérification",
+    "localServerCheckingHint": "En attente de la réponse du serveur local.",
+    "localServerReachable": "Accessible",
+    "localServerReachableHint": "Le serveur local a répondu. Vous pouvez utiliser ce navigateur avec le moteur de bureau.",
+    "localServerUnavailable": "Indisponible",
+    "localServerUnavailableHint": "Démarrez l’application de bureau ou le serveur local, vérifiez l’adresse, puis réessayez.",
+    "localServerInvalid": "Utilisez une origine http:// ou https:// sans chemin, requête, fragment, nom d’utilisateur ni mot de passe."
   },
   "simulations": {
     "title": "CHAMBRES DE SIMULATION",
