@@ -9,7 +9,7 @@ import {
   vi,
 } from "vitest";
 import type { AddressInfo } from "node:net";
-import type { Server } from "node:http";
+import { request as httpRequest, type Server } from "node:http";
 
 vi.mock("@workspace/db", () => ({
   db: h.db,
@@ -888,6 +888,82 @@ describe("conversation persistence routes", () => {
     expect(
       h.store.messages.filter((message) => message.role === "assistant"),
     ).toHaveLength(2);
+  });
+
+  it("preserves completed turns when the group response is stopped", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+    const createRes = await fetch(`${base}/api/openai/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Stop after one peer turn",
+        mode: "companion",
+        engramIds: [first.id, second.id],
+        groupContinuationMode: "extended",
+      }),
+    });
+    const created = (await createRes.json()) as { id: number };
+
+    let sawAutonomousTurn = false;
+    await new Promise<void>((resolve, reject) => {
+      const request = httpRequest(
+        new URL(`/api/openai/conversations/${created.id}/messages`, base),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+        (response) => {
+          response.setEncoding("utf8");
+          response.on("data", (chunk: string) => {
+            if (!sawAutonomousTurn && chunk.includes('"autonomous":true')) {
+              sawAutonomousTurn = true;
+              request.destroy();
+            }
+          });
+          response.on("close", () => resolve());
+          response.on("end", () => resolve());
+        },
+      );
+      request.on("error", (error: NodeJS.ErrnoException) => {
+        if (error.code === "ECONNRESET" || sawAutonomousTurn) {
+          resolve();
+          return;
+        }
+        reject(error);
+      });
+      request.end(JSON.stringify({ content: "Stop after the first peer exchange." }));
+    });
+
+    expect(sawAutonomousTurn).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const storedMessages = h.store.messages.filter(
+      (message) => message.conversationId === created.id,
+    );
+    expect(storedMessages.filter((message) => message.role === "user")).toHaveLength(1);
+    expect(
+      storedMessages
+        .filter((message) => message.role === "assistant")
+        .map((message) => message.speakerEngramId),
+    ).toEqual([first.id, second.id, first.id]);
+    expect(h.create).toHaveBeenCalledTimes(3);
+    expect(h.store.conversations.find((conversation) => conversation.id === created.id)).toMatchObject({
+      groupContinuationClaimToken: null,
+      groupContinuationClaimedAt: null,
+    });
+
+    const reloadRes = await fetch(
+      `${base}/api/openai/conversations/${created.id}`,
+    );
+    const reloaded = (await reloadRes.json()) as {
+      messages: Array<{ role: string; speakerEngramId?: number | null }>;
+    };
+    expect(
+      reloaded.messages
+        .filter((message) => message.role === "assistant")
+        .map((message) => message.speakerEngramId),
+    ).toEqual([first.id, second.id, first.id]);
   });
 
   it("rejects an unsupported group continuation choice", async () => {
