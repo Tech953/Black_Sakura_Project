@@ -37,7 +37,10 @@ type OrderSpec = { __order: "desc" | "asc"; col: Column };
 export function createDbHarness() {
   const store: Record<string, TestRow[]> = {};
   const seq: Record<string, number> = {};
-  const failureState = { nextInsertTable: null as string | null };
+  const failureState = {
+    nextInsertTable: null as string | null,
+    nextUpdateTable: null as string | null,
+  };
   const insertCalls: TestRow[] = [];
   const updateCalls: Array<{ table: string; patch: TestRow }> = [];
   const updatePatches: TestRow[] = [];
@@ -323,6 +326,10 @@ export function createDbHarness() {
     const name = tableName(table);
     return {
       set(patch: TestRow) {
+        if (failureState.nextUpdateTable === name) {
+          failureState.nextUpdateTable = null;
+          throw new Error(`forced ${name} update failure`);
+        }
         updateCalls.push({ table: name, patch });
         if (
           name !== "mobilePushTokensTable" &&
@@ -496,6 +503,7 @@ export function createDbHarness() {
       seq[table] = 0;
     }
     failureState.nextInsertTable = null;
+    failureState.nextUpdateTable = null;
     insertCalls.length = 0;
     updateCalls.length = 0;
     updatePatches.length = 0;

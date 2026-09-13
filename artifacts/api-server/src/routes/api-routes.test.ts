@@ -2045,6 +2045,46 @@ describe("inquiry routes", () => {
     expect(h.updateCalls[0].patch.slug).toBeUndefined();
   });
 
+  it("rolls back the config change when recording the develop inquiry fails", async () => {
+    const engram = seedEngram();
+    const before = structuredClone(engram);
+    h.llmState.completion = JSON.stringify({
+      response: "I shift toward you.",
+      delta: { focusThemes: ["closer"], addFacts: ["A durable change."] },
+    });
+    h.failureState.nextInsertTable = "engramInquiriesTable";
+
+    const res = await fetch(`${base}/api/engrams/${engram.id}/inquiries`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "develop", question: "Change with an audit." }),
+    });
+
+    expect(res.status).toBe(503);
+    expect(h.store.engramsTable).toEqual([before]);
+    expect(h.store.engramInquiriesTable).toEqual([]);
+  });
+
+  it("rolls back both writes when applying the develop config fails", async () => {
+    const engram = seedEngram();
+    const before = structuredClone(engram);
+    h.llmState.completion = JSON.stringify({
+      response: "I cannot shift.",
+      delta: { focusThemes: ["closer"] },
+    });
+    h.failureState.nextUpdateTable = "engramsTable";
+
+    const res = await fetch(`${base}/api/engrams/${engram.id}/inquiries`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "develop", question: "Fail before recording." }),
+    });
+
+    expect(res.status).toBe(503);
+    expect(h.store.engramsTable).toEqual([before]);
+    expect(h.store.engramInquiriesTable).toEqual([]);
+  });
+
   it("rejects an invalid inquiry kind with 400", async () => {
     const engram = seedEngram();
     const res = await fetch(`${base}/api/engrams/${engram.id}/inquiries`, {
