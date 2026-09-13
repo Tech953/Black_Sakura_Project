@@ -42,23 +42,28 @@ async function waitForServer() {
 
 try {
   await waitForServer();
-  const result = spawn(
-    pnpm,
-    ["--filter", "@workspace/engram", "run", "test:browser:chat"],
-    {
-      env: {
-        ...process.env,
-        ENGRAM_BROWSER_TEST_URL: appUrl,
-        ENGRAM_BROWSER_DEBUG_PORT: String(debugPort),
+  for (const [script, label, portOffset] of [
+    ["test:browser:chat", "chat", 0],
+    ["test:browser:analytics", "Analytics", 2],
+  ]) {
+    const result = spawn(
+      pnpm,
+      ["--filter", "@workspace/engram", "run", script],
+      {
+        env: {
+          ...process.env,
+          ENGRAM_BROWSER_TEST_URL: appUrl,
+          ENGRAM_BROWSER_DEBUG_PORT: String(debugPort + portOffset),
+        },
+        stdio: "inherit",
       },
-      stdio: "inherit",
-    },
-  );
-  const exitCode = await new Promise((resolve) => {
-    result.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
-  });
-  if (exitCode !== 0) {
-    throw new Error(`Web archive/export browser check failed with exit code ${exitCode}`);
+    );
+    const exitCode = await new Promise((resolve) => {
+      result.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
+    });
+    if (exitCode !== 0) {
+      throw new Error(`Web ${label} browser check failed with exit code ${exitCode}`);
+    }
   }
 } finally {
   if (!server.killed) server.kill("SIGTERM");
