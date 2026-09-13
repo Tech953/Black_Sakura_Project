@@ -796,7 +796,21 @@
       "unknownSpace": "espaço desconhecido",
       "system": "sistema",
       "connectionLost": "Hub indisponível",
-      "connectionLostSubtitle": "A telemetria precisa de uma conexão com o núcleo do ENGRAM."
+      "connectionLostSubtitle": "A telemetria precisa de uma conexão com o núcleo do ENGRAM.",
+      "simulations": "Simulation runs",
+      "simulationsLoading": "Loading quarantined simulation runs…",
+      "simulationsError": "Simulation runs are unavailable right now.",
+      "simulationsRetry": "Retry simulations",
+      "noSimulations": "No bounded simulation runs yet.",
+      "simulationRun": "Run #{{id}}",
+      "simulationProgress": "Step {{current}} of {{max}}",
+      "reviewSimulation": "Review",
+      "simulationStatus": {
+        "proposed": "proposed",
+        "running": "running",
+        "paused": "paused",
+        "ended": "ended"
+      }
     },
     "detail": {
       "fallbackTitle": "Engram",
@@ -930,6 +944,31 @@
       "permissionDeniedBody": "Allow ENGRAM notifications in system settings to know when an engram reaches out.",
       "openSettings": "Open Settings",
       "notNow": "Not now"
+    },
+    "simulation": {
+      "kicker": "ENGRAM // SIMULATION",
+      "title": "Simulation run",
+      "runId": "Run #{{id}}",
+      "simulatedLabel": "simulated",
+      "quarantineNotice": "This chamber output is hypothetical and quarantined. It cannot become real memory or observed fact.",
+      "premise": "Scenario premise",
+      "progress": "Bounded progress",
+      "stepProgress": "Step {{current}} of {{max}}",
+      "steps": "Simulated steps",
+      "stepNumber": "Step {{number}}",
+      "unknownSpeaker": "simulation participant",
+      "noSteps": "No simulated steps have been recorded yet.",
+      "exitSummary": "Exit summary",
+      "noExitSummary": "No exit summary is available until this run ends.",
+      "unavailable": "Simulation unavailable",
+      "unavailableSubtitle": "This run could not be loaded from the ENGRAM core.",
+      "retry": "Retry",
+      "status": {
+        "proposed": "proposed",
+        "running": "running",
+        "paused": "paused",
+        "ended": "ended"
+      }
     }
   },
   "nav": {
