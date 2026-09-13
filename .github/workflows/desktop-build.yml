@@ -119,6 +119,26 @@ jobs:
           NODE_ENV: "production"
         run: pnpm --filter @workspace/engram run build
 
+      - name: Install Chromium for web validation
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium
+
+      - name: Verify DEV browser fixture is absent from production web bundle
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if rg -n 'browser-test-user|browser-test-session' artifacts/engram/dist/public; then
+            echo "The DEV-only browser fixture was included in the production web bundle." >&2
+            exit 1
+          fi
+
+      - name: Run web archive/export browser validation
+        if: matrix.platform == 'linux'
+        run: pnpm run test:web
+
       - name: Build desktop main + stage resources
         env:
           # Keep Windows installers browser-downloadable. The app remains
@@ -377,6 +397,23 @@ jobs:
           BASE_PATH: "/"
           NODE_ENV: "production"
         run: pnpm --filter @workspace/engram run build
+
+      - name: Install Chromium for web validation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium
+
+      - name: Verify DEV browser fixture is absent from production web bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          if rg -n 'browser-test-user|browser-test-session' artifacts/engram/dist/public; then
+            echo "The DEV-only browser fixture was included in the production web bundle." >&2
+            exit 1
+          fi
+
+      - name: Run web archive/export browser validation
+        run: pnpm run test:web
 
       - name: Build desktop main + stage resources
         env:

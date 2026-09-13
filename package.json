@@ -7,6 +7,7 @@
     "build": "pnpm run typecheck && pnpm -r --workspace-concurrency=1 --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "test:web": "node scripts/web-release-validation.mjs",
     "test:mobile-offline": "pnpm --filter @workspace/engram-mobile run test",
     "test": "pnpm -r --workspace-concurrency=1 --if-present run test",
     "build:installers": "bash ./scripts/build-installers.sh"
