@@ -50,8 +50,13 @@ function run(command, commandArgs) {
 try {
   requireSource("app/server-settings.tsx", [
     "DocumentPicker.getDocumentAsync",
+    "copyToCacheDirectory: false",
     'testID="active-gguf-model"',
+    'testID="gguf-storage-warning"',
+    'testID="confirm-gguf-import"',
     'testID="gguf-import-progress"',
+    "importStorage.hasHeadroom === false",
+    "if (!pendingGguf || !importStorage || importStorage.hasHeadroom === false) return;",
     "onToggleOffline",
   ]);
   requireSource("lib/offline/model.ts", [
@@ -66,7 +71,11 @@ try {
   if (/\b(fetch|XMLHttpRequest|upload|FormData)\b/.test(modelSource)) {
     throw new Error("The model manager must not upload selected GGUF bytes.");
   }
-  console.log(`[gguf-smoke] source/privacy contract passed for ${platform}.`);
+  const settingsSource = source("app/server-settings.tsx");
+  if (/fetch\([^)]*(?:asset|pendingGguf)\.uri/.test(settingsSource)) {
+    throw new Error("The Settings screen must not send the selected provider URI.");
+  }
+  console.log(`[gguf-smoke] UI/storage/privacy contract passed for ${platform}.`);
   run("pnpm", ["exec", "vitest", "run", "lib/offline/model.test.ts"]);
 } catch (error) {
   console.error(`[gguf-smoke] pre-device gate failed: ${error.message}`);
