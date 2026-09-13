@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => {
     sourceExists: true,
     sourceBytes: 2_000_000,
     freeBytes: 2_000_000_000,
+    freeStorageError: false,
     headerBase64: "R0dVRgMAAAA=",
+    copiedFrom: undefined as string | undefined,
     copyGate: undefined as Promise<void> | undefined,
     partBytes: 0,
     freshDownload: undefined as (() => Promise<{ status: number }>) | undefined,
@@ -42,8 +44,9 @@ const mocks = vi.hoisted(() => {
         state.partBytes = 0;
       }
     }),
-    copy: vi.fn(async () => {
+    copy: vi.fn(async ({ from }: { from: string }) => {
       if (state.copyGate) await state.copyGate;
+      state.copiedFrom = from;
       state.customPartBytes = state.sourceBytes;
     }),
   };
@@ -105,6 +108,9 @@ vi.mock("expo-file-system/legacy", () => ({
   makeDirectoryAsync: vi.fn(async () => {
   }),
   getFreeDiskStorageAsync: vi.fn(async () => {
+    if (mocks.state.freeStorageError) {
+      throw new Error("free storage unavailable");
+    }
     return mocks.state.freeBytes;
   }),
   getInfoAsync: vi.fn(async (path: string) => {
@@ -157,6 +163,7 @@ import {
   getCustomModelStorageCheck,
   getModelStatus,
   importCustomModel,
+  ModelStorageUnavailableError,
 } from "./model";
 
 describe("offline model download failure harness", () => {
@@ -170,7 +177,9 @@ describe("offline model download failure harness", () => {
     mocks.state.sourceExists = true;
     mocks.state.sourceBytes = 2_000_000;
     mocks.state.freeBytes = 2_000_000_000;
+    mocks.state.freeStorageError = false;
     mocks.state.headerBase64 = "R0dVRgMAAAA=";
+    mocks.state.copiedFrom = undefined;
     mocks.state.copyGate = undefined;
     mocks.state.partBytes = 0;
     mocks.state.freshDownload = undefined;
@@ -256,6 +265,10 @@ describe("offline model download failure harness", () => {
     );
 
     expect(mocks.state.copy).toHaveBeenCalledTimes(1);
+    expect(mocks.state.copiedFrom).toBe("file:///picked-model.gguf");
+    expect(mocks.storage.get("engram.customModel.metadata")).not.toContain(
+      "picked-model.gguf",
+    );
     expect(mocks.state.activateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
     expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
     expect(progress).toEqual([0, 0.75, 1]);
@@ -314,6 +327,28 @@ describe("offline model download failure harness", () => {
     ).rejects.toThrow("Not enough storage");
     expect(mocks.state.copy).not.toHaveBeenCalled();
     expect(mocks.state.activateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
+    expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
+  });
+
+  it("fails closed when available storage cannot be measured", async () => {
+    mocks.state.freeStorageError = true;
+
+    await expect(
+      getCustomModelStorageCheck("file:///picked-model.gguf", mocks.state.sourceBytes),
+    ).resolves.toMatchObject({
+      byteSize: 2_000_000,
+      requiredBytes: 2_200_000,
+      freeBytes: null,
+      hasHeadroom: false,
+    });
+    await expect(
+      importCustomModel(
+        "file:///picked-model.gguf",
+        "storage-unknown.gguf",
+        mocks.state.sourceBytes,
+      ),
+    ).rejects.toBeInstanceOf(ModelStorageUnavailableError);
+    expect(mocks.state.copy).not.toHaveBeenCalled();
     expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
   });
 
