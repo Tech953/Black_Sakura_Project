@@ -150,7 +150,12 @@ function serializeChatMediaAsset(a: MediaAsset) {
 }
 
 router.get("/openai/conversations", async (req, res) => {
-  const parsedQuery = ListOpenaiConversationsQueryParams.safeParse(req.query);
+  const archivedQuery = req.query.archived;
+  const normalizedQuery =
+    archivedQuery === "true" || archivedQuery === "false"
+      ? { ...req.query, archived: archivedQuery === "true" }
+      : req.query;
+  const parsedQuery = ListOpenaiConversationsQueryParams.safeParse(normalizedQuery);
   if (!parsedQuery.success) {
     res.status(400).json({ error: parsedQuery.error.message });
     return;

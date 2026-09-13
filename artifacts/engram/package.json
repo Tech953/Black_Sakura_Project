@@ -8,6 +8,8 @@
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:browser:chat": "node scripts/chat-browser-regression.mjs",
+    "test:browser:chat:real-clerk": "ENGRAM_BROWSER_REAL_CLERK=true node scripts/chat-browser-regression.mjs",
     "test:browser:simulations": "node scripts/simulations-browser-regression.mjs",
     "test:browser:group-chat": "node scripts/group-chat-browser-regression.mjs"
   },

@@ -11,6 +11,12 @@ description: Non-obvious constraints when using the OpenAPI→Orval React Query 
 **Generated `useQuery` hooks require an explicit `queryKey` when you pass a `query` options object.** The generated `UseQueryOptions` type marks `queryKey` as required, so `{ query: { enabled, refetchInterval } }` fails TS2741. Supply the generated helper: `{ query: { enabled, refetchInterval, queryKey: getListXQueryKey(id ?? 0) } }`. The `get...QueryKey` helpers are exported from the same generated module.
 **How to apply:** any time you customize a generated list/get hook's query options (enabled gating, polling), import and pass the matching `get...QueryKey(...)`.
 
+**Boolean query strings:** Orval's generated Zod validator may use `z.coerce.boolean()` for OpenAPI boolean query parameters; at an Express route boundary, normalize `"true"` and `"false"` explicitly before calling that validator or `"false"` becomes truthy.
+
+**Why:** the generated conversation archive filter returned archived rows for the web client's explicit `archived=false` request during a real Clerk browser check.
+
+**How to apply:** normalize string booleans in the route before generated validation, and cover both query values with a real HTTP/browser regression when the filter controls visible data.
+
 **After editing `lib/api-spec/openapi.yaml`** run `pnpm --filter @workspace/api-spec run codegen`; do not hand-edit generated files. Do not change OpenAPI `info.title` — it controls generated filenames.
 
 **Do not model multipart file bodies through this repo's shared OpenAPI-to-Zod server validator.** Document the upload endpoint, parse the multipart body at the route boundary, and use direct `FormData` from browser clients; keep non-file confirmation requests generated and validated normally.
