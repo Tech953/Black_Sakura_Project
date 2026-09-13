@@ -95,6 +95,7 @@
     "toastUploadFailed": "업로드 실패",
     "toastCouldNotReachApi": "API에 연결할 수 없음",
     "toastConversationDeleted": "대화 삭제됨",
+    "toastDeleteFailed": "대화를 삭제할 수 없음",
     "toastConversationArchived": "대화 보관됨",
     "toastConversationRestored": "대화 복원됨",
     "toastArchiveFailed": "대화를 업데이트할 수 없음",

@@ -95,6 +95,7 @@
     "toastUploadFailed": "Échec de l’import",
     "toastCouldNotReachApi": "Impossible d’atteindre l’API",
     "toastConversationDeleted": "Conversation supprimée",
+    "toastDeleteFailed": "Impossible de supprimer la conversation",
     "toastConversationArchived": "Conversation archivée",
     "toastConversationRestored": "Conversation restaurée",
     "toastArchiveFailed": "Impossible de mettre à jour la conversation",
