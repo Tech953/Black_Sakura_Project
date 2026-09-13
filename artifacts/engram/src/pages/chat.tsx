@@ -7,6 +7,7 @@ import {
   useCreateOpenaiConversation,
   useDeleteOpenaiConversation,
   useArchiveOpenaiConversation,
+  useUpdateOpenaiConversationContinuation,
   useListEngrams,
   getListOpenaiConversationsQueryKey,
 } from "@workspace/api-client-react";
@@ -21,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users, Download, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users, Download, Archive, ArchiveRestore, Settings2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -169,13 +170,14 @@ const MODES: { id: ChatMode; labelKey: string; glyph: string; descKey: string }[
 ];
 
 export default function Chat() {
-  const { t } = useTranslation("chat");
+  const { t } = useTranslation(["chat", "common"]);
   const { getToken } = useAuth();
   const [showArchived, setShowArchived] = useState(false);
   const { data: convList, isLoading: loadingList } = useListOpenaiConversations({ archived: showArchived });
   const createConv = useCreateOpenaiConversation();
   const deleteConv = useDeleteOpenaiConversation();
   const archiveConv = useArchiveOpenaiConversation();
+  const updateContinuation = useUpdateOpenaiConversationContinuation();
   const { data: engrams } = useListEngrams<ChatEngram[]>();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -192,6 +194,8 @@ export default function Chat() {
   const [customEngram, setCustomEngram] = useState("");
   const [selectedEngramIds, setSelectedEngramIds] = useState<number[]>([]);
   const [groupContinuationMode, setGroupContinuationMode] = useState<GroupContinuationMode>("short");
+  const [groupSettingsMode, setGroupSettingsMode] = useState<GroupContinuationMode>("short");
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [convSheetOpen, setConvSheetOpen] = useState(false);
@@ -382,6 +386,37 @@ export default function Chat() {
     } catch (error) {
       const description = error instanceof Error ? error.message : t("toastCouldNotReachApi");
       toast({ title: t("toastArchiveFailed"), description, variant: "destructive" });
+    }
+  }
+
+  function openGroupSettings() {
+    if (!activeConv || !isActiveGroup) return;
+    setGroupSettingsMode(activeConv.groupContinuationMode ?? "short");
+    setShowGroupSettings(true);
+  }
+
+  async function handleSaveGroupSettings() {
+    if (!activeId || !isActiveGroup) return;
+    try {
+      const updated = await updateContinuation.mutateAsync({
+        id: activeId,
+        data: { groupContinuationMode: groupSettingsMode },
+      });
+      setGroupContinuationMode(updated.groupContinuationMode);
+      setActiveConversation((current) =>
+        current
+          ? { ...current, groupContinuationMode: updated.groupContinuationMode }
+          : current,
+      );
+      queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
+      setShowGroupSettings(false);
+      toast({ title: t("common:success"), description: t("groupContinuationLabel") });
+    } catch {
+      toast({
+        title: t("common:error"),
+        description: t("common:errorGeneric"),
+        variant: "destructive",
+      });
     }
   }
 
@@ -901,6 +936,57 @@ export default function Chat() {
           </SheetContent>
         </Sheet>
       )}
+      <Dialog open={showGroupSettings} onOpenChange={setShowGroupSettings}>
+        <DialogContent className="bg-card border-border/50 max-w-sm w-[calc(100vw-2rem)]">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-widest text-primary">
+              {t("groupContinuationLabel")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <p className="font-mono text-[10px] leading-relaxed text-muted-foreground/70">
+              {t("groupContinuationDescription")}
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {(["off", "short", "extended"] as const).map((mode) => {
+                const labelKey = `groupContinuation${mode[0].toUpperCase()}${mode.slice(1)}` as const;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setGroupSettingsMode(mode)}
+                    className={`border px-2 py-2 text-left font-mono transition-colors ${
+                      groupSettingsMode === mode
+                        ? "border-primary/50 bg-primary/10 text-primary"
+                        : "border-border/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                    }`}
+                  >
+                    <span className="block text-[10px] uppercase tracking-wider">{t(labelKey)}</span>
+                    <span className="mt-0.5 block text-[9px] opacity-60">{t(`${labelKey}Hint`)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowGroupSettings(false)}
+                disabled={updateContinuation.isPending}
+              >
+                {t("common:cancel")}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleSaveGroupSettings()}
+                disabled={updateContinuation.isPending}
+              >
+                {t("common:save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -929,6 +1015,19 @@ export default function Chat() {
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${liveConnected ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground/40"}`} />
                   {t("live")}
                 </span>
+                {isActiveGroup && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="w-7 h-7 text-muted-foreground/60 hover:text-primary"
+                    onClick={openGroupSettings}
+                    disabled={streaming}
+                    title={t("groupContinuationLabel")}
+                    aria-label={t("groupContinuationLabel")}
+                  >
+                    <Settings2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button

@@ -253,6 +253,16 @@ describe("conversation persistence routes", () => {
     expect(() => CreateOpenaiConversationResponse.parse(created)).not.toThrow();
     expect(created).toMatchObject({ title: "First", mode: "companion" });
 
+    const nonGroupUpdate = await fetch(
+      `${base}/api/openai/conversations/${created.id}/continuation`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupContinuationMode: "extended" }),
+      },
+    );
+    expect(nonGroupUpdate.status).toBe(400);
+
     const listRes = await fetch(`${base}/api/openai/conversations`);
     expect(listRes.status).toBe(200);
     const list = await listRes.json();
@@ -372,6 +382,46 @@ describe("conversation persistence routes", () => {
     expect(created.engramIds).toEqual([first.id, second.id]);
     expect(created.groupContinuationMode).toBe("extended");
     expect(h.store.conversationEngramParticipants).toHaveLength(2);
+
+    const invalidContinuationRes = await fetch(
+      `${base}/api/openai/conversations/${created.id}/continuation`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupContinuationMode: "unbounded" }),
+      },
+    );
+    expect(invalidContinuationRes.status).toBe(400);
+
+    const disableContinuationRes = await fetch(
+      `${base}/api/openai/conversations/${created.id}/continuation`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupContinuationMode: "off" }),
+      },
+    );
+    expect(disableContinuationRes.status).toBe(200);
+    const disabled = (await disableContinuationRes.json()) as Record<string, any>;
+    expect(disabled.groupContinuationMode).toBe("off");
+    expect(disabled.engramIds).toEqual([first.id, second.id]);
+    expect(h.store.conversationEngramParticipants).toHaveLength(2);
+
+    const reenableContinuationRes = await fetch(
+      `${base}/api/openai/conversations/${created.id}/continuation`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupContinuationMode: "extended" }),
+      },
+    );
+    expect(reenableContinuationRes.status).toBe(200);
+    const reenabled = (await reenableContinuationRes.json()) as Record<string, any>;
+    expect(reenabled.groupContinuationMode).toBe("extended");
+    const beforeMessages = await fetch(
+      `${base}/api/openai/conversations/${created.id}/messages`,
+    );
+    expect(await beforeMessages.json()).toEqual([]);
 
     const sendRes = await fetch(
       `${base}/api/openai/conversations/${created.id}/messages`,

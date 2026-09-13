@@ -71,6 +71,7 @@ import type {
   OfflineSyncResult,
   OpenaiConversation,
   OpenaiConversationArchiveInput,
+  OpenaiConversationContinuationInput,
   OpenaiConversationInput,
   OpenaiConversationWithMessages,
   OpenaiError,
@@ -2186,6 +2187,77 @@ export const useArchiveOpenaiConversation = <TError = ErrorType<OpenaiError>,
         TContext
       > => {
       return useMutation(getArchiveOpenaiConversationMutationOptions(options));
+    }
+
+export const getUpdateOpenaiConversationContinuationUrl = (id: number,) => {
+
+
+
+
+  return `/api/openai/conversations/${id}/continuation`
+}
+
+/**
+ * @summary Update group continuation consent
+ */
+export const updateOpenaiConversationContinuation = async (id: number,
+    openaiConversationContinuationInput: OpenaiConversationContinuationInput, options?: RequestInit): Promise<OpenaiConversation> => {
+
+  return customFetch<OpenaiConversation>(getUpdateOpenaiConversationContinuationUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(openaiConversationContinuationInput)
+  }
+);}
+
+
+
+
+export const getUpdateOpenaiConversationContinuationMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>, TError,{id: number;data: BodyType<OpenaiConversationContinuationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>, TError,{id: number;data: BodyType<OpenaiConversationContinuationInput>}, TContext> => {
+
+const mutationKey = ['updateOpenaiConversationContinuation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>, {id: number;data: BodyType<OpenaiConversationContinuationInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateOpenaiConversationContinuation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOpenaiConversationContinuationMutationResult = NonNullable<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>>
+    export type UpdateOpenaiConversationContinuationMutationBody = BodyType<OpenaiConversationContinuationInput>
+    export type UpdateOpenaiConversationContinuationMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Update group continuation consent
+ */
+export const useUpdateOpenaiConversationContinuation = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>, TError,{id: number;data: BodyType<OpenaiConversationContinuationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>,
+        TError,
+        {id: number;data: BodyType<OpenaiConversationContinuationInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateOpenaiConversationContinuationMutationOptions(options));
     }
 
 export const getListOpenaiMessagesUrl = (id: number,) => {

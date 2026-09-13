@@ -569,6 +569,55 @@ paths:
               schema:
                 $ref: "#/components/schemas/OpenaiError"
 
+  /openai/conversations/{id}/continuation:
+    patch:
+      operationId: updateOpenaiConversationContinuation
+      tags: [openai]
+      summary: Update group continuation consent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenaiConversationContinuationInput"
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiConversation"
+        "400":
+          description: Only group conversations may change continuation consent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "403":
+          description: Conversation is read-only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "409":
+          description: Archived conversation must be restored before settings change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
   /openai/conversations/{id}/messages:
     get:
       operationId: listOpenaiMessages
@@ -2409,6 +2458,15 @@ components:
           type: boolean
       required:
         - archived
+    OpenaiConversationContinuationInput:
+      type: object
+      properties:
+        groupContinuationMode:
+          type: string
+          enum: [off, short, extended]
+          description: Consent for peer-generated turns after the human-triggered group reply.
+      required:
+        - groupContinuationMode
     OpenaiMessage:
       type: object
       properties:

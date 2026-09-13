@@ -678,6 +678,31 @@ export const ArchiveOpenaiConversationResponse = zod.object({
 
 
 /**
+ * @summary Update group continuation consent
+ */
+export const UpdateOpenaiConversationContinuationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateOpenaiConversationContinuationBody = zod.object({
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.')
+})
+
+export const UpdateOpenaiConversationContinuationResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "mode": zod.string(),
+  "personaName": zod.string().optional(),
+  "customEngram": zod.string().optional(),
+  "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary List messages in a conversation
  */
 export const ListOpenaiMessagesParams = zod.object({

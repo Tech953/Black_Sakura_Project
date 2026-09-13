@@ -23,6 +23,8 @@ import {
   ListOpenaiConversationsQueryParams,
   ArchiveOpenaiConversationParams,
   ArchiveOpenaiConversationBody,
+  UpdateOpenaiConversationContinuationParams,
+  UpdateOpenaiConversationContinuationBody,
   ListOpenaiMessagesParams,
   SendOpenaiMessageParams,
 } from "@workspace/api-zod";
@@ -300,6 +302,50 @@ router.patch("/openai/conversations/:id/archive", async (req, res) => {
   const [updated] = await db
     .update(conversations)
     .set({ archivedAt: parsedBody.data.archived ? new Date() : null })
+    .where(and(eq(conversations.id, id), eq(conversations.ownerId, req.userId!)))
+    .returning();
+  res.json(withParticipantIds(updated, groupParticipantIds));
+});
+
+router.patch("/openai/conversations/:id/continuation", async (req, res) => {
+  const parsedParams = UpdateOpenaiConversationContinuationParams.safeParse({ id: Number(req.params.id) });
+  const parsedBody = UpdateOpenaiConversationContinuationBody.safeParse(req.body);
+  if (!parsedParams.success || !parsedBody.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+
+  const { id } = parsedParams.data;
+  const conv = await loadOwnedConversation(id, req.userId!);
+  if (!conv) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+  if (conv.archivedAt) {
+    res.status(409).json({ error: "Restore this conversation before changing its settings." });
+    return;
+  }
+
+  const groupParticipantIds = await participantIdsForConversation(id);
+  if (groupParticipantIds.length < 2) {
+    res.status(400).json({ error: "Continuation consent is only available for group conversations." });
+    return;
+  }
+  const groupEngrams = await Promise.all(
+    groupParticipantIds.map((participantId) => loadOwnedEngram(participantId, req.userId!)),
+  );
+  if (groupEngrams.some((engram) => !engram)) {
+    res.status(404).json({ error: "One or more group participants no longer exist." });
+    return;
+  }
+  if (groupEngrams.some((engram) => engram?.isArchival)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+    return;
+  }
+
+  const [updated] = await db
+    .update(conversations)
+    .set({ groupContinuationMode: parsedBody.data.groupContinuationMode })
     .where(and(eq(conversations.id, id), eq(conversations.ownerId, req.userId!)))
     .returning();
   res.json(withParticipantIds(updated, groupParticipantIds));
