@@ -4,15 +4,19 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import type { UseQueryResult } from "@tanstack/react-query";
 
-import { EmptyState, ScoreBar } from "@/components/ui";
+import { Chip, EmptyState, ScoreBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import type { Simulation } from "@workspace/api-client-react";
 import {
   useGetEngramStates,
   useGetHubControls,
@@ -20,17 +24,20 @@ import {
   useListHubActivity,
   useListHubPresence,
   useListHubSpaces,
+  useListSimulations,
 } from "@workspace/api-client-react";
 
 export default function HubScreen() {
   const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const engrams = useListEngrams();
   const states = useGetEngramStates();
   const spaces = useListHubSpaces();
   const presence = useListHubPresence();
   const activity = useListHubActivity({ limit: 12 });
+  const simulations = useListSimulations();
   const controls = useGetHubControls();
   const isLoading =
     engrams.isLoading ||
@@ -49,7 +56,8 @@ export default function HubScreen() {
     states.isRefetching ||
     spaces.isRefetching ||
     presence.isRefetching ||
-    activity.isRefetching;
+    activity.isRefetching ||
+    simulations.isRefetching;
 
   const refresh = () => {
     void Promise.all([
@@ -58,6 +66,7 @@ export default function HubScreen() {
       spaces.refetch(),
       presence.refetch(),
       activity.refetch(),
+      simulations.refetch(),
       controls.refetch(),
     ]);
   };
@@ -204,6 +213,14 @@ export default function HubScreen() {
           </View>
 
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+            {t("hub.simulations")}
+          </Text>
+          <SimulationSection
+            query={simulations}
+            onRetry={() => void simulations.refetch()}
+            onOpen={(id) => router.push(`/simulation/${id}`)}
+          />
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
             {t("hub.activity")}
           </Text>
         </View>
@@ -282,6 +299,49 @@ const styles = StyleSheet.create({
     marginTop: 26,
     marginBottom: 10,
   },
+  simulationSection: { gap: 10 },
+  simulationStateCard: {
+    minHeight: 76,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 14,
+    justifyContent: "center",
+  },
+  simulationStateRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  simulationStateText: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18, flex: 1 },
+  simulationCard: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 14,
+    gap: 10,
+  },
+  simulationCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  simulationLabel: {
+    fontFamily: "JetBrainsMono_500Medium",
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  simulationPremise: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  simulationProgress: {
+    fontFamily: "JetBrainsMono_400Regular",
+    fontSize: 10,
+  },
+  simulationAction: {
+    fontFamily: "Rajdhani_600SemiBold",
+    fontSize: 14,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
   spaceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   spaceCard: { borderWidth: 1, borderRadius: 8, padding: 12, width: "48.8%" },
   spaceName: { fontFamily: "Rajdhani_600SemiBold", fontSize: 16, flex: 1 },
@@ -293,3 +353,106 @@ const styles = StyleSheet.create({
   activityMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 9, marginTop: 4 },
   emptyActivity: { fontFamily: "Inter_400Regular", fontSize: 13, paddingVertical: 18 },
 });
+
+type SimulationQuery = UseQueryResult<Simulation[]>;
+
+function SimulationSection({
+  query,
+  onRetry,
+  onOpen,
+}: {
+  query: SimulationQuery;
+  onRetry: () => void;
+  onOpen: (id: number) => void;
+}) {
+  const { t } = useTranslation("mobile");
+  const colors = useColors();
+
+  if (query.isLoading) {
+    return (
+      <View style={[styles.simulationStateCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+        <View style={styles.simulationStateRow}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={[styles.simulationStateText, { color: colors.mutedForeground }]}>
+            {t("hub.simulationsLoading")}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (query.isError) {
+    return (
+      <View style={[styles.simulationStateCard, { borderColor: colors.border, backgroundColor: colors.card }]}>
+        <Text style={[styles.simulationStateText, { color: colors.mutedForeground }]}>
+          {t("hub.simulationsError")}
+        </Text>
+        <Pressable onPress={onRetry} hitSlop={8}>
+          <Text style={[styles.simulationAction, { color: colors.primary }]}>
+            {t("hub.simulationsRetry")}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (!query.data?.length) {
+    return (
+      <Text style={[styles.emptyActivity, { color: colors.mutedForeground }]}>
+        {t("hub.noSimulations")}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.simulationSection}>
+      {query.data.map((simulation) => {
+        const progress = simulation.maxSteps
+          ? simulation.currentStep / simulation.maxSteps
+          : 0;
+        return (
+          <Pressable
+            key={simulation.id}
+            onPress={() => onOpen(simulation.id)}
+            style={({ pressed }) => [
+              styles.simulationCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                opacity: pressed ? 0.78 : 1,
+              },
+            ]}
+          >
+            <View style={styles.simulationCardHeader}>
+              <Text style={[styles.simulationLabel, { color: colors.primary }]}>
+                {t("hub.simulationRun", { id: simulation.id })}
+              </Text>
+              <Chip
+                label={t(`hub.simulationStatus.${simulation.status}`)}
+                tone={simulation.status === "ended" ? "muted" : "accent"}
+              />
+            </View>
+            <Text
+              numberOfLines={2}
+              style={[styles.simulationPremise, { color: colors.foreground }]}
+            >
+              {simulation.premise}
+            </Text>
+            <View style={styles.simulationCardHeader}>
+              <Text style={[styles.simulationProgress, { color: colors.mutedForeground }]}>
+                {t("hub.simulationProgress", {
+                  current: simulation.currentStep,
+                  max: simulation.maxSteps,
+                })}
+              </Text>
+              <Text style={[styles.simulationAction, { color: colors.primary }]}>
+                {t("hub.reviewSimulation")}
+              </Text>
+            </View>
+            <ScoreBar value={progress} color={colors.violet} />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}

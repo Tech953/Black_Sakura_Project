@@ -106,6 +106,20 @@
     "occupants": "present",
     "activity": "Recent activity",
     "noActivity": "No Hub activity yet.",
+    "simulations": "Simulation runs",
+    "simulationsLoading": "Loading quarantined simulation runs…",
+    "simulationsError": "Simulation runs are unavailable right now.",
+    "simulationsRetry": "Retry simulations",
+    "noSimulations": "No bounded simulation runs yet.",
+    "simulationRun": "Run #{{id}}",
+    "simulationProgress": "Step {{current}} of {{max}}",
+    "reviewSimulation": "Review",
+    "simulationStatus": {
+      "proposed": "proposed",
+      "running": "running",
+      "paused": "paused",
+      "ended": "ended"
+    },
     "unknownSpace": "unknown space",
     "system": "system",
     "connectionLost": "Hub unavailable",
@@ -133,6 +147,31 @@
     "openEnvironment": "Open environment",
     "activeEngram": "Active engram",
     "makeActive": "Make active"
+  },
+  "simulation": {
+    "kicker": "ENGRAM // SIMULATION",
+    "title": "Simulation run",
+    "runId": "Run #{{id}}",
+    "simulatedLabel": "simulated",
+    "quarantineNotice": "This chamber output is hypothetical and quarantined. It cannot become real memory or observed fact.",
+    "premise": "Scenario premise",
+    "progress": "Bounded progress",
+    "stepProgress": "Step {{current}} of {{max}}",
+    "steps": "Simulated steps",
+    "stepNumber": "Step {{number}}",
+    "unknownSpeaker": "simulation participant",
+    "noSteps": "No simulated steps have been recorded yet.",
+    "exitSummary": "Exit summary",
+    "noExitSummary": "No exit summary is available until this run ends.",
+    "unavailable": "Simulation unavailable",
+    "unavailableSubtitle": "This run could not be loaded from the ENGRAM core.",
+    "retry": "Retry",
+    "status": {
+      "proposed": "proposed",
+      "running": "running",
+      "paused": "paused",
+      "ended": "ended"
+    }
   },
   "environment": {
     "kicker": "ENGRAM // ENVIRONMENT",
