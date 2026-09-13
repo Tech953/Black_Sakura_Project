@@ -62,9 +62,39 @@ id = "vZN-jEpEjD1lPjrdQ0FI2"
 uri = "file://.local/outputs/-PYRI---Pitch-Deck.pdf"
 type = "pdf"
 title = "ENGRAM // PYRI — Pitch Deck.pdf"
+logical_id = "33b5fd30-283b-49b1-989c-d587ab8e803d"
 
 [[outputs]]
 id = "Aq0eZukj1etJX-7nOKzNo"
 uri = "file://.local/outputs/-PYRI---Pitch-Deck.pptx"
 type = "slides"
 title = "ENGRAM // PYRI — Pitch Deck.pptx"
+logical_id = "90014ba7-c8cc-4dde-9314-2cd981a56b7f"
+
+[[outputs]]
+id = "i2M8-wzrgYhIUUn6LDgvR"
+uri = "file://.local/outputs/ENGRAM-PYRI-30-Slide-Pitch.pdf"
+type = "pdf"
+title = "ENGRAM / PYRI 30-Slide Pitch (PDF)"
+description = "Verified 30-slide PDF export with the deck's cyan cyberpunk visual system."
+logical_id = "04003941-a080-45db-8cde-6709433d28c0"
+content_hash = "sha256:9be76cea27c37076a2de57a17011b32be676b0ae1833ec2870c743976e6dc23d"
+size = 2371102
+mtime_ms = 1789311667050
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:d8d76f30-60ca-487c-b77f-ebf37ab48c82/04003941-a080-45db-8cde-6709433d28c0/0e2180ba-a5fb-4361-ad49-4ed420bfb00d"
+storage_version_token = "1789311722372487"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "GNUoPYjaGQgdEM0Wcl9dX"
+uri = "file://.local/outputs/ENGRAM-PYRI-30-Slide-Pitch-optimized.pptx"
+type = "slides"
+title = "ENGRAM / PYRI 30-Slide Pitch (PPTX)"
+description = "Verified 30-slide PowerPoint export, optimized for download while preserving the deck's cyan cyberpunk visual system."
+logical_id = "7e94f7f1-887c-406a-bf6d-d39b02b0cc51"
+content_hash = "sha256:7d634b91365144c8665ef8a2f2d9810a4edf566bde4a62e28addbd81d23b23d0"
+size = 19885099
+mtime_ms = 1789311973710
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:d8d76f30-60ca-487c-b77f-ebf37ab48c82/7e94f7f1-887c-406a-bf6d-d39b02b0cc51/d604f1ed-e8d4-456e-899c-308af5c6c16b"
+storage_version_token = "1789311998481096"
+content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
