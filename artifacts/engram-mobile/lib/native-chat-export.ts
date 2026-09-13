@@ -25,6 +25,10 @@ export interface NativeChatExportDependencies {
   ) => Promise<void>;
   printToFileAsync: (options: { html: string }) => Promise<{ uri: string }>;
   getInfoAsync: (uri: string) => Promise<NativeChatExportFileInfo>;
+  deleteAsync: (
+    uri: string,
+    options: { idempotent: boolean },
+  ) => Promise<void>;
   shareAsync: (
     uri: string,
     options: { mimeType: string; dialogTitle: string; UTI: string },
@@ -81,39 +85,56 @@ export async function exportNativeChatConversation(
   safeTitle: string,
   dependencies: NativeChatExportDependencies,
 ): Promise<NativeChatExportResult> {
-  let uri: string;
+  let uri: string | undefined;
   let mimeType: string;
+  let operationFailed = false;
 
-  if (format === "pdf") {
-    ({ uri } = await dependencies.printToFileAsync({
-      html: buildPdfHtml(document),
-    }));
-    mimeType = "application/pdf";
-  } else {
-    uri = `${dependencies.cacheDirectory}${safeTitle}.${format}`;
-    if (format === "docx") {
-      await dependencies.writeAsStringAsync(uri, encodeBase64(buildDocxBytes(document)), {
-        encoding: "base64",
-      });
-      mimeType =
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  try {
+    if (format === "pdf") {
+      ({ uri } = await dependencies.printToFileAsync({
+        html: buildPdfHtml(document),
+      }));
+      mimeType = "application/pdf";
     } else {
-      const contents =
-        format === "md"
-          ? buildMarkdownTranscript(document)
-          : buildPlainTextTranscript(document);
-      await dependencies.writeAsStringAsync(uri, contents, {
-        encoding: "utf8",
-      });
-      mimeType = format === "md" ? "text/markdown" : "text/plain";
+      uri = `${dependencies.cacheDirectory}${safeTitle}.${format}`;
+      if (format === "docx") {
+        await dependencies.writeAsStringAsync(uri, encodeBase64(buildDocxBytes(document)), {
+          encoding: "base64",
+        });
+        mimeType =
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      } else {
+        const contents =
+          format === "md"
+            ? buildMarkdownTranscript(document)
+            : buildPlainTextTranscript(document);
+        await dependencies.writeAsStringAsync(uri, contents, {
+          encoding: "utf8",
+        });
+        mimeType = format === "md" ? "text/markdown" : "text/plain";
+      }
+    }
+
+    await assertUsableFile(uri, dependencies.getInfoAsync);
+    await dependencies.shareAsync(uri, {
+      mimeType,
+      dialogTitle: dependencies.dialogTitle,
+      UTI: mimeType,
+    });
+    return { uri, mimeType };
+  } catch (error) {
+    operationFailed = true;
+    throw error;
+  } finally {
+    if (uri) {
+      try {
+        await dependencies.deleteAsync(uri, { idempotent: true });
+      } catch (error) {
+        // Preserve the original generation/share failure. If the operation
+        // succeeded, surface cleanup failure instead of silently leaking a
+        // completed export in the cache.
+        if (!operationFailed) throw error;
+      }
     }
   }
-
-  await assertUsableFile(uri, dependencies.getInfoAsync);
-  await dependencies.shareAsync(uri, {
-    mimeType,
-    dialogTitle: dependencies.dialogTitle,
-    UTI: mimeType,
-  });
-  return { uri, mimeType };
 }
