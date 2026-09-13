@@ -223,6 +223,9 @@ describe("web chat export browser compatibility", () => {
         "Engram Noto CJK",
         "Engram Noto Arabic",
         "Engram Noto Cyrillic",
+        "Engram Noto Devanagari",
+        "Engram Noto Hebrew",
+        "Engram Noto Greek",
         "Engram Noto Latin",
       ]);
       expect(

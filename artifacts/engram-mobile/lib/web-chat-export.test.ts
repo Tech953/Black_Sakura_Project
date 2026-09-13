@@ -68,12 +68,13 @@ describe("web chat exports", () => {
     };
     const multilingual = {
       ...document,
-      title: "Café 你好 Привет مرحبا",
+      title: "Café 你好 Привет مرحبا नमस्ते שלום Γειά σου",
       entries: [
         {
           heading: "You",
           timestamp: "",
-          content: "Accents: déjà vu · CJK: 你好 · Cyrillic: Привет · Arabic: مرحبا",
+          content:
+            "Accents: déjà vu · CJK: 你好 · Cyrillic: Привет · Arabic: مرحبا · Devanagari: नमस्ते · Hebrew: שלום · Greek: Γειά σου",
         },
       ],
     };
@@ -84,6 +85,9 @@ describe("web chat exports", () => {
     expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto CJK");
     expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Arabic");
     expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Cyrillic");
+    expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Devanagari");
+    expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Hebrew");
+    expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Greek");
     expect(BROWSER_UNICODE_FONT_STACK).toContain("Engram Noto Latin");
     expect(new TextDecoder().decode(pdf.slice(0, 8))).toBe("%PDF-1.4");
     expect(Array.from(pdf).some((byte, index) => byte === 0xff && pdf[index + 1] === 0xd8)).toBe(true);
@@ -92,9 +96,15 @@ describe("web chat exports", () => {
     expect(pdfText).toContain("<4F60>");
     expect(pdfText).toContain("<041F>");
     expect(pdfText).toContain("<0645>");
+    expect(pdfText).toContain("<0928>");
+    expect(pdfText).toContain("<05E9>");
+    expect(pdfText).toContain("<0393>");
     expect(rendered.join(" ")).toContain("Café");
     expect(rendered.join(" ")).toContain("你好");
     expect(rendered.join(" ")).toContain("Привет");
     expect(rendered.join(" ")).toContain("مرحبا");
+    expect(rendered.join(" ")).toContain("नमस्ते");
+    expect(rendered.join(" ")).toContain("שלום");
+    expect(rendered.join(" ")).toContain("Γειά σου");
   });
 });

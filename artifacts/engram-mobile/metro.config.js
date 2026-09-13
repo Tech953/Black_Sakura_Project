@@ -14,6 +14,8 @@ config.transformer = {
 // expo-sqlite's browser adapter loads wa-sqlite as a WebAssembly asset. Expo's
 // default Metro asset list does not include wasm, so the web bundle fails while
 // resolving the offline store and repeatedly reloads instead of rendering.
+// The bundled Unicode PDF WOFF2 assets are kept under the 1,350,000-byte mobile
+// budget; check with `pnpm run check:font-budget`.
 config.resolver = {
   ...config.resolver,
   assetExts: [...config.resolver.assetExts, "wasm", "woff2"],
