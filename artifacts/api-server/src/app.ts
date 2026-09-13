@@ -47,6 +47,13 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 const allowedCorsOrigins = configuredCorsOrigins();
 app.use(
   cors((req, callback) => {
+    // The health endpoint is intentionally public and credential-free so a
+    // browser-hosted Settings page can probe a local desktop server. Keep the
+    // credentialed policy unchanged for every account-bearing route.
+    if (req.path === "/api/healthz") {
+      callback(null, { credentials: false, origin: "*" });
+      return;
+    }
     callback(null, {
       credentials: true,
       origin(origin, done) {

@@ -1010,7 +1010,22 @@
     "ggufTitle": "사용자 지정 GGUF 모델",
     "ggufBody": "자체 .gguf 모델을 ENGRAM의 관리형 로컬 엔진에서 사용하세요. 데스크톱 앱은 모델을 보호된 앱 저장소로 복사하고, 실행 전에 검사하며, 업데이트 후에도 계속 사용할 수 있게 유지합니다.",
     "ggufDesktopOnly": "사용자 지정 GGUF 가져오기는 ENGRAM 데스크톱 앱에서 실행됩니다. 웹 앱은 로컬 서버에 연결할 수 있지만, 브라우저에서는 데스크톱 엔진을 시작하거나 관리할 수 없습니다.",
-    "ggufDownloadAction": "데스크톱 앱 받기"
+    "ggufDownloadAction": "데스크톱 앱 받기",
+    "localServerSection": "데스크톱 엔진",
+    "localServerTitle": "로컬 서버 연결",
+    "localServerBody": "이 브라우저가 데스크톱에서 실행 중인 ENGRAM 서버에 연결할 수 있는지 확인합니다. 이 확인은 공개 상태 엔드포인트만 요청하며 자격 증명이나 로컬 파일 경로를 보내지 않습니다.",
+    "localServerAddress": "로컬 서버 주소",
+    "localServerAddressPlaceholder": "http://127.0.0.1:3000",
+    "localServerCheckAction": "연결 확인",
+    "localServerNotConfigured": "구성되지 않음",
+    "localServerNotConfiguredHint": "데스크톱 앱에 표시된 주소를 입력한 다음 연결을 확인하세요.",
+    "localServerChecking": "확인 중",
+    "localServerCheckingHint": "로컬 서버의 응답을 기다리는 중입니다.",
+    "localServerReachable": "연결 가능",
+    "localServerReachableHint": "로컬 서버가 응답했습니다. 이 브라우저를 데스크톱 엔진과 함께 사용할 수 있습니다.",
+    "localServerUnavailable": "사용할 수 없음",
+    "localServerUnavailableHint": "데스크톱 앱 또는 로컬 서버를 시작하고 주소를 확인한 후 다시 시도하세요.",
+    "localServerInvalid": "경로, 쿼리, 프래그먼트, 사용자 이름 또는 비밀번호가 없는 http:// 또는 https:// origin을 사용하세요."
   },
   "simulations": {
     "title": "시뮬레이션 챔버",

@@ -1010,7 +1010,22 @@
     "ggufTitle": "कस्टम GGUF मॉडल",
     "ggufBody": "ENGRAM के प्रबंधित लोकल इंजन के साथ अपना .gguf मॉडल इस्तेमाल करें। डेस्कटॉप ऐप मॉडल को सुरक्षित ऐप स्टोरेज में कॉपी करता है, लॉन्च से पहले जाँचता है, और अपडेट्स के बीच भी उपलब्ध रखता है।",
     "ggufDesktopOnly": "कस्टम GGUF इम्पोर्ट ENGRAM डेस्कटॉप ऐप में चलता है। वेब ऐप लोकल सर्वर से कनेक्ट कर सकता है, लेकिन ब्राउज़र डेस्कटॉप इंजन शुरू या प्रबंधित नहीं कर सकता।",
-    "ggufDownloadAction": "डेस्कटॉप ऐप प्राप्त करें"
+    "ggufDownloadAction": "डेस्कटॉप ऐप प्राप्त करें",
+    "localServerSection": "डेस्कटॉप इंजन",
+    "localServerTitle": "लोकल सर्वर कनेक्शन",
+    "localServerBody": "जाँचें कि क्या यह ब्राउज़र डेस्कटॉप पर चल रहे ENGRAM सर्वर तक पहुँच सकता है। जाँच केवल सार्वजनिक हेल्थ एंडपॉइंट को अनुरोध भेजती है और क्रेडेंशियल या स्थानीय फ़ाइल पथ कभी नहीं भेजती।",
+    "localServerAddress": "लोकल सर्वर का पता",
+    "localServerAddressPlaceholder": "http://127.0.0.1:3000",
+    "localServerCheckAction": "कनेक्शन जाँचें",
+    "localServerNotConfigured": "कॉन्फ़िगर नहीं है",
+    "localServerNotConfiguredHint": "डेस्कटॉप ऐप में दिखाया गया पता दर्ज करें, फिर कनेक्शन जाँचें।",
+    "localServerChecking": "जाँच जारी है",
+    "localServerCheckingHint": "लोकल सर्वर की प्रतिक्रिया की प्रतीक्षा हो रही है।",
+    "localServerReachable": "पहुँच योग्य",
+    "localServerReachableHint": "लोकल सर्वर ने प्रतिक्रिया दी। आप इस ब्राउज़र को डेस्कटॉप इंजन के साथ उपयोग कर सकते हैं।",
+    "localServerUnavailable": "उपलब्ध नहीं",
+    "localServerUnavailableHint": "डेस्कटॉप ऐप या लोकल सर्वर शुरू करें, पते की जाँच करें और फिर कोशिश करें।",
+    "localServerInvalid": "बिना पथ, क्वेरी, फ़्रैगमेंट, उपयोगकर्ता नाम या पासवर्ड वाला http:// या https:// origin इस्तेमाल करें।"
   },
   "simulations": {
     "title": "सिमुलेशन चैंबर्स",

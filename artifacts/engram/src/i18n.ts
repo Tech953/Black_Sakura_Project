@@ -12,6 +12,7 @@ import { resources, NAMESPACES, DEFAULT_LANGUAGE, SUPPORTED_LANGUAGE_CODES, lang
 
 const UI_LANG_KEY = "engram.uiLang";
 const REPLY_LANG_KEY = "engram.replyLang";
+const LOCAL_SERVER_URL_KEY = "engram.localServerUrl";
 
 export function getStoredUiLanguage(): string {
   const stored = localStorage.getItem(UI_LANG_KEY);
@@ -37,6 +38,18 @@ export function getReplyLanguageSetting(): ReplyLanguageSetting {
 
 export function setReplyLanguageSetting(value: ReplyLanguageSetting) {
   localStorage.setItem(REPLY_LANG_KEY, value);
+}
+
+export function getStoredLocalServerUrl(): string | null {
+  return localStorage.getItem(LOCAL_SERVER_URL_KEY);
+}
+
+export function setStoredLocalServerUrl(value: string | null): void {
+  if (value) {
+    localStorage.setItem(LOCAL_SERVER_URL_KEY, value);
+  } else {
+    localStorage.removeItem(LOCAL_SERVER_URL_KEY);
+  }
 }
 
 /**

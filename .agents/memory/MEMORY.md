@@ -50,3 +50,4 @@
 - [Android release packaging](android-release-packaging.md) — release builds need an explicit META-INF collision exclusion for okhttp/jspecify dependency metadata.
 - [Locale generation fallback](locale-generation-fallback.md) — when translation generation cannot authenticate, preserve exact locale key parity with English fallbacks and retry translation later.
 - [Desktop custom model library](desktop-custom-model-library.md) — content-addressed multi-model storage, legacy migration, transactional switching, and safe active removal.
+- [Web local-server health probe](web-local-server-health-probe.md) — origin-only persisted URL, credential-free health check, and public CORS limited to `/api/healthz`.

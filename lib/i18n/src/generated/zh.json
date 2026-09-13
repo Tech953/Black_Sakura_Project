@@ -1010,7 +1010,22 @@
     "ggufTitle": "自定义 GGUF 模型",
     "ggufBody": "使用你自己的 .gguf 模型，并通过 ENGRAM 的托管本地引擎运行。桌面应用会将模型复制到受保护的应用存储中，在启动前进行检查，并在更新后持续可用。",
     "ggufDesktopOnly": "自定义 GGUF 导入需在 ENGRAM 桌面应用中进行。Web 应用可连接到本地服务器，但浏览器无法启动或管理桌面引擎。",
-    "ggufDownloadAction": "获取桌面应用"
+    "ggufDownloadAction": "获取桌面应用",
+    "localServerSection": "桌面引擎",
+    "localServerTitle": "本地服务器连接",
+    "localServerBody": "检查此浏览器是否可以访问桌面上的 ENGRAM 服务器。检查只请求公开的健康端点，不会发送凭据或本地文件路径。",
+    "localServerAddress": "本地服务器地址",
+    "localServerAddressPlaceholder": "http://127.0.0.1:3000",
+    "localServerCheckAction": "检查连接",
+    "localServerNotConfigured": "未配置",
+    "localServerNotConfiguredHint": "输入桌面应用显示的地址，然后检查连接。",
+    "localServerChecking": "正在检查",
+    "localServerCheckingHint": "正在等待本地服务器响应。",
+    "localServerReachable": "可访问",
+    "localServerReachableHint": "本地服务器已响应。你可以在此浏览器中使用桌面引擎。",
+    "localServerUnavailable": "不可用",
+    "localServerUnavailableHint": "启动桌面应用或本地服务器，确认地址后重试。",
+    "localServerInvalid": "请使用不带路径、查询、片段、用户名或密码的 http:// 或 https:// origin。"
   },
   "simulations": {
     "title": "模拟舱",

@@ -1010,7 +1010,22 @@
     "ggufTitle": "Modelli GGUF personalizzati",
     "ggufBody": "Usa il tuo modello .gguf con il motore locale gestito di ENGRAM. L'app desktop copia il modello nello spazio di archiviazione protetto dell'app, lo verifica prima dell'avvio e lo mantiene disponibile negli aggiornamenti.",
     "ggufDesktopOnly": "L'importazione di GGUF personalizzati funziona nell'app desktop ENGRAM. L'app web può connettersi a un server locale, ma un browser non può avviare o gestire il motore desktop.",
-    "ggufDownloadAction": "Scarica l'app desktop"
+    "ggufDownloadAction": "Scarica l'app desktop",
+    "localServerSection": "Motore desktop",
+    "localServerTitle": "Connessione al server locale",
+    "localServerBody": "Verifica se questo browser può raggiungere un server ENGRAM ospitato sul desktop. Il controllo richiede solo l'endpoint pubblico di salute e non invia mai credenziali o percorsi di file locali.",
+    "localServerAddress": "Indirizzo del server locale",
+    "localServerAddressPlaceholder": "http://127.0.0.1:3000",
+    "localServerCheckAction": "Controlla connessione",
+    "localServerNotConfigured": "Non configurato",
+    "localServerNotConfiguredHint": "Inserisci l'indirizzo mostrato dall'app desktop, quindi controlla la connessione.",
+    "localServerChecking": "Controllo in corso",
+    "localServerCheckingHint": "In attesa della risposta del server locale.",
+    "localServerReachable": "Raggiungibile",
+    "localServerReachableHint": "Il server locale ha risposto. Puoi usare questo browser con il motore desktop.",
+    "localServerUnavailable": "Non disponibile",
+    "localServerUnavailableHint": "Avvia l'app desktop o il server locale, verifica l'indirizzo e riprova.",
+    "localServerInvalid": "Usa un'origine http:// o https:// senza percorso, query, frammento, nome utente o password."
   },
   "simulations": {
     "title": "CAMERE DI SIMULAZIONE",
