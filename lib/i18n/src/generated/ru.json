@@ -95,6 +95,7 @@
     "toastUploadFailed": "Сбой загрузки",
     "toastCouldNotReachApi": "Не удалось связаться с API",
     "toastConversationDeleted": "Разговор удалён",
+    "toastDeleteFailed": "Не удалось удалить разговор",
     "toastConversationArchived": "Разговор архивирован",
     "toastConversationRestored": "Разговор восстановлен",
     "toastArchiveFailed": "Не удалось обновить разговор",

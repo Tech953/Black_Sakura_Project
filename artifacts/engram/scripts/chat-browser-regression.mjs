@@ -156,6 +156,15 @@ const fixtureScript = String.raw`
       engramIds: [1],
       createdAt: "2026-09-05T12:05:00.000Z",
     }],
+    [4, {
+      id: 4,
+      title: "Browser Failed Delete Room",
+      mode: "companion",
+      personaName: "PYRI",
+      engramId: 1,
+      engramIds: [1],
+      createdAt: "2026-09-05T12:06:00.000Z",
+    }],
   ]);
   const messageSets = new Map([
     [1, [
@@ -168,6 +177,9 @@ const fixtureScript = String.raw`
     ]],
     [3, [
       { id: 5, role: "user", content: "Delete room must stay closed", createdAt: "2026-09-05T12:05:00.000Z" },
+    ]],
+    [4, [
+      { id: 6, role: "user", content: "Failed delete room must remain visible", createdAt: "2026-09-05T12:06:00.000Z" },
     ]],
   ]);
   const archivedIds = new Set();
@@ -206,6 +218,7 @@ const fixtureScript = String.raw`
       }
       if (method === "DELETE") {
         if (!currentConversation(id)) return response({ error: "Not found" }, 404);
+        if (id === 4) return response({ error: "Delete service unavailable" }, 503);
         deletedIds.add(id);
         return new Response(null, { status: 204 });
       }
@@ -447,7 +460,7 @@ try {
     15000,
   );
   if (!realClerkMode) {
-    for (const title of ["Browser Archive Room", "Browser Selection Room", "Browser Delete Room"]) {
+    for (const title of ["Browser Archive Room", "Browser Selection Room", "Browser Delete Room", "Browser Failed Delete Room"]) {
       await waitFor(`Boolean(document.body?.innerText.includes(${JSON.stringify(title)}))`, `${title} list row`);
     }
 
@@ -472,6 +485,13 @@ try {
     throw new Error("Deleting an inactive conversation opened or replaced the active conversation");
   }
   console.log("Chat conversation controls check: inactive row delete kept selection open");
+
+    await click(rowAction("Delete conversation", "Browser Failed Delete Room"), "failed delete conversation");
+    await waitFor(`Boolean(document.body?.innerText.includes("Could not delete conversation"))`, "delete failure toast");
+    if (!(await devtools.evaluate(`document.body.innerText.includes("Browser Failed Delete Room") && document.body.innerText.includes("Selection room hello")`))) {
+      throw new Error("Failed deletion changed the conversation list or active conversation");
+    }
+    console.log("Chat conversation controls check: failed delete showed a destructive toast and preserved state");
 
   await click(rowAction("Archive conversation", "Browser Archive Room"), "archive inactive conversation");
   await waitFor(`!document.body?.innerText.includes("Browser Archive Room")`, "archived conversation removed from active list");

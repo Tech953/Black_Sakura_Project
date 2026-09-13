@@ -95,6 +95,7 @@
     "toastUploadFailed": "Error de carga",
     "toastCouldNotReachApi": "No se pudo acceder a la API",
     "toastConversationDeleted": "Conversación eliminada",
+    "toastDeleteFailed": "No se pudo eliminar la conversación",
     "toastConversationArchived": "Conversación archivada",
     "toastConversationRestored": "Conversación restaurada",
     "toastArchiveFailed": "No se pudo actualizar la conversación",
