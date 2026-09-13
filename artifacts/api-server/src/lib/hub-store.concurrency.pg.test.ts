@@ -151,6 +151,53 @@ async function insertFixture() {
 }
 
 suite("movePresence — concurrent operators", () => {
+  it("serializes simultaneous first placements into one enter followed by one move", async () => {
+    const { engram, spaceA, spaceB } = await insertFixture();
+
+    const initialPresence = await db
+      .select()
+      .from(engramPresenceTable)
+      .where(eq(engramPresenceTable.engramId, engram.id));
+    expect(initialPresence).toHaveLength(0);
+
+    const [placementA, placementB] = await Promise.all([
+      movePresence({ ownerId: OWNER_ID, engram, targetSpace: spaceA }),
+      movePresence({ ownerId: OWNER_ID, engram, targetSpace: spaceB }),
+    ]);
+
+    const [presence] = await db
+      .select()
+      .from(engramPresenceTable)
+      .where(eq(engramPresenceTable.engramId, engram.id));
+    const activities = await db
+      .select()
+      .from(hubActivityLogTable)
+      .where(eq(hubActivityLogTable.engramId, engram.id))
+      .orderBy(hubActivityLogTable.id);
+
+    expect(activities).toHaveLength(2);
+    expect(activities.map((activity) => activity.kind)).toEqual(["enter", "move"]);
+    const firstSpaceId = activities[0]?.spaceId;
+    const secondSpaceId = activities[1]?.spaceId;
+    expect([spaceA.id, spaceB.id]).toContain(firstSpaceId);
+    expect([spaceA.id, spaceB.id]).toContain(secondSpaceId);
+    expect(secondSpaceId).not.toBe(firstSpaceId);
+    expect(activities[0]?.summary).toBe(
+      `Concurrent Engram entered ${firstSpaceId === spaceA.id ? spaceA.name : spaceB.name}.`,
+    );
+    expect(activities[1]?.summary).toBe(
+      `Concurrent Engram moved from ${
+        firstSpaceId === spaceA.id ? spaceA.name : spaceB.name
+      } to ${secondSpaceId === spaceA.id ? spaceA.name : spaceB.name}.`,
+    );
+    expect(presence?.spaceId).toBe(secondSpaceId);
+
+    const secondCommittedPlacement =
+      placementA.spaceId === secondSpaceId ? placementA : placementB;
+    expect(presence?.enteredAt).toEqual(secondCommittedPlacement.enteredAt);
+    expect(presence?.updatedAt).toEqual(secondCommittedPlacement.updatedAt);
+  });
+
   it("chains concurrent moves from the actual committed previous space", async () => {
     const { engram, spaceA, spaceB, spaceC } = await insertFixture();
     await movePresence({ ownerId: OWNER_ID, engram, targetSpace: spaceA });
