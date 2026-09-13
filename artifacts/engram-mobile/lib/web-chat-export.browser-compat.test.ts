@@ -42,7 +42,7 @@ const formats = [
 
 function makeRuntime(
   engine: "safari" | "firefox",
-  downloads: Array<{ filename: string; type: string; size: number }>,
+  downloads: Array<{ filename: string; type: string; size: number; blob: Blob }>,
 ): WebChatDownloadRuntime {
   const blobs = new Map<string, Blob>();
   const attached = new WeakSet<WebChatDownloadAnchor>();
@@ -76,6 +76,7 @@ function makeRuntime(
             filename: anchor.download,
             type: blob.type,
             size: blob.size,
+            blob,
           });
         },
         remove: () => {},
@@ -96,6 +97,7 @@ describe("web chat export browser compatibility", () => {
         filename: string;
         type: string;
         size: number;
+        blob: Blob;
       }> = [];
       const runtime = makeRuntime(engine, downloads);
 
@@ -111,6 +113,21 @@ describe("web chat export browser compatibility", () => {
         formats.map(([, filename, mimeType]) => [filename, mimeType]),
       );
       expect(downloads.every(({ size }) => size > 0)).toBe(true);
+
+      const payloads = await Promise.all(
+        downloads.map(async ({ blob, ...download }) => ({
+          ...download,
+          prefix: Array.from(
+            new Uint8Array(await blob.arrayBuffer()).slice(0, 4),
+          ),
+        })),
+      );
+      expect(payloads.map(({ prefix }) => prefix)).toEqual([
+        [35, 32, 83, 105],
+        [83, 105, 103, 110],
+        [37, 80, 68, 70],
+        [80, 75, 3, 4],
+      ]);
     }
   });
 });
