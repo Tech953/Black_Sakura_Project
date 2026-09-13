@@ -21,6 +21,7 @@ import type {
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -78,6 +79,7 @@ function providerErrorMessage(error: unknown): string | undefined {
 }
 
 export default function Environment() {
+  const [location] = useLocation();
   const { t } = useTranslation("environment");
   const { data: engrams, isLoading } = useListEngrams();
   const update = useUpdateEngramConfig();
@@ -88,6 +90,11 @@ export default function Environment() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const requestedEngramId = useMemo(() => {
+    const query = location.split("?")[1]?.split("#")[0] ?? "";
+    const id = Number(new URLSearchParams(query).get("engramId"));
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+  }, [location]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [form, setForm] = useState<ConfigForm | null>(null);
 
@@ -96,12 +103,19 @@ export default function Environment() {
     [engrams, selectedId],
   );
 
-  // Pick a default engram once loaded (prefer the active chat engram).
+  // Prefer an explicit roster handoff, then preserve the current selection,
+  // and finally pick the active chat engram as the default.
   useEffect(() => {
-    if (selectedId !== null || !engrams?.length) return;
+    if (!engrams?.length) return;
+    if (requestedEngramId !== null && engrams.some((e) => e.id === requestedEngramId)) {
+      if (selectedId !== requestedEngramId) setSelectedId(requestedEngramId);
+      return;
+    }
+    if (selectedId !== null && engrams.some((e) => e.id === selectedId)) return;
     const active = engrams.find((e) => e.isChatActive);
-    setSelectedId(active?.id ?? engrams[0].id);
-  }, [engrams, selectedId]);
+    const fallbackId = active?.id ?? engrams[0].id;
+    if (selectedId !== fallbackId) setSelectedId(fallbackId);
+  }, [engrams, requestedEngramId, selectedId]);
 
   // Hydrate the editable form whenever the selected engram changes identity.
   useEffect(() => {
