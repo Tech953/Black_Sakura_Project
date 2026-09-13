@@ -697,20 +697,23 @@ router.post("/engrams/:id/inquiries", async (req, res) => {
     if (delta.initiationThreshold !== undefined) patch.initiationThreshold = delta.initiationThreshold;
     if (delta.tickCadenceSeconds !== undefined) patch.tickCadenceSeconds = delta.tickCadenceSeconds;
 
-    if (Object.keys(patch).length > 1) {
-      await db.update(engramsTable).set(patch).where(eq(engramsTable.id, engram.id));
-    }
+    const [row] = await db.transaction(async (tx) => {
+      if (Object.keys(patch).length > 1) {
+        await tx.update(engramsTable).set(patch).where(eq(engramsTable.id, engram.id));
+      }
 
-    const [row] = await db
-      .insert(engramInquiriesTable)
-      .values({
-        engramId: engram.id,
-        kind,
-        question,
-        response,
-        configDelta: delta as Record<string, unknown>,
-      })
-      .returning();
+      const [inquiry] = await tx
+        .insert(engramInquiriesTable)
+        .values({
+          engramId: engram.id,
+          kind,
+          question,
+          response,
+          configDelta: delta as Record<string, unknown>,
+        })
+        .returning();
+      return [inquiry] as const;
+    });
     res.status(201).json(row);
   } catch (err) {
     req.log.error(err);
