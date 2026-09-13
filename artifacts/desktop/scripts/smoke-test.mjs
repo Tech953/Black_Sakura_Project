@@ -275,6 +275,7 @@ if (!existsSync(llamaServer)) {
 const llamaRuntime = checkLlamaRuntime({
   executablePath: llamaServer,
   platform: process.platform,
+  architecture: process.arch,
 });
 if (!llamaRuntime.ok) {
   fail(llamaRuntime.message);

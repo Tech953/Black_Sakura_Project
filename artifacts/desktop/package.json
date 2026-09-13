@@ -12,6 +12,7 @@
   "scripts": {
     "build:main": "node ./build.mjs",
     "prepare:llama-runtime": "node ./scripts/prepare-llama-runtime.mjs",
+    "verify:llama-runtime": "node ./scripts/verify-llama-runtime.mjs",
     "prepare:resources": "node ./scripts/prepare-resources.mjs",
     "build": "node ./build.mjs && node ./scripts/prepare-llama-runtime.mjs && node ./scripts/prepare-resources.mjs",
     "dist": "pnpm run build && electron-builder --linux",

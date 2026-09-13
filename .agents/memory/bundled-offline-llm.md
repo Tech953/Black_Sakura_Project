@@ -46,3 +46,9 @@ Local llama startup failures must remain structured through fallback and Setting
 **Why:** A generic fallback hides the actionable reason, while persisting a failed candidate instead of the previous healthy provider can make recovery impossible.
 
 **How to apply:** Treat local-model startup errors as recoverable Settings state; show platform-specific manual guidance when automatic repair is unavailable, and keep Online/Local server activation transactional.
+
+The pinned native runtime contract is target-specific: Linux x64/ARM64 depend on distro-provided C++/OpenSSL/OpenMP libraries, while macOS x64/ARM64 bundles adjacent dylibs and ARM64 additionally requires the Metal backend. Native preflight is authoritative; cross-target staging must defer to a matching runner.
+
+**Why:** The same archive layout can be inspected on another host, but ELF dependency resolution and macOS runtime tooling are target-specific; NixOS also needs explicit compatible loader paths for Linux checks.
+
+**How to apply:** Keep `ldd`/`otool` checks in release staging and smoke validation, pass the target architecture explicitly, and document equivalent distro packages instead of treating a non-native host failure as a packaged-runtime failure.

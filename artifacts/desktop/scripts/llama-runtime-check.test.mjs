@@ -135,6 +135,110 @@ describe("checkLlamaRuntime", () => {
     });
   });
 
+  it("checks Linux ARM64 with the same host-library contract", () => {
+    mockedSpawnSync.mockReturnValue({
+      status: 1,
+      stdout: "libgomp.so.1 => not found\n",
+      stderr: "",
+      pid: 1,
+      output: [],
+      signal: null,
+    });
+
+    const result = checkLlamaRuntime({
+      executablePath,
+      platform: "linux",
+      architecture: "arm64",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "missing-linux-dependencies",
+      missing: ["libgomp.so.1"],
+    });
+    expect(result.message).toContain("Debian/Ubuntu: libgomp1");
+  });
+
+  it("checks macOS x64 dylibs with otool and no Metal dependency", () => {
+    mockedSpawnSync.mockReturnValue({
+      status: 0,
+      stdout: [
+        `${executablePath}:`,
+        "\t@rpath/libllama-server-impl.dylib",
+        "\t@rpath/libggml-cpu.0.18.0.dylib",
+        "\t/usr/lib/libSystem.B.dylib",
+      ].join("\n"),
+      stderr: "",
+      pid: 1,
+      output: [],
+      signal: null,
+    });
+
+    expect(
+      checkLlamaRuntime({
+        executablePath,
+        platform: "darwin",
+        architecture: "x64",
+      }),
+    ).toMatchObject({
+      ok: true,
+      code: "macos-dylibs-present",
+      architecture: "x64",
+    });
+    expect(mockedSpawnSync).toHaveBeenCalledWith(
+      "otool",
+      ["-L", executablePath],
+      expect.objectContaining({ encoding: "utf8" }),
+    );
+  });
+
+  it("requires the Metal dylib for macOS ARM64", () => {
+    const metalDylib = "libggml-metal.0.18.0.dylib";
+    mockedExistsSync.mockImplementation((candidate) => {
+      return !String(candidate).endsWith(metalDylib);
+    });
+    mockedSpawnSync.mockReturnValue({
+      status: 0,
+      stdout: [
+        `${executablePath}:`,
+        `\t@rpath/${metalDylib}`,
+        "\t@rpath/libllama-server-impl.dylib",
+      ].join("\n"),
+      stderr: "",
+      pid: 1,
+      output: [],
+      signal: null,
+    });
+
+    const result = checkLlamaRuntime({
+      executablePath,
+      platform: "darwin",
+      architecture: "arm64",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "missing-macos-dylibs",
+      missing: [metalDylib],
+    });
+  });
+
+  it("reports unsupported target architectures instead of skipping inspection", () => {
+    const result = checkLlamaRuntime({
+      executablePath,
+      platform: "darwin",
+      architecture: "ia32",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      code: "unsupported-architecture",
+      message:
+        "No pinned llama.cpp runtime dependency contract exists for darwin-ia32.",
+    });
+    expect(mockedSpawnSync).not.toHaveBeenCalled();
+  });
+
   it("reports a missing adjacent Windows DLL without reading host files", () => {
     const windowsExecutablePath =
       "C:\\fixture\\resources\\llama\\bin\\llama-server.exe";

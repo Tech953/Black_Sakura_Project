@@ -78,8 +78,10 @@ deb:
     - libnss3
     - libxss1
     - libxtst6
-    # The pinned Linux llama.cpp runtime links against these host libraries.
-    # AppImage users need equivalent libraries from their distribution.
+    # The pinned Linux llama.cpp runtime links against these host libraries on
+    # both x64 and ARM64. AppImage users need equivalent libraries from their
+    # distribution; the packaged preflight reports the exact unresolved names.
+    - libgcc-s1
     - libstdc++6
     - libssl3
     - libgomp1
@@ -89,6 +91,10 @@ mac:
   target:
     - dmg
   category: public.app-category.productivity
+  # The pinned macOS x64 and ARM64 archives carry their llama.cpp dylibs next
+  # to llama-server, so no Homebrew/system package is required. ARM64 also
+  # carries libggml-metal; the packaged preflight checks that target-specific
+  # dylib with otool before the smoke test.
   # Signing + notarization. Tag-release CI requires a Developer ID certificate
   # through CSC_LINK / CSC_KEY_PASSWORD and Apple notarization credentials.
   # Local/manual engineering builds may omit them and remain unsigned.
