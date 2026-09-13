@@ -31,7 +31,8 @@
       "confidenceDesc": "Wie zuverlässig ist die Beobachtung?",
       "timingDesc": "Ist der Nutzer gerade aufnahmebereit?",
       "noveltyDesc": "Wurde das schon zuvor angezeigt?"
-    }
+    },
+    "openEnvironment": "Open environment"
   },
   "beliefs": {
     "title": "GLAUBENSREGISTER",

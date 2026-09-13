@@ -31,7 +31,8 @@
       "confidenceDesc": "À quel point l’observation est-elle fiable ?",
       "timingDesc": "L’utilisateur est-il réceptif en ce moment ?",
       "noveltyDesc": "Cela a-t-il déjà été remonté ?"
-    }
+    },
+    "openEnvironment": "Open environment"
   },
   "beliefs": {
     "title": "REGISTRE DES CROYANCES",
