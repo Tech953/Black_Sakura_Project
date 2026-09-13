@@ -551,7 +551,11 @@
     },
     "toastPresenceUpdatedTitle": "Präsenz aktualisiert",
     "toastPresenceUpdatedDescription": "{{engram}} → {{space}}.",
-    "toastMoveFailed": "Engram konnte nicht verschoben werden"
+    "toastMoveFailed": "Engram konnte nicht verschoben werden",
+    "openTranscript": "Transkript öffnen",
+    "transcriptTitle": "Transkript von {{space}}",
+    "transcriptUnavailable": "Dieses Transkript konnte nicht geladen werden.",
+    "transcriptEmpty": "In diesem Bereich wurde noch kein Commons-Austausch aufgezeichnet."
   },
   "inquiry": {
     "probeLabel": "Sondieren",

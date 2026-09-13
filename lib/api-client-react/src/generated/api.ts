@@ -4029,6 +4029,83 @@ export function useListHubActivity<TData = Awaited<ReturnType<typeof listHubActi
 
 
 
+export const getListHubSpaceTranscriptUrl = (spaceId: number,) => {
+
+
+
+
+  return `/api/hub/spaces/${spaceId}/transcript`
+}
+
+/**
+ * @summary List the recent Commons transcript for a Hub space
+ */
+export const listHubSpaceTranscript = async (spaceId: number, options?: RequestInit): Promise<EngramMessage[]> => {
+
+  return customFetch<EngramMessage[]>(getListHubSpaceTranscriptUrl(spaceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHubSpaceTranscriptQueryKey = (spaceId: number,) => {
+    return [
+    `/api/hub/spaces/${spaceId}/transcript`
+    ] as const;
+    }
+
+
+export const getListHubSpaceTranscriptQueryOptions = <TData = Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError = ErrorType<OpenaiError>>(spaceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHubSpaceTranscriptQueryKey(spaceId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHubSpaceTranscript>>> = ({ signal }) => listHubSpaceTranscript(spaceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: spaceId !== null && spaceId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListHubSpaceTranscriptQueryResult = NonNullable<Awaited<ReturnType<typeof listHubSpaceTranscript>>>
+export type ListHubSpaceTranscriptQueryError = ErrorType<OpenaiError>
+
+
+/**
+ * @summary List the recent Commons transcript for a Hub space
+ */
+
+export function useListHubSpaceTranscript<TData = Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError = ErrorType<OpenaiError>>(
+ spaceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListHubSpaceTranscriptQueryOptions(spaceId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetHubControlsUrl = () => {
 
 

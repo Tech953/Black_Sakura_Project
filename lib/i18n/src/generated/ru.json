@@ -551,7 +551,11 @@
     },
     "toastPresenceUpdatedTitle": "Присутствие обновлено",
     "toastPresenceUpdatedDescription": "{{engram}} → {{space}}.",
-    "toastMoveFailed": "Не удалось переместить engram"
+    "toastMoveFailed": "Не удалось переместить engram",
+    "openTranscript": "Открыть расшифровку",
+    "transcriptTitle": "Расшифровка: {{space}}",
+    "transcriptUnavailable": "Не удалось загрузить эту расшифровку.",
+    "transcriptEmpty": "В этом пространстве ещё не записано ни одного обмена Commons."
   },
   "inquiry": {
     "probeLabel": "Зонд",

@@ -551,7 +551,11 @@
     },
     "toastPresenceUpdatedTitle": "在室情報を更新",
     "toastPresenceUpdatedDescription": "{{engram}} → {{space}}。",
-    "toastMoveFailed": "engramの移動に失敗しました"
+    "toastMoveFailed": "engramの移動に失敗しました",
+    "openTranscript": "トランスクリプトを開く",
+    "transcriptTitle": "{{space}}のトランスクリプト",
+    "transcriptUnavailable": "このトランスクリプトを読み込めませんでした。",
+    "transcriptEmpty": "このスペースにはCommonsのやり取りがまだ記録されていません。"
   },
   "inquiry": {
     "probeLabel": "Probe",

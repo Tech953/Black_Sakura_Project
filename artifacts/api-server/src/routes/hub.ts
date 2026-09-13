@@ -7,6 +7,7 @@ import {
   MoveEngramPresenceParams,
   MoveEngramPresenceBody,
   ListHubActivityQueryParams,
+  ListHubSpaceTranscriptParams,
   UpdateHubControlsBody,
 } from "@workspace/api-zod";
 import type { HubControls } from "@workspace/db";
@@ -17,6 +18,7 @@ import {
   loadActivity,
   movePresence,
 } from "../lib/hub-store";
+import { loadSpaceMessages } from "../lib/messages-store";
 import { loadControls, updateControls } from "../lib/controls-store";
 import { publishEvent } from "../lib/events";
 import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
@@ -71,6 +73,25 @@ function serializeControls(c: HubControls) {
     paused: c.paused,
     quietMode: c.quietMode,
     updatedAt: c.updatedAt.toISOString(),
+  };
+}
+
+function serializeMessage(m: Awaited<ReturnType<typeof loadSpaceMessages>>[number]) {
+  return {
+    id: m.id,
+    fromEngramId: m.fromEngramId,
+    toEngramId: m.toEngramId ?? null,
+    spaceId: m.spaceId ?? null,
+    channel: m.channel,
+    author: m.author,
+    priority: m.priority,
+    status: m.status,
+    content: m.content,
+    reason: m.reason ?? null,
+    seen: m.seen,
+    isDigest: m.isDigest,
+    deliveredAt: m.deliveredAt ? m.deliveredAt.toISOString() : null,
+    createdAt: m.createdAt.toISOString(),
   };
 }
 
@@ -145,6 +166,23 @@ router.get("/hub/activity", async (req, res) => {
     limit: parsed.data.limit,
   });
   res.json(rows.map(serializeActivity));
+});
+
+router.get("/hub/spaces/:spaceId/transcript", async (req, res) => {
+  const parsed = ListHubSpaceTranscriptParams.safeParse({
+    spaceId: req.params.spaceId,
+  });
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const space = await loadSpaceById(parsed.data.spaceId, req.userId!);
+  if (!space) {
+    res.status(404).json({ error: "Space not found" });
+    return;
+  }
+  const rows = await loadSpaceMessages(req.userId!, space.id, 20);
+  res.json(rows.map(serializeMessage));
 });
 
 router.get("/hub/controls", async (req, res) => {

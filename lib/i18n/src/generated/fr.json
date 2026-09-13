@@ -551,7 +551,11 @@
     },
     "toastPresenceUpdatedTitle": "Présence mise à jour",
     "toastPresenceUpdatedDescription": "{{engram}} → {{space}}.",
-    "toastMoveFailed": "Échec du déplacement de l’engram"
+    "toastMoveFailed": "Échec du déplacement de l’engram",
+    "openTranscript": "Ouvrir la transcription",
+    "transcriptTitle": "Transcription de {{space}}",
+    "transcriptUnavailable": "Impossible de charger cette transcription.",
+    "transcriptEmpty": "Aucun échange Commons n’a encore été enregistré dans cet espace."
   },
   "inquiry": {
     "probeLabel": "Sonder",

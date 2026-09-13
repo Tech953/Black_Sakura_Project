@@ -1218,6 +1218,33 @@ paths:
                 items:
                   $ref: "#/components/schemas/HubActivityEntry"
 
+  /hub/spaces/{spaceId}/transcript:
+    get:
+      operationId: listHubSpaceTranscript
+      tags: [hub]
+      summary: List the recent Commons transcript for a Hub space
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recent engram-to-engram messages in the Hub space
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EngramMessage"
+        "404":
+          description: Space not found for this account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
   /hub/controls:
     get:
       operationId: getHubControls
@@ -3503,7 +3530,7 @@ components:
           type: ["integer", "null"]
         kind:
           type: string
-          enum: [enter, move, rest, wake, system]
+          enum: [enter, move, rest, wake, converse, simulate, system]
         summary:
           type: string
         createdAt:

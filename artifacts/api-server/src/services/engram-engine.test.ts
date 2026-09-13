@@ -693,6 +693,7 @@ describe("runTick — commons turn-taking", () => {
     const activityInserts = h.state.inserts.filter((r) => r.__table === h.hubActivityLogTable);
     expect(activityInserts).toHaveLength(1);
     expect(activityInserts[0].kind).toBe("converse");
+    expect(activityInserts[0].summary).toContain("Arezo");
     expect(activityInserts[0].summary).toContain("Rebecca");
   });
 
