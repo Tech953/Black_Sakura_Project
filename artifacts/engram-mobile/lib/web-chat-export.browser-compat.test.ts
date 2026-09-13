@@ -40,8 +40,24 @@ const formats = [
   ],
 ] as const;
 
+type BrowserProfile = {
+  name: string;
+  engine: "safari" | "firefox";
+  mobile: boolean;
+};
+
+const desktopProfiles: BrowserProfile[] = [
+  { name: "Safari", engine: "safari", mobile: false },
+  { name: "Firefox", engine: "firefox", mobile: false },
+];
+
+const mobileProfiles: BrowserProfile[] = [
+  { name: "iOS Safari", engine: "safari", mobile: true },
+  { name: "Android Firefox", engine: "firefox", mobile: true },
+];
+
 function makeRuntime(
-  engine: "safari" | "firefox",
+  profile: BrowserProfile,
   downloads: Array<{ filename: string; type: string; size: number; blob: Blob }>,
 ): WebChatDownloadRuntime {
   const blobs = new Map<string, Blob>();
@@ -52,7 +68,7 @@ function makeRuntime(
   return {
     createBlob: (parts, mimeType) => new Blob(parts, { type: mimeType }),
     createObjectURL: (blob) => {
-      const url = `blob:${engine}-${++nextUrl}`;
+      const url = `blob:${profile.engine}-${++nextUrl}`;
       blobs.set(url, blob);
       return url;
     },
@@ -65,12 +81,14 @@ function makeRuntime(
         download: "",
         rel: "",
         click: () => {
-          if (engine === "safari" && !attached.has(anchor)) {
-            throw new Error("Safari requires a download anchor to be attached");
+          if (profile.engine === "safari" && !attached.has(anchor)) {
+            throw new Error(`${profile.name} requires a download anchor to be attached`);
           }
           const blob = blobs.get(anchor.href);
-          if (!blob || (engine === "firefox" && revoked.has(anchor.href))) {
-            throw new Error(`${engine} lost the download object URL before click`);
+          if (!blob || (profile.engine === "firefox" && revoked.has(anchor.href))) {
+            throw new Error(
+              `${profile.name} lost the download object URL before click`,
+            );
           }
           downloads.push({
             filename: anchor.download,
@@ -90,44 +108,54 @@ function makeRuntime(
   };
 }
 
+async function expectDownloadsForProfile(profile: BrowserProfile): Promise<void> {
+  const downloads: Array<{
+    filename: string;
+    type: string;
+    size: number;
+    blob: Blob;
+  }> = [];
+  const runtime = makeRuntime(profile, downloads);
+
+  for (const [format] of formats) {
+    downloadWebChatExport(
+      await buildWebChatExport(format, document, "Signal-01"),
+      runtime,
+    );
+  }
+
+  expect(downloads).toHaveLength(4);
+  expect(downloads.map(({ filename, type }) => [filename, type])).toEqual(
+    formats.map(([, filename, mimeType]) => [filename, mimeType]),
+  );
+  expect(downloads.every(({ size }) => size > 0)).toBe(true);
+
+  const payloads = await Promise.all(
+    downloads.map(async ({ blob, ...download }) => ({
+      ...download,
+      prefix: Array.from(
+        new Uint8Array(await blob.arrayBuffer()).slice(0, 4),
+      ),
+    })),
+  );
+  expect(payloads.map(({ prefix }) => prefix)).toEqual([
+    [35, 32, 83, 105],
+    [83, 105, 103, 110],
+    [37, 80, 68, 70],
+    [80, 75, 3, 4],
+  ]);
+}
+
 describe("web chat export browser compatibility", () => {
   it("preserves downloads across Safari- and Firefox-shaped runtimes", async () => {
-    for (const engine of ["safari", "firefox"] as const) {
-      const downloads: Array<{
-        filename: string;
-        type: string;
-        size: number;
-        blob: Blob;
-      }> = [];
-      const runtime = makeRuntime(engine, downloads);
+    for (const profile of desktopProfiles) {
+      await expectDownloadsForProfile(profile);
+    }
+  });
 
-      for (const [format, filename, mimeType] of formats) {
-        downloadWebChatExport(
-          await buildWebChatExport(format, document, "Signal-01"),
-          runtime,
-        );
-      }
-
-      expect(downloads).toHaveLength(4);
-      expect(downloads.map(({ filename, type }) => [filename, type])).toEqual(
-        formats.map(([, filename, mimeType]) => [filename, mimeType]),
-      );
-      expect(downloads.every(({ size }) => size > 0)).toBe(true);
-
-      const payloads = await Promise.all(
-        downloads.map(async ({ blob, ...download }) => ({
-          ...download,
-          prefix: Array.from(
-            new Uint8Array(await blob.arrayBuffer()).slice(0, 4),
-          ),
-        })),
-      );
-      expect(payloads.map(({ prefix }) => prefix)).toEqual([
-        [35, 32, 83, 105],
-        [83, 105, 103, 110],
-        [37, 80, 68, 70],
-        [80, 75, 3, 4],
-      ]);
+  it("preserves downloads across iOS Safari- and Android Firefox-shaped runtimes", async () => {
+    for (const profile of mobileProfiles) {
+      await expectDownloadsForProfile(profile);
     }
   });
 });
