@@ -5,6 +5,7 @@ import { db } from "@workspace/db";
 import {
   conversations,
   engramInquiriesTable,
+  engramMessagesTable,
   engramTransmissionsTable,
   engramWorldModelTable,
   engramsTable,
@@ -57,6 +58,7 @@ router.post("/mobile/offline-sync", async (req, res) => {
         inquiries: 0,
         transmissions: 0,
         observedEntries: 0,
+        operatorReplies: 0,
       };
       const engramCache = new Map<
         string,
@@ -323,6 +325,58 @@ router.post("/mobile/offline-sync", async (req, res) => {
           imported.observedEntries += 1;
         }
         syncedIds.add(entry.syncId);
+      }
+
+      for (const reply of parsed.data.operatorReplies) {
+        const replyClaim = await claim(reply.syncId, "operator_reply");
+        if (replyClaim.isNew) {
+          const [source] = await tx
+            .select({ message: engramMessagesTable })
+            .from(engramMessagesTable)
+            .innerJoin(
+              engramsTable,
+              eq(engramMessagesTable.fromEngramId, engramsTable.id),
+            )
+            .where(
+              and(
+                eq(engramMessagesTable.id, reply.messageId),
+                eq(engramMessagesTable.channel, "human"),
+                eq(engramMessagesTable.author, "engram"),
+                eq(engramsTable.ownerId, ownerId),
+              ),
+            )
+            .limit(1);
+          if (!source) {
+            throw new OfflineSyncError(
+              400,
+              `Message ${reply.messageId} was not found for this account.`,
+            );
+          }
+
+          const targetId = source.message.fromEngramId;
+          const [created] = await tx
+            .insert(engramMessagesTable)
+            .values({
+              fromEngramId: targetId,
+              toEngramId: targetId,
+              channel: "human",
+              author: "operator",
+              priority: "meaningful",
+              status: "delivered",
+              content: reply.content,
+              reason: `Operator reply to message ${reply.messageId}`,
+              seen: true,
+              isDigest: false,
+              deliveredAt: new Date(reply.createdAt),
+              createdAt: new Date(reply.createdAt),
+            })
+            .returning({ id: engramMessagesTable.id });
+          await setRemoteId(replyClaim.receipt.id, created!.id);
+          imported.operatorReplies += 1;
+        } else {
+          requireRemoteId(replyClaim.receipt, reply.syncId);
+        }
+        syncedIds.add(reply.syncId);
       }
 
       return { syncedIds: [...syncedIds], imported };

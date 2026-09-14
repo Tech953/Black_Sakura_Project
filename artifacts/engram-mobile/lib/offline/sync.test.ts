@@ -57,6 +57,7 @@ const pendingBatch = {
     inquiries: [],
     transmissions: [],
     observedEntries: [],
+    operatorReplies: [],
   },
   localRows: {
     conversationIds: [7],
@@ -64,6 +65,7 @@ const pendingBatch = {
     inquiryIds: [],
     transmissions: [],
     observedEntryIds: [],
+    operatorReplyIds: [],
   },
 };
 const emptyBatch = {
@@ -73,6 +75,7 @@ const emptyBatch = {
     inquiries: [],
     transmissions: [],
     observedEntries: [],
+    operatorReplies: [],
   },
   localRows: {
     conversationIds: [],
@@ -80,6 +83,7 @@ const emptyBatch = {
     inquiryIds: [],
     transmissions: [],
     observedEntryIds: [],
+    operatorReplyIds: [],
   },
 };
 

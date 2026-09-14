@@ -12,11 +12,13 @@ import {
   HealthCheckResponse,
   ListOpenaiConversationsResponse,
   ListEngramInquiriesResponse,
+  ListEngramMessagesResponse,
   ListEngramTransmissionsResponse,
   ListEngramsResponse,
   MarkTransmissionsSeenBody,
   MarkTransmissionsSeenResponse,
   TransmitEngramResponse,
+  ReplyToEngramMessageResponse,
 } from "../../../../lib/api-zod/src/generated/api";
 
 const mocks = vi.hoisted(() => ({
@@ -43,6 +45,8 @@ const state = {
   transmissions: [] as Row[],
   conversations: [] as Row[],
   messages: [] as Row[],
+  humanMessages: [] as Row[],
+  operatorReplies: [] as Row[],
 };
 
 const database = {
@@ -171,6 +175,12 @@ const database = {
       }
       return { lastInsertRowId: 0, changes };
     }
+    if (sql.includes("INSERT INTO operator_replies")) {
+      const [syncId, messageId, content, createdAt] = args;
+      const id = state.operatorReplies.length + 1;
+      state.operatorReplies.push({ id, syncId, messageId, content, createdAt, syncedAt: null });
+      return { lastInsertRowId: id, changes: 1 };
+    }
     return { lastInsertRowId: 0, changes: 0 };
   }),
   getFirstAsync: vi.fn(async (sql: string, id: unknown) => {
@@ -180,6 +190,9 @@ const database = {
     }
     if (sql.includes("FROM conversations")) {
       return state.conversations.find((row) => row.id === id) ?? null;
+    }
+    if (sql.includes("FROM human_messages")) {
+      return state.humanMessages.find((row) => row.id === id) ?? null;
     }
     return null;
   }),
@@ -200,6 +213,8 @@ const database = {
     }
     if (sql.includes("FROM conversations c")) return [...state.conversations];
     if (sql.includes("FROM world_model")) return [];
+    if (sql.includes("FROM human_messages")) return [...state.humanMessages];
+    if (sql.includes("FROM operator_replies")) return [...state.operatorReplies];
     return [];
   }),
 };
@@ -248,6 +263,8 @@ describe("offline handler generated response contracts", () => {
     state.transmissions.length = 0;
     state.conversations.length = 0;
     state.messages.length = 0;
+    state.humanMessages.length = 0;
+    state.operatorReplies.length = 0;
     for (const [index, engram] of state.engrams.entries()) {
       engram.isChatActive = index === 0 ? 1 : 0;
     }
@@ -275,6 +292,49 @@ describe("offline handler generated response contracts", () => {
       ActivateEngramResponse,
     );
     expect(activated.isChatActive).toBe(true);
+  });
+
+  it("matches cached human messages and queued operator replies", async () => {
+    const source = {
+      id: 1,
+      fromEngramId: 1,
+      toEngramId: null,
+      spaceId: null,
+      channel: "human",
+      author: "engram",
+      priority: "meaningful",
+      status: "delivered",
+      content: "Can you hear me?",
+      reason: null,
+      seen: true,
+      isDigest: false,
+      digestGroupId: null,
+      deliveredAt: "2026-09-13T12:00:00.000Z",
+      createdAt: "2026-09-13T12:00:00.000Z",
+    };
+    state.humanMessages.push({ id: 1, data: JSON.stringify(source), cachedAt: source.createdAt });
+
+    const listed = expectContract(
+      await request("GET", "/api/messages?channel=human"),
+      200,
+      ListEngramMessagesResponse,
+    );
+    expect(listed).toEqual([source]);
+
+    const queued = expectContract(
+      await request("POST", "/api/messages/1/reply", { content: "I can hear you." }),
+      201,
+      ReplyToEngramMessageResponse,
+    );
+    expect(queued).toMatchObject({
+      id: -1,
+      fromEngramId: 1,
+      toEngramId: 1,
+      channel: "human",
+      author: "operator",
+      status: "delivered",
+      content: "I can hear you.",
+    });
   });
 
   it("matches inquiry create and list contracts", async () => {

@@ -306,6 +306,7 @@ describe("offline SQLite failure harness", () => {
         inquiries: [],
         transmissions: [],
         observedEntries: [],
+      operatorReplies: [],
       },
       localRows: {
         conversationIds: [],
@@ -313,6 +314,7 @@ describe("offline SQLite failure harness", () => {
         inquiryIds: [],
         transmissions: [{ id: 4, syncVersion: 0 }],
         observedEntryIds: [],
+        operatorReplyIds: [],
       },
     };
 

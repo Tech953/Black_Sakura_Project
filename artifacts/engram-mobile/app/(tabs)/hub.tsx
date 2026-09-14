@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -8,6 +8,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,22 +17,30 @@ import type { UseQueryResult } from "@tanstack/react-query";
 
 import { Chip, EmptyState, ScoreBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
-import type { Simulation } from "@workspace/api-client-react";
+import type { EngramMessage, Simulation } from "@workspace/api-client-react";
 import {
+  getListEngramMessagesQueryKey,
   useGetEngramStates,
   useGetHubControls,
+  useListEngramMessages,
   useListEngrams,
   useListHubActivity,
   useListHubPresence,
   useListHubSpaces,
   useListSimulations,
+  useReplyToEngramMessage,
 } from "@workspace/api-client-react";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useOfflineMode } from "@/lib/offline/mode";
+import { cacheHumanMessages } from "@/lib/offline/store";
+import { queryClient } from "@/lib/query-client";
 
 export default function HubScreen() {
   const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const offline = useOfflineMode();
   const engrams = useListEngrams();
   const states = useGetEngramStates();
   const spaces = useListHubSpaces();
@@ -39,27 +48,47 @@ export default function HubScreen() {
   const activity = useListHubActivity({ limit: 12 });
   const simulations = useListSimulations();
   const controls = useGetHubControls();
+  const humanMessages = useListEngramMessages({ channel: "human", limit: 100 });
   const isLoading =
-    engrams.isLoading ||
-    states.isLoading ||
-    spaces.isLoading ||
-    presence.isLoading ||
-    activity.isLoading;
+    offline
+      ? humanMessages.isLoading
+      : engrams.isLoading ||
+        states.isLoading ||
+        spaces.isLoading ||
+        presence.isLoading ||
+        activity.isLoading ||
+        humanMessages.isLoading;
   const isError =
-    engrams.isError ||
-    states.isError ||
-    spaces.isError ||
-    presence.isError ||
-    activity.isError;
+    offline
+      ? humanMessages.isError
+      : engrams.isError ||
+        states.isError ||
+        spaces.isError ||
+        presence.isError ||
+        activity.isError ||
+        humanMessages.isError;
   const refreshing =
-    engrams.isRefetching ||
-    states.isRefetching ||
-    spaces.isRefetching ||
-    presence.isRefetching ||
-    activity.isRefetching ||
-    simulations.isRefetching;
+    offline
+      ? humanMessages.isRefetching
+      : engrams.isRefetching ||
+        states.isRefetching ||
+        spaces.isRefetching ||
+        presence.isRefetching ||
+        activity.isRefetching ||
+        simulations.isRefetching ||
+        humanMessages.isRefetching;
+
+  useEffect(() => {
+    if (!offline && humanMessages.data) {
+      void cacheHumanMessages(humanMessages.data).catch(() => {});
+    }
+  }, [humanMessages.data, offline]);
 
   const refresh = () => {
+    if (offline) {
+      void humanMessages.refetch();
+      return;
+    }
     void Promise.all([
       engrams.refetch(),
       states.refetch(),
@@ -68,6 +97,7 @@ export default function HubScreen() {
       activity.refetch(),
       simulations.refetch(),
       controls.refetch(),
+      humanMessages.refetch(),
     ]);
   };
 
@@ -221,6 +251,13 @@ export default function HubScreen() {
             onOpen={(id) => router.push(`/simulation/${id}`)}
           />
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+            {t(offline ? "hub.humanContactOffline" : "hub.humanContact")}
+          </Text>
+          <HumanContactSection
+            messages={humanMessages.data ?? []}
+            engramName={(id) => engramById.get(id)?.name}
+          />
+          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
             {t("hub.activity")}
           </Text>
         </View>
@@ -245,6 +282,150 @@ export default function HubScreen() {
         </Text>
       }
     />
+  );
+}
+
+function HumanContactSection({
+  messages,
+  engramName,
+}: {
+  messages: EngramMessage[];
+  engramName: (id: number) => string | undefined;
+}) {
+  const { t } = useTranslation("mobile");
+  const colors = useColors();
+  const [replyOpenId, setReplyOpenId] = useState<number | null>(null);
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+  const [replyErrorId, setReplyErrorId] = useState<number | null>(null);
+  const reply = useReplyToEngramMessage();
+  const queryKey = getListEngramMessagesQueryKey({ channel: "human", limit: 100 });
+  const incoming = messages;
+
+  const sendReply = async (message: EngramMessage) => {
+    const content = drafts[message.id]?.trim() ?? "";
+    if (!content || reply.isPending) return;
+    try {
+      setReplyErrorId(null);
+      await reply.mutateAsync({ id: message.id, data: { content } });
+      setDrafts((current) => ({ ...current, [message.id]: "" }));
+      setReplyOpenId(null);
+      await queryClient.invalidateQueries({ queryKey });
+    } catch {
+      // The composer remains open so the operator can retry without losing text.
+      setReplyErrorId(message.id);
+    }
+  };
+
+  if (incoming.length === 0) {
+    return (
+      <Text style={[styles.emptyActivity, { color: colors.mutedForeground }]}>
+        {t("hub.noHumanContact")}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.humanContactList}>
+      {incoming.map((message) => {
+        const isOpen = replyOpenId === message.id;
+        return (
+          <View
+            key={message.id}
+            style={[
+              styles.humanContactCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.humanContactHeader}>
+              <Feather name="message-circle" size={15} color={colors.primary} />
+              <Text style={[styles.humanContactMeta, { color: colors.foreground }]}>
+                {engramName(message.fromEngramId) ?? `#${message.fromEngramId}`}
+              </Text>
+              <Text style={[styles.humanContactMeta, { color: colors.mutedForeground }]}>
+                {message.author === "operator"
+                  ? t("hub.operatorMessage")
+                  : message.isDigest
+                    ? t("hub.humanDigest")
+                    : t("hub.humanMessage")}
+              </Text>
+              <Text style={[styles.humanContactMeta, { color: colors.mutedForeground }]}>
+                {message.id < 0
+                  ? t("hub.replyQueued")
+                  : message.seen
+                    ? ""
+                    : "•"}
+              </Text>
+            </View>
+            <Text style={[styles.humanContactText, { color: colors.foreground }]}>
+              {message.content}
+            </Text>
+            {message.author === "engram" ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("hub.reply")}
+                onPress={() => setReplyOpenId(isOpen ? null : message.id)}
+                style={({ pressed }) => [
+                  styles.replyToggle,
+                  { opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Feather name={isOpen ? "x" : "corner-up-left"} size={14} color={colors.primary} />
+                <Text style={[styles.replyToggleText, { color: colors.primary }]}>
+                  {isOpen ? t("common.cancel") : t("hub.reply")}
+                </Text>
+              </Pressable>
+            ) : null}
+            {isOpen && message.author === "engram" ? (
+              <KeyboardAvoidingView behavior="padding" style={styles.replyComposer}>
+                <TextInput
+                  autoFocus
+                  maxLength={2000}
+                  multiline
+                  onChangeText={(value) =>
+                    setDrafts((current) => ({ ...current, [message.id]: value }))
+                  }
+                  onSubmitEditing={() => void sendReply(message)}
+                  placeholder={t("hub.replyPlaceholder")}
+                  placeholderTextColor={colors.mutedForeground}
+                  returnKeyType="send"
+                  style={[
+                    styles.replyInput,
+                    { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground },
+                  ]}
+                  value={drafts[message.id] ?? ""}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={reply.isPending || !(drafts[message.id] ?? "").trim()}
+                  onPress={() => void sendReply(message)}
+                  style={({ pressed }) => [
+                    styles.replyButton,
+                    {
+                      backgroundColor: colors.primary,
+                      opacity:
+                        reply.isPending || !(drafts[message.id] ?? "").trim()
+                          ? 0.45
+                          : pressed
+                            ? 0.75
+                            : 1,
+                    },
+                  ]}
+                >
+                  <Text style={styles.replyButtonText}>
+                    {reply.isPending ? t("hub.replySending") : t("hub.reply")}
+                  </Text>
+                </Pressable>
+                {replyErrorId === message.id ? (
+                  <Text style={[styles.replyError, { color: colors.destructive }]}>
+                    {t("hub.replyFailed")}
+                  </Text>
+                ) : null}
+              </KeyboardAvoidingView>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -352,6 +533,38 @@ const styles = StyleSheet.create({
   activityText: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
   activityMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 9, marginTop: 4 },
   emptyActivity: { fontFamily: "Inter_400Regular", fontSize: 13, paddingVertical: 18 },
+  humanContactList: { gap: 10 },
+  humanContactCard: { borderWidth: 1, borderRadius: 8, padding: 14, gap: 10 },
+  humanContactHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  humanContactMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, flex: 1 },
+  humanContactText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 21 },
+  replyToggle: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" },
+  replyToggleText: {
+    fontFamily: "Rajdhani_600SemiBold",
+    fontSize: 13,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  replyComposer: { gap: 8 },
+  replyInput: {
+    borderWidth: 1,
+    borderRadius: 7,
+    minHeight: 42,
+    maxHeight: 110,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+  },
+  replyButton: { borderRadius: 7, paddingVertical: 10, alignItems: "center" },
+  replyButtonText: {
+    color: "#FFFFFF",
+    fontFamily: "Rajdhani_600SemiBold",
+    fontSize: 14,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  replyError: { fontFamily: "Inter_400Regular", fontSize: 12 },
 });
 
 type SimulationQuery = UseQueryResult<Simulation[]>;
