@@ -94,25 +94,59 @@ const devtools = new DevTools();
 const fixtureScript = String.raw`
 (() => {
   const originalFetch = window.fetch.bind(window);
-  const engram = {
-    id: 1,
-    name: "Scenario Guide",
-    symbol: "◇",
-    mode: "simulation",
-    simulationEnabled: true,
-    humanContactEnabled: true,
-    artifactGenerationEnabled: true,
-    isArchival: false
-  };
-  const steps = [{
-    id: 101,
-    simulationId: 42,
-    stepNumber: 1,
-    speakerEngramId: 1,
-    narrative: "The vault lights dim, but the guide keeps the route open.",
-    worldModelEntryId: 901,
-    createdAt: "2026-09-12T12:01:00.000Z"
-  }];
+  const engrams = [
+    {
+      id: 1,
+      name: "Scenario Guide",
+      symbol: "◇",
+      mode: "simulation",
+      simulationEnabled: true,
+      humanContactEnabled: true,
+      artifactGenerationEnabled: true,
+      isArchival: false
+    },
+    {
+      id: 2,
+      name: "Route Scout",
+      symbol: "◆",
+      mode: "simulation",
+      simulationEnabled: true,
+      humanContactEnabled: true,
+      artifactGenerationEnabled: true,
+      isArchival: false
+    }
+  ];
+  const stepSets = new Map([
+    [42, [{
+      id: 101,
+      simulationId: 42,
+      stepNumber: 1,
+      speakerEngramId: 1,
+      narrative: "The vault lights dim, but the guide keeps the route open.",
+      worldModelEntryId: 901,
+      createdAt: "2026-09-12T12:01:00.000Z"
+    }]],
+    [43, [
+      {
+        id: 102,
+        simulationId: 43,
+        stepNumber: 1,
+        speakerEngramId: 1,
+        narrative: "The guide marks the safest route through the blackout.",
+        worldModelEntryId: 902,
+        createdAt: "2026-09-12T12:04:00.000Z"
+      },
+      {
+        id: 103,
+        simulationId: 43,
+        stepNumber: 2,
+        speakerEngramId: 2,
+        narrative: "The scout confirms the eastern passage is clear.",
+        worldModelEntryId: 903,
+        createdAt: "2026-09-12T12:05:00.000Z"
+      }
+    ]]
+  ]);
   const baseSimulation = {
     id: 42,
     engramId: 1,
@@ -132,6 +166,8 @@ const fixtureScript = String.raw`
     updatedAt: "2026-09-12T12:00:00.000Z"
   };
   let simulation = { ...baseSimulation };
+  let simulations = [simulation];
+  const createBodies = [];
   const patchBodies = [];
   const response = (body, status = 200) =>
     new Response(JSON.stringify(body), {
@@ -139,14 +175,14 @@ const fixtureScript = String.raw`
       headers: { "Content-Type": "application/json" }
     });
   const currentSimulation = () => ({ ...simulation });
-  window.__simulationBrowserFixture = { patchBodies };
+  window.__simulationBrowserFixture = { patchBodies, createBodies };
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input.url;
     const method = String(
       init.method ?? (typeof input === "string" ? "GET" : input.method ?? "GET")
     ).toUpperCase();
     const pathname = new URL(url, window.location.origin).pathname;
-    if (pathname === "/api/engrams" && method === "GET") return response([engram]);
+    if (pathname === "/api/engrams" && method === "GET") return response(engrams);
     if (pathname === "/api/hub/controls" && method === "GET") {
       return response({ paused: false, quietMode: false });
     }
@@ -154,10 +190,27 @@ const fixtureScript = String.raw`
     if (pathname === "/api/engrams/messages" && method === "GET") return response([]);
     if (pathname === "/api/events") return response({});
     if (pathname === "/api/simulations" && method === "GET") {
-      return response([currentSimulation()]);
+      return response(simulations);
     }
-    if (pathname === "/api/simulations/42/steps" && method === "GET") {
-      return response(steps);
+    if (pathname === "/api/simulations" && method === "POST") {
+      const body = JSON.parse(init.body ?? "{}");
+      createBodies.push(body);
+      const shared = {
+        ...baseSimulation,
+        id: 43,
+        participantEngramIds: body.participantEngramIds,
+        premise: "What if the guide and scout shared the evacuation plan?",
+        status: "proposed",
+        currentStep: 0,
+        startedAt: null,
+        updatedAt: "2026-09-12T12:04:00.000Z"
+      };
+      simulations = [...simulations, shared];
+      return response(shared, 201);
+    }
+    const stepsMatch = pathname.match(/^\/api\/simulations\/(\d+)\/steps$/);
+    if (stepsMatch && method === "GET") {
+      return response(stepSets.get(Number(stepsMatch[1])) ?? []);
     }
     if (pathname === "/api/simulations/42/control" && method === "POST") {
       const action = JSON.parse(init.body ?? "{}").action;
@@ -174,15 +227,18 @@ const fixtureScript = String.raw`
         endedAt: action === "end" ? "2026-09-12T12:03:00.000Z" : null,
         updatedAt: "2026-09-12T12:03:00.000Z"
       };
+      simulations = simulations.map((candidate) =>
+        candidate.id === simulation.id ? simulation : candidate,
+      );
       return response(currentSimulation());
     }
     if (pathname === "/api/engrams/1" && method === "PATCH") {
       const body = JSON.parse(init.body ?? "{}");
       patchBodies.push(body);
       if (typeof body.simulationEnabled === "boolean") {
-        engram.simulationEnabled = body.simulationEnabled;
+        engrams.find((candidate) => candidate.id === 1).simulationEnabled = body.simulationEnabled;
       }
-      return response({ ...engram });
+      return response({ ...engrams.find((candidate) => candidate.id === 1) });
     }
     return originalFetch(input, init);
   };
@@ -199,7 +255,12 @@ async function waitFor(expression, label, timeout = 10000) {
     if (await devtools.evaluate(expression)) return;
     await delay(100);
   }
-  throw new Error(`Timed out waiting for ${label}`);
+  const state = await devtools.evaluate(`JSON.stringify({
+    url: location.href,
+    title: document.title,
+    body: (document.body?.innerText || "").slice(0, 900)
+  })`);
+  throw new Error(`Timed out waiting for ${label}: ${state}`);
 }
 
 async function click(expression, label) {
@@ -259,6 +320,52 @@ try {
   const endedControls = await devtools.evaluate(`Array.from(document.querySelectorAll('[data-testid^="button-"]')).map((node) => node.getAttribute("data-testid"))`);
   if (endedControls.some((id) => ["button-start-42", "button-pause-42", "button-resume-42", "button-end-42"].includes(id))) {
     throw new Error(`Ended simulation still exposed lifecycle controls: ${JSON.stringify(endedControls)}`);
+  }
+
+  await click(`document.querySelector('[data-testid="button-sim-engram-2"]')`, "second simulation participant");
+  await waitFor(
+    `document.querySelector('[data-testid="button-sim-engram-1"]')?.textContent?.includes("✓") &&
+     document.querySelector('[data-testid="button-sim-engram-2"]')?.textContent?.includes("✓")`,
+    "two selected simulation participants",
+  );
+  await waitForText("2 engrams will alternate turns", "shared participant count");
+  await click(`document.querySelector('[data-testid="button-launch-simulation"]')`, "launch shared simulation");
+  await waitFor(
+    "window.__simulationBrowserFixture.createBodies.length === 1",
+    "shared simulation create request",
+  );
+  const createBody = await devtools.evaluate("window.__simulationBrowserFixture.createBodies[0]");
+  if (
+    createBody.engramId !== 1 ||
+    JSON.stringify(createBody.participantEngramIds) !== JSON.stringify([1, 2])
+  ) {
+    throw new Error(`Shared simulation request lost participant selection: ${JSON.stringify(createBody)}`);
+  }
+  await waitFor(
+    "Boolean(document.querySelector('[data-testid=\"simulation-43\"]'))",
+    "shared simulation card",
+  );
+  await waitForText("What if the guide and scout shared the evacuation plan?", "shared simulation premise");
+  const sharedCardText = await devtools.evaluate(
+    `document.querySelector('[data-testid="simulation-43"]')?.innerText ?? ""`,
+  );
+  for (const participant of ["Scenario Guide", "Route Scout"]) {
+    if (!sharedCardText.includes(participant)) {
+      throw new Error(`Shared simulation card hid ${participant}: ${sharedCardText}`);
+    }
+  }
+  await click(`document.querySelector('[data-testid="button-steps-43"]')`, "shared simulation step log");
+  await waitForText("The guide marks the safest route through the blackout.", "guide step narrative");
+  await waitForText("The scout confirms the eastern passage is clear.", "scout step narrative");
+  const speakerRows = await devtools.evaluate(`({
+    guide: document.querySelector('[data-testid="simulation-step-102"]')?.innerText ?? "",
+    scout: document.querySelector('[data-testid="simulation-step-103"]')?.innerText ?? ""
+  })`);
+  if (
+    !speakerRows.guide.toLowerCase().includes("scenario guide") ||
+    !speakerRows.scout.toLowerCase().includes("route scout")
+  ) {
+    throw new Error(`Shared step speakers were not rendered: ${JSON.stringify(speakerRows)}`);
   }
 
   // The switch is present and enabled in the real Terminal UI. Use the same
