@@ -240,6 +240,7 @@ function userDataPath(...segments: string[]): string {
 // ---------------------------------------------------------------------------
 interface Settings {
   mode: "bundled" | "custom" | "offline" | "online";
+  uiLanguage: string;
   /** Listen on all interfaces so the mobile app can connect over LAN. */
   allowLan?: boolean;
   custom?: CustomGgufMetadata;
@@ -396,6 +397,7 @@ const DEFAULT_SETTINGS: Settings = {
   // (fully offline, zero setup). Falls back to "offline" (external local
   // server) at runtime if the bundled files are missing from this build.
   mode: "bundled",
+  uiLanguage: "en",
   offline: { baseUrl: "http://localhost:11434/v1", model: "llama3.1" },
   online: { baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini" },
 };
@@ -450,6 +452,11 @@ function loadSettings(): Settings {
         : undefined);
     return {
       mode: normalizeDesktopMode(parsed.mode),
+      uiLanguage:
+        typeof parsed.uiLanguage === "string" &&
+        /^[a-z]{2}$/i.test(parsed.uiLanguage)
+          ? parsed.uiLanguage.toLowerCase()
+          : DEFAULT_SETTINGS.uiLanguage,
       allowLan: parsed.allowLan === true,
       custom: selectedCustom,
       customModels,
@@ -1461,6 +1468,7 @@ ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {
     previous = loadSettings();
     next = {
       mode: normalizeDesktopMode(payload.mode),
+      uiLanguage: previous.uiLanguage,
       allowLan: payload.allowLan === true,
       custom: previous.custom,
       customModels: customModelsFor(previous),
@@ -1823,6 +1831,16 @@ ipcMain.handle("settings:close", () => {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.close();
   }
+});
+
+ipcMain.handle("ui-language:get", () => loadSettings().uiLanguage);
+
+ipcMain.handle("ui-language:set", (_event, language: unknown) => {
+  const normalized =
+    typeof language === "string" && /^[a-z]{2}$/i.test(language)
+      ? language.toLowerCase()
+      : DEFAULT_SETTINGS.uiLanguage;
+  saveSettings({ ...loadSettings(), uiLanguage: normalized });
 });
 
 // App version + current auto-update status, read by the Settings window so it can

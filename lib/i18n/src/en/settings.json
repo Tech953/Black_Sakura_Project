@@ -29,5 +29,17 @@
   "localServerReachableHint": "The local server responded. You can use this browser with the desktop engine.",
   "localServerUnavailable": "Unavailable",
   "localServerUnavailableHint": "Start the desktop app or local server, verify the address, then try again.",
-  "localServerInvalid": "Use an http:// or https:// origin without a path, query, fragment, username, or password."
+  "localServerInvalid": "Use an http:// or https:// origin without a path, query, fragment, username, or password.",
+  "update": {
+    "notAvailableInBuild": "Not available in this build",
+    "checking": "Checking for updates…",
+    "availableWithVersion": "Update {{version}} found — downloading…",
+    "available": "Update found — downloading…",
+    "downloading": "Downloading update… {{percent}}%",
+    "downloaded": "Restart to update",
+    "error": "Update check failed",
+    "upToDate": "Up to date",
+    "checkForUpdates": "Check for Updates",
+    "progressLabel": "Update download progress"
+  }
 }

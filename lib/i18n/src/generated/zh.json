@@ -1119,7 +1119,19 @@
     "localServerReachableHint": "本地服务器已响应。你可以在此浏览器中使用桌面引擎。",
     "localServerUnavailable": "不可用",
     "localServerUnavailableHint": "启动桌面应用或本地服务器，确认地址后重试。",
-    "localServerInvalid": "请使用不带路径、查询、片段、用户名或密码的 http:// 或 https:// origin。"
+    "localServerInvalid": "请使用不带路径、查询、片段、用户名或密码的 http:// 或 https:// origin。",
+    "update": {
+      "notAvailableInBuild": "Not available in this build",
+      "checking": "Checking for updates…",
+      "availableWithVersion": "Update {{version}} found — downloading…",
+      "available": "Update found — downloading…",
+      "downloading": "Downloading update… {{percent}}%",
+      "downloaded": "Restart to update",
+      "error": "Update check failed",
+      "upToDate": "Up to date",
+      "checkForUpdates": "Check for Updates",
+      "progressLabel": "Update download progress"
+    }
   },
   "simulations": {
     "title": "模拟舱",

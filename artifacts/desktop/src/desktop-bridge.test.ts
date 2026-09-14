@@ -36,6 +36,7 @@ describe("desktop renderer bridge", () => {
       "downloadOfflineModel",
       "getAppInfo",
       "getSettings",
+      "getUiLanguage",
       "importGguf",
       "installDownloadedUpdate",
       "onGgufImportStatus",
@@ -45,6 +46,7 @@ describe("desktop renderer bridge", () => {
       "removeOfflineModel",
       "renameGguf",
       "saveSettings",
+      "setUiLanguage",
     ]);
   });
 
@@ -88,6 +90,17 @@ describe("desktop renderer bridge", () => {
 
     await expect(bridge.getAppInfo()).resolves.toEqual(appInfo);
     expect(invoke).toHaveBeenCalledWith("app:info");
+  });
+
+  it("persists the dashboard UI language through the main-process bridge", async () => {
+    const { ipc, invoke } = fakeIpc();
+    const bridge = createEngramDesktopBridge(ipc);
+
+    await bridge.setUiLanguage("fr");
+    await bridge.getUiLanguage();
+
+    expect(invoke).toHaveBeenNthCalledWith(1, "ui-language:set", "fr");
+    expect(invoke).toHaveBeenNthCalledWith(2, "ui-language:get");
   });
 
   it("routes update installation through the dedicated main-process channel", async () => {

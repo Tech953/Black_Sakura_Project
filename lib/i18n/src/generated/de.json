@@ -1119,7 +1119,19 @@
     "localServerReachableHint": "Der lokale Server hat geantwortet. Du kannst diesen Browser mit der Desktop-Engine verwenden.",
     "localServerUnavailable": "Nicht verfügbar",
     "localServerUnavailableHint": "Starte die Desktop-App oder den lokalen Server, überprüfe die Adresse und versuche es erneut.",
-    "localServerInvalid": "Verwende einen http://- oder https://-Ursprung ohne Pfad, Abfrage, Fragment, Benutzernamen oder Passwort."
+    "localServerInvalid": "Verwende einen http://- oder https://-Ursprung ohne Pfad, Abfrage, Fragment, Benutzernamen oder Passwort.",
+    "update": {
+      "notAvailableInBuild": "Not available in this build",
+      "checking": "Checking for updates…",
+      "availableWithVersion": "Update {{version}} found — downloading…",
+      "available": "Update found — downloading…",
+      "downloading": "Downloading update… {{percent}}%",
+      "downloaded": "Restart to update",
+      "error": "Update check failed",
+      "upToDate": "Up to date",
+      "checkForUpdates": "Check for Updates",
+      "progressLabel": "Update download progress"
+    }
   },
   "simulations": {
     "title": "SIMULATIONSKAMMERN",

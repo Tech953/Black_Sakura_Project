@@ -1119,7 +1119,19 @@
     "localServerReachableHint": "Локальный сервер ответил. Вы можете использовать этот браузер с десктопным движком.",
     "localServerUnavailable": "Недоступен",
     "localServerUnavailableHint": "Запустите десктопное приложение или локальный сервер, проверьте адрес и повторите попытку.",
-    "localServerInvalid": "Используйте источник http:// или https:// без пути, запроса, фрагмента, имени пользователя или пароля."
+    "localServerInvalid": "Используйте источник http:// или https:// без пути, запроса, фрагмента, имени пользователя или пароля.",
+    "update": {
+      "notAvailableInBuild": "Not available in this build",
+      "checking": "Checking for updates…",
+      "availableWithVersion": "Update {{version}} found — downloading…",
+      "available": "Update found — downloading…",
+      "downloading": "Downloading update… {{percent}}%",
+      "downloaded": "Restart to update",
+      "error": "Update check failed",
+      "upToDate": "Up to date",
+      "checkForUpdates": "Check for Updates",
+      "progressLabel": "Update download progress"
+    }
   },
   "simulations": {
     "title": "КАМЕРЫ СИМУЛЯЦИИ",
