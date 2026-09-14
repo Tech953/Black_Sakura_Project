@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 
 const port = Number(process.env.WEB_BROWSER_TEST_PORT ?? 5188);
 const appUrl = process.env.ENGRAM_BROWSER_TEST_URL ?? `http://127.0.0.1:${port}`;
@@ -12,7 +13,7 @@ let serverOutput = "";
 
 if (ownsServer) {
   server = spawn(pnpm, ["run", "dev"], {
-    cwd: new URL("..", import.meta.url),
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
     env: {
       ...process.env,
       PORT: String(port),
@@ -55,7 +56,7 @@ try {
   await waitForServer();
   const result = spawn(
     process.execPath,
-    [new URL("./simulations-browser-regression.mjs", import.meta.url)],
+    [fileURLToPath(new URL("./simulations-browser-regression.mjs", import.meta.url))],
     {
       env: {
         ...process.env,
