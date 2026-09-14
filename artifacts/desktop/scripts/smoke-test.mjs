@@ -24,7 +24,9 @@ import {
   existsSync,
   readdirSync,
   mkdtempSync,
+  mkdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
@@ -189,6 +191,134 @@ async function serveOfflineModelFixture(
 
 function log(msg) {
   console.log(`[smoke] ${sanitizeSmokeText(msg)}`);
+}
+
+async function waitForServerStopped(healthUrl) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    try {
+      const response = await fetch(healthUrl);
+      if (!response.ok) return;
+    } catch {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(
+    `shutdown ordering phase failed: embedded server still answered ${healthUrl} after installer handoff`,
+  );
+}
+
+async function runPackagedUpdateSmoke(
+  bridgeWindow,
+  healthUrl,
+  diagnosticsDir,
+) {
+  let updateResult;
+  try {
+    updateResult = await bridgeWindow.evaluate(async () => {
+      const statuses = [];
+      const unsubscribe = window.engram.onUpdateStatus((status) => {
+        statuses.push(status);
+      });
+      try {
+        await window.engram.checkForUpdates();
+        const deadline = Date.now() + 15_000;
+        while (
+          Date.now() < deadline &&
+          !statuses.some((status) => status.state === "downloaded")
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        return {
+          statuses,
+          appInfo: await window.engram.getAppInfo(),
+        };
+      } finally {
+        unsubscribe();
+      }
+    });
+  } catch (error) {
+    throw new Error(`feed setup phase failed: ${String(error)}`);
+  }
+
+  const states = updateResult.statuses.map((status) => status.state);
+  if (!states.includes("checking") || !states.includes("available")) {
+    throw new Error(
+      `feed setup phase failed: expected checking/available states, got ${JSON.stringify(updateResult)}`,
+    );
+  }
+  if (!states.includes("downloading") || !states.includes("downloaded")) {
+    throw new Error(
+      `download handling phase failed: expected downloading/downloaded states, got ${JSON.stringify(updateResult)}`,
+    );
+  }
+  if (updateResult.appInfo.updateStatus.state !== "downloaded") {
+    throw new Error(
+      `download handling phase failed: app info did not retain downloaded state: ${JSON.stringify(updateResult.appInfo)}`,
+    );
+  }
+  let healthBeforeInstall;
+  try {
+    const response = await fetch(healthUrl);
+    healthBeforeInstall = {
+      status: response.status,
+      body: await response.text(),
+    };
+  } catch (error) {
+    throw new Error(
+      `download handling phase failed: server was not healthy after defer: ${String(error)}`,
+    );
+  }
+  if (healthBeforeInstall.status !== 200) {
+    throw new Error(
+      `download handling phase failed: server was not healthy after defer (${healthBeforeInstall.status}, ${healthBeforeInstall.body})`,
+    );
+  }
+  log("packaged updater feed, download, and defer states passed");
+
+  let installResult;
+  try {
+    installResult = await bridgeWindow.evaluate(() =>
+      window.engram.installDownloadedUpdate(),
+    );
+  } catch (error) {
+    throw new Error(`shutdown ordering phase failed: ${String(error)}`);
+  }
+  if (!installResult?.ok) {
+    throw new Error(
+      `shutdown ordering phase failed: ${installResult?.error ?? "installer handoff was rejected"}`,
+    );
+  }
+  await waitForServerStopped(healthUrl);
+
+  const updateLogPath = path.join(diagnosticsDir, "update.log");
+  const updateLog = existsSync(updateLogPath)
+    ? readFileSync(updateLogPath, "utf8")
+    : "";
+  const requiredPhases = [
+    "phase=feed-setup",
+    "phase=download-progress",
+    "phase=downloaded",
+    "phase=deferred",
+    "phase=server-stopped",
+    "phase=quit-and-install",
+  ];
+  for (const phase of requiredPhases) {
+    if (!updateLog.includes(phase)) {
+      throw new Error(
+        `${phase === "server-stopped" || phase === "quit-and-install" ? "shutdown ordering" : "download handling"} phase failed: missing ${phase} in ${updateLogPath}`,
+      );
+    }
+  }
+  if (
+    updateLog.indexOf("phase=server-stopped") >
+    updateLog.indexOf("phase=quit-and-install")
+  ) {
+    throw new Error(
+      `shutdown ordering phase failed: quit-and-install preceded server-stopped\n${updateLog}`,
+    );
+  }
+  log("packaged updater restart handoff waited for embedded server shutdown");
 }
 
 function fail(msg) {
@@ -357,6 +487,11 @@ if (process.env.EXPECT_SLIM_LLM === "1") {
 // ---------------------------------------------------------------------------
 async function main() {
   const userDataDir = mkdtempSync(path.join(os.tmpdir(), "engram-smoke-"));
+  const smokeDiagnosticsDir =
+    process.env.ENGRAM_SMOKE_DIAGNOSTICS_DIR ??
+    path.join(userDataDir, "smoke-diagnostics");
+  mkdirSync(smokeDiagnosticsDir, { recursive: true });
+  rmSync(path.join(smokeDiagnosticsDir, "update.log"), { force: true });
   const ggufFixture = process.env.ENGRAM_PACKAGED_GGUF_FIXTURE;
   if (
     !ggufFixture ||
@@ -440,6 +575,7 @@ async function main() {
       ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
       ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1",
       ENGRAM_PACKAGED_UPGRADE_STAGE: "A",
+      ENGRAM_SMOKE_DIAGNOSTICS_DIR: smokeDiagnosticsDir,
     },
   });
 
@@ -683,6 +819,7 @@ async function main() {
         ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE: "1",
         ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
         ENGRAM_PACKAGED_UPGRADE_STAGE: "custom-restart",
+        ENGRAM_SMOKE_DIAGNOSTICS_DIR: smokeDiagnosticsDir,
       },
     });
     let customRestartedSettings;
@@ -890,6 +1027,7 @@ async function main() {
         ENGRAM_PACKAGED_UPGRADE_FAIL_START: "1",
         ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
         ENGRAM_PACKAGED_UPGRADE_STAGE: "B-failed",
+        ENGRAM_SMOKE_DIAGNOSTICS_DIR: smokeDiagnosticsDir,
       },
     });
     await new Promise((resolve, reject) => {
@@ -918,6 +1056,7 @@ async function main() {
         ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE: "1",
         ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
         ENGRAM_PACKAGED_UPGRADE_STAGE: "B",
+        ENGRAM_SMOKE_DIAGNOSTICS_DIR: smokeDiagnosticsDir,
       },
     });
 
@@ -1030,6 +1169,16 @@ async function main() {
         );
       }
       log("offline model cancellation-safe lifecycle completed through IPC");
+      if (
+        process.platform === "linux" &&
+        process.env.ENGRAM_PACKAGED_UPDATE_SMOKE === "1"
+      ) {
+        await runPackagedUpdateSmoke(
+          upgradedSettings,
+          `${new URL(upgradedWindow.url()).origin}/api/healthz`,
+          smokeDiagnosticsDir,
+        );
+      }
     } finally {
       try {
         await upgradedApp.close();

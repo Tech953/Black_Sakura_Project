@@ -9,6 +9,7 @@
 - [Desktop auto-update](desktop-auto-update.md) — how the Electron app self-updates and the non-obvious constraints that make it actually fire.
 - [Desktop release draft ownership](desktop-release-draft-ownership.md) — tag-run serialization and push-only release guards prevent stale cleanup from deleting a newer draft.
 - [Desktop pre-release smoke](desktop-pre-release-smoke.md) — run the packaged Linux launch check on relevant pushes/PRs while keeping native release jobs tag/manual-only.
+- [Desktop packaged updater smoke](desktop-packaged-updater-smoke.md) — drive updater IPC from the Settings bridge, keep the fixture CI-only, and classify feed/download/shutdown phases.
 - [Desktop CI fixture caching](desktop-ci-fixture-caching.md) — cache keys must include immutable runtime/model checksums; cached fixtures still need local verification and atomic replacement.
 - [Packaged smoke diagnostics](packaged-smoke-diagnostics.md) — CI-only, bounded, redacted logs must survive Electron launch, child startup, and health failures.
 - [Desktop embedded DB seam (pglite)](desktop-embedded-db.md) — running with an embedded DB for desktop, and the non-obvious bundling constraints.
