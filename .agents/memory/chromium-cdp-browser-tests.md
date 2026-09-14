@@ -9,6 +9,12 @@ The workspace's Chromium can be driven directly through Node's built-in WebSocke
 
 **How to apply:** Keep the fixture guarded by `import.meta.env.DEV`, run it against an isolated Vite port, set page-level download behavior, and always terminate Chromium before removing temporary profiles. Expo Router web tab labels may have visible text without `aria-label`; scope row actions by their visible row text rather than assuming accessibility attributes exist.
 
+The download-page regression also requires an isolated Vite server started with `VITE_BROWSER_TEST=true`; the normal preview remains signed out and stops at the landing page before protected download routes render.
+
+**Why:** The download route is protected in normal development, while the regression's local fixture intentionally supplies a DEV-only authenticated Clerk state.
+
+**How to apply:** Start the web artifact with `VITE_BROWSER_TEST=true` and a free `PORT`, then pass that URL through `ENGRAM_BROWSER_TEST_URL` instead of changing production auth behavior.
+
 For Expo mobile export coverage, the browser path cannot use `expo-file-system` native writes. Route web exports through the existing `Share` fallback and reserve native file generation checks for an Android/iOS device or native test harness.
 
 **Why:** The browser regression must exercise the real UI without pretending native file APIs exist on web, and broad accessibility-label selectors can mutate the wrong history row when several conversations are visible.
