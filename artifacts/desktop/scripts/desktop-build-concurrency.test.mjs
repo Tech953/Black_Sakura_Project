@@ -53,4 +53,18 @@ describe("desktop release workflow concurrency", () => {
       /github\.event_name\s*==\s*'push'\s*&&\s*github\.ref_type\s*==\s*'tag'\s*&&\s*'always'/,
     );
   });
+
+  it("summarizes cleanup outcomes and fails on deletion errors", () => {
+    expect(workflow).toContain('>> "$GITHUB_STEP_SUMMARY"');
+    expect(workflow).toMatch(/Matching drafts found:/);
+    expect(workflow).toMatch(/Release IDs deleted:/);
+    expect(workflow).toMatch(/already clean/);
+    expect(workflow).toMatch(
+      /if gh api -X DELETE "repos\/\$REPO\/releases\/\$RELEASE_ID"; then/,
+    );
+    expect(workflow).toMatch(
+      /write_summary "failed" "\$FOUND_COUNT" "\$DELETED_LIST" "\$FAILED_LIST"/,
+    );
+    expect(workflow).toMatch(/exit 1/);
+  });
 });
