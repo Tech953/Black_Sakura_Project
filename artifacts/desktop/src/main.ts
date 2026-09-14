@@ -67,6 +67,8 @@ import type {
 } from "./desktop-bridge";
 import {
   setupAutoUpdates as setupAutoUpdateFlow,
+  DEFERRED_UPDATE_FAILURE_MESSAGE,
+  UPDATE_INSTALL_FAILURE_MESSAGE,
   type AutoUpdaterLike,
 } from "./auto-update";
 import { createAppInfo, createUpdateStatusStore } from "./update-status";
@@ -236,15 +238,94 @@ let updateController: ReturnType<typeof setupAutoUpdateFlow> = {
   },
 };
 
-const updateStatusStore = createUpdateStatusStore((status) => {
-  for (const window of [mainWindow, settingsWindow]) {
-    if (window && !window.isDestroyed()) {
-      window.webContents.send("update:status", status);
+const RELEASE_DOWNLOAD_URL = "https://github.com/Tech953/Ch-IO/releases/latest";
+const UPDATE_STATUS_FILE = "deferred-update-failure.json";
+
+function updateStatusFilePath(): string {
+  return userDataPath(UPDATE_STATUS_FILE);
+}
+
+function loadDeferredUpdateFailure(): UpdateStatus | null {
+  try {
+    const parsed = JSON.parse(
+      readFileSync(updateStatusFilePath(), "utf8"),
+    ) as { state?: unknown; deferred?: unknown; retryable?: unknown };
+    if (
+      parsed.state === "error" &&
+      parsed.deferred === true &&
+      parsed.retryable === true
+    ) {
+      return {
+        state: "error",
+        message: DEFERRED_UPDATE_FAILURE_MESSAGE,
+        deferred: true,
+        retryable: true,
+      };
     }
+  } catch {
+    // Missing or malformed recovery state is equivalent to no prior failure.
   }
-});
+  return null;
+}
+
+function clearDeferredUpdateFailure(): void {
+  try {
+    rmSync(updateStatusFilePath(), { force: true });
+  } catch {
+    // Recovery state is best effort and must never block the app.
+  }
+}
+
+const persistedDeferredUpdateFailure = loadDeferredUpdateFailure();
+let hasPersistedDeferredUpdateFailure = Boolean(
+  persistedDeferredUpdateFailure,
+);
+
+const updateStatusStore = createUpdateStatusStore(
+  (status) => {
+    for (const window of [mainWindow, settingsWindow]) {
+      if (window && !window.isDestroyed()) {
+        window.webContents.send("update:status", status);
+      }
+    }
+  },
+  persistedDeferredUpdateFailure ?? undefined,
+);
 
 function setUpdateStatus(status: UpdateStatus): void {
+  if (
+    hasPersistedDeferredUpdateFailure &&
+    ((status.state === "checking" && !status.manual) ||
+      (status.state === "error" && !status.deferred))
+  ) {
+    return;
+  }
+  if (
+    (status.state === "checking" && status.manual) ||
+    status.state === "available" ||
+    status.state === "downloading" ||
+    status.state === "downloaded" ||
+    status.state === "not-available"
+  ) {
+    hasPersistedDeferredUpdateFailure = false;
+    clearDeferredUpdateFailure();
+  }
+  if (status.state === "error" && status.deferred) {
+    hasPersistedDeferredUpdateFailure = true;
+    try {
+      writeFileSync(
+        updateStatusFilePath(),
+        JSON.stringify({
+          state: "error",
+          deferred: true,
+          retryable: true,
+        }),
+        { mode: 0o600 },
+      );
+    } catch {
+      // The in-memory status still gives the current session recovery UI.
+    }
+  }
   updateStatusStore.set(status);
 }
 
@@ -1894,7 +1975,16 @@ ipcMain.handle("update:install", async () => {
     await updateController.installDownloadedUpdate();
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: errorMessage(error) };
+    return { ok: false, error: UPDATE_INSTALL_FAILURE_MESSAGE };
+  }
+});
+
+ipcMain.handle("update:release", async () => {
+  try {
+    await shell.openExternal(RELEASE_DOWNLOAD_URL);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not open the release download page." };
   }
 });
 

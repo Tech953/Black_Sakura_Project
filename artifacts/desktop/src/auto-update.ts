@@ -1,5 +1,10 @@
 import type { UpdateStatus } from "./desktop-bridge";
 
+export const UPDATE_CHECK_FAILURE_MESSAGE = "Could not check for updates.";
+export const UPDATE_INSTALL_FAILURE_MESSAGE = "Update could not be installed.";
+export const DEFERRED_UPDATE_FAILURE_MESSAGE =
+  "The downloaded update could not be installed. Try again or download the latest release.";
+
 export type UpdateInfo = { version?: string };
 export type DownloadProgress = {
   percent?: number;
@@ -71,6 +76,7 @@ export type AutoUpdateController = {
 
 export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
   let manualUpdateCheck = false;
+  let deferredInstall = false;
   let downloadedUpdate: UpdateInfo | null = null;
   let installPromise: Promise<void> | null = null;
   const schedule =
@@ -89,9 +95,13 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
       return;
     }
     manualUpdateCheck = true;
+    deferredInstall = false;
     deps.setStatus({ state: "checking", manual: true });
     void deps.updater.checkForUpdates().catch((error) => {
-      deps.setStatus({ state: "error", message: String(error) });
+      deps.setStatus({
+        state: "error",
+        message: UPDATE_CHECK_FAILURE_MESSAGE,
+      });
       deps.logError?.("[desktop] manual update check failed:", error);
       manualUpdateCheck = false;
     });
@@ -120,6 +130,14 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
         })
         .catch((error) => {
           installPromise = null;
+          if (deferredInstall) {
+            deps.setStatus({
+              state: "error",
+              message: DEFERRED_UPDATE_FAILURE_MESSAGE,
+              deferred: true,
+              retryable: true,
+            });
+          }
           throw error;
         });
     }
@@ -199,7 +217,17 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
   });
 
   deps.updater.on("error", (error) => {
-    deps.setStatus({ state: "error", message: String(error) });
+    const deferredFailure = deferredInstall && downloadedUpdate !== null;
+    deps.setStatus(
+      deferredFailure
+        ? {
+            state: "error",
+            message: DEFERRED_UPDATE_FAILURE_MESSAGE,
+            deferred: true,
+            retryable: true,
+          }
+        : { state: "error", message: UPDATE_CHECK_FAILURE_MESSAGE },
+    );
     deps.resetWindowTitle();
     const window = deps.getMainWindow();
     if (window && !window.isDestroyed()) window.setProgressBar(-1);
@@ -209,7 +237,7 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
         type: "error",
         title: "Update check failed",
         message: "Could not check for updates.",
-        detail: String(error),
+        detail: UPDATE_CHECK_FAILURE_MESSAGE,
         buttons: ["OK"],
       });
     }
@@ -218,6 +246,7 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
 
   deps.updater.on("update-downloaded", (info) => {
     downloadedUpdate = info;
+    deferredInstall = false;
     installPromise = null;
     deps.setStatus({ state: "downloaded", version: info?.version });
     manualUpdateCheck = false;
@@ -242,6 +271,7 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
             deps.logError?.("[desktop] update installation failed:", error);
           });
         } else {
+          deferredInstall = true;
           deps.updater.autoInstallOnAppQuit = true;
         }
       });

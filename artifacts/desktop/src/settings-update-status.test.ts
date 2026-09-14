@@ -16,11 +16,14 @@ type RenderUpdateStatus = (
   info: { updatesSupported: boolean },
   status: {
     state: string;
+    message?: string;
     percent?: number;
     version?: string;
     transferred?: number;
     total?: number;
     bytesPerSecond?: number;
+    deferred?: boolean;
+    retryable?: boolean;
   },
   copy?: Record<string, string>,
 ) => void;
@@ -40,11 +43,14 @@ function loadRenderer(): {
     info: { updatesSupported: boolean },
     status: {
       state: string;
+      message?: string;
       percent?: number;
       version?: string;
       transferred?: number;
       total?: number;
       bytesPerSecond?: number;
+      deferred?: boolean;
+      retryable?: boolean;
     },
     copy?: Record<string, string>,
   ) => void;
@@ -65,6 +71,10 @@ function loadRenderer(): {
     "update-progress": createFakeElement(),
     "update-progress-fill": createFakeElement(),
     "update-progress-details": createFakeElement(),
+    "update-recovery": createFakeElement(),
+    "update-recovery-message": createFakeElement(),
+    "retry-update": createFakeElement(),
+    "open-release-page": createFakeElement(),
   };
   const dollar = (id: string): FakeElement => {
     const element = elements[id];
@@ -113,6 +123,12 @@ describe("Settings update status renderer", () => {
       downloading: "Téléchargement de la mise à jour… {{percent}} %",
       downloaded: "Redémarrer pour mettre à jour",
       error: "Échec de la recherche de mises à jour",
+      deferredInstallFailed: "Échec de l’installation de la mise à jour",
+      deferredInstallMessage:
+        "La mise à jour téléchargée n’a pas pu être installée.",
+      retryUpdate: "Réessayer la mise à jour",
+      downloadLatestRelease: "Télécharger la dernière version",
+      releasePageError: "Impossible d’ouvrir la page de téléchargement.",
       upToDate: "À jour",
       checkForUpdates: "Rechercher des mises à jour",
       progressLabel: "Progression du téléchargement de la mise à jour",
@@ -166,6 +182,33 @@ describe("Settings update status renderer", () => {
     expect(
       elements["update-progress-details"].classList.add,
     ).toHaveBeenLastCalledWith("hidden");
+  });
+
+  it("shows recovery actions for a deferred install failure", () => {
+    const { renderUpdateStatus, elements } = loadRenderer();
+
+    renderUpdateStatus(
+      { updatesSupported: true },
+      {
+        state: "error",
+        message: "/internal/path and stack trace must not be rendered",
+        deferred: true,
+        retryable: true,
+      },
+    );
+
+    expect(elements["update-status"].textContent).toBe(
+      "Update could not be installed",
+    );
+    expect(elements["update-recovery"].classList.remove).toHaveBeenCalledWith(
+      "hidden",
+    );
+    expect(elements["update-recovery-message"].textContent).toBe(
+      "The downloaded update could not be installed. Try again or download the latest release.",
+    );
+    expect(elements["update-recovery-message"].textContent).not.toContain(
+      "/internal/path",
+    );
   });
 
   it("keeps transfer details hidden when Electron omits transfer fields", () => {

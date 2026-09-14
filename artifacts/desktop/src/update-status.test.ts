@@ -36,4 +36,16 @@ describe("desktop update status contract", () => {
       updateStatus,
     });
   });
+
+  it("hydrates the status store with a persisted recovery state", () => {
+    const initial: UpdateStatus = {
+      state: "error",
+      message: "The downloaded update could not be installed.",
+      deferred: true,
+      retryable: true,
+    };
+    const store = createUpdateStatusStore(vi.fn(), initial);
+
+    expect(store.get()).toEqual(initial);
+  });
 });
