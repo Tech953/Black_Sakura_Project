@@ -925,25 +925,9 @@ jobs:
             --jq '.[].name')"
           echo "Assets in draft release $RELEASE_ID:"
           printf '%s\n' "$ASSET_NAMES"
+          printf '%s\n' "$ASSET_NAMES" | RELEASE_ID="$RELEASE_ID" \
+            node artifacts/desktop/scripts/validate-release-assets.mjs
 
-          require_asset() {
-            local label="$1"
-            local pattern="$2"
-            if ! grep -Eq "$pattern" <<< "$ASSET_NAMES"; then
-              echo "Missing required $label (pattern: $pattern)." >&2
-              exit 1
-            fi
-          }
-
-          require_asset "Linux AppImage" '\.AppImage$'
-          require_asset "Linux deb package" '\.deb$'
-          require_asset "macOS DMG" '\.dmg$'
-          require_asset "Windows installer" '\.exe$'
-          require_asset "Windows update manifest" '^latest\.yml$'
-          require_asset "Linux update manifest" '^latest-linux\.yml$'
-          require_asset "macOS update manifest" '^latest-mac\.yml$'
-
-          echo "All required desktop installers and update manifests are present."
           echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
 
       # The draft is now known to be complete. Setting draft=false makes the
