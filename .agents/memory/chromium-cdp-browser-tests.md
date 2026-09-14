@@ -50,3 +50,9 @@ For polling-failure regressions, toggle the injected API failure while the page 
 **Why:** Route changes may reuse a successful cached query without immediately exposing a newly injected failure, making a cross-route assertion test cache/refetch timing instead of the user-visible stale-state contract.
 
 **How to apply:** Assert stale-data recovery on the active polling page. Cover another route's unavailable state with a dedicated initial-load fixture or a separate browser scenario rather than depending on remount refetch timing.
+
+Wouter's `useLocation()` value is pathname-oriented in this app and should not be used as the source of query parameters. Read `window.location.search` when a route's behavior depends on a query string, and keep the pathname in the hook dependency list for SPA updates.
+
+**Why:** A browser navigation to `/media?asset=...` updated the URL but left the focused-card logic blind to the query when it parsed the hook value.
+
+**How to apply:** Browser regressions should assert both the URL search parameter and the resulting stateful UI, such as a focused or expanded detail card.
