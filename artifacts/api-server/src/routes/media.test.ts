@@ -151,7 +151,12 @@ describe("GET /media", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as any;
     expect(Array.isArray(body)).toBe(true);
-    expect(body[0]).toMatchObject({ id: 7, engramId: 3, status: "completed" });
+    expect(body[0]).toMatchObject({
+      id: 7,
+      engramId: 3,
+      status: "completed",
+      resultState: "complete",
+    });
     expect(h.loadMediaAssets).toHaveBeenCalledWith({
       ownerId: "test-owner",
       engramId: 3,
@@ -175,11 +180,25 @@ describe("GET /media/:id", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as any;
     expect(body.asset.id).toBe(7);
+    expect(body.asset.resultState).toBe("complete");
     expect(body.observations).toHaveLength(1);
     expect(body.observations[0]).toMatchObject({
       provenance: "observed",
       source: "media:7",
     });
+  });
+
+  it("serializes a failed asset with observations as a partial result", async () => {
+    h.loadMediaAssetById.mockResolvedValueOnce(
+      makeAsset({ status: "failed", observationCount: 1 }),
+    );
+    h.loadMediaObservations.mockResolvedValueOnce([makeObservation()]);
+
+    const res = await fetch(`${base}/media/7`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.asset.resultState).toBe("partial");
+    expect(body.asset.observationCount).toBe(1);
   });
 
   it("404s when the asset is missing", async () => {

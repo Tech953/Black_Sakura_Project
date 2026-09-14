@@ -42,7 +42,11 @@ import {
 } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { MediaAsset } from "@workspace/db/schema";
-import { createMediaAsset } from "../lib/media-store";
+import {
+  appendMediaObservation,
+  createMediaAsset,
+  requeueMediaAsset,
+} from "../lib/media-store";
 import { runMediaTick } from "./media-worker";
 
 // Bring the in-memory schema up before any test runs (migrate only — no seed).
@@ -258,6 +262,42 @@ describe("runMediaTick — full lifecycle against a real DB", () => {
     // A failed extraction leaves the world model untouched.
     expect(await allWorldModelRows()).toHaveLength(0);
     expect(await observationLinkCount(asset.id)).toBe(0);
+  });
+
+  it("replaces pre-existing partial observations on retry without duplicates", async () => {
+    const engramId = await insertEngram();
+    const asset = await seedPendingAsset(engramId);
+
+    // Model the durable state left by an older/partial attempt, then make the
+    // retry eligible. The worker must clear this set before writing the fresh set.
+    await appendMediaObservation({
+      assetId: asset.id,
+      engramId,
+      content: "stale partial observation",
+      confidence: 0.85,
+    });
+    await db
+      .update(mediaAssetsTable)
+      .set({
+        status: "failed",
+        error: "temporary failure",
+        observationCount: 1,
+      })
+      .where(eq(mediaAssetsTable.id, asset.id));
+    expect(await observationLinkCount(asset.id)).toBe(1);
+
+    expect(await requeueMediaAsset(asset.id)).toBeTruthy();
+    await runMediaTick();
+
+    const completed = await reload(asset.id);
+    expect(completed.status).toBe("completed");
+    expect(completed.observationCount).toBe(2);
+    expect(await allWorldModelRows()).toHaveLength(2);
+    expect(await observationLinkCount(asset.id)).toBe(2);
+    expect((await allWorldModelRows()).map((row) => row.content).sort()).toEqual([
+      "A gull settles on the rail.",
+      "A lighthouse blinks twice.",
+    ]);
   });
 });
 

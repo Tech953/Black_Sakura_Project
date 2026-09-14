@@ -675,7 +675,9 @@
       "minutesAgo": "{{count}}분 전",
       "hoursAgo": "{{count}}시간 전",
       "daysAgo": "{{count}}일 전"
-    }
+    },
+    "noResultSaved": "No observations were saved. Retry to run perception again.",
+    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result."
   },
   "memory": {
     "title": "메모리 아키텍처",

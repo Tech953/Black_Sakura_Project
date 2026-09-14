@@ -19,6 +19,8 @@
   "observationCount_one": "{{count}} observation",
   "observationCount_other": "{{count}} observations",
   "perceptionFailed": "Perception failed",
+  "noResultSaved": "No observations were saved. Retry to run perception again.",
+  "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result.",
   "retry": "Retry",
   "delete": "Delete",
   "details": "Details",

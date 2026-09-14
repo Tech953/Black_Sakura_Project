@@ -675,7 +675,9 @@
       "minutesAgo": "منذ {{count}} د",
       "hoursAgo": "منذ {{count}} س",
       "daysAgo": "منذ {{count}} ي"
-    }
+    },
+    "noResultSaved": "No observations were saved. Retry to run perception again.",
+    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result."
   },
   "memory": {
     "title": "بنية الذاكرة",
