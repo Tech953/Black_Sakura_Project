@@ -989,13 +989,52 @@ jobs:
           echo "Looking for failed draft release(s) named '$TAG' in $REPO"
           RELEASE_IDS="$(gh api "repos/$REPO/releases" --paginate \
             --jq ".[] | select(.draft == true and (.tag_name == \"$TAG\" or .name == \"$TAG\")) | .id")"
+          write_summary() {
+            local result="$1"
+            local found="$2"
+            local deleted="$3"
+            local failed="$4"
+            {
+              echo "## Failed draft release cleanup"
+              echo
+              printf '%s\n' "- Tag: $TAG"
+              printf '%s\n' "- Matching drafts found: $found"
+              printf '%s\n' "- Release IDs deleted: ${deleted:-none}"
+              if [ -n "$failed" ]; then
+                printf '%s\n' "- Release IDs that failed deletion: $failed"
+              fi
+              printf '%s\n' "- Result: $result"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
           if [ -z "$RELEASE_IDS" ]; then
             echo "No matching draft release found for tag '$TAG'."
+            write_summary "already clean" "0" "" ""
             exit 0
           fi
-          while IFS= read -r RELEASE_ID; do
+
+          mapfile -t RELEASE_ID_LIST <<< "$RELEASE_IDS"
+          FOUND_COUNT="${#RELEASE_ID_LIST[@]}"
+          DELETED_IDS=()
+          FAILED_IDS=()
+          for RELEASE_ID in "${RELEASE_ID_LIST[@]}"; do
             [ -n "$RELEASE_ID" ] || continue
             echo "Deleting failed draft release id $RELEASE_ID"
-            gh api -X DELETE "repos/$REPO/releases/$RELEASE_ID"
-          done <<< "$RELEASE_IDS"
+            if gh api -X DELETE "repos/$REPO/releases/$RELEASE_ID"; then
+              DELETED_IDS+=("$RELEASE_ID")
+            else
+              echo "Failed to delete draft release id $RELEASE_ID" >&2
+              FAILED_IDS+=("$RELEASE_ID")
+            fi
+          done
+
+          DELETED_LIST="$(IFS=', '; echo "${DELETED_IDS[*]}")"
+          FAILED_LIST="$(IFS=', '; echo "${FAILED_IDS[*]}")"
+          if [ "${#FAILED_IDS[@]}" -gt 0 ]; then
+            write_summary "failed" "$FOUND_COUNT" "$DELETED_LIST" "$FAILED_LIST"
+            echo "Failed draft release cleanup for '$TAG'." >&2
+            exit 1
+          fi
+
+          write_summary "deleted all matching drafts" "$FOUND_COUNT" "$DELETED_LIST" ""
           echo "Failed draft release cleanup complete for '$TAG'."
