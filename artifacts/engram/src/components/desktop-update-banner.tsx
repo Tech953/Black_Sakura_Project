@@ -6,15 +6,11 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-
-type DesktopUpdateStatus =
-  | { state: "idle" }
-  | { state: "checking"; manual?: boolean }
-  | { state: "available"; version?: string }
-  | { state: "not-available"; manual?: boolean }
-  | { state: "downloading"; percent: number }
-  | { state: "downloaded"; version?: string }
-  | { state: "error"; message: string };
+import {
+  clampProgress,
+  statusText,
+  type DesktopUpdateStatus,
+} from "./desktop-update-banner-logic";
 
 type DesktopBridge = {
   getAppInfo: () => Promise<{ updateStatus: DesktopUpdateStatus }>;
@@ -28,34 +24,14 @@ function desktopBridge(): DesktopBridge | undefined {
   return (window as Window & { engram?: DesktopBridge }).engram;
 }
 
-function statusText(status: DesktopUpdateStatus): string {
-  switch (status.state) {
-    case "checking":
-      return "Checking for updates…";
-    case "available":
-      return status.version
-        ? `Update ${status.version} available — downloading…`
-        : "Update available — downloading…";
-    case "downloading":
-      return `Downloading update… ${status.percent}%`;
-    case "downloaded":
-      return status.version
-        ? `Update ${status.version} ready to install`
-        : "Update ready to install";
-    case "not-available":
-      return "ENGRAM is up to date";
-    case "error":
-      return "Update check failed";
-    default:
-      return "";
-  }
-}
-
 export default function DesktopUpdateBanner() {
   const [status, setStatus] = useState<DesktopUpdateStatus>({ state: "idle" });
   const [dismissed, setDismissed] = useState(false);
   const [installing, setInstalling] = useState(false);
   const previousState = useRef<DesktopUpdateStatus["state"]>("idle");
+  const bannerRef = useRef<HTMLElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const wasVisibleRef = useRef(false);
 
   useEffect(() => {
     const bridge = desktopBridge();
@@ -98,13 +74,46 @@ export default function DesktopUpdateBanner() {
       status.state === "error" ||
       isManualCheck);
 
-  if (!visible) return null;
-
   const isError = status.state === "error";
   const isReady = status.state === "downloaded";
   const isProgress =
     status.state === "available" || status.state === "downloading";
-  const percent = status.state === "downloading" ? status.percent : 0;
+  const isDownloading = status.state === "downloading";
+  const percent = isDownloading ? clampProgress(status.percent) : 0;
+  const dismissNotice = (): void => {
+    setDismissed(true);
+    const target = returnFocusRef.current;
+    if (target?.isConnected) {
+      window.requestAnimationFrame(() => {
+        if (target.isConnected) target.focus({ preventScroll: true });
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (visible && !wasVisibleRef.current) {
+      const activeElement = document.activeElement;
+      if (
+        activeElement instanceof HTMLElement &&
+        !bannerRef.current?.contains(activeElement)
+      ) {
+        returnFocusRef.current = activeElement;
+      }
+    }
+    wasVisibleRef.current = visible;
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      dismissNotice();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [visible]);
+
   const handleRestart = async (): Promise<void> => {
     const bridge = desktopBridge();
     if (!bridge || installing) return;
@@ -128,11 +137,13 @@ export default function DesktopUpdateBanner() {
     }
   };
 
+  if (!visible) return null;
+
   return (
     <aside
+      ref={bannerRef}
       className="fixed left-1/2 top-4 z-[100] w-[min(94vw,30rem)] -translate-x-1/2 border border-cyan-400/35 bg-slate-950/95 px-4 py-3 text-slate-100 shadow-[0_0_28px_rgba(34,211,238,0.16)] backdrop-blur-md"
-      role={isError ? "alert" : "status"}
-      aria-live={isError ? "assertive" : "polite"}
+      aria-label="Desktop update notification"
       data-testid="desktop-update-banner"
     >
       <div className="flex items-start gap-3">
@@ -148,18 +159,36 @@ export default function DesktopUpdateBanner() {
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-xs uppercase tracking-[0.12em] text-cyan-100">
+          <p
+            id="desktop-update-status"
+            className="font-mono text-xs uppercase tracking-[0.12em] text-cyan-100"
+            role={isError ? "alert" : isDownloading ? undefined : "status"}
+            aria-live={isError ? "assertive" : isDownloading ? "off" : "polite"}
+            aria-atomic="true"
+            aria-describedby={isError ? "desktop-update-error" : undefined}
+          >
             {statusText(status)}
           </p>
           {isError && (
-            <p className="mt-1 text-xs text-slate-400">
-              Try “Check for Updates…” again from the app menu.
-            </p>
+            <>
+              <p
+                id="desktop-update-error"
+                className="mt-1 text-xs text-slate-300"
+              >
+                {status.message}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Try “Check for Updates…” again from the app menu.
+              </p>
+            </>
           )}
           {isProgress && (
             <div
               className="mt-2 h-1 overflow-hidden bg-slate-800"
-              aria-label={`${percent}% downloaded`}
+              aria-label="Update download progress"
+              aria-valuetext={
+                isDownloading ? `${percent}% downloaded` : "Download starting"
+              }
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={100}
@@ -187,7 +216,7 @@ export default function DesktopUpdateBanner() {
               <button
                 type="button"
                 className="rounded-sm px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-300"
-                onClick={() => setDismissed(true)}
+                onClick={dismissNotice}
                 data-testid="later-desktop-update"
               >
                 Later
@@ -198,8 +227,8 @@ export default function DesktopUpdateBanner() {
         <button
           type="button"
           className="shrink-0 rounded-sm p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-300"
-          onClick={() => setDismissed(true)}
-          aria-label="Dismiss update status"
+          onClick={dismissNotice}
+          aria-label="Dismiss update notification"
           data-testid="dismiss-desktop-update"
         >
           <X className="h-4 w-4" />
