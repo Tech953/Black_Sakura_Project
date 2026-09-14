@@ -124,7 +124,13 @@ export type UpdateStatus =
   | { state: "checking"; manual?: boolean }
   | { state: "available"; version?: string }
   | { state: "not-available"; manual?: boolean }
-  | { state: "downloading"; percent: number }
+  | {
+      state: "downloading";
+      percent: number;
+      transferred?: number;
+      total?: number;
+      bytesPerSecond?: number;
+    }
   | { state: "downloaded"; version?: string }
   | { state: "error"; message: string };
 

@@ -1,7 +1,12 @@
 import type { UpdateStatus } from "./desktop-bridge";
 
 export type UpdateInfo = { version?: string };
-export type DownloadProgress = { percent?: number };
+export type DownloadProgress = {
+  percent?: number;
+  transferred?: number;
+  total?: number;
+  bytesPerSecond?: number;
+};
 
 export type UpdateWindow = {
   isDestroyed: () => boolean;
@@ -172,7 +177,20 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
       0,
       Math.min(100, Math.round(progress?.percent ?? 0)),
     );
-    deps.setStatus({ state: "downloading", percent });
+    const status: UpdateStatus = {
+      state: "downloading",
+      percent,
+    };
+    if (typeof progress?.transferred === "number") {
+      status.transferred = progress.transferred;
+    }
+    if (typeof progress?.total === "number") {
+      status.total = progress.total;
+    }
+    if (typeof progress?.bytesPerSecond === "number") {
+      status.bytesPerSecond = progress.bytesPerSecond;
+    }
+    deps.setStatus(status);
     const window = deps.getMainWindow();
     if (window && !window.isDestroyed()) {
       window.setTitle(`ENGRAM — PYRI — Downloading update… ${percent}%`);

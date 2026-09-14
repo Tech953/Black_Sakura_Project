@@ -99,6 +99,36 @@ describe("setupAutoUpdates", () => {
     expect(harness.stopDesktopWork).not.toHaveBeenCalled();
   });
 
+  it("forwards optional transfer details with download progress", () => {
+    const harness = createHarness(1);
+
+    harness.updater.emit("download-progress", {
+      percent: 42.4,
+      transferred: 1572864,
+      total: 5242880,
+      bytesPerSecond: 262144,
+    });
+
+    expect(harness.setStatus).toHaveBeenLastCalledWith({
+      state: "downloading",
+      percent: 42,
+      transferred: 1572864,
+      total: 5242880,
+      bytesPerSecond: 262144,
+    });
+  });
+
+  it("keeps percentage-only status shape when transfer details are unavailable", () => {
+    const harness = createHarness(1);
+
+    harness.updater.emit("download-progress", { percent: 42 });
+
+    expect(harness.setStatus).toHaveBeenLastCalledWith({
+      state: "downloading",
+      percent: 42,
+    });
+  });
+
   it("exposes the ready update installer to the renderer and deduplicates calls", async () => {
     const harness = createHarness(1);
 
