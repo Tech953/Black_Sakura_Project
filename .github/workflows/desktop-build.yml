@@ -38,7 +38,11 @@ on:
 
 concurrency:
   group: desktop-build-${{ github.ref }}
-  cancel-in-progress: true
+  # Tag runs must finish their cleanup before a retry for the same tag can
+  # start. Otherwise an older failed run can delete the newer run's draft,
+  # because GitHub draft releases are initially identified by tag/name.
+  # Branch and PR validation runs can still be superseded immediately.
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 jobs:
   # Release packaging remains a full native matrix. Ordinary branch/PR changes
@@ -88,7 +92,7 @@ jobs:
       # installed apps can tell a newer release apart. Non-tag (manual) runs keep
       # the package.json version as-is.
       - name: Sync desktop version from tag
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -149,7 +153,7 @@ jobs:
         run: pnpm --filter @workspace/desktop run build
 
       - name: Require native release signing credentials
-        if: github.ref_type == 'tag' && matrix.platform != 'linux'
+        if: github.event_name == 'push' && github.ref_type == 'tag' && matrix.platform != 'linux'
         shell: bash
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
@@ -201,10 +205,10 @@ jobs:
         #   - manual run (workflow_dispatch) -> `--publish never`: only the
         #     workflow-artifact upload below runs, so manual builds never create
         #     an accidental Release.
-        run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --publish ${{ github.ref_type == 'tag' && 'always' || 'never' }}
+        run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --publish ${{ github.event_name == 'push' && github.ref_type == 'tag' && 'always' || 'never' }}
 
       - name: Verify Windows Authenticode signatures
-        if: github.ref_type == 'tag' && matrix.platform == 'win'
+        if: github.event_name == 'push' && github.ref_type == 'tag' && matrix.platform == 'win'
         shell: pwsh
         run: |
           $videoTools = @(
@@ -848,7 +852,7 @@ jobs:
       # as the publish job), drop any same-named asset for idempotent re-runs,
       # then upload via the uploads API (gh release upload can't target a draft).
       - name: Publish APK to draft release
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
@@ -886,11 +890,12 @@ jobs:
   # manifests, so users never land on a half-finished release. Runs only on a
   # `v*` tag push (the build jobs only create a draft on a tag); manual
   # (workflow_dispatch) runs publish nothing, so there is no draft to un-draft
-  # and this job is skipped.
+  # and this job is skipped. Manual dispatches remain excluded even when the
+  # selected ref is a tag.
   publish:
     name: Publish release
     needs: [build, android]
-    if: github.ref_type == 'tag' && needs.build.result == 'success' && needs.android.result == 'success'
+    if: github.event_name == 'push' && github.ref_type == 'tag' && needs.build.result == 'success' && needs.android.result == 'success'
     runs-on: ubuntu-latest
     # Required to flip the draft Release to public via the GitHub API.
     permissions:
@@ -962,11 +967,13 @@ jobs:
   # A failed native build leaves any already-uploaded installers in the draft
   # release created by electron-builder. Remove every matching draft so a
   # subsequent retry starts cleanly and no partial release is mistaken for a
-  # real one. Manual runs never create drafts and are excluded by the tag guard.
+  # real one. Tag runs are serialized above, so a newer same-tag draft cannot
+  # exist while this cleanup runs. Manual runs never create drafts and are
+  # excluded by the tag-push guard.
   cleanup-draft:
     name: Clean up failed draft release
     needs: [build, android]
-    if: github.ref_type == 'tag' && failure()
+    if: github.event_name == 'push' && github.ref_type == 'tag' && failure()
     runs-on: ubuntu-latest
     permissions:
       contents: write
