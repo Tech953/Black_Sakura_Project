@@ -83,6 +83,8 @@ describe("desktop download routes", () => {
       source: "storage",
       version: "0.1.0",
       publishedAt: null,
+      releaseNotesUrl:
+        "https://github.com/Tech953/route-download-test-1/releases/latest",
       installers: [
         {
           os: "win",
@@ -145,6 +147,8 @@ describe("desktop download routes", () => {
       source: "github",
       version: "1.0.26",
       publishedAt: "2026-09-12T12:00:00Z",
+      releaseNotesUrl:
+        "https://github.com/Tech953/route-download-test-2/releases/latest",
       installers: [
         {
           os: "win",

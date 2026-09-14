@@ -25,9 +25,10 @@ Both desktop and Android resolve in the same two-step order:
    `ANDROID_APK_PATH`; the directory is overridable with `ANDROID_APK_DIR`.)
 2. **GitHub fallback** — if nothing is bundled, the API fetches the latest
    release and proxy-streams the matching asset(s), so the download still stays
-   on this app's origin. Desktop uses `DOWNLOADS_GITHUB_REPO` (default
-   `Tech953/Ch-IO`); the APK uses `ANDROID_APK_GITHUB_REPO` (which falls back to
-   `DOWNLOADS_GITHUB_REPO`).
+   on this app's origin. Desktop uses the shared `VITE_GITHUB_REPO` setting
+   (default `Tech953/Ch-IO`); the APK uses `ANDROID_APK_GITHUB_REPO` when set
+   and otherwise follows the shared setting. `DOWNLOADS_GITHUB_REPO` remains a
+   legacy API-only fallback.
 
 Desktop bundling is **all-or-nothing for version coherence**: if ANY bundled
 desktop installer is present, the bundled set wins entirely and the GitHub

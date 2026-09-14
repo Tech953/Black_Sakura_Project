@@ -33,12 +33,12 @@ The repo already builds the APK in GitHub Actions:
 these four repository secrets are set (GitHub → Settings → Secrets and
 variables → Actions):
 
-| Secret | Value |
-| --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 .keys/engram-release.keystore` |
+| Secret                      | Value                                           |
+| --------------------------- | ----------------------------------------------- |
+| `ANDROID_KEYSTORE_BASE64`   | `base64 -w0 .keys/engram-release.keystore`      |
 | `ANDROID_KEYSTORE_PASSWORD` | store password from `.keys/android-signing.env` |
-| `ANDROID_KEY_ALIAS` | key alias from `.keys/android-signing.env` |
-| `ANDROID_KEY_PASSWORD` | key password from `.keys/android-signing.env` |
+| `ANDROID_KEY_ALIAS`         | key alias from `.keys/android-signing.env`      |
+| `ANDROID_KEY_PASSWORD`      | key password from `.keys/android-signing.env`   |
 
 The keystore and its credentials live in the (gitignored) `.keys/` directory of
 the Replit workspace. The workflow verifies the built APK's signer certificate
@@ -51,13 +51,13 @@ keystore is wrong or missing, so a debug-signed APK can never silently ship.
 
 ### Prerequisites
 
-| Tool | Version | Notes |
-| --- | --- | --- |
-| Node.js | 24.x | Matches the repo's `nodejs-24` module |
-| pnpm | 9+ | Workspace package manager |
-| JDK | 17 | Required by the Android Gradle Plugin |
-| Android SDK | Platform 34 + build-tools | Easiest via **Android Studio** |
-| Android NDK | As pinned by Expo | Installed via the SDK Manager |
+| Tool        | Version                   | Notes                                 |
+| ----------- | ------------------------- | ------------------------------------- |
+| Node.js     | 24.x                      | Matches the repo's `nodejs-24` module |
+| pnpm        | 9+                        | Workspace package manager             |
+| JDK         | 17                        | Required by the Android Gradle Plugin |
+| Android SDK | Platform 34 + build-tools | Easiest via **Android Studio**        |
+| Android NDK | As pinned by Expo         | Installed via the SDK Manager         |
 
 Set the standard Android env vars so Gradle can find the SDK:
 
@@ -121,12 +121,12 @@ Release signing is already wired in: an Expo config plugin
 regeneration locally and in CI. Gradle reads these environment variables **at
 build time**:
 
-| Variable | Meaning |
-| --- | --- |
-| `ANDROID_KEYSTORE_PATH` | Absolute path to the `.keystore` file |
-| `ANDROID_KEYSTORE_PASSWORD` | Store password |
-| `ANDROID_KEY_ALIAS` | Key alias |
-| `ANDROID_KEY_PASSWORD` | Key password |
+| Variable                    | Meaning                               |
+| --------------------------- | ------------------------------------- |
+| `ANDROID_KEYSTORE_PATH`     | Absolute path to the `.keystore` file |
+| `ANDROID_KEYSTORE_PASSWORD` | Store password                        |
+| `ANDROID_KEY_ALIAS`         | Key alias                             |
+| `ANDROID_KEY_PASSWORD`      | Key password                          |
 
 In the Replit workspace, the private keystore and its credentials live in the
 gitignored `.keys/` directory. To build a release-signed APK locally:
@@ -200,9 +200,9 @@ upgrade path without uninstalling the app.
 
 ### Relevant environment variables
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `ANDROID_APK_PATH` | _(unset)_ | Absolute path to a single bundled `.apk` |
-| `ANDROID_APK_DIR` | `<repo>/downloads` | Directory scanned for the newest `*.apk` |
-| `ANDROID_APK_GITHUB_REPO` | `Tech953/Ch-IO` | `owner/repo` for the GitHub fallback |
-| `VITE_GITHUB_REPO` | `Tech953/Ch-IO` | Web build-time repo for the **desktop** release feed |
+| Variable                  | Default            | Purpose                                                              |
+| ------------------------- | ------------------ | -------------------------------------------------------------------- |
+| `ANDROID_APK_PATH`        | _(unset)_          | Absolute path to a single bundled `.apk`                             |
+| `ANDROID_APK_DIR`         | `<repo>/downloads` | Directory scanned for the newest `*.apk`                             |
+| `ANDROID_APK_GITHUB_REPO` | `Tech953/Ch-IO`    | Optional `owner/repo` override for the APK GitHub fallback           |
+| `VITE_GITHUB_REPO`        | `Tech953/Ch-IO`    | Shared `owner/repo` for the web release link and API GitHub fallback |
