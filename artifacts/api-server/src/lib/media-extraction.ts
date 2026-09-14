@@ -179,11 +179,53 @@ export function contentMatchesMime(data: Buffer, mimeType: string): boolean {
     return detected === "text/plain" || detected === "application/json";
   if (claimed === "application/json") return detected === "application/json";
   if (claimed === "audio/mp3") return detected === "audio/mpeg";
+  if (claimed === "audio/x-wav") return detected === "audio/wav";
   if (claimed === "audio/webm") return detected === "video/webm";
   if (claimed === "video/webm") return detected === "video/webm";
   if (claimed === "video/mp4") return detected === "video/mp4";
   if (claimed === "audio/mp4") return detected === "audio/mp4";
   return detected === claimed;
+}
+
+const MEDIA_FILENAME_EXTENSIONS: Record<string, readonly string[]> = {
+  "text/plain": [".txt", ".text", ".log"],
+  "text/markdown": [".md", ".markdown"],
+  "text/csv": [".csv"],
+  "application/json": [".json"],
+  "image/png": [".png"],
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/webp": [".webp"],
+  "image/gif": [".gif"],
+  "audio/mpeg": [".mp3"],
+  "audio/mp3": [".mp3"],
+  "audio/wav": [".wav"],
+  "audio/x-wav": [".wav"],
+  "audio/webm": [".webm"],
+  "audio/mp4": [".m4a", ".m4b", ".m4p"],
+  "audio/ogg": [".ogg", ".oga"],
+  "video/mp4": [".mp4"],
+  "video/quicktime": [".mov"],
+  "video/webm": [".webm"],
+  "video/x-matroska": [".mkv"],
+};
+
+function filenameExtension(filename: string): string | null {
+  const basename = filename.trim().split(/[\\/]/).pop() ?? "";
+  const dot = basename.lastIndexOf(".");
+  if (dot <= 0 || dot === basename.length - 1) return null;
+  return basename.slice(dot).toLowerCase();
+}
+
+/**
+ * Validate the optional filename claim against the server-derived MIME type.
+ * Extensionless files remain valid because the bytes and declared MIME are the
+ * authoritative checks; a present extension must not contradict them.
+ */
+export function filenameMatchesMime(filename: string, mimeType: string): boolean {
+  const extension = filenameExtension(filename);
+  if (!extension) return true;
+  const allowed = MEDIA_FILENAME_EXTENSIONS[normalizeMimeType(mimeType)];
+  return allowed?.includes(extension) ?? false;
 }
 
 export interface MediaExtraction {

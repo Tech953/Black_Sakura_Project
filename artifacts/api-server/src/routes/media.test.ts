@@ -140,6 +140,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  h.loadMediaBlob.mockReset();
   h.state.engram = { id: 3, ownerId: "test-owner", isArchival: false };
 });
 
@@ -239,6 +240,10 @@ describe("GET /media/:id/raw", () => {
 describe("POST /media/:id/retry", () => {
   it("re-queues a failed asset", async () => {
     h.loadMediaAssetById.mockResolvedValueOnce(makeAsset({ status: "failed" }));
+    h.loadMediaBlob.mockResolvedValueOnce({
+      data: Buffer.from("the harbor"),
+      mimeType: "text/plain",
+    });
     h.requeueMediaAsset.mockResolvedValueOnce(makeAsset({ status: "pending" }));
     const res = await fetch(`${base}/media/7/retry`, { method: "POST" });
     expect(res.status).toBe(200);
@@ -256,6 +261,10 @@ describe("POST /media/:id/retry", () => {
 
   it("409s when a concurrent retry already re-queued it", async () => {
     h.loadMediaAssetById.mockResolvedValueOnce(makeAsset({ status: "failed" }));
+    h.loadMediaBlob.mockResolvedValueOnce({
+      data: Buffer.from("the harbor"),
+      mimeType: "text/plain",
+    });
     h.requeueMediaAsset.mockResolvedValueOnce(undefined); // lost the race
     const res = await fetch(`${base}/media/7/retry`, { method: "POST" });
     expect(res.status).toBe(409);
@@ -372,6 +381,25 @@ describe("POST /media (upload)", () => {
     expect(h.createMediaAsset).not.toHaveBeenCalled();
   });
 
+  it("rejects a filename extension that contradicts the claimed MIME", async () => {
+    const form = new FormData();
+    form.append("engramId", "3");
+    form.append(
+      "file",
+      new Blob(["the harbor"], { type: "text/plain" }),
+      "harbor.png",
+    );
+    const res = await fetch(`${base}/media`, {
+      method: "POST",
+      body: form,
+    });
+    expect(res.status).toBe(415);
+    expect(await res.json()).toMatchObject({
+      error: expect.stringContaining("filename extension"),
+    });
+    expect(h.createMediaAsset).not.toHaveBeenCalled();
+  });
+
   it("requires valid JSON bytes when the claimed type is application/json", async () => {
     const form = new FormData();
     form.append("engramId", "3");
@@ -383,6 +411,35 @@ describe("POST /media (upload)", () => {
     const res = await fetch(`${base}/media`, { method: "POST", body: form });
     expect(res.status).toBe(415);
     expect(h.createMediaAsset).not.toHaveBeenCalled();
+  });
+
+  it("does not preview a stored asset that no longer passes validation", async () => {
+    h.loadMediaAssetById.mockResolvedValueOnce(makeAsset());
+    h.loadMediaBlob.mockResolvedValueOnce({
+      data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      mimeType: "text/plain",
+    });
+    const res = await fetch(`${base}/media/7/raw`);
+    expect(res.status).toBe(415);
+    expect(await res.json()).toMatchObject({
+      error: expect.stringContaining("failed upload validation"),
+    });
+  });
+
+  it("does not retry a stored asset that no longer passes validation", async () => {
+    h.loadMediaAssetById.mockResolvedValueOnce(
+      makeAsset({ status: "failed", filename: "harbor.png" }),
+    );
+    h.loadMediaBlob.mockResolvedValueOnce({
+      data: Buffer.from("the harbor"),
+      mimeType: "text/plain",
+    });
+    const res = await fetch(`${base}/media/7/retry`, { method: "POST" });
+    expect(res.status).toBe(415);
+    expect(await res.json()).toMatchObject({
+      error: expect.stringContaining("failed upload validation"),
+    });
+    expect(h.requeueMediaAsset).not.toHaveBeenCalled();
   });
 
   it("rejects an upload over the size cap with 413", async () => {
