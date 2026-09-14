@@ -112,4 +112,28 @@ describe("desktop release workflow concurrency", () => {
       /Nested executable .*uses signer .*expected app signer/,
     );
   });
+
+  it("verifies video tools after silent NSIS installation", () => {
+    expect(workflow).toMatch(
+      /- name: Verify installed NSIS video tool signatures/,
+    );
+    expect(workflow).toMatch(
+      /-ArgumentList @\("\/S", "\/D=\$installDir"\)/,
+    );
+    expect(workflow).toMatch(
+      /Join-Path \$installDir "resources\\bin\\ffmpeg\.exe"/,
+    );
+    expect(workflow).toMatch(
+      /Join-Path \$installDir "resources\\bin\\ffprobe\.exe"/,
+    );
+    expect(workflow).toMatch(
+      /Get-AuthenticodeSignature \(Resolve-Path \$file\)\.Path/,
+    );
+    expect(workflow).toMatch(
+      /NSIS installed video-tool verification failed \(installer: \$reportedInstaller\)/,
+    );
+    expect(workflow).toMatch(
+      /finally \{[\s\S]*Remove-Item -LiteralPath \$installDir -Recurse -Force/,
+    );
+  });
 });
