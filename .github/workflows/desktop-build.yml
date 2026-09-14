@@ -313,7 +313,13 @@ jobs:
       # Download a small, pinned real GGUF only after packaging. It exercises
       # the custom-model picker/import/runtime path without ever entering the
       # installer resources or the published installer artifact.
-      - name: Stage compatible GGUF smoke fixture
+      - name: Cache compatible GGUF smoke fixture
+        uses: actions/cache@v4
+        with:
+          path: artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          key: desktop-gguf-smoke-2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d
+
+      - name: Download compatible GGUF smoke fixture
         shell: bash
         run: |
           set -euo pipefail
@@ -371,12 +377,15 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: linux
             arch: arm64
+            sha256: c79ae4262304cdab2698201b1bba01648fcff8f8aada237b64797bc97ebe452d
           - os: macos-latest
             platform: darwin
             arch: x64
+            sha256: d7ccf0251ff9087ee4f4c0ea6c8c7f4f3575aa187b2c2e755d2d4c5d234490ba
           - os: macos-latest
             platform: darwin
             arch: arm64
+            sha256: fd93f5c97086b434d17855eaaf95ba56758ade7a4af3a4ad74714bb70784c8b9
     steps:
       - uses: actions/checkout@v4
 
@@ -389,6 +398,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+
+      - name: Cache pinned target runtime
+        uses: actions/cache@v4
+        with:
+          path: .llama
+          key: llama-runtime-${{ matrix.platform }}-${{ matrix.arch }}-b10242-${{ matrix.sha256 }}
 
       - name: Download pinned target runtime
         env:
@@ -427,6 +442,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Cache pinned Linux llama runtime
+        uses: actions/cache@v4
+        with:
+          path: .llama
+          key: llama-runtime-linux-x64-b10242-fb13c9fa97a605c6bba16a99b2f54eff6874d58bdbe5b94ece6e358eaa270088
 
       - name: Generate API client + Zod (codegen)
         run: pnpm --filter @workspace/api-spec run codegen
@@ -469,6 +490,12 @@ jobs:
 
       - name: Package Linux installer
         run: pnpm --filter @workspace/desktop exec electron-builder --linux --publish never
+
+      - name: Cache compatible GGUF smoke fixture
+        uses: actions/cache@v4
+        with:
+          path: artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          key: desktop-gguf-smoke-2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d
 
       - name: Stage compatible GGUF smoke fixture
         shell: bash

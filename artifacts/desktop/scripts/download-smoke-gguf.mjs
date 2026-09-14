@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const output = process.argv[2];
@@ -16,9 +16,32 @@ const url =
   "main/SmolLM2-135M-Instruct-Q4_K_M.gguf?download=true";
 const expectedSha256 =
   "2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d";
+const temporary = `${output}.${process.pid}.partial`;
+
+async function isVerifiedFixture(file) {
+  try {
+    const bytes = await readFile(file);
+    return (
+      bytes.subarray(0, 4).toString("ascii") === "GGUF" &&
+      createHash("sha256").update(bytes).digest("hex") === expectedSha256
+    );
+  } catch {
+    return false;
+  }
+}
+
+if (await isVerifiedFixture(output)) {
+  console.log(`Using cached compatible GGUF smoke fixture at ${output}`);
+  process.exit(0);
+}
+
+// Cache entries are immutable in GitHub Actions. Remove an invalid restored file
+// locally so this run cannot use it, then replace it atomically after verification.
+await rm(output, { force: true, recursive: true });
+await rm(temporary, { force: true, recursive: true });
 
 const response = await fetch(url, { redirect: "follow" });
-if (!response.ok) {
+if (!response.ok || !response.body) {
   throw new Error(`Could not download GGUF smoke fixture: HTTP ${response.status}`);
 }
 const bytes = Buffer.from(await response.arrayBuffer());
@@ -33,12 +56,10 @@ if (bytes.subarray(0, 4).toString("ascii") !== "GGUF") {
 }
 
 await mkdir(path.dirname(output), { recursive: true });
-await writeFile(output, bytes, { mode: 0o600 });
-const written = await readFile(output);
-if (
-  written.length !== bytes.length ||
-  createHash("sha256").update(written).digest("hex") !== expectedSha256
-) {
+await writeFile(temporary, bytes, { mode: 0o600 });
+if (!(await isVerifiedFixture(temporary))) {
+  await rm(temporary, { force: true });
   throw new Error("GGUF smoke fixture changed while being staged");
 }
+await rename(temporary, output);
 console.log(`Staged compatible GGUF smoke fixture (${bytes.length} bytes) at ${output}`);
