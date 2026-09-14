@@ -91,8 +91,10 @@ export default function Media() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const focusedAssetId = useMemo(() => {
-    const query = location.split("?")[1];
-    const id = Number(new URLSearchParams(query ?? "").get("asset"));
+    const params = new URLSearchParams(
+      typeof window === "undefined" ? "" : window.location.search,
+    );
+    const id = Number(params.get("asset"));
     return Number.isSafeInteger(id) && id > 0 ? id : null;
   }, [location]);
 

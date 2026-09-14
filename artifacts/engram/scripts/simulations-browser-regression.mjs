@@ -116,6 +116,60 @@ const fixtureScript = String.raw`
       isArchival: false
     }
   ];
+  const mediaAsset = {
+    id: 501,
+    engramId: 1,
+    conversationId: null,
+    filename: "harbor-note.txt",
+    mimeType: "text/plain",
+    modality: "text",
+    sizeBytes: 24,
+    status: "completed",
+    resultState: "complete",
+    summary: "A harbor beacon was recorded.",
+    commentary: "The guide recognizes the harbor beacon.",
+    transcript: null,
+    error: null,
+    observationCount: 1,
+    startedAt: "2026-09-12T12:10:00.000Z",
+    completedAt: "2026-09-12T12:10:01.000Z",
+    createdAt: "2026-09-12T12:10:00.000Z",
+    updatedAt: "2026-09-12T12:10:01.000Z"
+  };
+  const mediaObservations = [{
+    id: 601,
+    mediaAssetId: 501,
+    engramId: 1,
+    content: "A harbor beacon was recorded.",
+    confidence: 0.94,
+    provenance: "observed",
+    source: "media:501",
+    createdAt: "2026-09-12T12:10:01.000Z"
+  }];
+  const worldModelEntries = [
+    {
+      id: 701,
+      engramId: 1,
+      provenance: "observed",
+      content: "A harbor beacon was recorded.",
+      confidence: 0.94,
+      scope: "private",
+      source: "media:501",
+      createdAt: "2026-09-12T12:10:01.000Z",
+      updatedAt: "2026-09-12T12:10:01.000Z"
+    },
+    {
+      id: 702,
+      engramId: 1,
+      provenance: "remembered",
+      content: "The guide prefers calm routes.",
+      confidence: 0.81,
+      scope: "private",
+      source: "engine",
+      createdAt: "2026-09-12T12:09:00.000Z",
+      updatedAt: "2026-09-12T12:09:00.000Z"
+    }
+  ];
   const stepSets = new Map([
     [42, [{
       id: 101,
@@ -189,6 +243,13 @@ const fixtureScript = String.raw`
     if (pathname === "/api/hub/spaces" && method === "GET") return response([]);
     if (pathname === "/api/engrams/messages" && method === "GET") return response([]);
     if (pathname === "/api/events") return response({});
+    if (pathname === "/api/engrams/1/world-model" && method === "GET") {
+      return response(worldModelEntries);
+    }
+    if (pathname === "/api/media" && method === "GET") return response([mediaAsset]);
+    if (pathname === "/api/media/501" && method === "GET") {
+      return response({ asset: mediaAsset, observations: mediaObservations });
+    }
     if (pathname === "/api/simulations" && method === "GET") {
       return response(simulations);
     }
@@ -390,7 +451,32 @@ try {
   if (reloadedEngram?.simulationEnabled !== false) {
     throw new Error(`Simulation toggle did not reload as disabled: ${JSON.stringify(reloadedEngram)}`);
   }
-  console.log("Simulation UI browser regression passed");
+
+  await devtools.call("Page.navigate", { url: `${appUrl}/world-model` });
+  await waitForText("A harbor beacon was recorded.", "media-backed world-model entry");
+  await waitFor("Boolean(document.querySelector('[data-testid=\"media-source-701\"]'))", "media source badge");
+  await waitFor("Boolean(document.querySelector('[data-testid=\"link-media-source-701\"]'))", "media source link");
+  await waitForText("The guide prefers calm routes.", "non-media world-model entry");
+  const nonMediaEntry = await devtools.evaluate(
+    `document.querySelector('[data-testid="card-entry-702"]')?.innerText ?? ""`,
+  );
+  if (nonMediaEntry.includes("MEDIA") || nonMediaEntry.includes("Media")) {
+    throw new Error(`Non-media world-model source received a media badge: ${nonMediaEntry}`);
+  }
+
+  await click(
+    `document.querySelector('[data-testid="link-media-source-701"]')`,
+    "media source link",
+  );
+  await waitFor(
+    `location.pathname === "/media" && new URLSearchParams(location.search).get("asset") === "501"`,
+    "focused media URL",
+  );
+  await waitFor("document.querySelector('[data-testid=\"media-501\"]')?.getAttribute('data-focused') === 'true'", "focused media asset");
+  await waitFor("Boolean(document.querySelector('[data-testid=\"media-detail-501\"]'))", "expanded media asset");
+  await waitForText("harbor-note.txt", "expanded media filename");
+
+  console.log("Simulation and media-memory browser regressions passed");
 } finally {
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");
