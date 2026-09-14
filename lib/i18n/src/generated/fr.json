@@ -1293,7 +1293,12 @@
     "toastMarkSeenFailed": "Échec du marquage comme vu",
     "toastLogExported": "Log exporté",
     "toastLogExportedDescription_one": "{{count}} message téléchargé.",
-    "toastLogExportedDescription_other": "{{count}} messages téléchargés."
+    "toastLogExportedDescription_other": "{{count}} messages téléchargés.",
+    "acknowledgement": {
+      "saved": "Saved",
+      "pending": "Pending acknowledgement",
+      "acknowledged": "Acknowledged"
+    }
   },
   "worldModel": {
     "title": "MODÈLE DU MONDE",

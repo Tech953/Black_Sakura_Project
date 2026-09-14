@@ -3648,6 +3648,8 @@ components:
           description: Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.
         deliveredAt:
           type: ["string", "null"]
+        acknowledgedAt:
+          type: ["string", "null"]
         createdAt:
           type: string
       required:
@@ -3665,6 +3667,7 @@ components:
         - isDigest
         - digestGroupId
         - deliveredAt
+        - acknowledgedAt
         - createdAt
 
     MarkMessagesSeenInput:

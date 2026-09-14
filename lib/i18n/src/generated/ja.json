@@ -1293,7 +1293,12 @@
     "toastMarkSeenFailed": "既読設定に失敗しました",
     "toastLogExported": "ログをエクスポートしました",
     "toastLogExportedDescription_one": "{{count}}件のメッセージをダウンロードしました。",
-    "toastLogExportedDescription_other": "{{count}}件のメッセージをダウンロードしました。"
+    "toastLogExportedDescription_other": "{{count}}件のメッセージをダウンロードしました。",
+    "acknowledgement": {
+      "saved": "Saved",
+      "pending": "Pending acknowledgement",
+      "acknowledged": "Acknowledged"
+    }
   },
   "worldModel": {
     "title": "WORLD MODEL",

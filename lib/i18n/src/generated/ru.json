@@ -1293,7 +1293,12 @@
     "toastMarkSeenFailed": "Не удалось отметить как просмотренное",
     "toastLogExported": "Лог экспортирован",
     "toastLogExportedDescription_one": "Загружено {{count}} сообщение.",
-    "toastLogExportedDescription_other": "Загружено {{count}} сообщений."
+    "toastLogExportedDescription_other": "Загружено {{count}} сообщений.",
+    "acknowledgement": {
+      "saved": "Saved",
+      "pending": "Pending acknowledgement",
+      "acknowledged": "Acknowledged"
+    }
   },
   "worldModel": {
     "title": "МОДЕЛЬ МИРА",

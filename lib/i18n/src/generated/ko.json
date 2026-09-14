@@ -1293,7 +1293,12 @@
     "toastMarkSeenFailed": "확인 처리 실패",
     "toastLogExported": "로그 내보냄",
     "toastLogExportedDescription_one": "메시지 {{count}}개 다운로드됨.",
-    "toastLogExportedDescription_other": "메시지 {{count}}개 다운로드됨."
+    "toastLogExportedDescription_other": "메시지 {{count}}개 다운로드됨.",
+    "acknowledgement": {
+      "saved": "Saved",
+      "pending": "Pending acknowledgement",
+      "acknowledged": "Acknowledged"
+    }
   },
   "worldModel": {
     "title": "WORLD MODEL",

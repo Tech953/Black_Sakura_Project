@@ -1293,7 +1293,12 @@
     "toastMarkSeenFailed": "标记已读失败",
     "toastLogExported": "日志已导出",
     "toastLogExportedDescription_one": "已下载 {{count}} 条消息。",
-    "toastLogExportedDescription_other": "已下载 {{count}} 条消息。"
+    "toastLogExportedDescription_other": "已下载 {{count}} 条消息。",
+    "acknowledgement": {
+      "saved": "Saved",
+      "pending": "Pending acknowledgement",
+      "acknowledged": "Acknowledged"
+    }
   },
   "worldModel": {
     "title": "世界模型",

@@ -151,14 +151,24 @@ export async function recentHumanCounts(
   return { hour, day: rows.length };
 }
 
+export interface RecentOperatorReply {
+  id: number;
+  content: string;
+  acknowledgedAt: Date | null;
+}
+
 /** Load the operator's recent replies so the next autonomous turn can acknowledge them. */
-export async function loadRecentOperatorReplies(
+export async function loadRecentOperatorReplyRows(
   ownerId: string,
   engramId: number,
   limit = 5,
-): Promise<string[]> {
+): Promise<RecentOperatorReply[]> {
   const rows = await db
-    .select({ content: engramMessagesTable.content })
+    .select({
+      id: engramMessagesTable.id,
+      content: engramMessagesTable.content,
+      acknowledgedAt: engramMessagesTable.acknowledgedAt,
+    })
     .from(engramMessagesTable)
     .innerJoin(engramsTable, eq(engramMessagesTable.fromEngramId, engramsTable.id))
     .where(
@@ -171,7 +181,50 @@ export async function loadRecentOperatorReplies(
     )
     .orderBy(desc(engramMessagesTable.createdAt))
     .limit(Math.min(Math.max(limit, 1), 10));
+  return rows;
+}
+
+export async function loadRecentOperatorReplies(
+  ownerId: string,
+  engramId: number,
+  limit = 5,
+): Promise<string[]> {
+  const rows = await loadRecentOperatorReplyRows(ownerId, engramId, limit);
   return rows.map((row) => row.content);
+}
+
+/**
+ * Mark only the owner-scoped operator replies that were included in a successful
+ * engram prompt. The text remains immutable; acknowledgement is an audit timestamp.
+ */
+export async function markOperatorRepliesAcknowledged(
+  ownerId: string,
+  engramId: number,
+  ids: number[],
+  now: Date = new Date(),
+): Promise<number> {
+  if (ids.length === 0) return 0;
+  const rows = await db
+    .update(engramMessagesTable)
+    .set({ acknowledgedAt: now })
+    .where(
+      and(
+        inArray(engramMessagesTable.id, ids),
+        eq(engramMessagesTable.fromEngramId, engramId),
+        eq(engramMessagesTable.channel, "human"),
+        eq(engramMessagesTable.author, "operator"),
+        isNull(engramMessagesTable.acknowledgedAt),
+        inArray(
+          engramMessagesTable.fromEngramId,
+          db
+            .select({ id: engramsTable.id })
+            .from(engramsTable)
+            .where(and(eq(engramsTable.id, engramId), eq(engramsTable.ownerId, ownerId))),
+        ),
+      ),
+    )
+    .returning({ id: engramMessagesTable.id });
+  return rows.length;
 }
 
 /**

@@ -1216,6 +1216,8 @@ export interface EngramMessage {
   digestGroupId: string | null;
   /** @nullable */
   deliveredAt: string | null;
+  /** @nullable */
+  acknowledgedAt: string | null;
   createdAt: string;
 }
 

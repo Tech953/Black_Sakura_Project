@@ -1293,7 +1293,12 @@
     "toastMarkSeenFailed": "देखा चिह्नित करना विफल रहा",
     "toastLogExported": "लॉग एक्सपोर्ट हुआ",
     "toastLogExportedDescription_one": "{{count}} संदेश डाउनलोड हुआ।",
-    "toastLogExportedDescription_other": "{{count}} संदेश डाउनलोड हुए।"
+    "toastLogExportedDescription_other": "{{count}} संदेश डाउनलोड हुए।",
+    "acknowledgement": {
+      "saved": "Saved",
+      "pending": "Pending acknowledgement",
+      "acknowledged": "Acknowledged"
+    }
   },
   "worldModel": {
     "title": "वर्ल्ड मॉडल",

@@ -310,6 +310,7 @@ describe("offline handler generated response contracts", () => {
       isDigest: false,
       digestGroupId: null,
       deliveredAt: "2026-09-13T12:00:00.000Z",
+      acknowledgedAt: null,
       createdAt: "2026-09-13T12:00:00.000Z",
     };
     state.humanMessages.push({ id: 1, data: JSON.stringify(source), cachedAt: source.createdAt });
