@@ -134,12 +134,18 @@ router.put("/hub/presence/:engramId", async (req, res) => {
     return;
   }
 
-  const presence = await movePresence({
-    ownerId: req.userId!,
-    engram,
-    targetSpace,
-    note: parsedBody.data.note ?? null,
-  });
+  let presence: EngramPresence;
+  try {
+    presence = await movePresence({
+      ownerId: req.userId!,
+      engram,
+      targetSpace,
+      note: parsedBody.data.note ?? null,
+    });
+  } catch {
+    res.status(500).json({ error: "Could not move engram." });
+    return;
+  }
   const serialized = serializePresence(presence);
   publishEvent({
     type: "presence.changed",

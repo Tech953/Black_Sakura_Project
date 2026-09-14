@@ -21,7 +21,7 @@ import {
   hubActivityLogTable,
   hubSpacesTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { subscribe, type EngramEvent } from "../lib/events";
 import hubRouter from "./hub";
 
@@ -306,6 +306,54 @@ describe("PUT /hub/presence/:engramId", () => {
       enteredAt: finalPresence[0]!.enteredAt.toISOString(),
       updatedAt: finalPresence[0]!.updatedAt.toISOString(),
     }).toMatchObject(lastEventPresence);
+  });
+
+  it("returns a stable failure when activity logging fails without changing Hub reads", async () => {
+    const engramId = await insertEngram();
+    const sourceSpaceId = await insertSpace(OWNER_ID, "Route Atomic Source");
+    const targetSpaceId = await insertSpace(OWNER_ID, "Route Atomic Target");
+
+    const initialResponse = await fetch(`${base}/hub/presence/${engramId}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ spaceId: sourceSpaceId, note: "before failed route move" }),
+    });
+    expect(initialResponse.status).toBe(200);
+
+    const beforePresenceResponse = await fetch(`${base}/hub/presence`);
+    const beforeActivityResponse = await fetch(`${base}/hub/activity`);
+    expect(beforePresenceResponse.status).toBe(200);
+    expect(beforeActivityResponse.status).toBe(200);
+    const beforePresence = await beforePresenceResponse.json();
+    const beforeActivity = await beforeActivityResponse.json();
+
+    const constraintName = "hub_route_activity_failure_test";
+    await db.execute(
+      sql.raw(
+        `ALTER TABLE "hub_activity_log" ADD CONSTRAINT "${constraintName}" CHECK (summary <> 'Route Test Engram moved from Route Atomic Source to Route Atomic Target.')`,
+      ),
+    );
+    try {
+      const failedResponse = await fetch(`${base}/hub/presence/${engramId}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ spaceId: targetSpaceId, note: "should not persist" }),
+      });
+
+      expect(failedResponse.status).toBe(500);
+      expect(await failedResponse.json()).toEqual({ error: "Could not move engram." });
+    } finally {
+      await db.execute(
+        sql.raw(`ALTER TABLE "hub_activity_log" DROP CONSTRAINT "${constraintName}"`),
+      );
+    }
+
+    const afterPresenceResponse = await fetch(`${base}/hub/presence`);
+    const afterActivityResponse = await fetch(`${base}/hub/activity`);
+    expect(afterPresenceResponse.status).toBe(200);
+    expect(afterActivityResponse.status).toBe(200);
+    expect(await afterPresenceResponse.json()).toEqual(beforePresence);
+    expect(await afterActivityResponse.json()).toEqual(beforeActivity);
   });
 
   it("returns 404 for an unknown engram", async () => {
