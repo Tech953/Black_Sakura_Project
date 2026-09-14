@@ -7,6 +7,7 @@
 - [Bundled offline LLM (desktop)](bundled-offline-llm.md) — zero-setup offline mode via shipped llama.cpp server + model; staging, lifecycle, LAN, and workspace quota gotchas.
 - [Desktop server bundle boundary](desktop-server-bundle-boundary.md) — only explicitly staged runtime dependencies may remain external in the standalone packaged API child.
 - [Desktop auto-update](desktop-auto-update.md) — how the Electron app self-updates and the non-obvious constraints that make it actually fire.
+- [Desktop release draft ownership](desktop-release-draft-ownership.md) — tag-run serialization and push-only release guards prevent stale cleanup from deleting a newer draft.
 - [Desktop pre-release smoke](desktop-pre-release-smoke.md) — run the packaged Linux launch check on relevant pushes/PRs while keeping native release jobs tag/manual-only.
 - [Desktop CI fixture caching](desktop-ci-fixture-caching.md) — cache keys must include immutable runtime/model checksums; cached fixtures still need local verification and atomic replacement.
 - [Packaged smoke diagnostics](packaged-smoke-diagnostics.md) — CI-only, bounded, redacted logs must survive Electron launch, child startup, and health failures.
