@@ -14,6 +14,7 @@ const h = vi.hoisted(() => {
   process.env.ENGRAM_DB_DRIVER = "pglite";
   delete process.env.PGLITE_DATA_DIR;
   return {
+    contentMatchesMime: vi.fn(() => true),
     extractFromMedia: vi.fn(),
     generateMediaCommentary: vi.fn(async () => "in-voice reaction"),
   };
@@ -21,7 +22,10 @@ const h = vi.hoisted(() => {
 
 // Stub ONLY the LLM/extraction seam. Everything else (db, media-store, world-model-store,
 // world-model summarizer, the event bus) is the real implementation.
-vi.mock("../lib/media-extraction", () => ({ extractFromMedia: h.extractFromMedia }));
+vi.mock("../lib/media-extraction", () => ({
+  contentMatchesMime: h.contentMatchesMime,
+  extractFromMedia: h.extractFromMedia,
+}));
 vi.mock("../lib/engram-generation", () => ({
   generateMediaCommentary: h.generateMediaCommentary,
 }));

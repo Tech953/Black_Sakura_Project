@@ -80,8 +80,338 @@ function startsWithBytes(data: Buffer, signature: number[], offset = 0): boolean
   return signature.every((byte, index) => data[offset + index] === byte);
 }
 
-function containsAscii(data: Buffer, value: string): boolean {
-  return data.subarray(0, Math.min(data.length, 1024)).includes(Buffer.from(value, "ascii"));
+function readUInt32BE(data: Buffer, offset: number): number | null {
+  return offset >= 0 && offset + 4 <= data.length ? data.readUInt32BE(offset) : null;
+}
+
+function readUInt32LE(data: Buffer, offset: number): number | null {
+  return offset >= 0 && offset + 4 <= data.length ? data.readUInt32LE(offset) : null;
+}
+
+function isStructurallyValidJpeg(data: Buffer): boolean {
+  if (data.length < 4 || !startsWithBytes(data, [0xff, 0xd8]) || data[data.length - 2] !== 0xff || data[data.length - 1] !== 0xd9)
+    return false;
+
+  let offset = 2;
+  let sawFrame = false;
+  let sawScan = false;
+  while (offset < data.length) {
+    if (data[offset] !== 0xff) return false;
+    while (offset < data.length && data[offset] === 0xff) offset += 1;
+    if (offset >= data.length) return false;
+    const marker = data[offset++]!;
+    if (marker === 0x00) return false;
+    if (marker === 0xd9) return sawFrame && sawScan && offset === data.length;
+
+    // Restart markers and TEM do not carry a length field.
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+    if (offset + 2 > data.length) return false;
+    const segmentLength = data.readUInt16BE(offset);
+    if (segmentLength < 2 || offset + segmentLength > data.length) return false;
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      ![0xc4, 0xc8, 0xcc].includes(marker)
+    )
+      sawFrame = true;
+    offset += segmentLength;
+
+    if (marker === 0xda) {
+      sawScan = true;
+      let sawEnd = false;
+      while (offset < data.length) {
+        if (data[offset++] !== 0xff) continue;
+        while (offset < data.length && data[offset] === 0xff) offset += 1;
+        if (offset >= data.length) return false;
+        const next = data[offset++]!;
+        if (next === 0x00 || (next >= 0xd0 && next <= 0xd7)) continue;
+        if (next !== 0xd9) return false;
+        sawEnd = true;
+        break;
+      }
+      return sawFrame && sawEnd && offset === data.length;
+    }
+  }
+  return false;
+}
+
+function isStructurallyValidWav(data: Buffer): boolean {
+  if (
+    data.length < 44 ||
+    data.toString("ascii", 0, 4) !== "RIFF" ||
+    data.toString("ascii", 8, 12) !== "WAVE" ||
+    readUInt32LE(data, 4) !== data.length - 8
+  )
+    return false;
+
+  let offset = 12;
+  let sawFormat = false;
+  let sawData = false;
+  while (offset < data.length) {
+    if (offset + 8 > data.length) return false;
+    const chunkId = data.toString("ascii", offset, offset + 4);
+    const chunkSize = readUInt32LE(data, offset + 4);
+    if (chunkSize == null) return false;
+    const chunkEnd = offset + 8 + chunkSize + (chunkSize % 2);
+    if (chunkEnd > data.length) return false;
+
+    if (chunkId === "fmt ") {
+      if (chunkSize < 16) return false;
+      const format = data.readUInt16LE(offset + 8);
+      const channels = data.readUInt16LE(offset + 10);
+      const sampleRate = data.readUInt32LE(offset + 12);
+      const blockAlign = data.readUInt16LE(offset + 20);
+      const bitsPerSample = data.readUInt16LE(offset + 22);
+      if (
+        ![1, 3, 0xfffe].includes(format) ||
+        channels === 0 ||
+        sampleRate === 0 ||
+        blockAlign === 0 ||
+        bitsPerSample === 0
+      )
+        return false;
+      sawFormat = true;
+    } else if (chunkId === "data") {
+      if (chunkSize === 0) return false;
+      sawData = true;
+    }
+    offset = chunkEnd;
+  }
+  return offset === data.length && sawFormat && sawData;
+}
+
+function oggCrc(data: Buffer, start: number, end: number): number {
+  let crc = 0;
+  for (let index = start; index < end; index += 1) {
+    const byte =
+      index >= start + 22 && index < start + 26 ? 0 : data[index]!;
+    crc ^= byte << 24;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc & 0x80000000) !== 0 ? (crc << 1) ^ 0x04c11db7 : crc << 1;
+    }
+  }
+  return crc >>> 0;
+}
+
+function isStructurallyValidOgg(data: Buffer): boolean {
+  let offset = 0;
+  let pages = 0;
+  let payloadBytes = 0;
+  while (offset < data.length) {
+    if (offset + 27 > data.length || data.toString("ascii", offset, offset + 4) !== "OggS")
+      return false;
+    if (data[offset + 4] !== 0) return false;
+    const segmentCount = data[offset + 26]!;
+    const tableEnd = offset + 27 + segmentCount;
+    if (tableEnd > data.length) return false;
+    let pagePayloadSize = 0;
+    for (let index = offset + 27; index < tableEnd; index += 1) pagePayloadSize += data[index]!;
+    const pageEnd = tableEnd + pagePayloadSize;
+    if (pageEnd > data.length) return false;
+    const expectedCrc = readUInt32BE(data, offset + 22);
+    if (expectedCrc == null || expectedCrc !== oggCrc(data, offset, pageEnd)) return false;
+    payloadBytes += pagePayloadSize;
+    pages += 1;
+    offset = pageEnd;
+  }
+  return pages > 0 && payloadBytes > 0 && offset === data.length;
+}
+
+type EbmlVint = { length: number; value: number; unknown: boolean };
+
+function readEbmlVint(data: Buffer, offset: number): EbmlVint | null {
+  if (offset >= data.length) return null;
+  const first = data[offset]!;
+  let mask = 0x80;
+  let length = 1;
+  while (length <= 8 && (first & mask) === 0) {
+    mask >>= 1;
+    length += 1;
+  }
+  if (length > 8 || offset + length > data.length) return null;
+  let value = first & (mask - 1);
+  for (let index = 1; index < length; index += 1) value = value * 256 + data[offset + index]!;
+  return {
+    length,
+    value,
+    unknown: value === 2 ** (7 * length) - 1,
+  };
+}
+
+function readEbmlId(data: Buffer, offset: number): { length: number; value: number } | null {
+  const vint = readEbmlVint(data, offset);
+  return vint ? { length: vint.length, value: vint.value + 2 ** (7 * vint.length) } : null;
+}
+
+function readEbmlElement(
+  data: Buffer,
+  offset: number,
+  limit = data.length,
+): { id: number; payloadStart: number; end: number } | null {
+  const id = readEbmlId(data, offset);
+  if (!id) return null;
+  const size = readEbmlVint(data, offset + id.length);
+  if (!size) return null;
+  const payloadStart = offset + id.length + size.length;
+  const end = size.unknown ? limit : payloadStart + size.value;
+  if (end > limit || end > data.length) return null;
+  return { id: id.value, payloadStart, end };
+}
+
+function hasEbmlChild(data: Buffer, start: number, end: number, wantedId: number): boolean {
+  let offset = start;
+  while (offset < end) {
+    const element = readEbmlElement(data, offset, end);
+    if (!element) return false;
+    if (element.id === wantedId) return true;
+    offset = element.end;
+  }
+  return offset === end;
+}
+
+function detectEbmlDocumentType(data: Buffer): "webm" | "matroska" | null {
+  const header = readEbmlElement(data, 0);
+  if (!header || header.id !== 0x1a45dfa3) return null;
+  let documentType: "webm" | "matroska" | null = null;
+  let offset = header.payloadStart;
+  while (offset < header.end) {
+    const element = readEbmlElement(data, offset, header.end);
+    if (!element) return null;
+    if (element.id === 0x4282) {
+      const value = data.toString("ascii", element.payloadStart, element.end);
+      if (value === "webm" || value === "matroska") documentType = value;
+    }
+    offset = element.end;
+  }
+  if (offset !== header.end || !documentType) return null;
+
+  const segment = readEbmlElement(data, header.end);
+  if (!segment || segment.id !== 0x18538067) return null;
+  const segmentEnd = segment.end;
+  let segmentOffset = segment.payloadStart;
+  let info: { start: number; end: number } | undefined;
+  let tracks: { start: number; end: number } | undefined;
+  let cluster: { start: number; end: number } | undefined;
+  while (segmentOffset < segmentEnd) {
+    const element = readEbmlElement(data, segmentOffset, segmentEnd);
+    if (!element) return null;
+    if (element.id === 0x1549a966) info = { start: element.payloadStart, end: element.end };
+    if (element.id === 0x1654ae6b) tracks = { start: element.payloadStart, end: element.end };
+    if (element.id === 0x1f43b675) cluster = { start: element.payloadStart, end: element.end };
+    segmentOffset = element.end;
+  }
+  if (
+    segmentOffset !== segmentEnd ||
+    !info ||
+    !tracks ||
+    !cluster ||
+    !hasEbmlChild(data, info.start, info.end, 0x2ad7b1) ||
+    !hasEbmlChild(data, tracks.start, tracks.end, 0xae) ||
+    (!hasEbmlChild(data, cluster.start, cluster.end, 0xa3) &&
+      !hasEbmlChild(data, cluster.start, cluster.end, 0xa0))
+  )
+    return null;
+  return documentType;
+}
+
+function inspectIsoBmff(data: Buffer): {
+  majorBrand: string;
+  compatibleBrands: string[];
+  sawMoov: boolean;
+  sawMoof: boolean;
+  sawMdat: boolean;
+} | null {
+  let offset = 0;
+  let ftypEnd = 0;
+  let majorBrand = "";
+  let compatibleBrands: string[] = [];
+  let sawMoov = false;
+  let sawMoof = false;
+  let sawMdat = false;
+
+  while (offset < data.length) {
+    if (offset + 8 > data.length) return null;
+    const size32 = readUInt32BE(data, offset);
+    if (size32 == null) return null;
+    const type = data.toString("ascii", offset + 4, offset + 8);
+    let headerSize = 8;
+    let boxSize = size32;
+    if (size32 === 1) {
+      if (offset + 16 > data.length) return null;
+      const extended = data.readBigUInt64BE(offset + 8);
+      if (extended > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+      boxSize = Number(extended);
+      headerSize = 16;
+    } else if (size32 === 0) {
+      boxSize = data.length - offset;
+    }
+    if (boxSize < headerSize || offset + boxSize > data.length) return null;
+    const boxEnd = offset + boxSize;
+
+    if (offset === 0) {
+      if (type !== "ftyp" || boxSize < 16 || (boxSize - 8) % 4 !== 0) return null;
+      majorBrand = data.toString("ascii", offset + 8, offset + 12);
+      for (let brandOffset = offset + 16; brandOffset < boxEnd; brandOffset += 4)
+        compatibleBrands.push(data.toString("ascii", brandOffset, brandOffset + 4));
+      ftypEnd = boxEnd;
+    } else if (type === "moov" && boxSize > headerSize) {
+      sawMoov = true;
+    } else if (type === "moof" && boxSize > headerSize) {
+      sawMoof = true;
+    } else if (type === "mdat" && boxSize > headerSize) {
+      sawMdat = true;
+    }
+    offset = boxEnd;
+  }
+  return ftypEnd > 0 && offset === data.length
+    ? { majorBrand, compatibleBrands, sawMoov, sawMoof, sawMdat }
+    : null;
+}
+
+function isValidMpegFrame(data: Buffer, offset: number): boolean {
+  if (offset + 4 > data.length || data[offset] !== 0xff || (data[offset + 1]! & 0xe0) !== 0xe0)
+    return false;
+  const version = (data[offset + 1]! >> 3) & 0x03;
+  const layer = (data[offset + 1]! >> 1) & 0x03;
+  const bitrateIndex = (data[offset + 2]! >> 4) & 0x0f;
+  const sampleRateIndex = (data[offset + 2]! >> 2) & 0x03;
+  if (version === 1 || layer === 0 || bitrateIndex === 0 || bitrateIndex === 15 || sampleRateIndex === 3)
+    return false;
+  const bitrates =
+    version === 3
+      ? layer === 3
+        ? [32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448]
+        : layer === 2
+          ? [32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]
+          : [32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]
+      : layer === 3
+        ? [32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256]
+        : [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
+  const sampleRates =
+    version === 3 ? [44_100, 48_000, 32_000] : version === 2 ? [22_050, 24_000, 16_000] : [11_025, 12_000, 8_000];
+  const bitrate = bitrates[bitrateIndex - 1];
+  const sampleRate = sampleRates[sampleRateIndex];
+  if (!bitrate || !sampleRate) return false;
+  const padding = (data[offset + 2]! >> 1) & 1;
+  const frameLength = Math.floor(
+    layer === 3
+      ? ((12 * bitrate * 1000) / sampleRate + padding) * 4
+      : ((layer === 1 && version !== 3 ? 72 : 144) * bitrate * 1000) / sampleRate + padding,
+  );
+  return frameLength >= 4 && offset + frameLength <= data.length;
+}
+
+function isStructurallyValidMp3(data: Buffer): boolean {
+  if (startsWithBytes(data, [0x49, 0x44, 0x33])) {
+    if (data.length < 10) return false;
+    const tagSize =
+      ((data[6]! & 0x7f) << 21) |
+      ((data[7]! & 0x7f) << 14) |
+      ((data[8]! & 0x7f) << 7) |
+      (data[9]! & 0x7f);
+    return isValidMpegFrame(data, 10 + tagSize);
+  }
+  return isValidMpegFrame(data, 0);
 }
 
 /**
@@ -94,7 +424,7 @@ function containsAscii(data: Buffer, value: string): boolean {
 export function detectContentType(data: Buffer): string | null {
   if (startsWithBytes(data, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
     return "image/png";
-  if (startsWithBytes(data, [0xff, 0xd8, 0xff])) return "image/jpeg";
+  if (isStructurallyValidJpeg(data)) return "image/jpeg";
   if (
     startsWithBytes(data, [0x52, 0x49, 0x46, 0x46]) &&
     data.subarray(8, 12).toString("ascii") === "WEBP"
@@ -106,36 +436,29 @@ export function detectContentType(data: Buffer): string | null {
   )
     return "image/gif";
 
-  if (
-    startsWithBytes(data, [0x52, 0x49, 0x46, 0x46]) &&
-    data.subarray(8, 12).toString("ascii") === "WAVE"
-  )
+  if (isStructurallyValidWav(data))
     return "audio/wav";
-  if (data.subarray(0, 4).toString("ascii") === "OggS") return "audio/ogg";
-  if (
-    data.subarray(0, 3).toString("ascii") === "ID3" ||
-    (data[0] === 0xff && (data[1]! & 0xe0) === 0xe0)
-  )
-    return "audio/mpeg";
+  if (isStructurallyValidOgg(data)) return "audio/ogg";
+  if (isStructurallyValidMp3(data)) return "audio/mpeg";
 
   // Matroska/WebM share the EBML header. The DocType identifies the
   // container, while the claimed allowlist MIME distinguishes audio/webm
   // from video/webm only at the API policy layer.
-  if (startsWithBytes(data, [0x1a, 0x45, 0xdf, 0xa3])) {
-    if (containsAscii(data, "webm")) return "video/webm";
-    if (containsAscii(data, "matroska")) return "video/x-matroska";
-    return null;
-  }
+  const ebmlDocumentType = detectEbmlDocumentType(data);
+  if (ebmlDocumentType === "webm") return "video/webm";
+  if (ebmlDocumentType === "matroska") return "video/x-matroska";
 
   // ISO Base Media File Format covers MP4, M4A and QuickTime containers.
-  if (data.subarray(4, 8).toString("ascii") === "ftyp") {
-    const majorBrand = data.subarray(8, 12).toString("ascii");
-    if (majorBrand === "qt  " || containsAscii(data, "qt  "))
+  const iso = inspectIsoBmff(data);
+  if (iso?.sawMdat && iso.sawMoov) {
+    if (iso.majorBrand === "qt  " || iso.compatibleBrands.includes("qt  "))
       return "video/quicktime";
-    if (["M4A ", "M4B ", "M4P "].includes(majorBrand)) return "audio/mp4";
+    if (["M4A ", "M4B ", "M4P "].includes(iso.majorBrand)) return "audio/mp4";
+  }
+  if (iso?.sawMdat && (iso.sawMoov || iso.sawMoof)) {
     if (
       ["isom", "iso2", "iso3", "iso4", "iso5", "iso6", "mp41", "mp42", "avc1"].includes(
-        majorBrand,
+        iso.majorBrand,
       )
     )
       return "video/mp4";

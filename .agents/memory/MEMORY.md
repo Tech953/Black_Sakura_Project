@@ -56,3 +56,4 @@
 - [Web export compatibility](web-export-compat.md) — test Safari/Firefox download timing through explicit engine-shaped runtimes until native runners exist.
 - [Media recovery contract](media-recovery-contract.md) — recovered timeouts are distinct from provider failures; explain transactional rollback and safe idempotent retry.
 - [Media upload MIME handling](media-upload-mime.md) — infer only generic picker MIME values from unambiguous extensions; preserve specific unsupported claims for clear server rejection.
+- [Media binary structure validation](media-structure-validation.md) — validate complete container structure at upload and again before worker extraction.

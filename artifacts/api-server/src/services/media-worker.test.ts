@@ -37,6 +37,7 @@ const h = vi.hoisted(() => {
       async (_asset: MediaAsset, _content: string) => undefined,
     ),
     recoverStuckJobs: vi.fn(async () => 0),
+    contentMatchesMime: vi.fn(() => true),
     extractFromMedia: vi.fn(),
     generateMediaCommentary: vi.fn(async () => "in-voice reaction"),
     summarizeWorldModel: vi.fn(() => "wm summary"),
@@ -62,7 +63,10 @@ vi.mock("../lib/media-store", () => ({
   upsertMediaContextMessage: h.upsertMediaContextMessage,
   recoverStuckJobs: h.recoverStuckJobs,
 }));
-vi.mock("../lib/media-extraction", () => ({ extractFromMedia: h.extractFromMedia }));
+vi.mock("../lib/media-extraction", () => ({
+  contentMatchesMime: h.contentMatchesMime,
+  extractFromMedia: h.extractFromMedia,
+}));
 vi.mock("../lib/engram-generation", () => ({
   generateMediaCommentary: h.generateMediaCommentary,
 }));
@@ -314,6 +318,19 @@ describe("runMediaTick — failures surface on the job", () => {
     const [, patch] = h.updateMediaAsset.mock.calls[0];
     expect(patch.status).toBe("failed");
     expect(patch.error).toMatch(/missing/i);
+  });
+
+  it("fails before clearing observations or extracting invalid stored bytes", async () => {
+    h.claimNextPendingJob.mockResolvedValueOnce(makeAsset());
+    h.contentMatchesMime.mockReturnValueOnce(false);
+
+    await runMediaTick();
+
+    expect(h.clearMediaObservations).not.toHaveBeenCalled();
+    expect(h.extractFromMedia).not.toHaveBeenCalled();
+    const [, patch] = h.updateMediaAsset.mock.calls[0];
+    expect(patch.status).toBe("failed");
+    expect(patch.error).toMatch(/do not match/i);
   });
 
   it("truncates very long error messages to 500 chars", async () => {

@@ -12,7 +12,11 @@ import {
   recoverStuckJobs,
   upsertMediaContextMessage,
 } from "../lib/media-store";
-import { extractFromMedia, type MediaExtraction } from "../lib/media-extraction";
+import {
+  contentMatchesMime,
+  extractFromMedia,
+  type MediaExtraction,
+} from "../lib/media-extraction";
 import { generateMediaCommentary } from "../lib/engram-generation";
 import { summarizeWorldModel } from "../lib/world-model";
 import { loadRecentWorldModel } from "../lib/world-model-store";
@@ -59,6 +63,9 @@ async function processAsset(asset: MediaAsset): Promise<void> {
   }
   const blob = await loadMediaBlob(asset.id);
   if (!blob) throw new Error("Media bytes are missing for this asset.");
+  if (!contentMatchesMime(blob.data, asset.mimeType)) {
+    throw new Error("Stored media bytes do not match the asset MIME type.");
+  }
 
   // Idempotency: re-processing (a retry) re-perceives the same bytes, so drop any
   // observations a prior partial run left behind before writing the fresh set.
