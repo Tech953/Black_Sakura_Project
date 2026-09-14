@@ -15,6 +15,11 @@ Endpoints (`artifacts/api-server/src/routes/download.ts`, logic in
 - `GET /api/download/android` — JSON metadata (`available`, `source`, `version`, `filename`, `sizeBytes`)
 - `GET /api/download/android.apk` — the APK itself
 
+Metadata includes `publishedAt` when the source provides a trustworthy
+timestamp: bundled files use their filesystem modification time, and App
+Storage files use their object creation/update metadata. It remains `null`
+when no usable timestamp is available, so the Download page hides the date.
+
 ## How serving works ("do both")
 
 Both desktop and Android resolve in the same two-step order:
