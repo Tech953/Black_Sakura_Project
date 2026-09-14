@@ -402,6 +402,11 @@ function MediaCard({
               <AlertTriangle className="w-3 h-3" /> {t("perceptionFailed")}
             </p>
             <p className="text-xs font-mono text-rose-300/70 break-words">{asset.error}</p>
+            <p className="text-xs font-sans text-rose-200/70">
+              {asset.resultState === "partial"
+                ? t("partialResultSaved", { count: asset.observationCount })
+                : t("noResultSaved")}
+            </p>
           </div>
         )}
 

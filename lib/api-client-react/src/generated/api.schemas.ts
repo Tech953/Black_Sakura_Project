@@ -1257,6 +1257,18 @@ export const MediaAssetStatus = {
   failed: 'failed',
 } as const;
 
+/**
+ * Whether this asset has no derived result, a partial result, or a complete result.
+ */
+export type MediaAssetResultState = typeof MediaAssetResultState[keyof typeof MediaAssetResultState];
+
+
+export const MediaAssetResultState = {
+  none: 'none',
+  partial: 'partial',
+  complete: 'complete',
+} as const;
+
 export interface MediaAsset {
   id: number;
   /** @nullable */
@@ -1268,6 +1280,8 @@ export interface MediaAsset {
   modality: MediaAssetModality;
   sizeBytes: number;
   status: MediaAssetStatus;
+  /** Whether this asset has no derived result, a partial result, or a complete result. */
+  resultState: MediaAssetResultState;
   /** @nullable */
   summary: string | null;
   /** @nullable */

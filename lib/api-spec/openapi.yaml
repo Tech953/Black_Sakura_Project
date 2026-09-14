@@ -3731,6 +3731,10 @@ components:
         status:
           type: string
           enum: [pending, processing, completed, failed]
+        resultState:
+          type: string
+          description: Whether this asset has no derived result, a partial result, or a complete result.
+          enum: [none, partial, complete]
         summary:
           type: ["string", "null"]
         commentary:
@@ -3758,6 +3762,7 @@ components:
         - modality
         - sizeBytes
         - status
+        - resultState
         - summary
         - commentary
         - transcript
