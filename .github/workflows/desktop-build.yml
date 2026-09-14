@@ -448,6 +448,7 @@ jobs:
           # loopback fixture for their packaged smoke.
           ENGRAM_PACKAGED_OFFLINE_MODEL_HTTPS: ${{ matrix.platform == 'win' && '1' || '0' }}
           ENGRAM_PACKAGED_UPDATE_SMOKE: ${{ matrix.platform == 'linux' && '1' || '0' }}
+          ENGRAM_PACKAGED_UPDATE_FEED_SMOKE: ${{ matrix.platform == 'linux' && '1' || '0' }}
         run: |
           set -o pipefail
           mkdir -p artifacts/desktop/.ci-smoke/diagnostics
@@ -688,6 +689,8 @@ jobs:
           EXPECT_SLIM_LLM: "0"
           ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
           ENGRAM_SMOKE_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/diagnostics
+          ENGRAM_PACKAGED_UPDATE_SMOKE: "1"
+          ENGRAM_PACKAGED_UPDATE_FEED_SMOKE: "1"
         run: |
           set -euo pipefail
           sudo apt-get update
