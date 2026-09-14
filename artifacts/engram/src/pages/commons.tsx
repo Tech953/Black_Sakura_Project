@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import {
-  useListEngramMessages,
   useListEngrams,
-  getListEngramMessagesQueryKey,
   type EngramMessage,
   type Engram,
 } from "@workspace/api-client-react";
@@ -12,6 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MessagesSquare, ShieldAlert, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { usePaginatedEngramMessages } from "@/hooks/use-paginated-engram-messages";
+import { Button } from "@/components/ui/button";
+import { ChevronUp } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const STATUS_META: Record<string, { cls: string }> = {
   delivered: { cls: "border-emerald-500/30 text-emerald-400" },
@@ -37,15 +39,9 @@ function relativeTime(t: TFunction, iso: string): string {
 
 export default function Commons() {
   const { t } = useTranslation("commons");
-  const { data: messages, isLoading } = useListEngramMessages(
-    { channel: "engram", limit: 100 },
-    {
-      query: {
-        queryKey: getListEngramMessagesQueryKey({ channel: "engram", limit: 100 }),
-        refetchInterval: 15000,
-      },
-    },
-  );
+  const { toast } = useToast();
+  const commonsHistory = usePaginatedEngramMessages("engram");
+  const { messages, isLoading } = commonsHistory;
   const { data: engrams } = useListEngrams();
 
   const engramById = useMemo(() => {
@@ -57,7 +53,9 @@ export default function Commons() {
   const ordered = useMemo(
     () =>
       [...(messages ?? [])].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
+          b.id - a.id,
       ),
     [messages],
   );
@@ -93,6 +91,25 @@ export default function Commons() {
       </div>
 
       <div className="space-y-3">
+        {ordered.length > 0 && commonsHistory.hasOlder && (
+          <div className="flex justify-center">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                commonsHistory.loadOlder().catch(() =>
+                  toast({ title: t("toastLoadOlderFailed"), variant: "destructive" }),
+                )
+              }
+              disabled={commonsHistory.isLoadingOlder}
+              className="font-mono text-xs uppercase tracking-wider border-border/50"
+              data-testid="button-load-older-commons"
+            >
+              <ChevronUp className="w-3 h-3 mr-2" />
+              {commonsHistory.isLoadingOlder ? t("loadingOlder") : t("loadOlder")}
+            </Button>
+          </div>
+        )}
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 bg-primary/5" />)
         ) : !ordered.length ? (

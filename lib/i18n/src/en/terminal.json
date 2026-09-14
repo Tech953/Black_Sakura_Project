@@ -54,6 +54,8 @@
   "override": "Override",
   "sendToQuiescence": "Send to Quiescence",
   "incomingContact": "Incoming Contact",
+  "loadOlder": "Load older",
+  "loadingOlder": "Loading older…",
   "newCount": "{{count}} new",
   "markAllSeen": "Mark all seen",
   "noEngramReachedOut": "No engram has reached out yet",
@@ -78,6 +80,7 @@
   "toastMarkedSeen_one": "Marked {{count}} message seen",
   "toastMarkedSeen_other": "Marked {{count}} messages seen",
   "toastMarkSeenFailed": "Failed to mark seen",
+  "toastLoadOlderFailed": "Failed to load older messages",
   "toastLogExported": "Log exported",
   "toastLogExportedDescription_one": "{{count}} message downloaded.",
   "toastLogExportedDescription_other": "{{count}} messages downloaded."

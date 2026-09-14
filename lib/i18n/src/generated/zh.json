@@ -226,7 +226,10 @@
       "minutesAgo": "{{count}} 分钟前",
       "hoursAgo": "{{count}} 小时前",
       "daysAgo": "{{count}} 天前"
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "createEngram": {
     "title": "从源初始化 Engram",
@@ -1298,7 +1301,10 @@
       "saved": "Saved",
       "pending": "Pending acknowledgement",
       "acknowledged": "Acknowledged"
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "worldModel": {
     "title": "世界模型",

@@ -226,7 +226,10 @@
       "minutesAgo": "vor {{count}} Min.",
       "hoursAgo": "vor {{count}} Std.",
       "daysAgo": "vor {{count}} T."
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "createEngram": {
     "title": "Engram aus Quelle initialisieren",
@@ -1298,7 +1301,10 @@
       "saved": "Saved",
       "pending": "Pending acknowledgement",
       "acknowledged": "Acknowledged"
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "worldModel": {
     "title": "WELTMODELL",

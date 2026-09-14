@@ -2505,6 +2505,99 @@ describe("human contact messages route", () => {
     });
   });
 
+  it("paginates older rows with an id tie-breaker while preserving channel and owner filters", async () => {
+    const ownerEngram = seedEngram({ name: "Cursor Source" });
+    seedEngram({ name: "Other Owner Source", ownerId: "other-owner" });
+    const sameTimestamp = new Date("2026-09-13T12:00:00.000Z");
+    const olderTimestamp = new Date("2026-09-13T11:59:00.000Z");
+    for (const row of [
+      {
+        id: 10,
+        fromEngramId: ownerEngram.id,
+        channel: "human",
+        createdAt: sameTimestamp,
+        content: "same timestamp one",
+      },
+      {
+        id: 11,
+        fromEngramId: ownerEngram.id,
+        channel: "human",
+        createdAt: sameTimestamp,
+        content: "same timestamp two",
+      },
+      {
+        id: 12,
+        fromEngramId: ownerEngram.id,
+        channel: "human",
+        createdAt: olderTimestamp,
+        content: "older owner message",
+      },
+      {
+        id: 13,
+        fromEngramId: ownerEngram.id,
+        channel: "engram",
+        createdAt: sameTimestamp,
+        content: "different channel",
+      },
+      {
+        id: 14,
+        fromEngramId: 2,
+        channel: "human",
+        createdAt: olderTimestamp,
+        content: "different owner",
+      },
+    ]) {
+      h.store.engramMessagesTable.push({
+        id: row.id,
+        fromEngramId: row.fromEngramId,
+        toEngramId: null,
+        spaceId: null,
+        channel: row.channel,
+        author: "engram",
+        priority: "social",
+        status: "delivered",
+        content: row.content,
+        reason: null,
+        seen: false,
+        isDigest: false,
+        digestedAt: null,
+        deliveredAt: row.createdAt,
+        createdAt: row.createdAt,
+      });
+    }
+
+    const first = await fetch(`${base}/api/messages?channel=human&limit=1`);
+    expect(first.status).toBe(200);
+    const firstPage = (await first.json()) as Array<{ id: number; createdAt: string }>;
+    expect(firstPage.map((message) => message.id)).toEqual([11]);
+
+    const second = await fetch(
+      `${base}/api/messages?channel=human&limit=1&before=${encodeURIComponent(firstPage[0].createdAt)}&beforeId=${firstPage[0].id}`,
+    );
+    expect(second.status).toBe(200);
+    const secondPage = (await second.json()) as Array<{ id: number; channel: string }>;
+    expect(secondPage).toEqual([
+      expect.objectContaining({ id: 10, channel: "human" }),
+    ]);
+
+    const third = await fetch(
+      `${base}/api/messages?channel=human&limit=1&before=${encodeURIComponent(firstPage[0].createdAt)}&beforeId=${secondPage[0].id}`,
+    );
+    expect(third.status).toBe(200);
+    const thirdPage = (await third.json()) as Array<{ id: number; channel: string }>;
+    expect(thirdPage).toEqual([
+      expect.objectContaining({ id: 12, channel: "human" }),
+    ]);
+    expect(thirdPage.some((message) => message.id === 14 || message.id === 13)).toBe(false);
+  });
+
+  it("rejects an invalid older-message cursor", async () => {
+    const response = await fetch(
+      `${base}/api/messages?channel=human&before=not-a-timestamp&beforeId=10`,
+    );
+    expect(response.status).toBe(400);
+  });
+
   it("marks only human-channel rows as seen", async () => {
     const engram = seedEngram({ name: "Seen Source" });
     const rows = [

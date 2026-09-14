@@ -226,7 +226,10 @@
       "minutesAgo": "{{count}}मि पहले",
       "hoursAgo": "{{count}}घं पहले",
       "daysAgo": "{{count}}दि पहले"
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "createEngram": {
     "title": "स्रोत से Engram प्रारंभ करें",
@@ -1298,7 +1301,10 @@
       "saved": "Saved",
       "pending": "Pending acknowledgement",
       "acknowledged": "Acknowledged"
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "worldModel": {
     "title": "वर्ल्ड मॉडल",

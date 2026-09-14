@@ -226,7 +226,10 @@
       "minutesAgo": "{{count}}분 전",
       "hoursAgo": "{{count}}시간 전",
       "daysAgo": "{{count}}일 전"
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "createEngram": {
     "title": "소스에서 Engram 초기화",
@@ -1298,7 +1301,10 @@
       "saved": "Saved",
       "pending": "Pending acknowledgement",
       "acknowledged": "Acknowledged"
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "worldModel": {
     "title": "WORLD MODEL",

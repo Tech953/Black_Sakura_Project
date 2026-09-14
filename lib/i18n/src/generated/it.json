@@ -226,7 +226,10 @@
       "minutesAgo": "{{count}}m fa",
       "hoursAgo": "{{count}}h fa",
       "daysAgo": "{{count}}g fa"
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "createEngram": {
     "title": "Inizializza Engram dalla Fonte",
@@ -1298,7 +1301,10 @@
       "saved": "Saved",
       "pending": "Pending acknowledgement",
       "acknowledged": "Acknowledged"
-    }
+    },
+    "loadOlder": "Load older",
+    "loadingOlder": "Loading older…",
+    "toastLoadOlderFailed": "Failed to load older messages"
   },
   "worldModel": {
     "title": "MODELLO DEL MONDO",
