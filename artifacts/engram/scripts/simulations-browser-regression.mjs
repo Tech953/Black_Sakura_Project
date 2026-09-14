@@ -93,6 +93,13 @@ const devtools = new DevTools();
 
 const fixtureScript = String.raw`
 (() => {
+  window.__simulationBrowserErrors = [];
+  window.addEventListener("error", (event) => {
+    window.__simulationBrowserErrors.push(String(event.error?.stack ?? event.message));
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    window.__simulationBrowserErrors.push(String(event.reason?.stack ?? event.reason));
+  });
   const originalFetch = window.fetch.bind(window);
   const engrams = [
     {
@@ -136,6 +143,18 @@ const fixtureScript = String.raw`
     createdAt: "2026-09-12T12:10:00.000Z",
     updatedAt: "2026-09-12T12:10:01.000Z"
   };
+  const processingMediaAsset = {
+    ...mediaAsset,
+    id: 503,
+    filename: "incoming-note.txt",
+    status: "processing",
+    resultState: "none",
+    summary: null,
+    commentary: null,
+    observationCount: 0,
+    completedAt: null,
+    updatedAt: "2026-09-12T12:11:00.000Z"
+  };
   const mediaObservations = [{
     id: 601,
     mediaAssetId: 501,
@@ -168,6 +187,17 @@ const fixtureScript = String.raw`
       source: "engine",
       createdAt: "2026-09-12T12:09:00.000Z",
       updatedAt: "2026-09-12T12:09:00.000Z"
+    },
+    {
+      id: 703,
+      engramId: 1,
+      provenance: "observed",
+      content: "The original source file was removed after perception.",
+      confidence: 0.77,
+      scope: "private",
+      source: "media:502",
+      createdAt: "2026-09-12T12:08:00.000Z",
+      updatedAt: "2026-09-12T12:08:00.000Z"
     }
   ];
   const stepSets = new Map([
@@ -246,7 +276,9 @@ const fixtureScript = String.raw`
     if (pathname === "/api/engrams/1/world-model" && method === "GET") {
       return response(worldModelEntries);
     }
-    if (pathname === "/api/media" && method === "GET") return response([mediaAsset]);
+    if (pathname === "/api/media" && method === "GET") {
+      return response([mediaAsset, processingMediaAsset]);
+    }
     if (pathname === "/api/media/501" && method === "GET") {
       return response({ asset: mediaAsset, observations: mediaObservations });
     }
@@ -319,7 +351,8 @@ async function waitFor(expression, label, timeout = 10000) {
   const state = await devtools.evaluate(`JSON.stringify({
     url: location.href,
     title: document.title,
-    body: (document.body?.innerText || "").slice(0, 900)
+    body: (document.body?.innerText || "").slice(0, 900),
+    errors: window.__simulationBrowserErrors ?? []
   })`);
   throw new Error(`Timed out waiting for ${label}: ${state}`);
 }
@@ -475,6 +508,19 @@ try {
   await waitFor("document.querySelector('[data-testid=\"media-501\"]')?.getAttribute('data-focused') === 'true'", "focused media asset");
   await waitFor("Boolean(document.querySelector('[data-testid=\"media-detail-501\"]'))", "expanded media asset");
   await waitForText("harbor-note.txt", "expanded media filename");
+
+  await devtools.call("Page.navigate", { url: `${appUrl}/dashboard` });
+  await waitForText("Recent Perception", "recent perception card");
+  await waitForText("A harbor beacon was recorded.", "recent media observation");
+  await waitFor("Boolean(document.querySelector('[data-testid=\"link-recent-media-source-701\"]'))", "recent source link");
+  await waitFor("Boolean(document.querySelector('[data-testid=\"recent-media-perception-processing\"]'))", "processing media notice");
+  await waitFor("Boolean(document.querySelector('[data-testid=\"recent-media-source-deleted-703\"]'))", "deleted media source notice");
+  const recentCardText = await devtools.evaluate(
+    `document.querySelector('[data-testid="recent-media-perception"]')?.innerText ?? ""`,
+  );
+  if (!recentCardText.includes("Source asset unavailable")) {
+    throw new Error(`Deleted media source state was not explained: ${recentCardText}`);
+  }
 
   console.log("Simulation and media-memory browser regressions passed");
 } finally {
