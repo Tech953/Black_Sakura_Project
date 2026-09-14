@@ -675,7 +675,9 @@
       "minutesAgo": "vor {{count}} Min.",
       "hoursAgo": "vor {{count}} Std.",
       "daysAgo": "vor {{count}} Tg."
-    }
+    },
+    "noResultSaved": "No observations were saved. Retry to run perception again.",
+    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result."
   },
   "memory": {
     "title": "GEDÄCHTNISARCHITEKTUR",

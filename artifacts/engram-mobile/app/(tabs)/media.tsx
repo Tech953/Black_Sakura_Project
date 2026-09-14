@@ -172,6 +172,11 @@ function MediaAssetCard({
       {asset.status === "failed" && asset.error ? (
         <View style={[styles.errorBox, { borderColor: colors.destructive + "66" }]}>
           <Text style={[styles.errorText, { color: colors.destructive }]}>{asset.error}</Text>
+          <Text style={[styles.errorSummary, { color: colors.destructive }]}>
+            {asset.resultState === "partial"
+              ? t("partialResultSaved", { count: asset.observationCount })
+              : t("noResultSaved")}
+          </Text>
         </View>
       ) : null}
 
@@ -592,6 +597,7 @@ const styles = StyleSheet.create({
   summary: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19, marginTop: 12 },
   errorBox: { borderWidth: 1, padding: 9, marginTop: 10 },
   errorText: { fontFamily: "JetBrainsMono_400Regular", fontSize: 11, lineHeight: 16 },
+  errorSummary: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18, marginTop: 7 },
   actions: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 12 },
   action: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 5 },
   detailsAction: { marginLeft: "auto" },

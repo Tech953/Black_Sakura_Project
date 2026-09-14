@@ -37,6 +37,13 @@ const upload = multer({
 const uploadSingle = upload.single("file");
 
 function serializeAsset(a: MediaAsset) {
+  const resultState =
+    a.status === "completed"
+      ? "complete"
+      : a.observationCount > 0
+        ? "partial"
+        : "none";
+
   return {
     id: a.id,
     engramId: a.engramId,
@@ -46,6 +53,7 @@ function serializeAsset(a: MediaAsset) {
     modality: a.modality,
     sizeBytes: a.sizeBytes,
     status: a.status,
+    resultState,
     summary: a.summary ?? null,
     commentary: a.commentary ?? null,
     transcript: a.transcript ?? null,

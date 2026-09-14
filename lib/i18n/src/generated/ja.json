@@ -675,7 +675,9 @@
       "minutesAgo": "{{count}}分前",
       "hoursAgo": "{{count}}時間前",
       "daysAgo": "{{count}}日前"
-    }
+    },
+    "noResultSaved": "No observations were saved. Retry to run perception again.",
+    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result."
   },
   "memory": {
     "title": "メモリアーキテクチャ",

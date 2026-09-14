@@ -89,6 +89,7 @@ export * from './markSeenResult';
 export * from './mediaAsset';
 export * from './mediaAssetDetail';
 export * from './mediaAssetModality';
+export * from './mediaAssetResultState';
 export * from './mediaAssetStatus';
 export * from './mediaObservationEntry';
 export * from './memoryEntry';

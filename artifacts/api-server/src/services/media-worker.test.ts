@@ -254,7 +254,54 @@ describe("runMediaTick — failures surface on the job", () => {
     const [, patch] = h.updateMediaAsset.mock.calls[0];
     expect(patch.status).toBe("failed");
     expect(patch.error).toContain("vision model unavailable");
-    expect(patch.completedAt).toBeInstanceOf(Date);
+    expect(patch.completedAt).toBeNull();
+    expect(patch.observationCount).toBe(0);
+  });
+
+  it("marks a write-time failure as no-result instead of exposing a partial result", async () => {
+    h.claimNextPendingJob.mockResolvedValueOnce(makeAsset());
+    h.appendMediaObservation
+      .mockResolvedValueOnce({ id: 1 })
+      .mockRejectedValueOnce(new Error("world model write failed"));
+
+    const result = await runMediaTick();
+
+    expect(result.processed).toBe(1);
+    expect(h.appendMediaObservation).toHaveBeenCalledTimes(2);
+    expect(h.updateMediaAsset).toHaveBeenCalledTimes(1);
+    const [, patch] = h.updateMediaAsset.mock.calls[0];
+    expect(patch).toMatchObject({
+      status: "failed",
+      observationCount: 0,
+      summary: null,
+      commentary: null,
+      transcript: null,
+      completedAt: null,
+    });
+    expect(patch.error).toContain("world model write failed");
+  });
+
+  it("replaces a failed attempt on retry without appending another copy", async () => {
+    h.claimNextPendingJob
+      .mockResolvedValueOnce(makeAsset())
+      .mockResolvedValueOnce(makeAsset({ status: "processing" }));
+    h.appendMediaObservation
+      .mockResolvedValueOnce({ id: 1 })
+      .mockRejectedValueOnce(new Error("temporary world model failure"))
+      .mockResolvedValueOnce({ id: 2 })
+      .mockResolvedValueOnce({ id: 3 });
+
+    await runMediaTick();
+    await runMediaTick();
+
+    expect(h.clearMediaObservations).toHaveBeenCalledTimes(2);
+    expect(h.appendMediaObservation).toHaveBeenCalledTimes(4);
+    const [, patch] = h.updateMediaAsset.mock.calls[1];
+    expect(patch).toMatchObject({
+      status: "completed",
+      observationCount: 2,
+      error: null,
+    });
   });
 
   it("fails the job when the blob bytes are missing", async () => {

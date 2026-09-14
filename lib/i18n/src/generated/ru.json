@@ -675,7 +675,9 @@
       "minutesAgo": "{{count}}м назад",
       "hoursAgo": "{{count}}ч назад",
       "daysAgo": "{{count}}д назад"
-    }
+    },
+    "noResultSaved": "No observations were saved. Retry to run perception again.",
+    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result."
   },
   "memory": {
     "title": "АРХИТЕКТУРА ПАМЯТИ",

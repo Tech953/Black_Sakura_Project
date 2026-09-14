@@ -252,13 +252,27 @@ export async function requeueMediaAsset(
  * world-model rows are matched by their hardcoded `source = "media:<id>"` tag; the
  * mapping rows are cleared explicitly so the operation is order-independent.
  */
-export async function clearMediaObservations(assetId: number): Promise<void> {
-  await db
-    .delete(mediaObservationsTable)
-    .where(eq(mediaObservationsTable.assetId, assetId));
-  await db
-    .delete(engramWorldModelTable)
-    .where(eq(engramWorldModelTable.source, `media:${assetId}`));
+export async function clearMediaObservations(
+  assetId: number,
+  executor?: DbExecutor,
+): Promise<void> {
+  const clear = async (tx: DbExecutor) => {
+    await tx
+      .delete(mediaObservationsTable)
+      .where(eq(mediaObservationsTable.assetId, assetId));
+    await tx
+      .delete(engramWorldModelTable)
+      .where(eq(engramWorldModelTable.source, `media:${assetId}`));
+  };
+
+  // Clearing is itself a replacement boundary. Keep the mapping rows and tagged
+  // world-model rows in one transaction so a failed retry cannot leave stale or
+  // half-cleared derived state behind.
+  if (executor) {
+    await clear(executor);
+  } else {
+    await db.transaction(clear);
+  }
 }
 
 /**

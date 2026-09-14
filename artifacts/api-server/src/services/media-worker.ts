@@ -40,7 +40,8 @@ async function loadEngram(id: number, ownerId: string): Promise<Engram | undefin
  * Process one claimed media job end-to-end: extract observations via the modality
  * dispatcher, persist each as an OBSERVED world-model entry (source media:<id>, both
  * hardcoded in the store), store the summary/transcript, and generate the engram's
- * in-voice commentary. Throws on hard failure so the caller marks the job failed.
+ * in-voice commentary. Throws before the completion transaction on hard failure so
+ * the caller can mark the job failed without exposing a partial result.
  */
 async function processAsset(asset: MediaAsset): Promise<void> {
   // Recheck the durable ownership captured at enqueue time before touching bytes
@@ -133,18 +134,25 @@ async function processAsset(asset: MediaAsset): Promise<void> {
     );
   });
 
-  publishEvent({
-    type: "media.completed",
-    ownerId: asset.ownerId,
-    engramId: asset.engramId,
-    conversationId: asset.conversationId,
-    data: {
-      id: asset.id,
-      modality: asset.modality,
-      filename: asset.filename,
-       observationCount: observations.length,
-    },
-  });
+  // The durable completion has already committed. Event delivery is only a live
+  // UI nudge, so it must not turn a completed job into a failed one if a listener
+  // throws.
+  try {
+    publishEvent({
+      type: "media.completed",
+      ownerId: asset.ownerId,
+      engramId: asset.engramId,
+      conversationId: asset.conversationId,
+      data: {
+        id: asset.id,
+        modality: asset.modality,
+        filename: asset.filename,
+        observationCount: observations.length,
+      },
+    });
+  } catch (err) {
+    logger.warn({ err, assetId: asset.id }, "media completion event publish failed");
+  }
 
   // Surface the perception inside the chat thread it was dropped into (idempotent on
   // retry via the asset's contextMessageId). No-op when the asset isn't conversation-bound.
@@ -212,7 +220,13 @@ export async function runMediaTick(): Promise<{ processed: number }> {
       await updateMediaAsset(asset.id, {
         status: "failed",
         error: message.slice(0, 500),
-        completedAt: new Date(),
+        // Processing is all-or-nothing. Clear result metadata on every failed
+        // attempt so the API cannot present a stale success as a partial result.
+        summary: null,
+        commentary: null,
+        transcript: null,
+        observationCount: 0,
+        completedAt: null,
       });
     }
     return { processed: 1 };

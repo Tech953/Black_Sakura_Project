@@ -20,6 +20,11 @@ After extraction, the complete observation set, asset-to-observation mappings, a
 **Why:** committing observations one at a time can expose a partial completed result if the worker dies before the final asset update.
 **How to apply:** store helpers that participate in the completion boundary must accept the caller's transaction executor instead of reaching for the global database handle.
 
+## Failed processing is all-or-nothing
+The worker clears prior derived rows atomically, then writes the fresh observations and completed metadata in one transaction. Any failure before that commit resets result metadata to zero and leaves the asset failed; the API derives `resultState` as `none`, `partial`, or `complete` so legacy rows remain explicit.
+**Why:** operators must never mistake a failed attempt with stale or partially committed rows for a trustworthy completed perception; retries must have one clear replacement boundary.
+**How to apply:** keep post-commit notifications best-effort, preserve `observationCount: 0` and null result fields on failure, and use the same result-state contract in web and mobile recovery UI.
+
 ## Deletion preserves observations
 Deleting a media asset cascades the blob + observation MAPPING rows but PRESERVES the world-model entries — they are genuine observations that outlive the source file (entries are not FK-owned by the asset; only the mapping table is).
 
