@@ -688,7 +688,10 @@
     "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result.",
     "fileTooLarge": "This file is too large to upload.",
     "fileTypeMismatch": "The file contents, MIME type, or filename extension do not agree. Choose the original file.",
-    "unsupportedFileType": "This file type is not supported. Choose a text, image, audio, or video file."
+    "unsupportedFileType": "This file type is not supported. Choose a text, image, audio, or video file.",
+    "recoveredTitle": "Perception was recovered after an interruption",
+    "recoveredBody": "The worker stopped before completing this perception. No completed partial result was committed.",
+    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates."
   },
   "memory": {
     "title": "ARCHITETTURA DELLA MEMORIA",

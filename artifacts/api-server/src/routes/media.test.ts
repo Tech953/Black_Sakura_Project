@@ -61,6 +61,7 @@ vi.mock("../lib/media-store", () => ({
   loadMediaBlob: h.loadMediaBlob,
   requeueMediaAsset: h.requeueMediaAsset,
   deleteMediaAsset: h.deleteMediaAsset,
+  MEDIA_RECOVERY_ERROR: "Processing timed out and was recovered.",
 }));
 
 import mediaRouter from "./media";
@@ -200,6 +201,23 @@ describe("GET /media/:id", () => {
     const body = (await res.json()) as any;
     expect(body.asset.resultState).toBe("partial");
     expect(body.asset.observationCount).toBe(1);
+  });
+
+  it("marks a recovered timeout with a distinct failure kind", async () => {
+    h.loadMediaAssetById.mockResolvedValueOnce(
+      makeAsset({
+        status: "failed",
+        error: "Processing timed out and was recovered.",
+        observationCount: 0,
+      }),
+    );
+    h.loadMediaObservations.mockResolvedValueOnce([]);
+
+    const res = await fetch(`${base}/media/7`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.asset.failureKind).toBe("recovered");
+    expect(body.asset.resultState).toBe("none");
   });
 
   it("404s when the asset is missing", async () => {

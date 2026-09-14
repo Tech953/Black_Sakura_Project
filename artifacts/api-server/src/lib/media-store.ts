@@ -14,6 +14,9 @@ import { and, asc, desc, eq, lt, ne } from "drizzle-orm";
 import { appendWorldModelEntry, type DbExecutor } from "./world-model-store";
 import { SYSTEM_OWNER_ID } from "@workspace/db/schema";
 
+/** Stable reason exposed to clients when the worker recovers a timed-out job. */
+export const MEDIA_RECOVERY_ERROR = "Processing timed out and was recovered.";
+
 export interface CreateMediaAssetInput {
   /** Account that owns this durable upload. */
   ownerId: string;
@@ -177,7 +180,7 @@ export async function recoverStuckJobs(olderThanMs: number): Promise<number> {
     .update(mediaAssetsTable)
     .set({
       status: "failed",
-      error: "Processing timed out and was recovered.",
+      error: MEDIA_RECOVERY_ERROR,
       updatedAt: new Date(),
     })
     .where(

@@ -88,6 +88,7 @@ export * from './markSeenInput';
 export * from './markSeenResult';
 export * from './mediaAsset';
 export * from './mediaAssetDetail';
+export * from './mediaAssetFailureKind';
 export * from './mediaAssetModality';
 export * from './mediaAssetResultState';
 export * from './mediaAssetStatus';
