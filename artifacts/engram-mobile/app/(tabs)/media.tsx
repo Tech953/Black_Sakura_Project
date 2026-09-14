@@ -1,9 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@clerk/expo";
 import { useTranslation } from "react-i18next";
 import {
@@ -79,16 +79,18 @@ function MediaAssetCard({
   engramName,
   serverUrl,
   authToken,
+  initiallyExpanded = false,
 }: {
   asset: MediaAsset;
   engramName: string;
   serverUrl: string;
   authToken: string | null;
+  initiallyExpanded?: boolean;
 }) {
   const { t } = useTranslation("media");
   const colors = useColors();
   const queryClient = useQueryClient();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(initiallyExpanded);
   const retry = useRetryMediaAsset();
   const remove = useDeleteMediaAsset();
   const active = asset.status === "pending" || asset.status === "processing";
@@ -308,6 +310,8 @@ export default function MediaScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<{ asset?: string | string[] }>();
+  const listRef = useRef<FlatList<MediaAsset>>(null);
   const { getToken } = useAuth();
   const { selectedEngramId } = useEngram();
   const queryClient = useQueryClient();
@@ -317,6 +321,11 @@ export default function MediaScreen() {
   const [uploading, setUploading] = useState(false);
   const [serverUrl, setServerUrl] = useState("");
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const focusedAssetId = useMemo(() => {
+    const raw = Array.isArray(params.asset) ? params.asset[0] : params.asset;
+    const id = Number(raw);
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+  }, [params.asset]);
   const mediaQuery = useListMedia(undefined, {
     query: {
       queryKey: getListMediaQueryKey(),
@@ -326,6 +335,15 @@ export default function MediaScreen() {
           : false,
     },
   });
+  useEffect(() => {
+    if (focusedAssetId === null || !mediaQuery.data) return;
+    const index = mediaQuery.data.findIndex((asset) => asset.id === focusedAssetId);
+    if (index < 0) return;
+    const timer = setTimeout(() => {
+      listRef.current?.scrollToIndex({ index, animated: false });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [focusedAssetId, mediaQuery.data]);
   const engramNames = useMemo(
     () => new Map((engramsQuery.data ?? []).map((engram) => [engram.id, engram.name])),
     [engramsQuery.data],
@@ -425,6 +443,7 @@ export default function MediaScreen() {
 
   return (
     <FlatList
+      ref={listRef}
       data={mediaQuery.data ?? []}
       keyExtractor={(asset) => String(asset.id)}
       style={{ backgroundColor: colors.background }}
@@ -440,6 +459,9 @@ export default function MediaScreen() {
           tintColor={colors.primary}
         />
       }
+      onScrollToIndexFailed={({ index }) => {
+        setTimeout(() => listRef.current?.scrollToIndex({ index, animated: false }), 50);
+      }}
       ListHeaderComponent={
         <View>
           <View style={styles.headerRow}>
@@ -522,6 +544,7 @@ export default function MediaScreen() {
           engramName={item.engramId == null ? t("pyriChat") : engramNames.get(item.engramId) ?? t("engramGeneric")}
           serverUrl={serverUrl}
           authToken={authToken}
+          initiallyExpanded={item.id === focusedAssetId}
         />
       )}
       ListEmptyComponent={
