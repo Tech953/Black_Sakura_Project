@@ -136,9 +136,7 @@ export interface AppInfo {
 
 export interface EngramDesktopBridge {
   getSettings: () => Promise<SettingsView>;
-  saveSettings: (
-    payload: SettingsPayload,
-  ) => Promise<{
+  saveSettings: (payload: SettingsPayload) => Promise<{
     ok: boolean;
     error?: string;
     localModelFailure?: LocalModelFailure;
@@ -153,16 +151,12 @@ export interface EngramDesktopBridge {
   cancelGgufImport: (
     operationId: string,
   ) => Promise<{ ok: boolean; error?: string }>;
-  activateGguf: (
-    sha256: string,
-  ) => Promise<{ ok: boolean; error?: string }>;
+  activateGguf: (sha256: string) => Promise<{ ok: boolean; error?: string }>;
   renameGguf: (
     sha256: string,
     displayName: string,
   ) => Promise<{ ok: boolean; error?: string }>;
-  removeGguf: (
-    sha256?: string,
-  ) => Promise<{ ok: boolean; error?: string }>;
+  removeGguf: (sha256?: string) => Promise<{ ok: boolean; error?: string }>;
   onGgufImportStatus: (
     callback: (status: GgufImportStatus) => void,
   ) => () => void;
@@ -181,6 +175,10 @@ export interface EngramDesktopBridge {
   close: () => Promise<void>;
   getAppInfo: () => Promise<AppInfo>;
   checkForUpdates: () => Promise<void>;
+  installDownloadedUpdate: () => Promise<{
+    ok: boolean;
+    error?: string;
+  }>;
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void;
 }
 
@@ -262,6 +260,10 @@ export function createEngramDesktopBridge(
     close: () => ipc.invoke("settings:close") as Promise<void>,
     getAppInfo: () => ipc.invoke("app:info") as Promise<AppInfo>,
     checkForUpdates: () => ipc.invoke("update:check") as Promise<void>,
+    installDownloadedUpdate: () =>
+      ipc.invoke("update:install") as ReturnType<
+        EngramDesktopBridge["installDownloadedUpdate"]
+      >,
     onUpdateStatus: (callback) => {
       const listener = (_event: unknown, payload: unknown): void =>
         callback(payload as UpdateStatus);

@@ -61,10 +61,13 @@ export type AutoUpdateDeps = {
 
 export type AutoUpdateController = {
   checkForUpdatesManually: () => void;
+  installDownloadedUpdate: () => Promise<void>;
 };
 
 export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
   let manualUpdateCheck = false;
+  let downloadedUpdate: UpdateInfo | null = null;
+  let installPromise: Promise<void> | null = null;
   const schedule =
     deps.schedule ?? ((callback, delayMs) => setTimeout(callback, delayMs));
   const checkForUpdatesManually = (): void => {
@@ -89,7 +92,41 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
     });
   };
 
-  if (!deps.isPackaged) return { checkForUpdatesManually };
+  const installReadyUpdate = (): Promise<void> => {
+    if (!deps.isPackaged) {
+      return Promise.reject(
+        new Error("Automatic updates only run in the packaged app."),
+      );
+    }
+    if (!downloadedUpdate) {
+      return Promise.reject(
+        new Error("No downloaded update is ready to install."),
+      );
+    }
+    if (!installPromise) {
+      installPromise = deps
+        .installDownloadedUpdate({
+          stopServer: deps.stopDesktopWork,
+          quitAndInstall: () => deps.updater.quitAndInstall(),
+          setAutoInstallOnAppQuit: (value) => {
+            deps.updater.autoInstallOnAppQuit = value;
+          },
+          markQuitting: deps.markQuitting,
+        })
+        .catch((error) => {
+          installPromise = null;
+          throw error;
+        });
+    }
+    return installPromise;
+  };
+
+  if (!deps.isPackaged) {
+    return {
+      checkForUpdatesManually,
+      installDownloadedUpdate: installReadyUpdate,
+    };
+  }
 
   deps.updater.autoDownload = true;
   deps.updater.autoInstallOnAppQuit = false;
@@ -162,6 +199,8 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
   });
 
   deps.updater.on("update-downloaded", (info) => {
+    downloadedUpdate = info;
+    installPromise = null;
     deps.setStatus({ state: "downloaded", version: info?.version });
     manualUpdateCheck = false;
     deps.resetWindowTitle();
@@ -181,13 +220,8 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
       })
       .then((result) => {
         if (result.response === 0) {
-          void deps.installDownloadedUpdate({
-            stopServer: deps.stopDesktopWork,
-            quitAndInstall: () => deps.updater.quitAndInstall(),
-            setAutoInstallOnAppQuit: (value) => {
-              deps.updater.autoInstallOnAppQuit = value;
-            },
-            markQuitting: deps.markQuitting,
+          void installReadyUpdate().catch((error) => {
+            deps.logError?.("[desktop] update installation failed:", error);
           });
         } else {
           deps.updater.autoInstallOnAppQuit = true;
@@ -201,5 +235,8 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
     });
   }, 5000);
 
-  return { checkForUpdatesManually };
+  return {
+    checkForUpdatesManually,
+    installDownloadedUpdate: installReadyUpdate,
+  };
 }

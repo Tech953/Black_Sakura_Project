@@ -18,6 +18,7 @@ type DesktopUpdateStatus =
 
 type DesktopBridge = {
   getAppInfo: () => Promise<{ updateStatus: DesktopUpdateStatus }>;
+  installDownloadedUpdate: () => Promise<{ ok: boolean; error?: string }>;
   onUpdateStatus: (
     callback: (status: DesktopUpdateStatus) => void,
   ) => () => void;
@@ -53,6 +54,7 @@ function statusText(status: DesktopUpdateStatus): string {
 export default function DesktopUpdateBanner() {
   const [status, setStatus] = useState<DesktopUpdateStatus>({ state: "idle" });
   const [dismissed, setDismissed] = useState(false);
+  const [installing, setInstalling] = useState(false);
   const previousState = useRef<DesktopUpdateStatus["state"]>("idle");
 
   useEffect(() => {
@@ -103,6 +105,28 @@ export default function DesktopUpdateBanner() {
   const isProgress =
     status.state === "available" || status.state === "downloading";
   const percent = status.state === "downloading" ? status.percent : 0;
+  const handleRestart = async (): Promise<void> => {
+    const bridge = desktopBridge();
+    if (!bridge || installing) return;
+    setInstalling(true);
+    try {
+      const result = await bridge.installDownloadedUpdate();
+      if (!result.ok) {
+        setStatus({
+          state: "error",
+          message:
+            result.error ?? "The downloaded update could not be installed.",
+        });
+        setInstalling(false);
+      }
+    } catch (error) {
+      setStatus({
+        state: "error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+      setInstalling(false);
+    }
+  };
 
   return (
     <aside
@@ -147,6 +171,27 @@ export default function DesktopUpdateBanner() {
                   width: `${status.state === "available" ? 0 : percent}%`,
                 }}
               />
+            </div>
+          )}
+          {isReady && (
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded-sm bg-cyan-300 px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-950 transition-colors hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 disabled:cursor-wait disabled:opacity-60"
+                onClick={() => void handleRestart()}
+                disabled={installing}
+                data-testid="restart-desktop-update"
+              >
+                {installing ? "Restarting…" : "Restart now"}
+              </button>
+              <button
+                type="button"
+                className="rounded-sm px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                onClick={() => setDismissed(true)}
+                data-testid="later-desktop-update"
+              >
+                Later
+              </button>
             </div>
           )}
         </div>

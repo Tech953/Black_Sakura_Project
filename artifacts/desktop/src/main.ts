@@ -200,6 +200,9 @@ let currentPort = 0;
 let quitting = false;
 let updateController: ReturnType<typeof setupAutoUpdateFlow> = {
   checkForUpdatesManually: () => undefined,
+  installDownloadedUpdate: async () => {
+    throw new Error("No downloaded update is ready to install.");
+  },
 };
 
 const updateStatusStore = createUpdateStatusStore((status) => {
@@ -1831,6 +1834,15 @@ ipcMain.handle("app:info", () =>
 // "Check for Updates" button in Settings — reuses the same flow as the menu item.
 ipcMain.handle("update:check", () => {
   checkForUpdatesManually();
+});
+
+ipcMain.handle("update:install", async () => {
+  try {
+    await updateController.installDownloadedUpdate();
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: errorMessage(error) };
+  }
 });
 
 // ---------------------------------------------------------------------------
