@@ -20,10 +20,21 @@ export const OCTET_MIME = "application/octet-stream";
 // URL; anything else falls back to the project default.
 const REPO_RE = /^[\w.-]+\/[\w.-]+$/;
 
+export const DEFAULT_GITHUB_REPO = "Tech953/Ch-IO";
+
 /** Repo used for BOTH the apk and desktop GitHub fallback. */
-function downloadsRepo(): string {
-  const v = process.env["DOWNLOADS_GITHUB_REPO"]?.trim();
-  return v && REPO_RE.test(v) ? v : "Tech953/Ch-IO";
+export function downloadsRepo(): string {
+  // VITE_GITHUB_REPO is the shared web/API setting. Keep the older API-only
+  // name as a fallback for existing deployments; the metadata response exposes
+  // the effective repo URL to the frontend when that override is used.
+  const v =
+    process.env["VITE_GITHUB_REPO"]?.trim() ||
+    process.env["DOWNLOADS_GITHUB_REPO"]?.trim();
+  return v && REPO_RE.test(v) ? v : DEFAULT_GITHUB_REPO;
+}
+
+export function githubReleasesUrl(repo = downloadsRepo()): string {
+  return `https://github.com/${repo}/releases/latest`;
 }
 
 /** The apk may target a different repo than desktop via the older env name. */

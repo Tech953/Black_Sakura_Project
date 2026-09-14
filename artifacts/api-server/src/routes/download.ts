@@ -4,6 +4,7 @@ import { Readable } from "node:stream";
 import {
   APK_MIME,
   OCTET_MIME,
+  githubReleasesUrl,
   safeAttachment,
   resolveApk,
   resolveDesktop,
@@ -168,6 +169,7 @@ router.get("/download/android", async (_req, res) => {
       sizeBytes: null,
       publishedAt: null,
       downloadPath: null,
+      releaseNotesUrl: githubReleasesUrl(),
     });
     return;
   }
@@ -179,6 +181,7 @@ router.get("/download/android", async (_req, res) => {
     sizeBytes: apk.sizeBytes,
     publishedAt: apk.publishedAt,
     downloadPath: "/api/download/android.apk",
+    releaseNotesUrl: githubReleasesUrl(),
   });
 });
 
@@ -220,6 +223,7 @@ router.get("/download/desktop", async (_req, res) => {
     source,
     version,
     publishedAt,
+    releaseNotesUrl: githubReleasesUrl(),
     installers: installers.map((i) => ({
       os: i.os,
       ext: i.ext,
