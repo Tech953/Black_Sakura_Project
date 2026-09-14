@@ -319,6 +319,56 @@ describe("POST /media (upload)", () => {
     });
   });
 
+  it("canonicalizes a parameterized MIME header before storing it", async () => {
+    h.createMediaAsset.mockResolvedValueOnce(
+      makeAsset({ status: "pending", mimeType: "text/plain" }),
+    );
+    const form = new FormData();
+    form.append("engramId", "3");
+    form.append(
+      "file",
+      new Blob(["the harbor"], { type: "text/plain; charset=utf-8" }),
+      "harbor.txt",
+    );
+    const res = await fetch(`${base}/media`, { method: "POST", body: form });
+    expect(res.status).toBe(201);
+    expect(h.createMediaAsset.mock.calls[0][0]).toMatchObject({
+      mimeType: "text/plain",
+      modality: "text",
+    });
+  });
+
+  it("canonicalizes an image MIME alias before storing it", async () => {
+    h.createMediaAsset.mockResolvedValueOnce(
+      makeAsset({ status: "pending", filename: "scene.jpg", mimeType: "image/jpeg", modality: "image" }),
+    );
+    const form = new FormData();
+    form.append("engramId", "3");
+    form.append(
+      "file",
+      new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0x00])], { type: "image/jpg" }),
+      "scene.jpg",
+    );
+    const res = await fetch(`${base}/media`, { method: "POST", body: form });
+    expect(res.status).toBe(201);
+    expect(h.createMediaAsset.mock.calls[0][0]).toMatchObject({
+      mimeType: "image/jpeg",
+      modality: "image",
+    });
+  });
+
+  it("rejects a generic MIME header instead of guessing from the filename", async () => {
+    const form = new FormData();
+    form.append("engramId", "3");
+    form.append("file", new Blob(["the harbor"], { type: "application/octet-stream" }), "harbor.txt");
+    const res = await fetch(`${base}/media`, { method: "POST", body: form });
+    expect(res.status).toBe(415);
+    expect(await res.json()).toMatchObject({
+      error: "Unsupported media type: application/octet-stream",
+    });
+    expect(h.createMediaAsset).not.toHaveBeenCalled();
+  });
+
   it("derives modality from the server-side MIME, ignoring a conflicting client-supplied modality field", async () => {
     h.createMediaAsset.mockResolvedValueOnce(makeAsset({ status: "pending" }));
     const form = new FormData();
