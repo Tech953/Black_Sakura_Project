@@ -144,6 +144,14 @@ and verify that the APK signer matches it before staging a downloadable APK.
 Keep the keystore safe and **never commit it** — losing it means you can no
 longer ship updates that install over existing copies.
 
+When `scripts/build-installers.sh --android` creates a downloadable release, it
+copies the configured keystore into a temporary backup, restores it to a second
+temporary path, and builds the normal `arm64-v8a,x86_64` release from that
+restored path. The rebuilt APK certificate must match both the restored key and
+the existing `downloads/ENGRAM-android.apk` baseline before staging. The script
+removes the temporary backup on success or failure and reports cleanup
+confirmation.
+
 ---
 
 ## Make it downloadable through Deploy
