@@ -353,6 +353,7 @@ jobs:
           # and a real Electron userData directory. Linux/macOS keep the fast
           # loopback fixture for their packaged smoke.
           ENGRAM_PACKAGED_OFFLINE_MODEL_HTTPS: ${{ matrix.platform == 'win' && '1' || '0' }}
+          ENGRAM_PACKAGED_UPDATE_SMOKE: ${{ matrix.platform == 'linux' && '1' || '0' }}
         run: |
           set -o pipefail
           mkdir -p artifacts/desktop/.ci-smoke/diagnostics

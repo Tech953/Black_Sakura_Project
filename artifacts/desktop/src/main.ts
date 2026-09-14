@@ -11,6 +11,7 @@ import {
 import { autoUpdater } from "electron-updater";
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { EventEmitter } from "node:events";
 import { createServer } from "node:net";
 import {
   stopProcess,
@@ -64,7 +65,10 @@ import type {
   SettingsPayload,
   UpdateStatus,
 } from "./desktop-bridge";
-import { setupAutoUpdates as setupAutoUpdateFlow } from "./auto-update";
+import {
+  setupAutoUpdates as setupAutoUpdateFlow,
+  type AutoUpdaterLike,
+} from "./auto-update";
 import { createAppInfo, createUpdateStatusStore } from "./update-status";
 import {
   appendBoundedDiagnostic,
@@ -129,6 +133,8 @@ const packagedSmokeGguf = packagedSmokeEnabled
   : undefined;
 const packagedSmokeUsesRealRuntime =
   packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1";
+const packagedSmokeUpdateEnabled =
+  packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_UPDATE_SMOKE === "1";
 
 const smokeDiagnosticsDir = process.env.ENGRAM_SMOKE_DIAGNOSTICS_DIR;
 const smokeDiagnosticSecretValues = Object.entries(process.env)
@@ -170,6 +176,31 @@ function appendSmokeDiagnostic(filename: string, value: string): void {
   } catch {
     // Diagnostics must never prevent the packaged app from starting.
   }
+}
+
+function createPackagedSmokeUpdater(): AutoUpdaterLike {
+  const emitter = new EventEmitter();
+  const updater = emitter as unknown as AutoUpdaterLike;
+  updater.autoDownload = false;
+  updater.autoInstallOnAppQuit = false;
+  updater.checkForUpdates = async () => {
+    appendSmokeDiagnostic("update.log", "phase=feed-setup\n");
+    emitter.emit("checking-for-update");
+    emitter.emit("update-available", { version: "0.0.0-smoke" });
+    appendSmokeDiagnostic("update.log", "phase=download-progress\n");
+    emitter.emit("download-progress", {
+      percent: 100,
+      transferred: 1024,
+      total: 1024,
+      bytesPerSecond: 1024,
+    });
+    emitter.emit("update-downloaded", { version: "0.0.0-smoke" });
+    appendSmokeDiagnostic("update.log", "phase=downloaded\n");
+  };
+  updater.quitAndInstall = () => {
+    appendSmokeDiagnostic("update.log", "phase=quit-and-install\n");
+  };
+  return updater;
 }
 
 appendSmokeDiagnostic("main.log", "desktop main process initialized\n");
@@ -991,7 +1022,11 @@ function stopServer(): Promise<void> {
   // Shared SIGTERM→SIGKILL shutdown used by both normal quit and the auto-update
   // install path, so the embedded server (and its PGlite DB) is always closed
   // cleanly before app files are swapped.
-  return stopProcess(proc);
+  return stopProcess(proc).then(() => {
+    if (packagedSmokeUpdateEnabled) {
+      appendSmokeDiagnostic("update.log", "phase=server-stopped\n");
+    }
+  });
 }
 
 async function activateDesktopSettings(
@@ -1875,12 +1910,23 @@ ipcMain.handle("update:install", async () => {
 // never interferes with `electron .` development.
 // ---------------------------------------------------------------------------
 function setupAutoUpdates(): void {
+  const updater = packagedSmokeUpdateEnabled
+    ? createPackagedSmokeUpdater()
+    : autoUpdater;
   updateController = setupAutoUpdateFlow({
     isPackaged: app.isPackaged,
-    updater: autoUpdater,
+    updater,
     getMainWindow: () => mainWindow,
-    showMessageBox: (window, options) =>
-      dialog.showMessageBox(window as BrowserWindow, options),
+    showMessageBox: (window, options) => {
+      if (packagedSmokeUpdateEnabled) {
+        const response = options.buttons.includes("Later") ? 1 : 0;
+        if (response === 1) {
+          appendSmokeDiagnostic("update.log", "phase=deferred\n");
+        }
+        return Promise.resolve({ response });
+      }
+      return dialog.showMessageBox(window as BrowserWindow, options);
+    },
     setStatus: setUpdateStatus,
     resetWindowTitle,
     stopDesktopWork: () =>
@@ -1894,6 +1940,9 @@ function setupAutoUpdates(): void {
       quitting = true;
     },
     logError: (message, error) => console.error(message, error),
+    ...(packagedSmokeUpdateEnabled
+      ? { schedule: () => undefined }
+      : {}),
   });
 }
 
