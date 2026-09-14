@@ -265,6 +265,23 @@ jobs:
 
           echo "Verifying the signed ENGRAM app bundle..."
           codesign --verify --deep --strict --verbose=2 "$APP"
+          APP_DETAILS="$(codesign -dv --verbose=4 "$APP" 2>&1)"
+          printf '%s\n' "$APP_DETAILS"
+          APP_SIGNING_IDENTITY="$(printf '%s\n' "$APP_DETAILS" | sed -n 's/^Authority=Developer ID Application: //p' | head -n1)"
+          ACTUAL_APPLE_TEAM_ID="$(printf '%s\n' "$APP_DETAILS" | sed -n 's/^TeamIdentifier=//p' | head -n1)"
+          if [ -n "${APPLE_TEAM_ID:-}" ]; then
+            if [ -z "$APP_SIGNING_IDENTITY" ] || [ -z "$ACTUAL_APPLE_TEAM_ID" ]; then
+              echo "Could not read the macOS app signing identity or Apple team ID." >&2
+              exit 1
+            fi
+            if [ "$ACTUAL_APPLE_TEAM_ID" != "$APPLE_TEAM_ID" ]; then
+              echo "macOS app signing identity '$APP_SIGNING_IDENTITY' uses Apple team '$ACTUAL_APPLE_TEAM_ID', expected '$APPLE_TEAM_ID'." >&2
+              exit 1
+            fi
+            echo "Verified macOS app signing identity '$APP_SIGNING_IDENTITY' for Apple team '$APPLE_TEAM_ID'."
+          else
+            echo "APPLE_TEAM_ID is not configured; skipping expected Apple team identity verification."
+          fi
 
           for name in ffmpeg ffprobe; do
             BINARY="$APP/Contents/Resources/bin/$name"

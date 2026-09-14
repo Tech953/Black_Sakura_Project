@@ -67,4 +67,25 @@ describe("desktop release workflow concurrency", () => {
     );
     expect(workflow).toMatch(/exit 1/);
   });
+
+  it("rejects a signed macOS app from an unexpected Apple team", () => {
+    expect(workflow).toMatch(
+      /APP_DETAILS="\$\(codesign -dv --verbose=4 "\$APP" 2>&1\)/,
+    );
+    expect(workflow).toMatch(
+      /ACTUAL_APPLE_TEAM_ID=.*sed -n 's\/\^TeamIdentifier=\/\/p'/,
+    );
+    expect(workflow).toMatch(
+      /if \[ -n "\$\{APPLE_TEAM_ID:-\}" \]; then/,
+    );
+    expect(workflow).toMatch(
+      /if \[ "\$ACTUAL_APPLE_TEAM_ID" != "\$APPLE_TEAM_ID" \]; then/,
+    );
+    expect(workflow).toMatch(
+      /macOS app signing identity .*uses Apple team .*expected/,
+    );
+    expect(workflow).toMatch(
+      /APPLE_TEAM_ID is not configured; skipping expected Apple team identity verification/,
+    );
+  });
 });
