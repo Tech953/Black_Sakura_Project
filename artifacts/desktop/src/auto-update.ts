@@ -65,6 +65,7 @@ export type AutoUpdateDeps = {
   stopDesktopWork: () => Promise<void>;
   installDownloadedUpdate: InstallDownloadedUpdate;
   markQuitting: () => void;
+  deferInstallOnQuit?: boolean;
   logError?: (message: string, error: unknown) => void;
   schedule?: (callback: () => void, delayMs: number) => unknown;
 };
@@ -271,8 +272,10 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
             deps.logError?.("[desktop] update installation failed:", error);
           });
         } else {
-          deferredInstall = true;
-          deps.updater.autoInstallOnAppQuit = true;
+          if (!deps.deferInstallOnQuit) {
+            deferredInstall = true;
+            deps.updater.autoInstallOnAppQuit = true;
+          }
         }
       });
   });

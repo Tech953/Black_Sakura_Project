@@ -137,6 +137,9 @@ const packagedSmokeUsesRealRuntime =
   packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1";
 const packagedSmokeUpdateEnabled =
   packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_UPDATE_SMOKE === "1";
+const packagedSmokeUpdateFeedUrl =
+  packagedSmokeUpdateEnabled &&
+  process.env.ENGRAM_PACKAGED_UPDATE_FEED_URL?.trim();
 
 const smokeDiagnosticsDir = process.env.ENGRAM_SMOKE_DIAGNOSTICS_DIR;
 const smokeDiagnosticSecretValues = Object.entries(process.env)
@@ -2000,9 +2003,37 @@ ipcMain.handle("update:release", async () => {
 // never interferes with `electron .` development.
 // ---------------------------------------------------------------------------
 function setupAutoUpdates(): void {
-  const updater = packagedSmokeUpdateEnabled
-    ? createPackagedSmokeUpdater()
-    : autoUpdater;
+  if (packagedSmokeUpdateFeedUrl) {
+    let feedUrl: URL;
+    try {
+      feedUrl = new URL(packagedSmokeUpdateFeedUrl);
+    } catch {
+      throw new Error("Packaged updater smoke feed URL is invalid.");
+    }
+    if (
+      feedUrl.protocol !== "http:" ||
+      feedUrl.hostname !== "127.0.0.1" ||
+      !feedUrl.port
+    ) {
+      throw new Error(
+        "Packaged updater smoke feed must be an HTTP loopback URL.",
+      );
+    }
+    autoUpdater.forceDevUpdateConfig = true;
+    autoUpdater.disableDifferentialDownload = true;
+    autoUpdater.setFeedURL({
+      provider: "generic",
+      url: feedUrl.toString(),
+    });
+    appendSmokeDiagnostic(
+      "update.log",
+      `phase=disposable-feed-configured url=${feedUrl.origin}/\n`,
+    );
+  }
+  const updater =
+    packagedSmokeUpdateEnabled && !packagedSmokeUpdateFeedUrl
+      ? createPackagedSmokeUpdater()
+      : autoUpdater;
   updateController = setupAutoUpdateFlow({
     isPackaged: app.isPackaged,
     updater,
@@ -2029,7 +2060,16 @@ function setupAutoUpdates(): void {
     markQuitting: () => {
       quitting = true;
     },
-    logError: (message, error) => console.error(message, error),
+    deferInstallOnQuit: Boolean(packagedSmokeUpdateFeedUrl),
+    logError: (message, error) => {
+      console.error(message, error);
+      if (packagedSmokeUpdateEnabled) {
+        appendSmokeDiagnostic(
+          "update.log",
+          `phase=error ${message} ${String(error)}\n`,
+        );
+      }
+    },
     ...(packagedSmokeUpdateEnabled
       ? { schedule: () => undefined }
       : {}),

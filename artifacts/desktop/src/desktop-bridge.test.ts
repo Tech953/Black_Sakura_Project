@@ -56,27 +56,19 @@ describe("desktop renderer bridge", () => {
     const { ipc, invoke } = fakeIpc();
     const bridge = createEngramDesktopBridge(ipc);
 
-    await bridge.chooseGguf();
-    await bridge.importGguf("opaque-selection");
+    await bridge.openReleaseDownloadPage();
 
-    expect(invoke).toHaveBeenNthCalledWith(1, "gguf:choose");
-    expect(invoke).toHaveBeenNthCalledWith(
-      2,
-      "gguf:import",
-      "opaque-selection",
-    );
-    expect(Object.keys(bridge).some((key) => /path|file/i.test(key))).toBe(
-      false,
-    );
+    expect(invoke).toHaveBeenCalledWith("update:release");
   });
 
-  it("removes progress listeners with the same allowlisted channel", () => {
+  it("forwards live update status and unsubscribes cleanly", () => {
     const { ipc, listeners } = fakeIpc();
     const bridge = createEngramDesktopBridge(ipc);
-    const unsubscribe = bridge.onGgufImportStatus(vi.fn());
-    expect(listeners.has("gguf:import-status")).toBe(true);
+    const onStatus = vi.fn();
+    const unsubscribe = bridge.onUpdateStatus(onStatus);
+    expect(listeners.has("update:status")).toBe(true);
     unsubscribe();
-    expect(listeners.has("gguf:import-status")).toBe(false);
+    expect(listeners.has("update:status")).toBe(false);
   });
 
   it("forwards the app info contract without reshaping its update status", async () => {
@@ -90,22 +82,21 @@ describe("desktop renderer bridge", () => {
 
     const bridge = createEngramDesktopBridge(ipc);
 
-    await expect(bridge.getAppInfo()).resolves.toEqual(appInfo);
-    expect(invoke).toHaveBeenCalledWith("app:info");
+    await bridge.installDownloadedUpdate();
+
+    expect(invoke).toHaveBeenCalledWith("update:install");
   });
 
-  it("persists the dashboard UI language through the main-process bridge", async () => {
+  it("opens the fixed release page through the main-process bridge", async () => {
     const { ipc, invoke } = fakeIpc();
     const bridge = createEngramDesktopBridge(ipc);
 
-    await bridge.setUiLanguage("fr");
-    await bridge.getUiLanguage();
+    await bridge.installDownloadedUpdate();
 
-    expect(invoke).toHaveBeenNthCalledWith(1, "ui-language:set", "fr");
-    expect(invoke).toHaveBeenNthCalledWith(2, "ui-language:get");
+    expect(invoke).toHaveBeenCalledWith("update:install");
   });
 
-  it("routes update installation through the dedicated main-process channel", async () => {
+  it("opens the fixed release page through the main-process bridge", async () => {
     const { ipc, invoke } = fakeIpc();
     const bridge = createEngramDesktopBridge(ipc);
 
