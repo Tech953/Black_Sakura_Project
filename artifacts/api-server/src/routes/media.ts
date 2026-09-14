@@ -8,7 +8,11 @@ import {
   RetryMediaAssetParams,
   DeleteMediaAssetParams,
 } from "@workspace/api-zod";
-import { contentMatchesMime, detectModality } from "../lib/media-extraction";
+import {
+  contentMatchesMime,
+  detectModality,
+  filenameMatchesMime,
+} from "../lib/media-extraction";
 import {
   createMediaAsset,
   loadMediaAssets,
@@ -120,6 +124,12 @@ router.post("/media", (req, res) => {
       });
       return;
     }
+    if (!filenameMatchesMime(file.originalname, file.mimetype)) {
+      res.status(415).json({
+        error: `Uploaded filename extension does not match the claimed media type: ${file.mimetype}`,
+      });
+      return;
+    }
 
     try {
       const engram = await loadOwnedEngram(engramId, req.userId!);
@@ -204,6 +214,16 @@ router.get("/media/:id/raw", async (req, res) => {
     res.status(404).json({ error: "Media bytes not found" });
     return;
   }
+  if (
+    !detectModality(asset.mimeType) ||
+    !contentMatchesMime(blob.data, asset.mimeType) ||
+    !filenameMatchesMime(asset.filename, asset.mimeType)
+  ) {
+    res.status(415).json({
+      error: "This media asset failed upload validation and cannot be previewed.",
+    });
+    return;
+  }
   res.setHeader("Content-Type", blob.mimeType);
   res.setHeader("Content-Length", blob.data.length);
   res.setHeader("Content-Disposition", "inline");
@@ -229,6 +249,18 @@ router.post("/media/:id/retry", async (req, res) => {
     res
       .status(400)
       .json({ error: "Only failed assets can be retried." });
+    return;
+  }
+  const blob = await loadMediaBlob(asset.id, req.userId!);
+  if (
+    !blob ||
+    !detectModality(asset.mimeType) ||
+    !contentMatchesMime(blob.data, asset.mimeType) ||
+    !filenameMatchesMime(asset.filename, asset.mimeType)
+  ) {
+    res.status(415).json({
+      error: "This media asset failed upload validation. Delete it and upload the original file again.",
+    });
     return;
   }
   // The status guard lives inside requeueMediaAsset's UPDATE; a concurrent retry
