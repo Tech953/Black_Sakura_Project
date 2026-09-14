@@ -111,6 +111,7 @@ function MediaAssetCard({
         : tone === "accent"
           ? colors.accent
           : colors.primary;
+  const recovered = asset.failureKind === "recovered";
 
   const onRetry = () => {
     retry.mutate(
@@ -171,12 +172,28 @@ function MediaAssetCard({
       ) : null}
       {asset.status === "failed" && asset.error ? (
         <View style={[styles.errorBox, { borderColor: colors.destructive + "66" }]}>
-          <Text style={[styles.errorText, { color: colors.destructive }]}>{asset.error}</Text>
-          <Text style={[styles.errorSummary, { color: colors.destructive }]}>
-            {asset.resultState === "partial"
-              ? t("partialResultSaved", { count: asset.observationCount })
-              : t("noResultSaved")}
-          </Text>
+          {recovered ? (
+            <>
+              <Text style={[styles.errorText, { color: colors.destructive }]}>
+                {t("recoveredTitle")}
+              </Text>
+              <Text style={[styles.errorSummary, { color: colors.destructive }]}>
+                {t("recoveredBody")}
+              </Text>
+              <Text style={[styles.errorSummary, { color: colors.destructive }]}>
+                {t("recoveredRetry")}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.errorText, { color: colors.destructive }]}>{asset.error}</Text>
+              <Text style={[styles.errorSummary, { color: colors.destructive }]}>
+                {asset.resultState === "partial"
+                  ? t("partialResultSaved", { count: asset.observationCount })
+                  : t("noResultSaved")}
+              </Text>
+            </>
+          )}
         </View>
       ) : null}
 

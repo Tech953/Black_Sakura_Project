@@ -1269,6 +1269,17 @@ export const MediaAssetResultState = {
   complete: 'complete',
 } as const;
 
+/**
+ * Why a failed media job needs operator attention, when a known recovery path applies.
+ * @nullable
+ */
+export type MediaAssetFailureKind = typeof MediaAssetFailureKind[keyof typeof MediaAssetFailureKind] | null;
+
+
+export const MediaAssetFailureKind = {
+  recovered: 'recovered',
+} as const;
+
 export interface MediaAsset {
   id: number;
   /** @nullable */
@@ -1290,6 +1301,11 @@ export interface MediaAsset {
   transcript: string | null;
   /** @nullable */
   error: string | null;
+  /**
+     * Why a failed media job needs operator attention, when a known recovery path applies.
+     * @nullable
+     */
+  failureKind: MediaAssetFailureKind;
   observationCount: number;
   /** @nullable */
   startedAt: string | null;

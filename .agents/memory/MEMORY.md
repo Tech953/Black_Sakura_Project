@@ -54,3 +54,4 @@
 - [Web local-server health probe](web-local-server-health-probe.md) — origin-only persisted URL, credential-free health check, and public CORS limited to `/api/healthz`.
 - [Native export cleanup](native-export-cleanup.md) — share temporary mobile export files before idempotently deleting them, including failed-share retries.
 - [Web export compatibility](web-export-compat.md) — test Safari/Firefox download timing through explicit engine-shaped runtimes until native runners exist.
+- [Media recovery contract](media-recovery-contract.md) — recovered timeouts are distinct from provider failures; explain transactional rollback and safe idempotent retry.
