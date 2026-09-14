@@ -1744,7 +1744,9 @@ export const UpdateHubControlsResponse = zod.object({
  */
 export const ListEngramMessagesQueryParams = zod.object({
   "channel": zod.enum(['engram', 'human']).optional(),
-  "limit": zod.coerce.number().optional()
+  "limit": zod.coerce.number().optional(),
+  "before": zod.coerce.string().optional().describe('Return rows older than this ISO timestamp. Pair with beforeId to disambiguate rows sharing the same timestamp.'),
+  "beforeId": zod.coerce.number().optional().describe('Message id tie-breaker for the before timestamp cursor.')
 })
 
 export const ListEngramMessagesResponseItem = zod.object({

@@ -1415,6 +1415,14 @@ limit?: number;
 export type ListEngramMessagesParams = {
 channel?: ListEngramMessagesChannel;
 limit?: number;
+/**
+ * Return rows older than this ISO timestamp. Pair with beforeId to disambiguate rows sharing the same timestamp.
+ */
+before?: string;
+/**
+ * Message id tie-breaker for the before timestamp cursor.
+ */
+beforeId?: number;
 };
 
 export type ListEngramMessagesChannel = typeof ListEngramMessagesChannel[keyof typeof ListEngramMessagesChannel];

@@ -211,19 +211,23 @@ export function createDbHarness() {
     let rows: TestRow[] = [];
     let baseTable: string | null = null;
     let predicate: ((row: TestRow) => boolean) | null = null;
-    let order: { column: Column; direction: "asc" | "desc" } | null = null;
+    let order: Array<{ column: Column; direction: "asc" | "desc" }> = [];
     let limit: number | null = null;
 
     const run = () => {
       let output = rows.slice();
       if (predicate) output = output.filter(predicate);
-      if (order) {
-        const { column, direction } = order;
+      if (order.length > 0) {
         output.sort((a, b) => {
-          const av = norm(readColumn(a, column)) as number;
-          const bv = norm(readColumn(b, column)) as number;
-          const comparison = av < bv ? -1 : av > bv ? 1 : 0;
-          return direction === "desc" ? -comparison : comparison;
+          for (const { column, direction } of order) {
+            const av = norm(readColumn(a, column)) as number;
+            const bv = norm(readColumn(b, column)) as number;
+            const comparison = av < bv ? -1 : av > bv ? 1 : 0;
+            if (comparison !== 0) {
+              return direction === "desc" ? -comparison : comparison;
+            }
+          }
+          return 0;
         });
       }
       if (limit != null) output = output.slice(0, limit);
@@ -283,11 +287,14 @@ export function createDbHarness() {
         predicate = nextPredicate;
         return chain;
       },
-      orderBy(spec: OrderSpec | Column) {
-        order =
-          "__order" in spec
-            ? { column: spec.col, direction: spec.__order }
-            : { column: spec, direction: "asc" };
+      orderBy(...specs: Array<OrderSpec | Column>) {
+        for (const spec of specs) {
+          order.push(
+            "__order" in spec
+              ? { column: spec.col, direction: spec.__order }
+              : { column: spec, direction: "asc" },
+          );
+        }
         return chain;
       },
       limit(value: number) {

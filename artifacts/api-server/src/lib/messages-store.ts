@@ -9,7 +9,7 @@ import type {
   EngramMessageChannel,
   NewEngramMessage,
 } from "@workspace/db";
-import { and, asc, desc, eq, gte, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, ne, or } from "drizzle-orm";
 
 const MESSAGES_DEFAULT_LIMIT = 50;
 const MESSAGES_MAX_LIMIT = 500;
@@ -25,17 +25,35 @@ const CONTACTED_STATUSES = ["delivered", "queued", "digest"] as const;
  */
 export async function loadMessages(
   ownerId: string,
-  opts: { channel?: EngramMessageChannel; limit?: number } = {},
+  opts: {
+    channel?: EngramMessageChannel;
+    limit?: number;
+    before?: Date;
+    beforeId?: number;
+  } = {},
 ): Promise<EngramMessage[]> {
   const limit = Math.min(Math.max(opts.limit ?? MESSAGES_DEFAULT_LIMIT, 1), MESSAGES_MAX_LIMIT);
   const conditions = [eq(engramsTable.ownerId, ownerId)];
   if (opts.channel) conditions.push(eq(engramMessagesTable.channel, opts.channel));
+  if (opts.before) {
+    const beforeCondition =
+      opts.beforeId == null
+        ? lt(engramMessagesTable.createdAt, opts.before)
+        : or(
+            lt(engramMessagesTable.createdAt, opts.before),
+            and(
+              eq(engramMessagesTable.createdAt, opts.before),
+              lt(engramMessagesTable.id, opts.beforeId),
+            ),
+          );
+    if (beforeCondition) conditions.push(beforeCondition);
+  }
   const rows = await db
     .select({ message: engramMessagesTable })
     .from(engramMessagesTable)
     .innerJoin(engramsTable, eq(engramMessagesTable.fromEngramId, engramsTable.id))
     .where(and(...conditions))
-    .orderBy(desc(engramMessagesTable.createdAt))
+    .orderBy(desc(engramMessagesTable.createdAt), desc(engramMessagesTable.id))
     .limit(limit);
   return rows.map((row) => row.message);
 }

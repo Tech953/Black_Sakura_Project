@@ -42,9 +42,16 @@ router.get("/messages", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const before = parsed.data.before ? new Date(parsed.data.before) : undefined;
+  if (before && Number.isNaN(before.getTime())) {
+    res.status(400).json({ error: "Invalid before cursor" });
+    return;
+  }
   const rows = await loadMessages(req.userId!, {
     channel: parsed.data.channel as EngramMessageChannel | undefined,
     limit: parsed.data.limit,
+    before,
+    beforeId: parsed.data.beforeId,
   });
   res.json(rows.map(serializeMessage));
 });
