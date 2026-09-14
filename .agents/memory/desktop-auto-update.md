@@ -21,3 +21,9 @@ The renderer's update surface should subscribe to the context-isolated status ch
 **Why:** Electron event delivery is live-only, while the main process owns the authoritative status. Showing every startup `not-available` result would also turn a silent background check into a recurring notification.
 
 **How to apply:** broadcast status to every live renderer window, preserve a manual-check marker for checking/not-available states, and keep packaged-only behavior a no-op in development.
+
+Rule: a renderer "Restart now" action must use a narrow main-process command, never a renderer-side Electron API. The main process should share and deduplicate that install operation with the native update prompt.
+
+**Why:** The existing lifecycle-safe installer is responsible for stopping the embedded server before files are swapped; concurrent native and in-app actions must not run that shutdown twice.
+
+**How to apply:** expose only a typed bridge method, validate the ready-update state in main, and keep "Later" as a presentation dismissal that leaves normal-quit installation enabled.
