@@ -50,7 +50,7 @@ type DesktopInstaller = {
 
 type DesktopMeta = {
   available: boolean;
-  source: "bundled" | "github" | null;
+  source: "bundled" | "storage" | "github" | null;
   version: string | null;
   publishedAt: string | null;
   releaseNotesUrl?: string;

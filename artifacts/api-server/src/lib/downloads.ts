@@ -61,6 +61,21 @@ export function deriveVersion(name: string): string | null {
   return m ? m[1]! : null;
 }
 
+function isoTimestampFromMillis(value: number): string | null {
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function latestTimestamp(values: (string | null)[]): string | null {
+  return (
+    values
+      .filter((value): value is string => value !== null)
+      .sort()
+      .at(-1) ?? null
+  );
+}
+
 export type DesktopOs = "mac" | "win" | "linux";
 
 const DESKTOP_EXTS: Record<string, DesktopOs> = {
@@ -193,7 +208,7 @@ export function resolveBundledApk(): ResolvedApk | null {
           sizeBytes: st.size,
           localPath: explicit,
           version: deriveVersion(filename),
-          publishedAt: null,
+          publishedAt: isoTimestampFromMillis(st.mtimeMs),
         };
       }
     } catch {
@@ -226,7 +241,7 @@ export function resolveBundledApk(): ResolvedApk | null {
     sizeBytes: best.size,
     localPath: path.join(dir, best.file),
     version: deriveVersion(best.file),
-    publishedAt: null,
+    publishedAt: isoTimestampFromMillis(best.mtime),
   };
 }
 
@@ -255,6 +270,7 @@ export type ResolvedDesktopFile = {
   ext: string;
   filename: string;
   sizeBytes: number;
+  publishedAt: string | null;
 } & (
   | { source: "bundled"; localPath: string }
   | { source: "storage"; url: string }
@@ -304,6 +320,7 @@ function resolveBundledDesktop(): ResolvedDesktopFile[] {
           ext,
           filename: f,
           sizeBytes: st.size,
+          publishedAt: isoTimestampFromMillis(st.mtimeMs),
           source: "bundled",
           localPath: full,
         },
@@ -329,6 +346,7 @@ async function resolveReleaseDesktop(): Promise<{
       ext: extOf(a.name),
       filename: a.name,
       sizeBytes: a.size,
+      publishedAt: release.publishedAt,
       source: "github",
       url: a.url,
     });
@@ -348,7 +366,7 @@ export async function resolveDesktop(): Promise<DesktopResolution> {
     return {
       source: "bundled",
       version,
-      publishedAt: null,
+      publishedAt: latestTimestamp(bundled.map((file) => file.publishedAt)),
       installers: bundled,
     };
   }
@@ -359,13 +377,14 @@ export async function resolveDesktop(): Promise<DesktopResolution> {
       return {
         source: "storage",
         version: deriveVersion(stored.filename),
-        publishedAt: null,
+        publishedAt: stored.publishedAt,
         installers: [
           {
             os,
             ext: extOf(stored.filename),
             filename: stored.filename,
             sizeBytes: stored.sizeBytes,
+            publishedAt: stored.publishedAt,
             source: "storage",
             url: stored.url,
           },
