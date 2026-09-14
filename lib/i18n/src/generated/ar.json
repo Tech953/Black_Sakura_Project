@@ -1119,7 +1119,19 @@
     "localServerReachableHint": "استجاب الخادم المحلي. يمكنك استخدام هذا المتصفح مع محرك سطح المكتب.",
     "localServerUnavailable": "غير متاح",
     "localServerUnavailableHint": "شغّل تطبيق سطح المكتب أو الخادم المحلي، وتحقق من العنوان، ثم حاول مرة أخرى.",
-    "localServerInvalid": "استخدم أصلاً يبدأ بـ http:// أو https:// من دون مسار أو استعلام أو جزء أو اسم مستخدم أو كلمة مرور."
+    "localServerInvalid": "استخدم أصلاً يبدأ بـ http:// أو https:// من دون مسار أو استعلام أو جزء أو اسم مستخدم أو كلمة مرور.",
+    "update": {
+      "notAvailableInBuild": "Not available in this build",
+      "checking": "Checking for updates…",
+      "availableWithVersion": "Update {{version}} found — downloading…",
+      "available": "Update found — downloading…",
+      "downloading": "Downloading update… {{percent}}%",
+      "downloaded": "Restart to update",
+      "error": "Update check failed",
+      "upToDate": "Up to date",
+      "checkForUpdates": "Check for Updates",
+      "progressLabel": "Update download progress"
+    }
   },
   "simulations": {
     "title": "غرف المحاكاة",

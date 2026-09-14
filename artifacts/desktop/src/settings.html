@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';"
+    />
     <title>ENGRAM — Settings</title>
     <style>
       :root {
@@ -14,7 +17,9 @@
         --text: #cfe9ef;
         --muted: #6f8a96;
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
         padding: 24px;
@@ -30,7 +35,11 @@
         color: var(--cyan);
         margin: 0 0 4px;
       }
-      p.sub { color: var(--muted); margin: 0 0 20px; font-size: 12px; }
+      p.sub {
+        color: var(--muted);
+        margin: 0 0 20px;
+        font-size: 12px;
+      }
       fieldset {
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -38,9 +47,23 @@
         margin: 0 0 16px;
         background: var(--panel);
       }
-      legend { color: var(--cyan); padding: 0 8px; letter-spacing: 0.1em; text-transform: uppercase; font-size: 11px; }
-      label { display: block; margin: 12px 0 4px; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
-      input[type="text"], input[type="password"], input[type="url"] {
+      legend {
+        color: var(--cyan);
+        padding: 0 8px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        font-size: 11px;
+      }
+      label {
+        display: block;
+        margin: 12px 0 4px;
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+      }
+      input[type="text"],
+      input[type="password"],
+      input[type="url"] {
         width: 100%;
         padding: 9px 10px;
         background: #060a10;
@@ -50,11 +73,36 @@
         font-family: "JetBrains Mono", monospace;
         font-size: 13px;
       }
-      input:focus { outline: none; border-color: var(--cyan); }
-      .mode-row { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-bottom: 4px; }
-      .mode-row label { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 14px; cursor: pointer; }
-      .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
-      .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+      input:focus {
+        outline: none;
+        border-color: var(--cyan);
+      }
+      .mode-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 18px;
+        margin-bottom: 4px;
+      }
+      .mode-row label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        color: var(--text);
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .hint {
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 6px;
+      }
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 8px;
+      }
       button {
         padding: 9px 18px;
         border-radius: 6px;
@@ -66,15 +114,48 @@
         text-transform: uppercase;
         font-size: 12px;
       }
-      button.primary { background: var(--cyan); color: #04161a; border-color: var(--cyan); font-weight: 600; }
-      button:hover:not(:disabled) { border-color: var(--cyan); }
-      button:disabled { opacity: 0.5; cursor: not-allowed; }
-      .hidden { display: none; }
-      #status { color: var(--muted); font-size: 12px; min-height: 16px; }
-      .about-row { display: flex; align-items: baseline; gap: 12px; padding: 4px 0; }
-      .about-label { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; width: 72px; flex-shrink: 0; }
-      .about-value { color: var(--text); font-family: "JetBrains Mono", monospace; font-size: 13px; }
-      .update-actions { margin-top: 12px; }
+      button.primary {
+        background: var(--cyan);
+        color: #04161a;
+        border-color: var(--cyan);
+        font-weight: 600;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--cyan);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .hidden {
+        display: none;
+      }
+      #status {
+        color: var(--muted);
+        font-size: 12px;
+        min-height: 16px;
+      }
+      .about-row {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        padding: 4px 0;
+      }
+      .about-label {
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        width: 72px;
+        flex-shrink: 0;
+      }
+      .about-value {
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+      }
+      .update-actions {
+        margin-top: 12px;
+      }
 
       /* Custom panel styles */
       .panel-box {
@@ -92,8 +173,14 @@
         font-size: 13px;
         align-items: baseline;
       }
-      .data-grid .lbl { color: var(--muted); }
-      .data-grid .val { color: var(--text); font-family: "JetBrains Mono", monospace; word-break: break-all; }
+      .data-grid .lbl {
+        color: var(--muted);
+      }
+      .data-grid .val {
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        word-break: break-all;
+      }
       .progress-track {
         background: var(--bg);
         height: 6px;
@@ -108,107 +195,273 @@
         width: 0%;
         transition: width 0.1s linear;
       }
-      .error-text { color: #f87171; font-weight: 500; margin-top: 8px; font-size: 12px; }
-      .model-library { display: grid; gap: 10px; margin-top: 12px; }
+      .error-text {
+        color: #f87171;
+        font-weight: 500;
+        margin-top: 8px;
+        font-size: 12px;
+      }
+      .model-library {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
       .model-card {
         border: 1px solid var(--border);
         border-radius: 6px;
         padding: 12px;
         background: var(--bg);
       }
-      .model-card.active { border-color: var(--cyan-dim); }
-      .model-card-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
-      .model-card-name { color: var(--text); font-weight: 600; }
-      .model-card-status { color: var(--cyan); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
-      .model-card-status.bad { color: #f87171; }
-      .model-card-file { color: var(--muted); font-size: 11px; margin-top: 4px; word-break: break-all; }
-      .model-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-      .model-card-actions button { padding: 6px 10px; font-size: 11px; }
+      .model-card.active {
+        border-color: var(--cyan-dim);
+      }
+      .model-card-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: baseline;
+      }
+      .model-card-name {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .model-card-status {
+        color: var(--cyan);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .model-card-status.bad {
+        color: #f87171;
+      }
+      .model-card-file {
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 4px;
+        word-break: break-all;
+      }
+      .model-card-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .model-card-actions button {
+        padding: 6px 10px;
+        font-size: 11px;
+      }
     </style>
   </head>
   <body>
     <h1>Model Connection</h1>
-    <p class="sub">Choose how PYRI reaches a language model. Changes restart the embedded engine.</p>
+    <p class="sub">
+      Choose how PYRI reaches a language model. Changes restart the embedded
+      engine.
+    </p>
 
     <fieldset>
       <legend>Mode</legend>
       <div class="mode-row">
-        <label><input type="radio" name="mode" value="bundled" /> Built-in (no setup)</label>
-        <label><input type="radio" name="mode" value="custom" /> Custom (GGUF)</label>
-        <label><input type="radio" name="mode" value="offline" /> Local server</label>
-        <label><input type="radio" name="mode" value="online" /> Online (cloud)</label>
+        <label
+          ><input type="radio" name="mode" value="bundled" /> Built-in (no
+          setup)</label
+        >
+        <label
+          ><input type="radio" name="mode" value="custom" /> Custom
+          (GGUF)</label
+        >
+        <label
+          ><input type="radio" name="mode" value="offline" /> Local
+          server</label
+        >
+        <label
+          ><input type="radio" name="mode" value="online" /> Online
+          (cloud)</label
+        >
       </div>
     </fieldset>
 
     <fieldset id="bundled-panel">
       <legend>Built-in — bundled model</legend>
-      <p class="hint" id="bundled-hint">Runs the AI model that ships inside this app. Chat, analysis, simulation and emulation all work fully offline with no setup, no account, and no internet connection.</p>
-        <div id="local-model-failure-box" class="panel-box hidden" role="alert" aria-live="polite">
-          <p id="local-model-failure-title" style="margin:0 0 8px 0; color:#f87171; font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:0.05em;"></p>
-          <p id="local-model-failure-message" class="error-text" style="margin-top:0;"></p>
-          <p id="local-model-failure-guidance" class="hint"></p>
-          <p id="local-model-failure-recovery" class="hint"></p>
-        </div>
+      <p class="hint" id="bundled-hint">
+        Runs the AI model that ships inside this app. Chat, analysis, simulation
+        and emulation all work fully offline with no setup, no account, and no
+        internet connection.
+      </p>
+      <div
+        id="local-model-failure-box"
+        class="panel-box hidden"
+        role="alert"
+        aria-live="polite"
+      >
+        <p
+          id="local-model-failure-title"
+          style="
+            margin: 0 0 8px 0;
+            color: #f87171;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+          "
+        ></p>
+        <p
+          id="local-model-failure-message"
+          class="error-text"
+          style="margin-top: 0"
+        ></p>
+        <p id="local-model-failure-guidance" class="hint"></p>
+        <p id="local-model-failure-recovery" class="hint"></p>
+      </div>
       <div id="offline-download-box" class="panel-box hidden">
-        <p style="margin:0 0 8px 0; color:var(--cyan); font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:0.05em;">Optional offline model</p>
-        <p class="hint" id="offline-download-hint">This slim build keeps the installer small. Download the verified offline model into writable ENGRAM storage to enable the built-in mode.</p>
-        <div style="display:flex; justify-content:space-between; font-size:12px; align-items:baseline; margin-top:10px;">
-          <span id="offline-download-state" style="color:var(--cyan)">Not downloaded</span>
-          <span id="offline-download-bytes" style="font-family:'JetBrains Mono',monospace; color:var(--muted)">0 / 0</span>
+        <p
+          style="
+            margin: 0 0 8px 0;
+            color: var(--cyan);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+          "
+        >
+          Optional offline model
+        </p>
+        <p class="hint" id="offline-download-hint">
+          This slim build keeps the installer small. Download the verified
+          offline model into writable ENGRAM storage to enable the built-in
+          mode.
+        </p>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            align-items: baseline;
+            margin-top: 10px;
+          "
+        >
+          <span id="offline-download-state" style="color: var(--cyan)"
+            >Not downloaded</span
+          >
+          <span
+            id="offline-download-bytes"
+            style="
+              font-family: &quot;JetBrains Mono&quot;, monospace;
+              color: var(--muted);
+            "
+            >0 / 0</span
+          >
         </div>
         <div class="progress-track">
           <div id="offline-download-fill" class="progress-fill"></div>
         </div>
-        <div class="actions" style="margin-top:12px; justify-content:flex-start;">
-          <button id="btn-download-offline-model" type="button" class="primary">Download offline model</button>
-          <button id="btn-cancel-offline-model" type="button" class="hidden">Cancel</button>
-          <button id="btn-remove-offline-model" type="button" class="hidden">Remove downloaded model</button>
+        <div
+          class="actions"
+          style="margin-top: 12px; justify-content: flex-start"
+        >
+          <button id="btn-download-offline-model" type="button" class="primary">
+            Download offline model
+          </button>
+          <button id="btn-cancel-offline-model" type="button" class="hidden">
+            Cancel
+          </button>
+          <button id="btn-remove-offline-model" type="button" class="hidden">
+            Remove downloaded model
+          </button>
         </div>
-         <div id="offline-download-guidance" class="hint hidden"></div>
+        <div id="offline-download-guidance" class="hint hidden"></div>
         <div id="offline-download-error" class="error-text hidden"></div>
       </div>
     </fieldset>
 
     <fieldset id="custom-panel" class="hidden">
       <legend>Custom — Managed GGUF</legend>
-      <p class="hint">Keep several imported models in ENGRAM storage. Compatibility is checked by starting the engine before a model becomes active.</p>
+      <p class="hint">
+        Keep several imported models in ENGRAM storage. Compatibility is checked
+        by starting the engine before a model becomes active.
+      </p>
 
       <div id="custom-idle-view" class="panel-box">
         <div id="custom-library" class="model-library"></div>
         <div id="custom-no-model" class="hidden">
-           <p style="margin:0 0 10px 0; color:var(--muted)">No custom model imported.</p>
+          <p style="margin: 0 0 10px 0; color: var(--muted)">
+            No custom model imported.
+          </p>
         </div>
         <p id="custom-storage" class="hint"></p>
-        <div class="actions" style="margin-top:12px; justify-content: flex-start;">
-          <button id="btn-choose-gguf" type="button">Import another GGUF...</button>
+        <div
+          class="actions"
+          style="margin-top: 12px; justify-content: flex-start"
+        >
+          <button id="btn-choose-gguf" type="button">
+            Import another GGUF...
+          </button>
         </div>
         <div id="cm-error" class="error-text hidden"></div>
       </div>
 
       <div id="custom-selection-view" class="panel-box hidden">
-        <p style="margin:0 0 8px 0; color:var(--cyan); font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:0.05em;">Ready to Import</p>
+        <p
+          style="
+            margin: 0 0 8px 0;
+            color: var(--cyan);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+          "
+        >
+          Ready to Import
+        </p>
         <div class="data-grid">
-          <div class="lbl">File</div><div class="val" id="cs-file"></div>
-          <div class="lbl">Size</div><div class="val" id="cs-size"></div>
-          <div class="lbl">GGUF v</div><div class="val" id="cs-version"></div>
-          <div class="lbl">Required</div><div class="val" id="cs-req"></div>
-          <div class="lbl">Free Space</div><div class="val" id="cs-free"></div>
+          <div class="lbl">File</div>
+          <div class="val" id="cs-file"></div>
+          <div class="lbl">Size</div>
+          <div class="val" id="cs-size"></div>
+          <div class="lbl">GGUF v</div>
+          <div class="val" id="cs-version"></div>
+          <div class="lbl">Required</div>
+          <div class="val" id="cs-req"></div>
+          <div class="lbl">Free Space</div>
+          <div class="val" id="cs-free"></div>
         </div>
-        <div class="actions" style="margin-top:16px; justify-content: flex-start;">
-          <button id="btn-import-gguf" type="button" class="primary">Import &amp; Activate</button>
+        <div
+          class="actions"
+          style="margin-top: 16px; justify-content: flex-start"
+        >
+          <button id="btn-import-gguf" type="button" class="primary">
+            Import &amp; Activate
+          </button>
           <button id="btn-cancel-selection" type="button">Cancel</button>
         </div>
       </div>
 
       <div id="custom-progress-view" class="panel-box hidden">
-        <div style="display:flex; justify-content:space-between; font-size:12px; align-items:baseline;">
-          <span id="cp-state" style="color:var(--cyan)">Copying...</span>
-          <span id="cp-bytes" style="font-family:'JetBrains Mono',monospace; color:var(--muted)">0 / 0</span>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            align-items: baseline;
+          "
+        >
+          <span id="cp-state" style="color: var(--cyan)">Copying...</span>
+          <span
+            id="cp-bytes"
+            style="
+              font-family: &quot;JetBrains Mono&quot;, monospace;
+              color: var(--muted);
+            "
+            >0 / 0</span
+          >
         </div>
         <div class="progress-track">
           <div id="cp-fill" class="progress-fill"></div>
         </div>
-        <div class="actions" style="margin-top:12px; justify-content: flex-start;">
+        <div
+          class="actions"
+          style="margin-top: 12px; justify-content: flex-start"
+        >
           <button id="btn-cancel-import" type="button">Cancel</button>
         </div>
       </div>
@@ -217,30 +470,56 @@
     <fieldset id="offline-panel">
       <legend>Offline — local OpenAI-compatible server</legend>
       <label for="offline-base">Base URL</label>
-      <input id="offline-base" type="url" placeholder="http://localhost:11434/v1" />
+      <input
+        id="offline-base"
+        type="url"
+        placeholder="http://localhost:11434/v1"
+      />
       <label for="offline-model">Model</label>
       <input id="offline-model" type="text" placeholder="llama3.1" />
-      <p class="hint">Point this at Ollama, LM Studio, or any local OpenAI-compatible endpoint. No API key required.</p>
+      <p class="hint">
+        Point this at Ollama, LM Studio, or any local OpenAI-compatible
+        endpoint. No API key required.
+      </p>
     </fieldset>
 
     <fieldset id="online-panel">
       <legend>Online — cloud provider</legend>
       <label for="online-base">Base URL</label>
-      <input id="online-base" type="url" placeholder="https://api.openai.com/v1" />
+      <input
+        id="online-base"
+        type="url"
+        placeholder="https://api.openai.com/v1"
+      />
       <label for="online-model">Model</label>
       <input id="online-model" type="text" placeholder="gpt-4o-mini" />
       <label for="online-key">API Key</label>
-      <input id="online-key" type="password" placeholder="Leave blank to keep existing key" autocomplete="off" />
+      <input
+        id="online-key"
+        type="password"
+        placeholder="Leave blank to keep existing key"
+        autocomplete="off"
+      />
       <p class="hint" id="key-hint"></p>
     </fieldset>
 
     <fieldset>
       <legend>Mobile / LAN access</legend>
       <div class="mode-row">
-        <label><input type="checkbox" id="allow-lan" /> Allow devices on my network to connect (ENGRAM mobile app)</label>
+        <label
+          ><input type="checkbox" id="allow-lan" /> Allow devices on my network
+          to connect (ENGRAM mobile app)</label
+        >
       </div>
-      <p class="hint" id="lan-hint">When enabled, the engine listens on your local network. Enter one of the addresses below in the mobile app's Server setting.</p>
-      <p class="hint" id="lan-addresses" style="font-family: 'JetBrains Mono', monospace;"></p>
+      <p class="hint" id="lan-hint">
+        When enabled, the engine listens on your local network. Enter one of the
+        addresses below in the mobile app's Server setting.
+      </p>
+      <p
+        class="hint"
+        id="lan-addresses"
+        style="font-family: &quot;JetBrains Mono&quot;, monospace"
+      ></p>
     </fieldset>
 
     <fieldset>
@@ -271,29 +550,59 @@
 
     <div class="actions">
       <span id="status"></span>
-      <span style="flex:1"></span>
+      <span style="flex: 1"></span>
       <button id="cancel" type="button">Cancel</button>
-      <button id="save" type="button" class="primary">Save &amp; Restart</button>
+      <button id="save" type="button" class="primary">
+        Save &amp; Restart
+      </button>
     </div>
 
+    <script id="settings-i18n-data" type="application/json">
+      {
+        "en": {
+          "notAvailableInBuild": "Not available in this build",
+          "checking": "Checking for updates…",
+          "availableWithVersion": "Update {{version}} found — downloading…",
+          "available": "Update found — downloading…",
+          "downloading": "Downloading update… {{percent}}%",
+          "downloaded": "Restart to update",
+          "error": "Update check failed",
+          "upToDate": "Up to date",
+          "checkForUpdates": "Check for Updates",
+          "progressLabel": "Update download progress"
+        }
+      }
+    </script>
     <script>
+      const updateLocaleData = JSON.parse(
+        document.getElementById("settings-i18n-data").textContent,
+      );
       const $ = (id) => document.getElementById(id);
+
+      function getUpdateCopy(language) {
+        const code = String(language || "en")
+          .toLowerCase()
+          .split("-")[0];
+        return updateLocaleData[code] || updateLocaleData.en;
+      }
 
       let currentSelectionId = null;
       let currentOperationId = null;
-       let offlineModelOperationId = null;
+      let offlineModelOperationId = null;
       let bundledAvailable = false;
-       let bundledModelIncluded = false;
+      let bundledModelIncluded = false;
 
       function formatBytes(bytes) {
-        if (typeof bytes !== 'number' || isNaN(bytes) || bytes === 0) return "0 B";
-        const k = 1024, sizes = ["B", "KB", "MB", "GB", "TB"];
+        if (typeof bytes !== "number" || isNaN(bytes) || bytes === 0)
+          return "0 B";
+        const k = 1024,
+          sizes = ["B", "KB", "MB", "GB", "TB"];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
       }
 
       function setUiLock(locked) {
-        document.querySelectorAll('input[name="mode"]').forEach(el => {
+        document.querySelectorAll('input[name="mode"]').forEach((el) => {
           el.disabled = locked || (el.value === "bundled" && !bundledAvailable);
         });
         $("save").disabled = locked;
@@ -304,178 +613,211 @@
         $("online-model").disabled = locked;
         $("online-key").disabled = locked;
         $("allow-lan").disabled = locked;
-         $("btn-download-offline-model").disabled = locked;
-         $("btn-remove-offline-model").disabled = locked;
-         document.querySelectorAll("#custom-library button").forEach((button) => {
-           button.disabled = locked;
-         });
+        $("btn-download-offline-model").disabled = locked;
+        $("btn-remove-offline-model").disabled = locked;
+        document
+          .querySelectorAll("#custom-library button")
+          .forEach((button) => {
+            button.disabled = locked;
+          });
       }
 
-       const offlineFailureCopy = {
-         checksum: {
-           label: "Verification failed",
-           guidance: "The downloaded file did not match ENGRAM's checksum and was not activated. Retry the download.",
-         },
-         network: {
-           label: "Download failed",
-           guidance: "The model could not be downloaded. Check your connection, then retry or resume the download.",
-         },
-         cancelled: {
-           label: "Download cancelled",
-           guidance: "The partial download is safe to resume. Start again when you are ready.",
-         },
-         storage: {
-           label: "Storage unavailable",
-           guidance: "ENGRAM could not write its model storage. Check available disk space and permissions, then retry.",
-         },
-         unknown: {
-           label: "Download failed",
-           guidance: "The offline model was not activated. Retry the download or remove its partial files.",
-         },
-       };
+      const offlineFailureCopy = {
+        checksum: {
+          label: "Verification failed",
+          guidance:
+            "The downloaded file did not match ENGRAM's checksum and was not activated. Retry the download.",
+        },
+        network: {
+          label: "Download failed",
+          guidance:
+            "The model could not be downloaded. Check your connection, then retry or resume the download.",
+        },
+        cancelled: {
+          label: "Download cancelled",
+          guidance:
+            "The partial download is safe to resume. Start again when you are ready.",
+        },
+        storage: {
+          label: "Storage unavailable",
+          guidance:
+            "ENGRAM could not write its model storage. Check available disk space and permissions, then retry.",
+        },
+        unknown: {
+          label: "Download failed",
+          guidance:
+            "The offline model was not activated. Retry the download or remove its partial files.",
+        },
+      };
 
-       function renderOfflineFailure(kind, detail) {
-         const copy = offlineFailureCopy[kind] || offlineFailureCopy.unknown;
-         $("offline-download-state").textContent = copy.label;
-         $("offline-download-state").style.color = "#f87171";
-         $("offline-download-guidance").textContent = copy.guidance;
-         $("offline-download-guidance").classList.remove("hidden");
-         if (detail && detail !== copy.guidance) {
-           $("offline-download-error").textContent = "Details: " + detail;
-           $("offline-download-error").classList.remove("hidden");
-         } else {
-           $("offline-download-error").classList.add("hidden");
-         }
-       }
+      function renderOfflineFailure(kind, detail) {
+        const copy = offlineFailureCopy[kind] || offlineFailureCopy.unknown;
+        $("offline-download-state").textContent = copy.label;
+        $("offline-download-state").style.color = "#f87171";
+        $("offline-download-guidance").textContent = copy.guidance;
+        $("offline-download-guidance").classList.remove("hidden");
+        if (detail && detail !== copy.guidance) {
+          $("offline-download-error").textContent = "Details: " + detail;
+          $("offline-download-error").classList.remove("hidden");
+        } else {
+          $("offline-download-error").classList.add("hidden");
+        }
+      }
 
-       function clearOfflineFailure() {
-         $("offline-download-guidance").classList.add("hidden");
-         $("offline-download-error").classList.add("hidden");
-       }
+      function clearOfflineFailure() {
+        $("offline-download-guidance").classList.add("hidden");
+        $("offline-download-error").classList.add("hidden");
+      }
 
-        function renderLocalModelFailure(failure) {
-          const box = $("local-model-failure-box");
-          if (!failure) {
-            box.classList.add("hidden");
-            return;
-          }
-          const missing = Array.isArray(failure.missingLibraries) && failure.missingLibraries.length
+      function renderLocalModelFailure(failure) {
+        const box = $("local-model-failure-box");
+        if (!failure) {
+          box.classList.add("hidden");
+          return;
+        }
+        const missing =
+          Array.isArray(failure.missingLibraries) &&
+          failure.missingLibraries.length
             ? ` Missing: ${failure.missingLibraries.join(", ")}.`
             : "";
-          const copy = failure.code === "missing-linux-dependencies"
+        const copy =
+          failure.code === "missing-linux-dependencies"
             ? {
                 title: "Built-in model needs Linux libraries",
-                guidance: "Install the missing runtime packages for your distribution, or use a local server or online provider instead.",
-                recovery: "Automatic repair is not available on Linux. Select Local server or Online, then choose Save & Restart.",
+                guidance:
+                  "Install the missing runtime packages for your distribution, or use a local server or online provider instead.",
+                recovery:
+                  "Automatic repair is not available on Linux. Select Local server or Online, then choose Save & Restart.",
               }
             : failure.code === "missing-windows-dlls"
               ? {
                   title: "Built-in model runtime is incomplete",
-                  guidance: "The installed llama.cpp runtime is missing files. Reinstall or update ENGRAM, or use a local server or online provider instead.",
-                  recovery: "Automatic repair is not available for this installation. Select Local server or Online, then choose Save & Restart.",
+                  guidance:
+                    "The installed llama.cpp runtime is missing files. Reinstall or update ENGRAM, or use a local server or online provider instead.",
+                  recovery:
+                    "Automatic repair is not available for this installation. Select Local server or Online, then choose Save & Restart.",
                 }
               : {
                   title: "Built-in model could not start",
-                  guidance: "The built-in local model is unavailable, but the rest of ENGRAM can continue with another provider.",
-                  recovery: "Select Local server or Online, then choose Save & Restart. You can retry Built-in after fixing the runtime.",
+                  guidance:
+                    "The built-in local model is unavailable, but the rest of ENGRAM can continue with another provider.",
+                  recovery:
+                    "Select Local server or Online, then choose Save & Restart. You can retry Built-in after fixing the runtime.",
                 };
-          $("local-model-failure-title").textContent = copy.title;
-          $("local-model-failure-message").textContent = (failure.message || "The local model could not start.") + missing;
-          $("local-model-failure-guidance").textContent = copy.guidance;
-          $("local-model-failure-recovery").textContent = failure.automaticFixAvailable
+        $("local-model-failure-title").textContent = copy.title;
+        $("local-model-failure-message").textContent =
+          (failure.message || "The local model could not start.") + missing;
+        $("local-model-failure-guidance").textContent = copy.guidance;
+        $("local-model-failure-recovery").textContent =
+          failure.automaticFixAvailable
             ? "Automatic repair is available on this platform. Retry Built-in after the repair completes."
             : copy.recovery;
-          box.classList.remove("hidden");
+        box.classList.remove("hidden");
+      }
+
+      function renderOfflineModel(model) {
+        if (!model || bundledModelIncluded) {
+          $("offline-download-box").classList.add("hidden");
+          return;
         }
+        $("offline-download-box").classList.remove("hidden");
+        $("offline-download-bytes").textContent =
+          `${formatBytes(model.downloadedBytes || 0)} / ${formatBytes(model.expectedBytes)}`;
+        const fraction = Math.min(
+          1,
+          Math.max(0, (model.downloadedBytes || 0) / model.expectedBytes),
+        );
+        $("offline-download-fill").style.width = `${fraction * 100}%`;
+        const state = model.status || "none";
+        const labels = {
+          none: "Not downloaded",
+          downloading: "Downloading…",
+          partial: "Partial download — ready to resume",
+          available: "Downloaded — ready to activate",
+          active: "Active",
+          corrupt: "Incomplete — download again",
+          error: "Error",
+        };
+        $("offline-download-state").textContent = labels[state] || state;
+        $("offline-download-state").style.color =
+          state === "error" || state === "corrupt" ? "#f87171" : "var(--cyan)";
+        $("btn-download-offline-model").textContent =
+          state === "available" || state === "active"
+            ? "Activate offline model"
+            : state === "partial" || model.errorKind === "cancelled"
+              ? "Resume download"
+              : model.errorKind
+                ? "Retry download"
+                : "Download offline model";
+        $("btn-download-offline-model").classList.toggle(
+          "hidden",
+          state === "downloading",
+        );
+        $("btn-cancel-offline-model").classList.toggle(
+          "hidden",
+          state !== "downloading",
+        );
+        $("btn-remove-offline-model").classList.toggle(
+          "hidden",
+          !["available", "active", "partial", "corrupt", "error"].includes(
+            state,
+          ),
+        );
+        if (model.errorKind) {
+          renderOfflineFailure(model.errorKind, model.error);
+        } else if (model.error) {
+          $("offline-download-error").textContent = model.error;
+          $("offline-download-error").classList.remove("hidden");
+          $("offline-download-guidance").classList.add("hidden");
+        } else {
+          clearOfflineFailure();
+        }
+      }
 
-       function renderOfflineModel(model) {
-         if (!model || bundledModelIncluded) {
-           $("offline-download-box").classList.add("hidden");
-           return;
-         }
-         $("offline-download-box").classList.remove("hidden");
-         $("offline-download-bytes").textContent =
-           `${formatBytes(model.downloadedBytes || 0)} / ${formatBytes(model.expectedBytes)}`;
-         const fraction = Math.min(1, Math.max(0, (model.downloadedBytes || 0) / model.expectedBytes));
-         $("offline-download-fill").style.width = `${fraction * 100}%`;
-         const state = model.status || "none";
-         const labels = {
-           none: "Not downloaded",
-           downloading: "Downloading…",
-           partial: "Partial download — ready to resume",
-           available: "Downloaded — ready to activate",
-           active: "Active",
-           corrupt: "Incomplete — download again",
-           error: "Error",
-         };
-         $("offline-download-state").textContent = labels[state] || state;
-         $("offline-download-state").style.color =
-           state === "error" || state === "corrupt" ? "#f87171" : "var(--cyan)";
-          $("btn-download-offline-model").textContent =
-            state === "available" || state === "active"
-              ? "Activate offline model"
-              : state === "partial" || model.errorKind === "cancelled"
-                ? "Resume download"
-                : model.errorKind
-                  ? "Retry download"
-                  : "Download offline model";
-         $("btn-download-offline-model").classList.toggle("hidden", state === "downloading");
-         $("btn-cancel-offline-model").classList.toggle("hidden", state !== "downloading");
-         $("btn-remove-offline-model").classList.toggle(
-           "hidden",
-           !["available", "active", "partial", "corrupt", "error"].includes(state),
-         );
-          if (model.errorKind) {
-            renderOfflineFailure(model.errorKind, model.error);
-          } else if (model.error) {
-           $("offline-download-error").textContent = model.error;
-           $("offline-download-error").classList.remove("hidden");
-            $("offline-download-guidance").classList.add("hidden");
-         } else {
-            clearOfflineFailure();
-         }
-       }
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
 
-       function escapeHtml(value) {
-         return String(value)
-           .replaceAll("&", "&amp;")
-           .replaceAll("<", "&lt;")
-           .replaceAll(">", "&gt;")
-           .replaceAll('"', "&quot;")
-           .replaceAll("'", "&#039;");
-       }
+      function renderCustomModels(models, storageBytes, storageLimitBytes) {
+        const library = $("custom-library");
+        const customRadio = document.querySelector(
+          'input[name="mode"][value="custom"]',
+        );
+        customRadio.disabled = false;
+        library.replaceChildren();
+        const entries = Array.isArray(models) ? models : [];
+        $("custom-no-model").classList.toggle("hidden", entries.length > 0);
+        $("custom-storage").textContent =
+          `${entries.length} managed model${entries.length === 1 ? "" : "s"} · ` +
+          `${formatBytes(storageBytes || 0)} / ${formatBytes(storageLimitBytes || 0)} used`;
+        $("btn-choose-gguf").textContent =
+          entries.length > 0 ? "Import another GGUF..." : "Import GGUF...";
 
-       function renderCustomModels(models, storageBytes, storageLimitBytes) {
-          const library = $("custom-library");
-          const customRadio = document.querySelector('input[name="mode"][value="custom"]');
-          customRadio.disabled = false;
-          library.replaceChildren();
-          const entries = Array.isArray(models) ? models : [];
-          $("custom-no-model").classList.toggle("hidden", entries.length > 0);
-          $("custom-storage").textContent =
-            `${entries.length} managed model${entries.length === 1 ? "" : "s"} · ` +
-            `${formatBytes(storageBytes || 0)} / ${formatBytes(storageLimitBytes || 0)} used`;
-          $("btn-choose-gguf").textContent =
-            entries.length > 0 ? "Import another GGUF..." : "Import GGUF...";
-
-          for (const model of entries) {
-            const metadata = model.metadata;
-            if (!metadata) continue;
-            const bad = model.compatibility !== "compatible";
-            const status = model.status === "active"
+        for (const model of entries) {
+          const metadata = model.metadata;
+          if (!metadata) continue;
+          const bad = model.compatibility !== "compatible";
+          const status =
+            model.status === "active"
               ? "ACTIVE"
               : model.status === "available"
                 ? "READY"
                 : String(model.status || "UNKNOWN").toUpperCase();
-            const actions = model.status === "active"
+          const actions =
+            model.status === "active"
               ? `<button type="button" data-model-action="rename" data-sha256="${metadata.sha256}">Rename</button>
                  <button type="button" data-model-action="remove" data-sha256="${metadata.sha256}">Remove (fallback first)</button>`
               : `<button type="button" class="primary" data-model-action="activate" data-sha256="${metadata.sha256}" ${bad ? "disabled" : ""}>Use this model</button>
                  <button type="button" data-model-action="rename" data-sha256="${metadata.sha256}">Rename</button>
                  <button type="button" data-model-action="remove" data-sha256="${metadata.sha256}">Remove</button>`;
-            const card = document.createElement("div");
-            card.className = `model-card${model.status === "active" ? " active" : ""}`;
-            card.innerHTML = `
+          const card = document.createElement("div");
+          card.className = `model-card${model.status === "active" ? " active" : ""}`;
+          card.innerHTML = `
               <div class="model-card-head">
                 <span class="model-card-name">${escapeHtml(metadata.displayName || metadata.filename)}</span>
                 <span class="model-card-status${bad ? " bad" : ""}">${escapeHtml(status)}</span>
@@ -490,20 +832,26 @@
               </div>
               ${model.error ? `<div class="error-text">${escapeHtml(model.error)}</div>` : ""}
               <div class="model-card-actions">${actions}</div>`;
-            library.appendChild(card);
-          }
-       }
+          library.appendChild(card);
+        }
+      }
 
-       async function refreshCustomModels() {
-         const st = await window.engram.getSettings();
-         renderCustomModels(st.customModels, st.customStorageBytes, st.customStorageLimitBytes);
-         const current = document.querySelector('input[name="mode"]:checked');
-         if (current && current.value === "custom" && st.mode !== "custom") {
-           document.querySelector('input[name="mode"][value="offline"]').checked = true;
-           applyMode("offline");
-         }
-         return st;
-       }
+      async function refreshCustomModels() {
+        const st = await window.engram.getSettings();
+        renderCustomModels(
+          st.customModels,
+          st.customStorageBytes,
+          st.customStorageLimitBytes,
+        );
+        const current = document.querySelector('input[name="mode"]:checked');
+        if (current && current.value === "custom" && st.mode !== "custom") {
+          document.querySelector(
+            'input[name="mode"][value="offline"]',
+          ).checked = true;
+          applyMode("offline");
+        }
+        return st;
+      }
 
       function applyMode(mode) {
         $("bundled-panel").classList.toggle("hidden", mode !== "bundled");
@@ -515,25 +863,33 @@
       async function init() {
         const s = await window.engram.getSettings();
         bundledAvailable = s.bundledAvailable;
-         bundledModelIncluded = s.bundledModelIncluded;
-         renderLocalModelFailure(s.localModelFailure);
-         renderOfflineModel(s.offlineModel);
+        bundledModelIncluded = s.bundledModelIncluded;
+        renderLocalModelFailure(s.localModelFailure);
+        renderOfflineModel(s.offlineModel);
         if (s.customModel) {
-          renderCustomModels(s.customModels, s.customStorageBytes, s.customStorageLimitBytes);
+          renderCustomModels(
+            s.customModels,
+            s.customStorageBytes,
+            s.customStorageLimitBytes,
+          );
           if (s.mode === "custom" && s.customModels.length === 0) {
             s.mode = "offline";
           }
         }
 
         if (!s.bundledAvailable) {
-          const radio = document.querySelector('input[name="mode"][value="bundled"]');
+          const radio = document.querySelector(
+            'input[name="mode"][value="bundled"]',
+          );
           radio.disabled = true;
           $("bundled-hint").textContent =
             "This slim build does not include a bundled model. Choose Local server to stay offline with Ollama, LM Studio, or another OpenAI-compatible endpoint.";
           if (s.mode === "bundled") s.mode = "offline";
         }
 
-        const currentRadio = document.querySelector(`input[name="mode"][value="${s.mode}"]`);
+        const currentRadio = document.querySelector(
+          `input[name="mode"][value="${s.mode}"]`,
+        );
         if (currentRadio) currentRadio.checked = true;
 
         $("allow-lan").checked = s.allowLan === true;
@@ -551,173 +907,218 @@
 
         // Register custom model progress listener once
         window.engram.onGgufImportStatus((status) => {
-           if (status.state === "copying") {
-             currentOperationId = status.operationId;
-             $("cp-state").textContent = "Copying...";
-             $("cp-bytes").textContent = `${formatBytes(status.copiedBytes)} / ${formatBytes(status.totalBytes)}`;
-             $("cp-fill").style.width = `${Math.min(100, Math.max(0, status.fraction * 100))}%`;
-             $("btn-cancel-import").disabled = false;
-           } else if (status.state === "activating") {
-             $("cp-state").textContent = "Activating (checking compatibility)...";
-             $("cp-bytes").textContent = "";
-             $("cp-fill").style.width = "100%";
-             $("btn-cancel-import").disabled = true;
-           } else if (status.state === "completed") {
-             setUiLock(false);
-             currentOperationId = null;
-             $("custom-progress-view").classList.add("hidden");
-             $("custom-idle-view").classList.remove("hidden");
-             document.querySelector('input[name="mode"][value="custom"]').checked = true;
-             applyMode("custom");
-             window.engram.getSettings().then(st => renderCustomModels(st.customModels, st.customStorageBytes, st.customStorageLimitBytes));
-           } else if (status.state === "cancelled" || status.state === "error") {
-             setUiLock(false);
-             currentOperationId = null;
-             $("custom-progress-view").classList.add("hidden");
-             $("custom-idle-view").classList.remove("hidden");
-             window.engram.getSettings().then(st => {
-                renderCustomModels(st.customModels, st.customStorageBytes, st.customStorageLimitBytes);
-               if (status.state === "error") {
-                  $("cm-error").textContent = "Import error: " + (status.error || "unknown");
-                  $("cm-error").classList.remove("hidden");
-               }
-             });
+          if (status.state === "copying") {
+            currentOperationId = status.operationId;
+            $("cp-state").textContent = "Copying...";
+            $("cp-bytes").textContent =
+              `${formatBytes(status.copiedBytes)} / ${formatBytes(status.totalBytes)}`;
+            $("cp-fill").style.width =
+              `${Math.min(100, Math.max(0, status.fraction * 100))}%`;
+            $("btn-cancel-import").disabled = false;
+          } else if (status.state === "activating") {
+            $("cp-state").textContent =
+              "Activating (checking compatibility)...";
+            $("cp-bytes").textContent = "";
+            $("cp-fill").style.width = "100%";
+            $("btn-cancel-import").disabled = true;
+          } else if (status.state === "completed") {
+            setUiLock(false);
+            currentOperationId = null;
+            $("custom-progress-view").classList.add("hidden");
+            $("custom-idle-view").classList.remove("hidden");
+            document.querySelector(
+              'input[name="mode"][value="custom"]',
+            ).checked = true;
+            applyMode("custom");
+            window.engram
+              .getSettings()
+              .then((st) =>
+                renderCustomModels(
+                  st.customModels,
+                  st.customStorageBytes,
+                  st.customStorageLimitBytes,
+                ),
+              );
+          } else if (status.state === "cancelled" || status.state === "error") {
+            setUiLock(false);
+            currentOperationId = null;
+            $("custom-progress-view").classList.add("hidden");
+            $("custom-idle-view").classList.remove("hidden");
+            window.engram.getSettings().then((st) => {
+              renderCustomModels(
+                st.customModels,
+                st.customStorageBytes,
+                st.customStorageLimitBytes,
+              );
+              if (status.state === "error") {
+                $("cm-error").textContent =
+                  "Import error: " + (status.error || "unknown");
+                $("cm-error").classList.remove("hidden");
+              }
+            });
           }
         });
 
-         window.engram.onOfflineModelStatus((status) => {
-           if (status.state === "downloading") {
-             $("offline-download-box").classList.remove("hidden");
-             $("offline-download-state").textContent = "Downloading…";
-             $("offline-download-bytes").textContent =
-               `${formatBytes(status.downloadedBytes)} / ${formatBytes(status.totalBytes)}`;
-             $("offline-download-fill").style.width = `${Math.min(100, Math.max(0, status.fraction * 100))}%`;
-             $("btn-download-offline-model").classList.add("hidden");
-             $("btn-cancel-offline-model").classList.remove("hidden");
-             $("btn-remove-offline-model").classList.add("hidden");
-             setUiLock(true);
-           } else if (status.state === "verifying" || status.state === "activating") {
-             $("offline-download-state").textContent =
-               status.state === "verifying" ? "Verifying checksum…" : "Activating…";
-             $("btn-cancel-offline-model").disabled = true;
-           } else if (status.state === "completed") {
-             offlineModelOperationId = null;
-             setUiLock(false);
-             window.engram.getSettings().then((st) => {
-               bundledAvailable = st.bundledAvailable;
-               bundledModelIncluded = st.bundledModelIncluded;
-               renderOfflineModel(st.offlineModel);
-               document.querySelector('input[name="mode"][value="bundled"]').checked = true;
-               applyMode("bundled");
-             });
-           } else if (status.state === "cancelled" || status.state === "error") {
-             offlineModelOperationId = null;
-             setUiLock(false);
-             window.engram.getSettings().then((st) => renderOfflineModel(st.offlineModel));
-              renderOfflineFailure(status.errorKind, status.error);
-           }
-         });
+        window.engram.onOfflineModelStatus((status) => {
+          if (status.state === "downloading") {
+            $("offline-download-box").classList.remove("hidden");
+            $("offline-download-state").textContent = "Downloading…";
+            $("offline-download-bytes").textContent =
+              `${formatBytes(status.downloadedBytes)} / ${formatBytes(status.totalBytes)}`;
+            $("offline-download-fill").style.width =
+              `${Math.min(100, Math.max(0, status.fraction * 100))}%`;
+            $("btn-download-offline-model").classList.add("hidden");
+            $("btn-cancel-offline-model").classList.remove("hidden");
+            $("btn-remove-offline-model").classList.add("hidden");
+            setUiLock(true);
+          } else if (
+            status.state === "verifying" ||
+            status.state === "activating"
+          ) {
+            $("offline-download-state").textContent =
+              status.state === "verifying"
+                ? "Verifying checksum…"
+                : "Activating…";
+            $("btn-cancel-offline-model").disabled = true;
+          } else if (status.state === "completed") {
+            offlineModelOperationId = null;
+            setUiLock(false);
+            window.engram.getSettings().then((st) => {
+              bundledAvailable = st.bundledAvailable;
+              bundledModelIncluded = st.bundledModelIncluded;
+              renderOfflineModel(st.offlineModel);
+              document.querySelector(
+                'input[name="mode"][value="bundled"]',
+              ).checked = true;
+              applyMode("bundled");
+            });
+          } else if (status.state === "cancelled" || status.state === "error") {
+            offlineModelOperationId = null;
+            setUiLock(false);
+            window.engram
+              .getSettings()
+              .then((st) => renderOfflineModel(st.offlineModel));
+            renderOfflineFailure(status.errorKind, status.error);
+          }
+        });
       }
 
-      document.querySelectorAll('input[name="mode"]').forEach((el) =>
-        el.addEventListener("change", (e) => applyMode(e.target.value)),
-      );
+      document
+        .querySelectorAll('input[name="mode"]')
+        .forEach((el) =>
+          el.addEventListener("change", (e) => applyMode(e.target.value)),
+        );
 
-       $("custom-library").addEventListener("click", async (event) => {
-          const button = event.target.closest("button[data-model-action]");
-          if (!button) return;
-          const action = button.dataset.modelAction;
-          const sha256 = button.dataset.sha256;
-          if (!sha256) return;
-          $("cm-error").classList.add("hidden");
-          if (action === "rename") {
-            const current = button.closest(".model-card").querySelector(".model-card-name").textContent;
-            const displayName = window.prompt("Display name for this model", current);
-            if (displayName === null) return;
-            const result = await window.engram.renameGguf(sha256, displayName);
-            if (!result.ok) {
-              $("cm-error").textContent = "Rename error: " + (result.error || "unknown");
-              $("cm-error").classList.remove("hidden");
-            } else {
-              await refreshCustomModels();
-            }
-          } else if (action === "activate") {
-            setUiLock(true);
-            const result = await window.engram.activateGguf(sha256);
-            setUiLock(false);
-            if (!result.ok) {
-              $("cm-error").textContent = "Activation error: " + (result.error || "unknown");
-              $("cm-error").classList.remove("hidden");
-            } else {
-              const st = await refreshCustomModels();
-              document.querySelector('input[name="mode"][value="custom"]').checked = true;
-              applyMode(st.mode);
-            }
-          } else if (action === "remove") {
-            const active = button.closest(".model-card").classList.contains("active");
-            const prompt = active
-              ? "Remove the active model? ENGRAM will switch to its safe fallback first."
-              : "Remove this managed GGUF from ENGRAM storage? This cannot be undone.";
-            if (!window.confirm(prompt)) return;
-            setUiLock(true);
-            const result = await window.engram.removeGguf(sha256);
-            setUiLock(false);
-            if (!result.ok) {
-              $("cm-error").textContent = "Remove error: " + (result.error || "unknown");
-              $("cm-error").classList.remove("hidden");
-            } else {
-              await refreshCustomModels();
-            }
+      $("custom-library").addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-model-action]");
+        if (!button) return;
+        const action = button.dataset.modelAction;
+        const sha256 = button.dataset.sha256;
+        if (!sha256) return;
+        $("cm-error").classList.add("hidden");
+        if (action === "rename") {
+          const current = button
+            .closest(".model-card")
+            .querySelector(".model-card-name").textContent;
+          const displayName = window.prompt(
+            "Display name for this model",
+            current,
+          );
+          if (displayName === null) return;
+          const result = await window.engram.renameGguf(sha256, displayName);
+          if (!result.ok) {
+            $("cm-error").textContent =
+              "Rename error: " + (result.error || "unknown");
+            $("cm-error").classList.remove("hidden");
+          } else {
+            await refreshCustomModels();
           }
-       });
+        } else if (action === "activate") {
+          setUiLock(true);
+          const result = await window.engram.activateGguf(sha256);
+          setUiLock(false);
+          if (!result.ok) {
+            $("cm-error").textContent =
+              "Activation error: " + (result.error || "unknown");
+            $("cm-error").classList.remove("hidden");
+          } else {
+            const st = await refreshCustomModels();
+            document.querySelector(
+              'input[name="mode"][value="custom"]',
+            ).checked = true;
+            applyMode(st.mode);
+          }
+        } else if (action === "remove") {
+          const active = button
+            .closest(".model-card")
+            .classList.contains("active");
+          const prompt = active
+            ? "Remove the active model? ENGRAM will switch to its safe fallback first."
+            : "Remove this managed GGUF from ENGRAM storage? This cannot be undone.";
+          if (!window.confirm(prompt)) return;
+          setUiLock(true);
+          const result = await window.engram.removeGguf(sha256);
+          setUiLock(false);
+          if (!result.ok) {
+            $("cm-error").textContent =
+              "Remove error: " + (result.error || "unknown");
+            $("cm-error").classList.remove("hidden");
+          } else {
+            await refreshCustomModels();
+          }
+        }
+      });
 
-       // Custom model import handler
+      // Custom model import handler
       $("btn-choose-gguf").addEventListener("click", async () => {
-         $("cm-error").classList.add("hidden");
-         const res = await window.engram.chooseGguf();
-         if (res.ok && res.selection) {
-           currentSelectionId = res.selection.selectionId;
-           $("cs-file").textContent = res.selection.filename;
-           $("cs-size").textContent = formatBytes(res.selection.byteSize);
-           $("cs-version").textContent = res.selection.ggufVersion;
-           $("cs-req").textContent = formatBytes(res.selection.requiredSpaceBytes);
-           $("cs-free").textContent = formatBytes(res.selection.freeSpaceBytes);
+        $("cm-error").classList.add("hidden");
+        const res = await window.engram.chooseGguf();
+        if (res.ok && res.selection) {
+          currentSelectionId = res.selection.selectionId;
+          $("cs-file").textContent = res.selection.filename;
+          $("cs-size").textContent = formatBytes(res.selection.byteSize);
+          $("cs-version").textContent = res.selection.ggufVersion;
+          $("cs-req").textContent = formatBytes(
+            res.selection.requiredSpaceBytes,
+          );
+          $("cs-free").textContent = formatBytes(res.selection.freeSpaceBytes);
 
-           $("custom-idle-view").classList.add("hidden");
-           $("custom-selection-view").classList.remove("hidden");
-         } else if (!res.ok && !res.cancelled && res.error) {
-           $("cm-error").textContent = "Selection error: " + res.error;
-           $("cm-error").classList.remove("hidden");
-         }
+          $("custom-idle-view").classList.add("hidden");
+          $("custom-selection-view").classList.remove("hidden");
+        } else if (!res.ok && !res.cancelled && res.error) {
+          $("cm-error").textContent = "Selection error: " + res.error;
+          $("cm-error").classList.remove("hidden");
+        }
       });
 
       $("btn-cancel-selection").addEventListener("click", () => {
-         currentSelectionId = null;
-         $("custom-selection-view").classList.add("hidden");
-         $("custom-idle-view").classList.remove("hidden");
+        currentSelectionId = null;
+        $("custom-selection-view").classList.add("hidden");
+        $("custom-idle-view").classList.remove("hidden");
       });
 
       $("btn-import-gguf").addEventListener("click", async () => {
-         if (!currentSelectionId) return;
-         $("custom-selection-view").classList.add("hidden");
-         $("custom-progress-view").classList.remove("hidden");
-         setUiLock(true);
-         $("btn-cancel-import").disabled = false;
-         $("cp-state").textContent = "Starting import...";
-         $("cp-bytes").textContent = "";
-         $("cp-fill").style.width = "0%";
+        if (!currentSelectionId) return;
+        $("custom-selection-view").classList.add("hidden");
+        $("custom-progress-view").classList.remove("hidden");
+        setUiLock(true);
+        $("btn-cancel-import").disabled = false;
+        $("cp-state").textContent = "Starting import...";
+        $("cp-bytes").textContent = "";
+        $("cp-fill").style.width = "0%";
 
-         const res = await window.engram.importGguf(currentSelectionId);
-         if (!res.ok) {
-           setUiLock(false);
-           $("custom-progress-view").classList.add("hidden");
-           $("custom-idle-view").classList.remove("hidden");
-           $("cm-error").textContent = "Import failed: " + (res.error || "unknown");
-           $("cm-error").classList.remove("hidden");
-          } else {
-            currentOperationId = res.operationId;
-            currentSelectionId = null;
-         }
+        const res = await window.engram.importGguf(currentSelectionId);
+        if (!res.ok) {
+          setUiLock(false);
+          $("custom-progress-view").classList.add("hidden");
+          $("custom-idle-view").classList.remove("hidden");
+          $("cm-error").textContent =
+            "Import failed: " + (res.error || "unknown");
+          $("cm-error").classList.remove("hidden");
+        } else {
+          currentOperationId = res.operationId;
+          currentSelectionId = null;
+        }
       });
 
       $("btn-cancel-import").addEventListener("click", async () => {
@@ -727,106 +1128,151 @@
         }
       });
 
-       $("btn-download-offline-model").addEventListener("click", async () => {
-          clearOfflineFailure();
-         setUiLock(true);
-         const res = await window.engram.downloadOfflineModel();
-         if (!res.ok) {
-           setUiLock(false);
-            renderOfflineFailure("unknown", res.error || "Offline model download failed.");
-         } else {
-           offlineModelOperationId = res.operationId;
-         }
-       });
+      $("btn-download-offline-model").addEventListener("click", async () => {
+        clearOfflineFailure();
+        setUiLock(true);
+        const res = await window.engram.downloadOfflineModel();
+        if (!res.ok) {
+          setUiLock(false);
+          renderOfflineFailure(
+            "unknown",
+            res.error || "Offline model download failed.",
+          );
+        } else {
+          offlineModelOperationId = res.operationId;
+        }
+      });
 
-       $("btn-cancel-offline-model").addEventListener("click", async () => {
-         if (offlineModelOperationId) {
-           $("btn-cancel-offline-model").disabled = true;
-           await window.engram.cancelOfflineModelDownload(offlineModelOperationId);
-         }
-       });
+      $("btn-cancel-offline-model").addEventListener("click", async () => {
+        if (offlineModelOperationId) {
+          $("btn-cancel-offline-model").disabled = true;
+          await window.engram.cancelOfflineModelDownload(
+            offlineModelOperationId,
+          );
+        }
+      });
 
-       $("btn-remove-offline-model").addEventListener("click", async () => {
-         if (!window.confirm("Remove the downloaded offline model from ENGRAM storage? This reclaims its disk space and cannot be undone.")) return;
-         $("offline-download-error").classList.add("hidden");
-          $("offline-download-guidance").classList.add("hidden");
-         setUiLock(true);
-         const res = await window.engram.removeOfflineModel();
-         setUiLock(false);
-         if (!res.ok) {
-           $("offline-download-error").textContent = res.error || "Could not remove the offline model.";
-           $("offline-download-error").classList.remove("hidden");
-         } else {
-           const st = await window.engram.getSettings();
-           bundledAvailable = st.bundledAvailable;
-           renderOfflineModel(st.offlineModel);
-           if (!st.bundledAvailable && document.querySelector('input[name="mode"]:checked').value === "bundled") {
-             document.querySelector('input[name="mode"][value="offline"]').checked = true;
-             applyMode("offline");
-           }
-         }
-       });
+      $("btn-remove-offline-model").addEventListener("click", async () => {
+        if (
+          !window.confirm(
+            "Remove the downloaded offline model from ENGRAM storage? This reclaims its disk space and cannot be undone.",
+          )
+        )
+          return;
+        $("offline-download-error").classList.add("hidden");
+        $("offline-download-guidance").classList.add("hidden");
+        setUiLock(true);
+        const res = await window.engram.removeOfflineModel();
+        setUiLock(false);
+        if (!res.ok) {
+          $("offline-download-error").textContent =
+            res.error || "Could not remove the offline model.";
+          $("offline-download-error").classList.remove("hidden");
+        } else {
+          const st = await window.engram.getSettings();
+          bundledAvailable = st.bundledAvailable;
+          renderOfflineModel(st.offlineModel);
+          if (
+            !st.bundledAvailable &&
+            document.querySelector('input[name="mode"]:checked').value ===
+              "bundled"
+          ) {
+            document.querySelector(
+              'input[name="mode"][value="offline"]',
+            ).checked = true;
+            applyMode("offline");
+          }
+        }
+      });
 
-      function renderUpdateStatus(info, status) {
+      function renderUpdateStatus(
+        info,
+        status,
+        copy = {
+          notAvailableInBuild: "Not available in this build",
+          checking: "Checking for updates…",
+          availableWithVersion: "Update {{version}} found — downloading…",
+          available: "Update found — downloading…",
+          downloading: "Downloading update… {{percent}}%",
+          downloaded: "Restart to update",
+          error: "Update check failed",
+          upToDate: "Up to date",
+          checkForUpdates: "Check for Updates",
+          progressLabel: "Update download progress",
+        },
+      ) {
         const el = $("update-status");
         const btn = $("check-updates");
-         const progress = $("update-progress");
-         const progressFill = $("update-progress-fill");
-         const hideProgress = () => {
-           progress.classList.add("hidden");
-           progressFill.style.width = "0%";
-           progress.setAttribute("aria-valuenow", "0");
-         };
+        const progress = $("update-progress");
+        const progressFill = $("update-progress-fill");
+        const hideProgress = () => {
+          progress.classList.add("hidden");
+          progressFill.style.width = "0%";
+          progress.setAttribute("aria-valuenow", "0");
+        };
         if (!info.updatesSupported) {
-          el.textContent = "Not available in this build";
+          el.textContent = copy.notAvailableInBuild;
           btn.disabled = true;
-           hideProgress();
+          hideProgress();
           return;
         }
         const s = status || { state: "idle" };
         switch (s.state) {
           case "checking":
-            el.textContent = "Checking for updates…";
+            el.textContent = copy.checking;
             btn.disabled = true;
             break;
           case "available":
             el.textContent = s.version
-              ? `Update ${s.version} found — downloading…`
-              : "Update found — downloading…";
+              ? copy.availableWithVersion.replace("{{version}}", s.version)
+              : copy.available;
             btn.disabled = true;
             break;
           case "downloading":
-             const percent = Math.min(100, Math.max(0, Number(s.percent) || 0));
-             el.textContent = `Downloading update… ${percent}%`;
+            const percent = Math.min(100, Math.max(0, Number(s.percent) || 0));
+            el.textContent = copy.downloading.replace(
+              "{{percent}}",
+              String(percent),
+            );
             btn.disabled = true;
-             progress.classList.remove("hidden");
-             progressFill.style.width = `${percent}%`;
-             progress.setAttribute("aria-valuenow", String(percent));
+            progress.classList.remove("hidden");
+            progressFill.style.width = `${percent}%`;
+            progress.setAttribute("aria-valuenow", String(percent));
             break;
           case "downloaded":
-            el.textContent = "Restart to update";
+            el.textContent = copy.downloaded;
             btn.disabled = false;
             break;
           case "error":
-            el.textContent = "Update check failed";
+            el.textContent = copy.error;
             btn.disabled = false;
             break;
           case "not-available":
           case "idle":
           default:
-            el.textContent = "Up to date";
+            el.textContent = copy.upToDate;
             btn.disabled = false;
-             hideProgress();
+            hideProgress();
             break;
         }
-         if (s.state !== "downloading") hideProgress();
+        if (s.state !== "downloading") hideProgress();
       }
       async function initAbout() {
         const info = await window.engram.getAppInfo();
+        const language = await window.engram
+          .getUiLanguage()
+          .catch(() => navigator.language);
+        const updateCopy = getUpdateCopy(language);
+        document.documentElement.lang = String(language || "en").split("-")[0];
+        $("check-updates").textContent = updateCopy.checkForUpdates;
+        $("update-progress").setAttribute(
+          "aria-label",
+          updateCopy.progressLabel,
+        );
         $("app-version").textContent = info.version;
-        renderUpdateStatus(info, info.updateStatus);
+        renderUpdateStatus(info, info.updateStatus, updateCopy);
         window.engram.onUpdateStatus((status) =>
-          renderUpdateStatus(info, status),
+          renderUpdateStatus(info, status, updateCopy),
         );
         $("check-updates").addEventListener("click", () => {
           if (info.updatesSupported) window.engram.checkForUpdates();
@@ -839,17 +1285,20 @@
         const res = await window.engram.saveSettings({
           mode,
           allowLan: $("allow-lan").checked,
-          offline: { baseUrl: $("offline-base").value, model: $("offline-model").value },
+          offline: {
+            baseUrl: $("offline-base").value,
+            model: $("offline-model").value,
+          },
           online: {
             baseUrl: $("online-base").value,
             model: $("online-model").value,
             apiKey: $("online-key").value,
           },
         });
-         if (!res.ok) {
-           $("status").textContent = "Error: " + (res.error || "unknown");
-           renderLocalModelFailure(res.localModelFailure);
-         }
+        if (!res.ok) {
+          $("status").textContent = "Error: " + (res.error || "unknown");
+          renderLocalModelFailure(res.localModelFailure);
+        }
       });
       init();
       initAbout();

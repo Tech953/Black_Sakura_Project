@@ -15,6 +15,7 @@ type FakeElement = {
 type RenderUpdateStatus = (
   info: { updatesSupported: boolean },
   status: { state: string; percent?: number; version?: string },
+  copy?: Record<string, string>,
 ) => void;
 
 function createFakeElement(): FakeElement {
@@ -31,6 +32,7 @@ function loadRenderer(): {
   renderUpdateStatus: (
     info: { updatesSupported: boolean },
     status: { state: string; percent?: number; version?: string },
+    copy?: Record<string, string>,
   ) => void;
   elements: Record<string, FakeElement>;
 } {
@@ -84,6 +86,32 @@ describe("Settings update status renderer", () => {
       renderUpdateStatus(info, status);
       expect(elements["update-status"].textContent).toBe(label);
     }
+  });
+
+  it("renders the supplied locale copy without changing updater behavior", () => {
+    const { renderUpdateStatus, elements } = loadRenderer();
+    const copy = {
+      notAvailableInBuild: "Indisponible dans cette version",
+      checking: "Recherche de mises à jour…",
+      availableWithVersion: "Mise à jour {{version}} trouvée — téléchargement…",
+      available: "Mise à jour trouvée — téléchargement…",
+      downloading: "Téléchargement de la mise à jour… {{percent}} %",
+      downloaded: "Redémarrer pour mettre à jour",
+      error: "Échec de la recherche de mises à jour",
+      upToDate: "À jour",
+      checkForUpdates: "Rechercher des mises à jour",
+      progressLabel: "Progression du téléchargement de la mise à jour",
+    };
+
+    renderUpdateStatus(
+      { updatesSupported: true },
+      { state: "downloading", percent: 42 },
+      copy,
+    );
+
+    expect(elements["update-status"].textContent).toBe(
+      "Téléchargement de la mise à jour… 42 %",
+    );
   });
 
   it("shows and updates the progress bar only while downloading", () => {
