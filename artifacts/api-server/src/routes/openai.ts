@@ -33,7 +33,12 @@ import { summarizeWorldModel } from "../lib/world-model";
 import { loadRecentWorldModel, appendWorldModelEntry } from "../lib/world-model-store";
 import { buildPerceptualContext } from "../lib/perceptual-context";
 import { createMediaAsset } from "../lib/media-store";
-import { detectModality } from "../lib/media-extraction";
+import {
+  contentMatchesMime,
+  detectModality,
+  filenameMatchesMime,
+  normalizeMediaMimeType,
+} from "../lib/media-extraction";
 import { publishEvent } from "../lib/events";
 import { loadControls } from "../lib/controls-store";
 import { loadPresenceForEngram, loadSpaceById } from "../lib/hub-store";
@@ -941,9 +946,22 @@ router.post("/openai/conversations/:id/media", (req, res) => {
       res.status(400).json({ error: "No file provided (expected field 'file')." });
       return;
     }
-    const modality = detectModality(file.mimetype);
+    const mimeType = normalizeMediaMimeType(file.mimetype);
+    const modality = detectModality(mimeType);
     if (!modality) {
-      res.status(415).json({ error: `Unsupported media type: ${file.mimetype}` });
+      res.status(415).json({ error: `Unsupported media type: ${mimeType}` });
+      return;
+    }
+    if (!contentMatchesMime(file.buffer, mimeType)) {
+      res.status(415).json({
+        error: `Uploaded bytes do not match the claimed media type: ${mimeType}`,
+      });
+      return;
+    }
+    if (!filenameMatchesMime(file.originalname, mimeType)) {
+      res.status(415).json({
+        error: `Uploaded filename extension does not match the claimed media type: ${mimeType}`,
+      });
       return;
     }
 
@@ -963,7 +981,7 @@ router.post("/openai/conversations/:id/media", (req, res) => {
         engramId: conv.engramId ?? null,
         conversationId: conv.id,
         filename: file.originalname || "upload",
-        mimeType: file.mimetype,
+        mimeType,
         modality,
         data: file.buffer,
       });

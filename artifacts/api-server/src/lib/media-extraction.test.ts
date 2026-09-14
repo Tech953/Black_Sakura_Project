@@ -89,6 +89,7 @@ import {
   detectModality,
   filenameMatchesMime,
   MEDIA_MIME_ALLOWLIST,
+  normalizeMediaMimeType,
   extractFromMedia,
 } from "./media-extraction";
 
@@ -120,6 +121,13 @@ describe("detectModality — MIME allowlist drives modality (never client input)
     expect(detectModality("text/plain; charset=utf-8")).toBe("text");
     expect(detectModality("  image/png ")).toBe("image");
     expect(detectModality('video/webm;codecs="vp9"')).toBe("video");
+  });
+
+  it("canonicalizes common browser and picker aliases", () => {
+    expect(normalizeMediaMimeType("image/jpg")).toBe("image/jpeg");
+    expect(normalizeMediaMimeType("audio/mp3")).toBe("audio/mpeg");
+    expect(normalizeMediaMimeType("audio/x-wav; codecs=pcm")).toBe("audio/wav");
+    expect(normalizeMediaMimeType("video/x-m4v")).toBe("video/mp4");
   });
 
   it("returns null for anything not on the allowlist", () => {

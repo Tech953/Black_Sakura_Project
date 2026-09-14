@@ -10,6 +10,7 @@ import {
   useUpdateOpenaiConversationContinuation,
   useListEngrams,
   getListOpenaiConversationsQueryKey,
+  normalizeMediaUploadMimeType,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
@@ -272,7 +273,12 @@ export default function Chat() {
     setUploading(true);
     try {
       const form = new FormData();
-      form.append("file", file);
+      const mimeType = normalizeMediaUploadMimeType(file.name, file.type);
+      const uploadFile =
+        mimeType === file.type
+          ? file
+          : new File([file], file.name, { type: mimeType, lastModified: file.lastModified });
+      form.append("file", uploadFile);
        const resp = await authFetch(`${BASE}/api/openai/conversations/${convId}/media`, { method: "POST", body: form });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));

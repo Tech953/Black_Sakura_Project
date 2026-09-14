@@ -10,6 +10,7 @@ import {
   type MediaAsset,
   type MediaObservationEntry,
   type Engram,
+  normalizeMediaUploadMimeType,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -136,7 +137,12 @@ export default function Media() {
     try {
       const form = new FormData();
       form.append("engramId", String(selectedEngramId));
-      form.append("file", file);
+      const mimeType = normalizeMediaUploadMimeType(file.name, file.type);
+      const uploadFile =
+        mimeType === file.type
+          ? file
+          : new File([file], file.name, { type: mimeType, lastModified: file.lastModified });
+      form.append("file", uploadFile);
       const res = await fetch("/api/media", { method: "POST", body: form });
       if (!res.ok) {
         let msg = t("uploadFailedStatus", { status: res.status });

@@ -12,6 +12,7 @@ import {
   contentMatchesMime,
   detectModality,
   filenameMatchesMime,
+  normalizeMediaMimeType,
 } from "../lib/media-extraction";
 import {
   createMediaAsset,
@@ -113,22 +114,23 @@ router.post("/media", (req, res) => {
       return;
     }
 
-    const modality = detectModality(file.mimetype);
+    const mimeType = normalizeMediaMimeType(file.mimetype);
+    const modality = detectModality(mimeType);
     if (!modality) {
       res
         .status(415)
-        .json({ error: `Unsupported media type: ${file.mimetype}` });
+        .json({ error: `Unsupported media type: ${mimeType}` });
       return;
     }
-    if (!contentMatchesMime(file.buffer, file.mimetype)) {
+    if (!contentMatchesMime(file.buffer, mimeType)) {
       res.status(415).json({
-        error: `Uploaded bytes do not match the claimed media type: ${file.mimetype}`,
+        error: `Uploaded bytes do not match the claimed media type: ${mimeType}`,
       });
       return;
     }
-    if (!filenameMatchesMime(file.originalname, file.mimetype)) {
+    if (!filenameMatchesMime(file.originalname, mimeType)) {
       res.status(415).json({
-        error: `Uploaded filename extension does not match the claimed media type: ${file.mimetype}`,
+        error: `Uploaded filename extension does not match the claimed media type: ${mimeType}`,
       });
       return;
     }
@@ -147,7 +149,7 @@ router.post("/media", (req, res) => {
         ownerId: req.userId!,
         engramId,
         filename: file.originalname || "upload",
-        mimeType: file.mimetype,
+        mimeType,
         modality,
         data: file.buffer,
       });
