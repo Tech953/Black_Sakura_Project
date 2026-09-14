@@ -42,6 +42,7 @@ import {
 } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { MediaAsset } from "@workspace/db/schema";
+import * as mediaStore from "../lib/media-store";
 import {
   appendMediaObservation,
   createMediaAsset,
@@ -262,6 +263,64 @@ describe("runMediaTick — full lifecycle against a real DB", () => {
     // A failed extraction leaves the world model untouched.
     expect(await allWorldModelRows()).toHaveLength(0);
     expect(await observationLinkCount(asset.id)).toBe(0);
+  });
+
+  it("rolls back a failed completion transaction so a retry creates one fresh observation set", async () => {
+    const engramId = await insertEngram();
+    const asset = await seedPendingAsset(engramId);
+    const realUpdateMediaAsset = mediaStore.updateMediaAsset;
+    const completionFailure = vi
+      .spyOn(mediaStore, "updateMediaAsset")
+      .mockImplementation(async (id, patch, executor) => {
+        if (patch.status === "completed") {
+          throw new Error("simulate worker crash during completion commit");
+        }
+        return realUpdateMediaAsset(id, patch, executor);
+      });
+
+    const failedPass = await runMediaTick();
+
+    expect(failedPass.processed).toBe(1);
+    expect(h.extractFromMedia).toHaveBeenCalledTimes(1);
+    expect(completionFailure).toHaveBeenCalledWith(
+      asset.id,
+      expect.objectContaining({
+        status: "completed",
+        observationCount: 2,
+      }),
+      expect.anything(),
+    );
+
+    // The first observation was attempted inside the transaction, but the
+    // completion failure rolled back both rows and left the asset recoverable.
+    const failed = await reload(asset.id);
+    expect(failed.status).toBe("failed");
+    expect(failed.error).toContain("simulate worker crash during completion commit");
+    expect(failed.summary).toBeNull();
+    expect(failed.transcript).toBeNull();
+    expect(failed.commentary).toBeNull();
+    expect(failed.observationCount).toBe(0);
+    expect(failed.completedAt).toBeNull();
+    expect(await allWorldModelRows()).toHaveLength(0);
+    expect(await observationLinkCount(asset.id)).toBe(0);
+
+    completionFailure.mockRestore();
+    expect(await requeueMediaAsset(asset.id)).toBeTruthy();
+
+    const retry = await runMediaTick();
+
+    expect(retry.processed).toBe(1);
+    expect(h.extractFromMedia).toHaveBeenCalledTimes(2);
+    const completed = await reload(asset.id);
+    expect(completed.status).toBe("completed");
+    expect(completed.observationCount).toBe(2);
+    expect(completed.error).toBeNull();
+    expect(await allWorldModelRows()).toHaveLength(2);
+    expect(await observationLinkCount(asset.id)).toBe(2);
+    expect((await allWorldModelRows()).map((row) => row.content).sort()).toEqual([
+      "A gull settles on the rail.",
+      "A lighthouse blinks twice.",
+    ]);
   });
 
   it("replaces pre-existing partial observations on retry without duplicates", async () => {
