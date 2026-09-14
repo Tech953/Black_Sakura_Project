@@ -3,6 +3,7 @@ import {
   createEngramDesktopBridge,
   type AppInfo,
   type RendererIpc,
+  type UpdateStatus,
 } from "./desktop-bridge";
 
 function fakeIpc() {
@@ -112,20 +113,31 @@ describe("desktop renderer bridge", () => {
     expect(invoke).toHaveBeenCalledWith("update:install");
   });
 
-  it("preserves manual update flags for live status announcements", () => {
+  it("forwards live update status and unsubscribes cleanly", () => {
     const { ipc, listeners } = fakeIpc();
     const bridge = createEngramDesktopBridge(ipc);
     const onStatus = vi.fn();
+    const emit = (payload: UpdateStatus) => {
+      listeners.get("update:status")?.({}, payload);
+    };
+    const status: UpdateStatus = {
+      state: "downloading",
+      percent: 42,
+      transferred: 1572864,
+      total: 5242880,
+      bytesPerSecond: 262144,
+    };
 
-    bridge.onUpdateStatus(onStatus);
-    listeners.get("update:status")?.(
-      {},
-      { state: "not-available", manual: true },
-    );
+    const unsubscribe = bridge.onUpdateStatus(onStatus);
+    emit(status);
 
-    expect(onStatus).toHaveBeenCalledWith({
-      state: "not-available",
-      manual: true,
-    });
+    expect(onStatus).toHaveBeenCalledTimes(1);
+    expect(onStatus).toHaveBeenCalledWith(status);
+
+    unsubscribe();
+    expect(listeners.has("update:status")).toBe(false);
+
+    emit({ state: "downloaded", version: "1.2.4" });
+    expect(onStatus).toHaveBeenCalledTimes(1);
   });
 });
