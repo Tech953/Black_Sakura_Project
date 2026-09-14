@@ -22,6 +22,11 @@
   "digestSources_one": "{{count}} source message",
   "digestSources_other": "{{count}} source messages",
   "operatorLabel": "Operator",
+  "acknowledgement": {
+    "saved": "Saved",
+    "pending": "Pending acknowledgement",
+    "acknowledged": "Acknowledged"
+  },
   "reply": "Reply",
   "replyPlaceholder": "Write a short reply…",
   "toastReplySent": "Reply sent",

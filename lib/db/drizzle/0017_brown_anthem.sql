@@ -1,0 +1,1 @@
+ALTER TABLE "engram_messages" ADD COLUMN "acknowledged_at" timestamp with time zone;

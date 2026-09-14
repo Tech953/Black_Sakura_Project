@@ -21,7 +21,8 @@ import { maybeRunSimulationStep } from "../lib/simulations";
 import { maybeRunArtifactGeneration } from "../lib/artifacts-scheduler";
 import {
   createHumanDigest,
-  loadRecentOperatorReplies,
+  loadRecentOperatorReplyRows,
+  markOperatorRepliesAcknowledged,
   listPendingHumanDigestOwners,
 } from "../lib/messages-store";
 import { normalizeLLMProviderError } from "../lib/llm";
@@ -152,7 +153,8 @@ async function emit(
 ): Promise<EngramTransmission> {
   const kind = pickKind(top.id, top.label);
   const worldModelSummary = summarizeWorldModel(await loadRecentWorldModel(engram.id));
-  const operatorReplies = await loadRecentOperatorReplies(engram.ownerId!, engram.id);
+  const operatorReplyRows = await loadRecentOperatorReplyRows(engram.ownerId!, engram.id);
+  const operatorReplies = operatorReplyRows.map((reply) => reply.content);
   const content = await generateTransmission({
     engram,
     kind,
@@ -161,6 +163,14 @@ async function emit(
     operatorReplies,
     worldModelSummary,
   });
+  await markOperatorRepliesAcknowledged(
+    engram.ownerId!,
+    engram.id,
+    operatorReplyRows
+      .filter((reply) => reply.acknowledgedAt == null)
+      .map((reply) => reply.id),
+    new Date(now),
+  );
 
   const importance = clamp(top.charge, 0, 1);
   const confidence = clamp(1 - engram.emotionalBaseline.volatility * 0.4, 0.3, 1);
