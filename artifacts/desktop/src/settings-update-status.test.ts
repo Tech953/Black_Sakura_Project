@@ -14,7 +14,14 @@ type FakeElement = {
 
 type RenderUpdateStatus = (
   info: { updatesSupported: boolean },
-  status: { state: string; percent?: number; version?: string },
+  status: {
+    state: string;
+    percent?: number;
+    version?: string;
+    transferred?: number;
+    total?: number;
+    bytesPerSecond?: number;
+  },
   copy?: Record<string, string>,
 ) => void;
 
@@ -31,7 +38,14 @@ function createFakeElement(): FakeElement {
 function loadRenderer(): {
   renderUpdateStatus: (
     info: { updatesSupported: boolean },
-    status: { state: string; percent?: number; version?: string },
+    status: {
+      state: string;
+      percent?: number;
+      version?: string;
+      transferred?: number;
+      total?: number;
+      bytesPerSecond?: number;
+    },
     copy?: Record<string, string>,
   ) => void;
   elements: Record<string, FakeElement>;
@@ -50,6 +64,7 @@ function loadRenderer(): {
     "check-updates": createFakeElement(),
     "update-progress": createFakeElement(),
     "update-progress-fill": createFakeElement(),
+    "update-progress-details": createFakeElement(),
   };
   const dollar = (id: string): FakeElement => {
     const element = elements[id];
@@ -101,6 +116,7 @@ describe("Settings update status renderer", () => {
       upToDate: "À jour",
       checkForUpdates: "Rechercher des mises à jour",
       progressLabel: "Progression du téléchargement de la mise à jour",
+      downloadDetails: "{{transferred}} / {{total}} · {{speed}}",
     };
 
     renderUpdateStatus(
@@ -120,13 +136,25 @@ describe("Settings update status renderer", () => {
     const progress = elements["update-progress"];
     const fill = elements["update-progress-fill"];
 
-    renderUpdateStatus(info, { state: "downloading", percent: 42 });
+    renderUpdateStatus(info, {
+      state: "downloading",
+      percent: 42,
+      transferred: 1572864,
+      total: 5242880,
+      bytesPerSecond: 262144,
+    });
     expect(progress.classList.remove).toHaveBeenCalledWith("hidden");
     expect(fill.style.width).toBe("42%");
     expect(progress.setAttribute).toHaveBeenLastCalledWith(
       "aria-valuenow",
       "42",
     );
+    expect(elements["update-progress-details"].textContent).toBe(
+      "1.5 MB / 5 MB · 256 KB/s",
+    );
+    expect(
+      elements["update-progress-details"].classList.remove,
+    ).toHaveBeenCalledWith("hidden");
 
     renderUpdateStatus(info, { state: "downloaded" });
     expect(progress.classList.add).toHaveBeenLastCalledWith("hidden");
@@ -135,11 +163,40 @@ describe("Settings update status renderer", () => {
       "aria-valuenow",
       "0",
     );
+    expect(
+      elements["update-progress-details"].classList.add,
+    ).toHaveBeenLastCalledWith("hidden");
+  });
+
+  it("keeps transfer details hidden when Electron omits transfer fields", () => {
+    const { renderUpdateStatus, elements } = loadRenderer();
+    const details = elements["update-progress-details"];
+
+    renderUpdateStatus(
+      { updatesSupported: true },
+      { state: "downloading", percent: 42 },
+    );
+
+    expect(elements["update-status"].textContent).toBe(
+      "Downloading update… 42%",
+    );
+    expect(details.textContent).toBe("");
+    expect(details.classList.add).toHaveBeenCalledWith("hidden");
   });
 
   it("disables updates and hides progress when the build is unpackaged", () => {
     const { renderUpdateStatus, elements } = loadRenderer();
 
+    renderUpdateStatus(
+      { updatesSupported: true },
+      {
+        state: "downloading",
+        percent: 42,
+        transferred: 1024,
+        total: 2048,
+        bytesPerSecond: 1024,
+      },
+    );
     renderUpdateStatus(
       { updatesSupported: false },
       { state: "downloading", percent: 42 },
@@ -152,5 +209,8 @@ describe("Settings update status renderer", () => {
     expect(elements["update-progress"].classList.add).toHaveBeenCalledWith(
       "hidden",
     );
+    expect(
+      elements["update-progress-details"].classList.add,
+    ).toHaveBeenLastCalledWith("hidden");
   });
 });

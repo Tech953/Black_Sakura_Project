@@ -1130,7 +1130,8 @@
       "error": "Update check failed",
       "upToDate": "Up to date",
       "checkForUpdates": "Check for Updates",
-      "progressLabel": "Update download progress"
+      "progressLabel": "Update download progress",
+      "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
     }
   },
   "simulations": {
