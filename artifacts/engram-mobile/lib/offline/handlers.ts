@@ -147,6 +147,33 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
 
   let m: RegExpMatchArray | null;
 
+  if (url === "/api/messages" && method === "GET") {
+    if (query.get("channel") && query.get("channel") !== "human") {
+      return { status: 503, body: { error: "Only cached human messages are available offline." } };
+    }
+    const rawLimit = Number(query.get("limit") ?? 100);
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 100;
+    return ok(await store.listCachedHumanMessages(limit));
+  }
+
+  if ((m = url.match(/^\/api\/messages\/(\d+)\/reply$/)) && method === "POST") {
+    const content = (parsed as { content?: unknown }).content;
+    if (typeof content !== "string" || !content.trim()) {
+      return { status: 400, body: { error: "Reply cannot be blank" } };
+    }
+    if (content.trim().length > 2000) {
+      return { status: 413, body: { error: "Reply is too long for offline mode." } };
+    }
+    try {
+      return ok(
+        await store.queueOperatorReply(Number(m[1]), content),
+        201,
+      );
+    } catch (error) {
+      return notFound(error instanceof Error ? error.message : "Message not found");
+    }
+  }
+
   if (url === "/api/engrams" && method === "GET") return ok(await store.listEngrams());
 
   if ((m = url.match(/^\/api\/engrams\/(\d+)$/)) && method === "GET") {

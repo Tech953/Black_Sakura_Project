@@ -104,6 +104,7 @@ export * from './offlineSyncInquiry';
 export * from './offlineSyncMessage';
 export * from './offlineSyncMessageRole';
 export * from './offlineSyncObservedEntry';
+export * from './offlineSyncOperatorReply';
 export * from './offlineSyncResult';
 export * from './offlineSyncTransmission';
 export * from './openaiConversation';

@@ -93,6 +93,13 @@ export const syncOfflineHistoryBodyObservedEntriesItemConfidenceMax = 1;
 
 export const syncOfflineHistoryBodyObservedEntriesMax = 100;
 
+export const syncOfflineHistoryBodyOperatorRepliesItemSyncIdMax = 80;
+
+
+export const syncOfflineHistoryBodyOperatorRepliesItemContentMax = 2000;
+
+export const syncOfflineHistoryBodyOperatorRepliesMax = 100;
+
 
 
 export const SyncOfflineHistoryBody = zod.object({
@@ -143,7 +150,13 @@ export const SyncOfflineHistoryBody = zod.object({
   "content": zod.string().min(1).max(syncOfflineHistoryBodyObservedEntriesItemContentMax),
   "confidence": zod.number().min(syncOfflineHistoryBodyObservedEntriesItemConfidenceMin).max(syncOfflineHistoryBodyObservedEntriesItemConfidenceMax),
   "createdAt": zod.coerce.date()
-})).max(syncOfflineHistoryBodyObservedEntriesMax)
+})).max(syncOfflineHistoryBodyObservedEntriesMax),
+  "operatorReplies": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyOperatorRepliesItemSyncIdMax),
+  "messageId": zod.number().min(1),
+  "content": zod.string().min(1).max(syncOfflineHistoryBodyOperatorRepliesItemContentMax),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyOperatorRepliesMax)
 })
 
 export const SyncOfflineHistoryResponse = zod.object({
@@ -153,7 +166,8 @@ export const SyncOfflineHistoryResponse = zod.object({
   "messages": zod.number(),
   "inquiries": zod.number(),
   "transmissions": zod.number(),
-  "observedEntries": zod.number()
+  "observedEntries": zod.number(),
+  "operatorReplies": zod.number()
 })
 })
 

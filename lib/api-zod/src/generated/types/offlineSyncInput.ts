@@ -8,6 +8,7 @@
 import type { OfflineSyncConversation } from './offlineSyncConversation';
 import type { OfflineSyncInquiry } from './offlineSyncInquiry';
 import type { OfflineSyncObservedEntry } from './offlineSyncObservedEntry';
+import type { OfflineSyncOperatorReply } from './offlineSyncOperatorReply';
 import type { OfflineSyncTransmission } from './offlineSyncTransmission';
 
 export interface OfflineSyncInput {
@@ -24,4 +25,6 @@ export interface OfflineSyncInput {
   transmissions: OfflineSyncTransmission[];
   /** @maxItems 100 */
   observedEntries: OfflineSyncObservedEntry[];
+  /** @maxItems 100 */
+  operatorReplies: OfflineSyncOperatorReply[];
 }

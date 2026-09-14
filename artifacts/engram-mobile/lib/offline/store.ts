@@ -10,7 +10,10 @@ import {
   TRUSTED_REBECCA_ADAPTIVE_SOURCES,
   type WorldModelEntryView,
 } from "@workspace/engram-core";
-import type { OfflineSyncInput } from "@workspace/api-client-react";
+import type {
+  EngramMessage,
+  OfflineSyncInput,
+} from "@workspace/api-client-react";
 
 /**
  * On-device SQLite store backing offline mode. Covers exactly the data surface
@@ -274,6 +277,19 @@ async function initializeDb(
       confidence REAL NOT NULL,
       scope TEXT NOT NULL,
       source TEXT,
+      createdAt TEXT NOT NULL,
+      syncedAt TEXT
+    );
+    CREATE TABLE IF NOT EXISTS human_messages (
+      id INTEGER PRIMARY KEY,
+      data TEXT NOT NULL,
+      cachedAt TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS operator_replies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      syncId TEXT NOT NULL UNIQUE,
+      messageId INTEGER NOT NULL,
+      content TEXT NOT NULL,
       createdAt TEXT NOT NULL,
       syncedAt TEXT
     );
@@ -703,6 +719,125 @@ export async function listMessages(
   );
 }
 
+function buildLocalOperatorReply(
+  source: EngramMessage,
+  localId: number,
+  content: string,
+  createdAt: string,
+): EngramMessage {
+  return {
+    id: -localId,
+    fromEngramId: source.fromEngramId,
+    toEngramId: source.fromEngramId,
+    spaceId: null,
+    channel: "human",
+    author: "operator",
+    priority: "meaningful",
+    status: "delivered",
+    content,
+    reason: `Operator reply to message ${source.id}`,
+    seen: true,
+    isDigest: false,
+    digestGroupId: null,
+    deliveredAt: createdAt,
+    createdAt,
+  };
+}
+
+/**
+ * Keep the small human-contact surface available when offline. Server rows are
+ * cached only after an authenticated online response; replies remain in the
+ * account-scoped SQLite outbox until the durable sync receipt acknowledges them.
+ */
+export async function cacheHumanMessages(messages: EngramMessage[]): Promise<void> {
+  if (messages.length === 0) return;
+  const d = await getDb();
+  const cachedAt = nowIso();
+  await d.withTransactionAsync(async () => {
+    for (const message of messages) {
+      await d.runAsync(
+        "INSERT OR REPLACE INTO human_messages (id, data, cachedAt) VALUES (?, ?, ?)",
+        message.id,
+        JSON.stringify(message),
+        cachedAt,
+      );
+    }
+  });
+}
+
+export async function listCachedHumanMessages(
+  limit = 100,
+): Promise<EngramMessage[]> {
+  const d = await getDb();
+  const cached = await d.getAllAsync<{ data: string }>(
+    "SELECT data FROM human_messages ORDER BY cachedAt DESC, id DESC LIMIT ?",
+    limit,
+  );
+  const messages = cached.flatMap(({ data }) => {
+    try {
+      const parsed = JSON.parse(data) as EngramMessage;
+      return parsed.channel === "human" ? [parsed] : [];
+    } catch {
+      return [];
+    }
+  });
+  const byId = new Map(messages.map((message) => [message.id, message]));
+  const pendingReplies = await d.getAllAsync<{
+    id: number;
+    messageId: number;
+    content: string;
+    createdAt: string;
+  }>(
+    "SELECT id, messageId, content, createdAt FROM operator_replies WHERE syncedAt IS NULL ORDER BY id",
+  );
+  for (const reply of pendingReplies) {
+    const source = byId.get(reply.messageId);
+    if (source) {
+      messages.push(
+        buildLocalOperatorReply(source, reply.id, reply.content, reply.createdAt),
+      );
+    }
+  }
+  return messages
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id)
+    .slice(0, limit);
+}
+
+export async function queueOperatorReply(
+  messageId: number,
+  content: string,
+): Promise<EngramMessage> {
+  const d = await getDb();
+  const sourceRow = await d.getFirstAsync<{ data: string }>(
+    "SELECT data FROM human_messages WHERE id = ?",
+    messageId,
+  );
+  if (!sourceRow) throw new Error("This human message is not available offline.");
+  const source = JSON.parse(sourceRow.data) as EngramMessage;
+  if (source.channel !== "human" || source.author !== "engram") {
+    throw new Error("Only engram human messages can receive a reply.");
+  }
+  const contentTrimmed = content.trim();
+  if (!contentTrimmed) throw new Error("Reply cannot be blank");
+  const createdAt = nowIso();
+  const syncId = `operator-reply:${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 12)}`;
+  const inserted = await d.runAsync(
+    "INSERT INTO operator_replies (syncId, messageId, content, createdAt) VALUES (?, ?, ?, ?)",
+    syncId,
+    messageId,
+    contentTrimmed,
+    createdAt,
+  );
+  return buildLocalOperatorReply(
+    source,
+    inserted.lastInsertRowId,
+    contentTrimmed,
+    createdAt,
+  );
+}
+
 export async function appendMessage(
   conversationId: number,
   role: "user" | "assistant",
@@ -928,6 +1063,7 @@ type LocalSyncRows = {
   inquiryIds: number[];
   transmissions: Array<{ id: number; syncVersion: number }>;
   observedEntryIds: number[];
+  operatorReplyIds: string[];
 };
 
 export type PendingOfflineSyncBatch = {
@@ -971,6 +1107,11 @@ function trimSyncBatchToByteBudget(
     if (batch.payload.observedEntries.length > 0) {
       removeTail(batch.payload.observedEntries);
       batch.localRows.observedEntryIds.pop();
+      continue;
+    }
+    if (batch.payload.operatorReplies.length > 0) {
+      removeTail(batch.payload.operatorReplies);
+      batch.localRows.operatorReplyIds.pop();
       continue;
     }
     if (batch.payload.transmissions.length > 0) {
@@ -1068,6 +1209,13 @@ interface PendingObservedRow {
   createdAt: string;
 }
 
+interface PendingOperatorReplyRow {
+  syncId: string;
+  messageId: number;
+  content: string;
+  createdAt: string;
+}
+
 export async function buildPendingSyncBatch(
   deviceId: string,
 ): Promise<PendingOfflineSyncBatch> {
@@ -1097,6 +1245,7 @@ export async function buildPendingSyncBatch(
     inquiryIds: [],
     transmissions: [],
     observedEntryIds: [],
+    operatorReplyIds: [],
   };
   const exportedConversationIds = new Set<number>();
   let remainingMessages = 100;
@@ -1193,6 +1342,13 @@ export async function buildPendingSyncBatch(
     // observation until the conversation reaches a later bounded batch.
     if (conversation?.syncedAt) observedRows.push(row);
   }
+  const operatorReplyRows = await d.getAllAsync<PendingOperatorReplyRow>(
+    `SELECT syncId, messageId, content, createdAt
+     FROM operator_replies
+     WHERE syncedAt IS NULL
+     ORDER BY id
+     LIMIT 100`,
+  );
 
   localRows.inquiryIds.push(...inquiryRows.map((row) => row.id));
   localRows.transmissions.push(
@@ -1202,6 +1358,7 @@ export async function buildPendingSyncBatch(
     })),
   );
   localRows.observedEntryIds.push(...observedRows.map((row) => row.id));
+  localRows.operatorReplyIds.push(...operatorReplyRows.map((row) => row.syncId));
 
   return trimSyncBatchToByteBudget({
     payload: {
@@ -1243,6 +1400,12 @@ export async function buildPendingSyncBatch(
           createdAt: row.createdAt,
         };
       }),
+      operatorReplies: operatorReplyRows.map((row) => ({
+        syncId: row.syncId,
+        messageId: row.messageId,
+        content: row.content,
+        createdAt: row.createdAt,
+      })),
     },
     localRows,
   });
@@ -1257,6 +1420,7 @@ export function syncBatchIds(batch: PendingOfflineSyncBatch): string[] {
     ...batch.payload.inquiries.map((row) => row.syncId),
     ...batch.payload.transmissions.map((row) => row.syncId),
     ...batch.payload.observedEntries.map((row) => row.syncId),
+    ...batch.payload.operatorReplies.map((row) => row.syncId),
   ];
 }
 
@@ -1341,5 +1505,15 @@ export async function markSyncBatchComplete(
       );
     }
     await mark("world_model", batch.localRows.observedEntryIds);
+    if (batch.localRows.operatorReplyIds.length > 0) {
+      const placeholders = batch.localRows.operatorReplyIds.map(() => "?").join(",");
+      await d.runAsync(
+        `UPDATE operator_replies
+         SET syncedAt = ?
+         WHERE syncId IN (${placeholders}) AND syncedAt IS NULL`,
+        completedAt,
+        ...batch.localRows.operatorReplyIds,
+      );
+    }
   });
 }
