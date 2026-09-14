@@ -147,7 +147,10 @@ function MediaAssetCard({
   };
 
   return (
-    <View style={[styles.assetCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+    <View
+      testID={`media-asset-${asset.id}`}
+      style={[styles.assetCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+    >
       <View style={styles.assetHeader}>
         <View style={[styles.assetIcon, { borderColor: colors.primary + "66" }]}>
           <Feather name={modalityIcon(asset.modality)} size={18} color={colors.primary} />
@@ -156,8 +159,12 @@ function MediaAssetCard({
           <Text numberOfLines={1} style={[styles.assetName, { color: colors.foreground }]}>
             {asset.filename}
           </Text>
-          <Text style={[styles.assetMeta, { color: colors.mutedForeground }]}>
-            {engramName} · {formatBytes(asset.sizeBytes)} · {formatTime(asset.createdAt)}
+          <Text
+            testID={`media-asset-mime-${asset.id}`}
+            style={[styles.assetMeta, { color: colors.mutedForeground }]}
+          >
+            {asset.mimeType} · {engramName} · {formatBytes(asset.sizeBytes)} ·{" "}
+            {formatTime(asset.createdAt)}
           </Text>
         </View>
         <View style={[styles.status, { borderColor: toneColor + "88" }]}>
@@ -539,6 +546,7 @@ export default function MediaScreen() {
                 return (
                   <Pressable
                     key={engram.id}
+                    testID={`media-engram-${engram.id}`}
                     onPress={() => setSelectedId(engram.id)}
                     style={[
                       styles.engramChip,
@@ -556,6 +564,7 @@ export default function MediaScreen() {
               })}
             </ScrollView>
             <Pressable
+              testID="media-file-picker"
               accessibilityLabel={t("selectEngram")}
               onPress={() => void pickFile()}
               style={[styles.filePicker, { borderColor: colors.border }]}
@@ -566,11 +575,15 @@ export default function MediaScreen() {
               </Text>
             </Pressable>
             {file ? (
-              <Text style={[styles.fileMeta, { color: colors.mutedForeground }]}>
+              <Text
+                testID="media-selected-mime"
+                style={[styles.fileMeta, { color: colors.mutedForeground }]}
+              >
                 {file.mimeType} · {formatBytes(file.size ?? 0)}
               </Text>
             ) : null}
             <PrimaryButton
+              testID="media-upload"
               label={t("perceive")}
               loading={uploading}
               disabled={!file || selectedId == null}
