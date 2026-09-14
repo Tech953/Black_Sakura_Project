@@ -31,6 +31,7 @@ function serializeMessage(m: EngramMessage) {
       m.isDigest ? m.deliveredAt : m.digestedAt
     )?.toISOString() ?? null,
     deliveredAt: m.deliveredAt ? m.deliveredAt.toISOString() : null,
+    acknowledgedAt: m.acknowledgedAt ? m.acknowledgedAt.toISOString() : null,
     createdAt: m.createdAt.toISOString(),
   };
 }

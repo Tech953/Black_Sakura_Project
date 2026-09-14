@@ -1293,7 +1293,12 @@
     "toastMarkSeenFailed": "فشل التحديد كمقروء",
     "toastLogExported": "تم تصدير السجل",
     "toastLogExportedDescription_one": "تم تنزيل {{count}} رسالة.",
-    "toastLogExportedDescription_other": "تم تنزيل {{count}} رسائل."
+    "toastLogExportedDescription_other": "تم تنزيل {{count}} رسائل.",
+    "acknowledgement": {
+      "saved": "Saved",
+      "pending": "Pending acknowledgement",
+      "acknowledged": "Acknowledged"
+    }
   },
   "worldModel": {
     "title": "نموذج العالم",

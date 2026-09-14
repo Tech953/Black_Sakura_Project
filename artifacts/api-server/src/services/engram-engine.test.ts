@@ -285,6 +285,39 @@ describe("runTick — threshold crossing", () => {
     expect(worldModelInserts[0].provenance).toBe("desired");
   });
 
+  it("acknowledges operator replies after a successful prompt without changing their text", async () => {
+    const now = Date.now();
+    h.state.engrams = [
+      makeEngram({
+        lastTickAt: new Date(now - 100_000),
+        initiationThreshold: 0.6,
+        drives: [
+          { id: "connection", label: "Connection", description: "reach", weight: 1, baseRate: 0.01 },
+        ],
+      }),
+    ];
+    h.state.messages = [
+      {
+        id: 44,
+        fromEngramId: 1,
+        channel: "human",
+        author: "operator",
+        content: "Please check in when you can.",
+        acknowledgedAt: null,
+      },
+    ];
+
+    await runTick();
+
+    expect(h.state.messages.find((message) => message.id === 44)).toEqual(
+      expect.objectContaining({
+        id: 44,
+        content: "Please check in when you can.",
+        acknowledgedAt: expect.any(Date),
+      }),
+    );
+  });
+
   it("does NOT fire when the top drive stays below threshold", async () => {
     const now = Date.now();
     h.state.engrams = [
@@ -296,6 +329,16 @@ describe("runTick — threshold crossing", () => {
           { id: "order", label: "Order", description: "", weight: 1, baseRate: 0.0001 },
         ],
       }),
+    ];
+    h.state.messages = [
+      {
+        id: 45,
+        fromEngramId: 1,
+        channel: "human",
+        author: "operator",
+        content: "Do not acknowledge until you can answer.",
+        acknowledgedAt: null,
+      },
     ];
     const result = await runTick();
     expect(result.generated).toBe(0);
@@ -424,6 +467,16 @@ describe("runTick — cost guards", () => {
         ],
       }),
     ];
+    h.state.messages = [
+      {
+        id: 45,
+        fromEngramId: 1,
+        channel: "human",
+        author: "operator",
+        content: "Do not acknowledge until you can answer.",
+        acknowledgedAt: null,
+      },
+    ];
     const result = await runTick();
     expect(result.generated).toBe(0);
     // No transmission row was inserted...
@@ -432,6 +485,7 @@ describe("runTick — cost guards", () => {
     const persisted = h.state.updates.at(-1) as Record<string, unknown>;
     expect(persisted.backoffUntil).toBeInstanceOf(Date);
     expect((persisted.backoffUntil as Date).getTime()).toBeGreaterThan(now);
+    expect(h.state.messages.find((message) => message.id === 45)?.acknowledgedAt).toBeNull();
   });
 
   it("respects a persisted backoff window after restart (in-memory state is gone)", async () => {

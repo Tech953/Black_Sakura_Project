@@ -1293,7 +1293,12 @@
     "toastMarkSeenFailed": "Impossibile segnare come visto",
     "toastLogExported": "Log esportato",
     "toastLogExportedDescription_one": "{{count}} messaggio scaricato.",
-    "toastLogExportedDescription_other": "{{count}} messaggi scaricati."
+    "toastLogExportedDescription_other": "{{count}} messaggi scaricati.",
+    "acknowledgement": {
+      "saved": "Saved",
+      "pending": "Pending acknowledgement",
+      "acknowledged": "Acknowledged"
+    }
   },
   "worldModel": {
     "title": "MODELLO DEL MONDO",

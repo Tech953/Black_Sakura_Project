@@ -2655,6 +2655,7 @@ describe("human contact messages route", () => {
       status: "delivered",
       content: "I am here.",
       seen: true,
+      acknowledgedAt: null,
     });
 
     const messages = (await (

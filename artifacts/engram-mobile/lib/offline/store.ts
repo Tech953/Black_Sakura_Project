@@ -740,6 +740,7 @@ function buildLocalOperatorReply(
     isDigest: false,
     digestGroupId: null,
     deliveredAt: createdAt,
+    acknowledgedAt: null,
     createdAt,
   };
 }

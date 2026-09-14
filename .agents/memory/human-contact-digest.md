@@ -10,3 +10,9 @@ Operator replies use the same human-channel audit stream but carry an explicit o
 **Why:** a process restart or concurrent engine tick must not create duplicate operator notifications, and disabling autonomy after contact is queued must not strand the pending digest.
 
 **How to apply:** keep source selection locked and filtered by `isDigest = false`, unseen, digest status, and a null claim timestamp. Exclude generated summaries from rate-limit input and follow-up selection as the implementation evolves.
+
+Operator replies are persisted immediately with a nullable acknowledgement timestamp. Set that timestamp only after the addressed engram's prompt generation succeeds; never rewrite the reply content or acknowledge it merely because it was saved.
+
+**Why:** operators need to distinguish durable delivery from an engram actually encountering the reply, and a failed model turn must remain retryable.
+
+**How to apply:** load reply IDs and text together, pass the text into the next autonomous prompt, then owner-scope an idempotent timestamp update for the rows included in that successful prompt. Expose both timestamps to terminal/export clients.

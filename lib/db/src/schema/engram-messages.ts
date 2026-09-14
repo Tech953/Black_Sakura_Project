@@ -70,6 +70,8 @@ export const engramMessagesTable = pgTable(
     /** Set when this digest-status source message has been included in a summary. */
     digestedAt: timestamp("digested_at", { withTimezone: true }),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /** Set when the addressed engram has received this operator reply in a turn prompt. */
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

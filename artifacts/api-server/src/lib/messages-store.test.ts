@@ -5,7 +5,11 @@ vi.mock("@workspace/db", () => ({ db: h.db }));
 vi.mock("@workspace/db/schema", () => h.schema);
 vi.mock("drizzle-orm", () => h.drizzle);
 
-import { markMessagesSeen, recentHumanCounts } from "./messages-store";
+import {
+  markMessagesSeen,
+  markOperatorRepliesAcknowledged,
+  recentHumanCounts,
+} from "./messages-store";
 
 function seedOwner() {
   h.state.engrams = [
@@ -68,5 +72,57 @@ describe("recentHumanCounts", () => {
       hour: 1,
       day: 3,
     });
+  });
+});
+
+describe("markOperatorRepliesAcknowledged", () => {
+  it("acknowledges only pending operator replies owned by the addressed engram", async () => {
+    h.state.messages = [
+      {
+        id: 10,
+        fromEngramId: 1,
+        channel: "human",
+        author: "operator",
+        acknowledgedAt: null,
+      },
+      {
+        id: 11,
+        fromEngramId: 1,
+        channel: "human",
+        author: "operator",
+        acknowledgedAt: new Date("2026-09-13T12:00:00.000Z"),
+      },
+      {
+        id: 12,
+        fromEngramId: 2,
+        channel: "human",
+        author: "operator",
+        acknowledgedAt: null,
+      },
+      {
+        id: 13,
+        fromEngramId: 1,
+        channel: "engram",
+        author: "operator",
+        acknowledgedAt: null,
+      },
+    ];
+
+    const now = new Date("2026-09-13T12:05:00.000Z");
+    await expect(
+      markOperatorRepliesAcknowledged("test-owner", 1, [10, 11, 12, 13], now),
+    ).resolves.toBe(1);
+
+    expect(h.state.messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 10, acknowledgedAt: now }),
+        expect.objectContaining({
+          id: 11,
+          acknowledgedAt: new Date("2026-09-13T12:00:00.000Z"),
+        }),
+        expect.objectContaining({ id: 12, acknowledgedAt: null }),
+        expect.objectContaining({ id: 13, acknowledgedAt: null }),
+      ]),
+    );
   });
 });

@@ -327,6 +327,14 @@ export default function Terminal() {
       messages: ordered.map((m) => ({
         ...m,
         fromEngram: engramById.get(m.fromEngramId)?.name ?? null,
+        acknowledgement:
+          m.author === "operator"
+            ? {
+                state: m.acknowledgedAt ? "acknowledged" : "pending",
+                savedAt: m.createdAt,
+                acknowledgedAt: m.acknowledgedAt,
+              }
+            : null,
       })),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -733,6 +741,33 @@ function HumanMessageRow({
               >
                 {t("operatorLabel")}
               </Badge>
+            )}
+            {operatorAuthored && (
+              <>
+                <Badge
+                  variant="outline"
+                  className="font-mono text-[8px] uppercase tracking-wider border-slate-500/40 text-slate-300"
+                >
+                  {t("acknowledgement.saved")}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={`font-mono text-[8px] uppercase tracking-wider ${
+                    msg.acknowledgedAt
+                      ? "border-emerald-500/40 text-emerald-300"
+                      : "border-amber-500/40 text-amber-300"
+                  }`}
+                  title={
+                    msg.acknowledgedAt
+                      ? new Date(msg.acknowledgedAt).toLocaleString()
+                      : undefined
+                  }
+                >
+                  {msg.acknowledgedAt
+                    ? t("acknowledgement.acknowledged")
+                    : t("acknowledgement.pending")}
+                </Badge>
+              </>
             )}
             {unseen && (
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title={t("unseen")} />
