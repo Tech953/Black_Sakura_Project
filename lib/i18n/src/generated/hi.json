@@ -514,7 +514,15 @@
     "desktopPromoDismiss": "डेस्कटॉप ऐप संदेश बंद करें",
     "personalityRadar": "पर्सनैलिटी रडार",
     "radarVizOffline": "RADAR VIZ OFFLINE",
-    "memoryDistribution": "स्मृति वितरण"
+    "memoryDistribution": "स्मृति वितरण",
+    "recentPerceptionTitle": "Recent Perception",
+    "recentPerceptionSubtitle": "{{name}} · latest media-derived observations",
+    "recentPerceptionNoEngram": "No engram is available",
+    "recentPerceptionObserved": "OBSERVED",
+    "recentPerceptionProcessing": "Media perception is still in progress",
+    "recentPerceptionEmpty": "No media observations recorded yet",
+    "recentPerceptionSourceUnavailable": "Source asset unavailable",
+    "openWorldModel": "Open world model"
   },
   "hub": {
     "title": "द हब",

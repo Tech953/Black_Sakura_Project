@@ -514,7 +514,15 @@
     "desktopPromoDismiss": "Masquer le message de l’app de bureau",
     "personalityRadar": "Radar de personnalité",
     "radarVizOffline": "VIZ RADAR HORS LIGNE",
-    "memoryDistribution": "Répartition des mémoires"
+    "memoryDistribution": "Répartition des mémoires",
+    "recentPerceptionTitle": "Recent Perception",
+    "recentPerceptionSubtitle": "{{name}} · latest media-derived observations",
+    "recentPerceptionNoEngram": "No engram is available",
+    "recentPerceptionObserved": "OBSERVED",
+    "recentPerceptionProcessing": "Media perception is still in progress",
+    "recentPerceptionEmpty": "No media observations recorded yet",
+    "recentPerceptionSourceUnavailable": "Source asset unavailable",
+    "openWorldModel": "Open world model"
   },
   "hub": {
     "title": "LE HUB",

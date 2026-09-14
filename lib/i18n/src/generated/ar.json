@@ -514,7 +514,15 @@
     "desktopPromoDismiss": "تجاهل رسالة تطبيق سطح المكتب",
     "personalityRadar": "رادار الشخصية",
     "radarVizOffline": "تصور الرادار غير متصل",
-    "memoryDistribution": "توزيع الذكريات"
+    "memoryDistribution": "توزيع الذكريات",
+    "recentPerceptionTitle": "Recent Perception",
+    "recentPerceptionSubtitle": "{{name}} · latest media-derived observations",
+    "recentPerceptionNoEngram": "No engram is available",
+    "recentPerceptionObserved": "OBSERVED",
+    "recentPerceptionProcessing": "Media perception is still in progress",
+    "recentPerceptionEmpty": "No media observations recorded yet",
+    "recentPerceptionSourceUnavailable": "Source asset unavailable",
+    "openWorldModel": "Open world model"
   },
   "hub": {
     "title": "المحور",

@@ -514,7 +514,15 @@
     "desktopPromoDismiss": "デスクトップアプリのメッセージを閉じる",
     "personalityRadar": "パーソナリティレーダー",
     "radarVizOffline": "RADAR VIZ オフライン",
-    "memoryDistribution": "メモリ分布"
+    "memoryDistribution": "メモリ分布",
+    "recentPerceptionTitle": "Recent Perception",
+    "recentPerceptionSubtitle": "{{name}} · latest media-derived observations",
+    "recentPerceptionNoEngram": "No engram is available",
+    "recentPerceptionObserved": "OBSERVED",
+    "recentPerceptionProcessing": "Media perception is still in progress",
+    "recentPerceptionEmpty": "No media observations recorded yet",
+    "recentPerceptionSourceUnavailable": "Source asset unavailable",
+    "openWorldModel": "Open world model"
   },
   "hub": {
     "title": "THE HUB",
