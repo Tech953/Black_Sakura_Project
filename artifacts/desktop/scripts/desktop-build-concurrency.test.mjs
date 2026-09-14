@@ -136,4 +136,19 @@ describe("desktop release workflow concurrency", () => {
       /finally \{[\s\S]*Remove-Item -LiteralPath \$installDir -Recurse -Force/,
     );
   });
+
+  it("requires timestamp signer certificates for Windows video tools", () => {
+    const timestampChecks =
+      workflow.match(/\$signature\.TimeStamperCertificate/g) ?? [];
+    expect(timestampChecks.length).toBeGreaterThanOrEqual(2);
+    expect(workflow).toMatch(
+      /if \(\$null -eq \$signature\.TimeStamperCertificate\) \{\s+throw "Bundled video tool is missing an Authenticode timestamp signer certificate: \$file"/s,
+    );
+    expect(workflow).toMatch(
+      /if \(\$null -eq \$signature\.TimeStamperCertificate\) \{\s+throw "Installed video tool is missing an Authenticode timestamp signer certificate: \$file"/s,
+    );
+    expect(workflow).toMatch(
+      /timestamp signer: \$\(\$signature\.TimeStamperCertificate\.Subject\)/,
+    );
+  });
 });
