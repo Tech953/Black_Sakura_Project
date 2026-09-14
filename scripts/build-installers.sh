@@ -113,6 +113,49 @@ if [ "$DO_ANDROID" = 1 ]; then
   done
   [ -f "$ANDROID_KEYSTORE_PATH" ] || { echo "ERROR: Android keystore not found at configured path." >&2; exit 1; }
 
+  ANDROID_RELEASE_ARCHITECTURES="arm64-v8a,x86_64"
+  if ! grep -Fxq "reactNativeArchitectures=$ANDROID_RELEASE_ARCHITECTURES" "$MOBILE_DIR/android/gradle.properties"; then
+    echo "ERROR: Android release must target exactly $ANDROID_RELEASE_ARCHITECTURES in android/gradle.properties." >&2
+    exit 1
+  fi
+
+  SOURCE_KEYSTORE_PATH="$ANDROID_KEYSTORE_PATH"
+  SIGNING_BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/engram-android-signing.XXXXXX")"
+
+  cleanup_android_signing_backup() {
+    if [ -n "${SIGNING_BACKUP_DIR:-}" ] && [ -e "$SIGNING_BACKUP_DIR" ]; then
+      rm -rf -- "$SIGNING_BACKUP_DIR"
+    fi
+    if [ -n "${SIGNING_BACKUP_DIR:-}" ] && [ -e "$SIGNING_BACKUP_DIR" ]; then
+      echo "ERROR: temporary Android signing backup was not cleaned up: $SIGNING_BACKUP_DIR" >&2
+      return 1
+    fi
+    echo "==> Android: temporary signing backup cleanup confirmed"
+  }
+
+  finish_android_signing_backup() {
+    local status=$?
+    if ! cleanup_android_signing_backup; then
+      status=1
+    fi
+    trap - EXIT
+    exit "$status"
+  }
+  trap finish_android_signing_backup EXIT
+
+  SIGNING_BACKUP_PATH="$SIGNING_BACKUP_DIR/engram-release.keystore.backup"
+  RESTORED_KEYSTORE_PATH="$SIGNING_BACKUP_DIR/restored/engram-release.keystore"
+  mkdir -p "$(dirname "$RESTORED_KEYSTORE_PATH")"
+  cp "$SOURCE_KEYSTORE_PATH" "$SIGNING_BACKUP_PATH"
+  cp "$SIGNING_BACKUP_PATH" "$RESTORED_KEYSTORE_PATH"
+  chmod 600 "$SIGNING_BACKUP_PATH" "$RESTORED_KEYSTORE_PATH"
+  if ! cmp -s "$SOURCE_KEYSTORE_PATH" "$RESTORED_KEYSTORE_PATH"; then
+    echo "ERROR: temporary Android signing backup restore does not match the source keystore." >&2
+    exit 1
+  fi
+  export ANDROID_KEYSTORE_PATH="$RESTORED_KEYSTORE_PATH"
+  echo "==> Android: restored signing backup at a temporary path for the release build"
+
   # The android/ project is NOT regenerated here (prebuild --clean would wipe
   # the Hermes/Babel fixes). Version fields accept explicit Gradle properties
   # so the predecessor can be built without mutating app.json or this project.
@@ -176,6 +219,21 @@ if [ "$DO_ANDROID" = 1 ]; then
       tr -d ':' | tr 'A-F' 'a-f'
   }
 
+  CURRENT_RELEASE_APK="$DOWNLOADS_DIR/ENGRAM-android.apk"
+  [ -f "$CURRENT_RELEASE_APK" ] || {
+    echo "ERROR: current release APK is required for signing-backup comparison: $CURRENT_RELEASE_APK" >&2
+    exit 1
+  }
+  CURRENT_RELEASE_CERT="$(apk_cert "$CURRENT_RELEASE_APK")"
+  [ -n "$CURRENT_RELEASE_CERT" ] || {
+    echo "ERROR: could not read the current release APK certificate." >&2
+    exit 1
+  }
+  if [ "$CURRENT_RELEASE_CERT" != "$KEY_CERT" ]; then
+    echo "ERROR: current release APK signer does not match the restored signing backup." >&2
+    exit 1
+  fi
+
   assert_apk_metadata() {
     local apk="$1"
     local expected_code="$2"
@@ -203,6 +261,7 @@ if [ "$DO_ANDROID" = 1 ]; then
   (
     cd "$MOBILE_DIR/android"
     ./gradlew :app:assembleRelease \
+      -PreactNativeArchitectures="$ANDROID_RELEASE_ARCHITECTURES" \
       -PengramVersionCode="$PREVIOUS_VERSION_CODE" \
       -PengramVersionName="$PREVIOUS_VERSION" \
       -x lint --no-daemon --max-workers="${GRADLE_MAX_WORKERS:-1}" \
@@ -224,6 +283,7 @@ if [ "$DO_ANDROID" = 1 ]; then
   (
     cd "$MOBILE_DIR/android"
     ./gradlew :app:assembleRelease \
+      -PreactNativeArchitectures="$ANDROID_RELEASE_ARCHITECTURES" \
       -PengramVersionCode="$APP_VERSION_CODE" \
       -PengramVersionName="$APP_VERSION" \
       -x lint --no-daemon --max-workers="${GRADLE_MAX_WORKERS:-1}" \
@@ -241,6 +301,10 @@ if [ "$DO_ANDROID" = 1 ]; then
   fi
   if [ "$PREVIOUS_CERT" != "$APK_CERT" ]; then
     echo "ERROR: predecessor and current APKs do not use the same release certificate." >&2
+    exit 1
+  fi
+  if [ "$APK_CERT" != "$CURRENT_RELEASE_CERT" ]; then
+    echo "ERROR: APK built from the restored signing backup does not match the current release APK certificate." >&2
     exit 1
   fi
   if cmp -s "$PREVIOUS_APK" "$APK_SRC"; then

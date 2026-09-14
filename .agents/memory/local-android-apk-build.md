@@ -11,6 +11,9 @@ description: How to build the Expo release APK locally (no CI), and the Babel/He
 - A signing-backup drill should compare the keystore's exported certificate fingerprint with a known release APK before rebuilding. If the dual-ABI native build daemon is killed by workspace memory pressure, an arm64-only build can prove key continuity but cannot prove full release-ABI coverage; keep those claims separate.
   **Why:** the full arm64-v8a/x86_64 build exceeded the local memory ceiling during CMake, while the constrained arm64 build completed with the same restored certificate.
   **How to apply:** use `NODE_OPTIONS=--max-old-space-size=768`, one worker, no Gradle parallelism, and `-PreactNativeArchitectures=arm64-v8a` only as a diagnostic fallback; schedule full-ABI confirmation in CI or a larger native environment.
+- On a 7.8 GiB workspace with no swap, the full dual-ABI Gradle JVM can terminate with `SIGBUS` during native compilation even with one worker; treat that as an environment limit, not a signing result.
+  **Why:** the Java process crashed while configuring/building the native release after dependency preflight passed.
+  **How to apply:** preserve the full-ABI requirement for release claims and move the confirmation to CI or a larger native runner instead of silently narrowing the release target.
 
 ## The Hermes/Babel trap (why a plain build fails)
 The bundled `hermesc` (react-native sdks/hermesc) does NOT accept, by default:
