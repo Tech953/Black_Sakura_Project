@@ -44,6 +44,7 @@ try {
   await waitForServer();
   for (const [script, label, portOffset] of [
     ["test:browser:chat", "chat", 0],
+    ["test:browser:simulations", "simulations", 1],
     ["test:browser:analytics", "Analytics", 2],
   ]) {
     const result = spawn(
