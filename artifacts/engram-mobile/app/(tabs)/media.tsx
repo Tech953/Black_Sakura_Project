@@ -35,6 +35,7 @@ import {
   useListMedia,
   useRetryMediaAsset,
   type MediaAsset,
+  normalizeMediaUploadMimeType,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -403,7 +404,7 @@ export default function MediaScreen() {
     setFile({
       uri: picked.uri,
       name: picked.name,
-      mimeType: picked.mimeType ?? "application/octet-stream",
+      mimeType: normalizeMediaUploadMimeType(picked.name, picked.mimeType),
       size: picked.size,
     });
   }, []);

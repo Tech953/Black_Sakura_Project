@@ -55,3 +55,4 @@
 - [Native export cleanup](native-export-cleanup.md) — share temporary mobile export files before idempotently deleting them, including failed-share retries.
 - [Web export compatibility](web-export-compat.md) — test Safari/Firefox download timing through explicit engine-shaped runtimes until native runners exist.
 - [Media recovery contract](media-recovery-contract.md) — recovered timeouts are distinct from provider failures; explain transactional rollback and safe idempotent retry.
+- [Media upload MIME handling](media-upload-mime.md) — infer only generic picker MIME values from unambiguous extensions; preserve specific unsupported claims for clear server rejection.

@@ -57,13 +57,23 @@ export const MEDIA_MIME_ALLOWLIST: Record<string, MediaModality> = {
   "video/x-matroska": "video",
 };
 
+const MEDIA_MIME_ALIASES: Record<string, string> = {
+  "image/jpg": "image/jpeg",
+  "audio/mp3": "audio/mpeg",
+  "audio/m4a": "audio/mp4",
+  "audio/x-m4a": "audio/mp4",
+  "audio/x-wav": "audio/wav",
+  "video/x-m4v": "video/mp4",
+};
+
 export function detectModality(mimeType: string): MediaModality | null {
-  const normalized = normalizeMimeType(mimeType);
+  const normalized = normalizeMediaMimeType(mimeType);
   return MEDIA_MIME_ALLOWLIST[normalized] ?? null;
 }
 
-function normalizeMimeType(mimeType: string): string {
-  return mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
+export function normalizeMediaMimeType(mimeType: string): string {
+  const base = mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
+  return MEDIA_MIME_ALIASES[base] ?? base;
 }
 
 function startsWithBytes(data: Buffer, signature: number[], offset = 0): boolean {
@@ -171,15 +181,13 @@ function isUtf8Text(data: Buffer): boolean {
 
 /** Verify that the bytes support the client-declared allowlisted MIME type. */
 export function contentMatchesMime(data: Buffer, mimeType: string): boolean {
-  const claimed = normalizeMimeType(mimeType);
+  const claimed = normalizeMediaMimeType(mimeType);
   const detected = detectContentType(data);
   if (!detected) return false;
 
   if (claimed === "text/plain" || claimed === "text/markdown" || claimed === "text/csv")
     return detected === "text/plain" || detected === "application/json";
   if (claimed === "application/json") return detected === "application/json";
-  if (claimed === "audio/mp3") return detected === "audio/mpeg";
-  if (claimed === "audio/x-wav") return detected === "audio/wav";
   if (claimed === "audio/webm") return detected === "video/webm";
   if (claimed === "video/webm") return detected === "video/webm";
   if (claimed === "video/mp4") return detected === "video/mp4";
@@ -224,7 +232,7 @@ function filenameExtension(filename: string): string | null {
 export function filenameMatchesMime(filename: string, mimeType: string): boolean {
   const extension = filenameExtension(filename);
   if (!extension) return true;
-  const allowed = MEDIA_FILENAME_EXTENSIONS[normalizeMimeType(mimeType)];
+  const allowed = MEDIA_FILENAME_EXTENSIONS[normalizeMediaMimeType(mimeType)];
   return allowed?.includes(extension) ?? false;
 }
 
