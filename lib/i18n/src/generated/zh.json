@@ -677,7 +677,10 @@
       "daysAgo": "{{count}} 天前"
     },
     "noResultSaved": "No observations were saved. Retry to run perception again.",
-    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result."
+    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result.",
+    "fileTooLarge": "This file is too large to upload.",
+    "fileTypeMismatch": "The file contents, MIME type, or filename extension do not agree. Choose the original file.",
+    "unsupportedFileType": "This file type is not supported. Choose a text, image, audio, or video file."
   },
   "memory": {
     "title": "记忆架构",

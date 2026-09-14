@@ -87,6 +87,7 @@ import {
   contentMatchesMime,
   detectContentType,
   detectModality,
+  filenameMatchesMime,
   MEDIA_MIME_ALLOWLIST,
   extractFromMedia,
 } from "./media-extraction";
@@ -160,11 +161,21 @@ describe("detectContentType — uploaded bytes must match the claimed MIME", () 
     expect(contentMatchesMime(mp3, "audio/mpeg")).toBe(true);
     expect(contentMatchesMime(mp3, "audio/mp3")).toBe(true);
     expect(contentMatchesMime(mp3, "image/png")).toBe(false);
+    const wav = Buffer.from("RIFFxxxxWAVE");
+    expect(contentMatchesMime(wav, "audio/x-wav")).toBe(true);
 
     const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     expect(contentMatchesMime(png, "image/png")).toBe(true);
     expect(contentMatchesMime(png, "text/plain")).toBe(false);
     expect(contentMatchesMime(Buffer.from([0x4d, 0x5a, 0x90, 0x00]), "text/plain")).toBe(false);
+  });
+
+  it("rejects a filename extension that contradicts an otherwise valid MIME type", () => {
+    expect(filenameMatchesMime("scene.png", "image/png")).toBe(true);
+    expect(filenameMatchesMime("scene.jpg", "image/png")).toBe(false);
+    expect(filenameMatchesMime("notes.md", "text/markdown")).toBe(true);
+    expect(filenameMatchesMime("notes.txt", "text/markdown")).toBe(false);
+    expect(filenameMatchesMime("README", "text/plain")).toBe(true);
   });
 });
 

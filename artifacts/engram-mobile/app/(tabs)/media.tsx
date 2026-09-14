@@ -411,6 +411,28 @@ export default function MediaScreen() {
       });
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        if (response.status === 413) {
+          throw new Error(
+            t("fileTooLarge", {
+              defaultValue: "This file is too large to upload.",
+            }),
+          );
+        }
+        if (response.status === 415) {
+          const serverMessage = payload?.error ?? "";
+          const message = /unsupported media type/i.test(serverMessage)
+            ? t("unsupportedFileType", {
+                defaultValue:
+                  "This file type is not supported. Choose a text, image, audio, or video file.",
+              })
+            : t("fileTypeMismatch", {
+                defaultValue:
+                  "The file contents, MIME type, or filename extension do not agree. Choose the original file.",
+              });
+          throw new Error(
+            message,
+          );
+        }
         throw new Error(payload?.error ?? t("uploadFailed", { defaultValue: "Upload failed" }));
       }
       setFile(null);

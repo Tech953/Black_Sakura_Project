@@ -161,6 +161,25 @@ describe("POST /media — upload gates against a real PGlite DB", () => {
     expect(await allAssets()).toHaveLength(0);
   });
 
+  it("rejects a misleading filename extension with 415 and writes NOTHING to the DB", async () => {
+    const engramId = await insertEngram();
+    const form = new FormData();
+    form.append("engramId", String(engramId));
+    form.append(
+      "file",
+      new Blob(["the harbor"], { type: "text/plain" }),
+      "scene.png",
+    );
+
+    const res = await fetch(`${base}/media`, { method: "POST", body: form });
+
+    expect(res.status).toBe(415);
+    expect(await res.json()).toMatchObject({
+      error: expect.stringContaining("filename extension"),
+    });
+    expect(await allAssets()).toHaveLength(0);
+  });
+
   it("rejects an upload over MEDIA_MAX_BYTES with 413 and writes NOTHING to the DB", async () => {
     const engramId = await insertEngram();
     // MEDIA_MAX_BYTES is 1024 (set in the hoisted block); 2 KiB exceeds it.
