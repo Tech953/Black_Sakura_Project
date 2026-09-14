@@ -17,6 +17,7 @@ import {
   engramPresenceTable,
   engramsTable,
   ensureDatabaseReady,
+  hubControlsTable,
   hubActivityLogTable,
   hubSpacesTable,
 } from "@workspace/db";
@@ -34,6 +35,7 @@ let base: string;
 beforeEach(async () => {
   await ready;
   await db.delete(hubActivityLogTable);
+  await db.delete(hubControlsTable);
   await db.delete(engramMessagesTable);
   await db.delete(engramPresenceTable);
   await db.delete(engramsTable);
@@ -143,6 +145,51 @@ async function insertMessage(args: {
     .returning();
   return row;
 }
+
+describe("PUT /hub/controls", () => {
+  it("serializes concurrent partial updates and emits the persisted final row", async () => {
+    const events: EngramEvent[] = [];
+    const unsubscribe = subscribe({ ownerId: OWNER_ID }, (event) => {
+      if (event.type === "controls.changed") events.push(event);
+    });
+
+    let responses: Response[];
+    try {
+      responses = await Promise.all([
+        fetch(`${base}/hub/controls`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ paused: true }),
+        }),
+        fetch(`${base}/hub/controls`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ quietMode: true }),
+        }),
+      ]);
+    } finally {
+      unsubscribe();
+    }
+
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    expect(events).toHaveLength(2);
+
+    const [persisted] = await db
+      .select()
+      .from(hubControlsTable)
+      .where(eq(hubControlsTable.ownerId, OWNER_ID));
+    expect(persisted).toMatchObject({ paused: true, quietMode: true });
+
+    const finalEvent = events.at(-1);
+    expect(finalEvent?.ownerId).toBe(OWNER_ID);
+    expect(finalEvent?.data).toMatchObject({
+      id: persisted!.id,
+      paused: persisted!.paused,
+      quietMode: persisted!.quietMode,
+      updatedAt: persisted!.updatedAt,
+    });
+  });
+});
 
 describe("PUT /hub/presence/:engramId", () => {
   it("moves an owned engram and serializes timestamps as ISO strings", async () => {

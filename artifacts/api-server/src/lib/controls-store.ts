@@ -4,6 +4,31 @@ import type { HubControls } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { publishEvent } from "./events";
 
+const controlUpdateTails = new Map<string, Promise<void>>();
+
+async function withControlUpdateLock<T>(
+  ownerId: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const previous = controlUpdateTails.get(ownerId) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const tail = previous.catch(() => undefined).then(() => current);
+  controlUpdateTails.set(ownerId, tail);
+
+  await previous.catch(() => undefined);
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (controlUpdateTails.get(ownerId) === tail) {
+      controlUpdateTails.delete(ownerId);
+    }
+  }
+}
+
 /**
  * Load an account's controls row, creating its defaults on first access.
  */
@@ -45,17 +70,19 @@ export async function updateControls(
   ownerId: string,
   patch: { paused?: boolean; quietMode?: boolean },
 ): Promise<HubControls> {
-  await loadControls(ownerId);
-  const update: { paused?: boolean; quietMode?: boolean; updatedAt: Date } = {
-    updatedAt: new Date(),
-  };
-  if (patch.paused !== undefined) update.paused = patch.paused;
-  if (patch.quietMode !== undefined) update.quietMode = patch.quietMode;
-  const [row] = await db
-    .update(hubControlsTable)
-    .set(update)
-    .where(eq(hubControlsTable.ownerId, ownerId))
-    .returning();
-  publishEvent({ type: "controls.changed", ownerId, data: row });
-  return row;
+  return withControlUpdateLock(ownerId, async () => {
+    await loadControls(ownerId);
+    const update: { paused?: boolean; quietMode?: boolean; updatedAt: Date } = {
+      updatedAt: new Date(),
+    };
+    if (patch.paused !== undefined) update.paused = patch.paused;
+    if (patch.quietMode !== undefined) update.quietMode = patch.quietMode;
+    const [row] = await db
+      .update(hubControlsTable)
+      .set(update)
+      .where(eq(hubControlsTable.ownerId, ownerId))
+      .returning();
+    publishEvent({ type: "controls.changed", ownerId, data: row });
+    return row;
+  });
 }
