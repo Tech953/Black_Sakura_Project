@@ -27,3 +27,9 @@ Rule: a renderer "Restart now" action must use a narrow main-process command, ne
 **Why:** The existing lifecycle-safe installer is responsible for stopping the embedded server before files are swapped; concurrent native and in-app actions must not run that shutdown twice.
 
 **How to apply:** expose only a typed bridge method, validate the ready-update state in main, and keep "Later" as a presentation dismissal that leaves normal-quit installation enabled.
+
+For the transient renderer notice, do not auto-focus the banner. Capture the focused dashboard element when the notice first appears, expose progress through a clamped progressbar, announce meaningful non-progress states, and restore focus after keyboard or button dismissal.
+
+**Why:** Moving focus to a transient update message interrupts dashboard work, while a live region around every download tick creates repetitive announcements. Users need a predictable way back to the control they were using.
+
+**How to apply:** keep silent background states out of the DOM, use manual-status flags to decide which notices render, make Escape and native buttons dismiss the notice, and preserve a separate polite/assertive announcement node from the progressbar.

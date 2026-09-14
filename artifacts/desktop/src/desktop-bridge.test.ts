@@ -98,4 +98,21 @@ describe("desktop renderer bridge", () => {
 
     expect(invoke).toHaveBeenCalledWith("update:install");
   });
+
+  it("preserves manual update flags for live status announcements", () => {
+    const { ipc, listeners } = fakeIpc();
+    const bridge = createEngramDesktopBridge(ipc);
+    const onStatus = vi.fn();
+
+    bridge.onUpdateStatus(onStatus);
+    listeners.get("update:status")?.(
+      {},
+      { state: "not-available", manual: true },
+    );
+
+    expect(onStatus).toHaveBeenCalledWith({
+      state: "not-available",
+      manual: true,
+    });
+  });
 });
