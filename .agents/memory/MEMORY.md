@@ -8,6 +8,7 @@
 - [Desktop server bundle boundary](desktop-server-bundle-boundary.md) — only explicitly staged runtime dependencies may remain external in the standalone packaged API child.
 - [Desktop auto-update](desktop-auto-update.md) — how the Electron app self-updates and the non-obvious constraints that make it actually fire.
 - [Desktop pre-release smoke](desktop-pre-release-smoke.md) — run the packaged Linux launch check on relevant pushes/PRs while keeping native release jobs tag/manual-only.
+- [Desktop CI fixture caching](desktop-ci-fixture-caching.md) — cache keys must include immutable runtime/model checksums; cached fixtures still need local verification and atomic replacement.
 - [Desktop embedded DB seam (pglite)](desktop-embedded-db.md) — running with an embedded DB for desktop, and the non-obvious bundling constraints.
 - [Desktop online key storage](desktop-online-key-storage.md) — security rule for how the desktop build persists the cloud LLM API key (no plaintext).
 - [Offline LLM seam](offline-llm-seam.md) — why model calls go through an app-level OpenAI-compatible client, not the Replit integration package.
