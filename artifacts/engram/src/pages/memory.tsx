@@ -1,6 +1,17 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useListMemories, useCreateMemory, useDeleteMemory, getListMemoriesQueryKey } from "@workspace/api-client-react";
+import {
+  getListEngramWorldModelQueryKey,
+  getListMediaQueryKey,
+  getListMemoriesQueryKey,
+  useCreateMemory,
+  useDeleteMemory,
+  useListEngramWorldModel,
+  useListEngrams,
+  useListMedia,
+  useListMemories,
+  type WorldModelEntry,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +20,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Trash2, Plus, Database } from "lucide-react";
+import { Database, ExternalLink, Eye, Plus, ScanEye, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 const LAYERS = ["working", "episodic", "semantic", "preference", "reflective", "procedural"] as const;
 type Layer = (typeof LAYERS)[number];
@@ -33,18 +45,63 @@ const LAYER_SYMBOLS: Record<Layer, string> = {
   procedural: "△",
 };
 
+function mediaAssetId(source: string | undefined): number | null {
+  if (!source?.startsWith("media:")) return null;
+  const id = Number(source.slice("media:".length));
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
 export default function Memory() {
   const { t } = useTranslation("memory");
   const [activeLayer, setActiveLayer] = useState<Layer | "all">("all");
+  const [activeView, setActiveView] = useState<"encoded" | "media">("encoded");
+  const [selectedEngramId, setSelectedEngramId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ layer: "episodic" as Layer, content: "", confidence: 0.75 });
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const { data: engrams } = useListEngrams();
   const params = activeLayer !== "all" ? { layer: activeLayer } : undefined;
   const { data: memories, isLoading } = useListMemories(params, { query: { queryKey: getListMemoriesQueryKey(params) } });
+  const { data: worldModel, isLoading: worldModelLoading } = useListEngramWorldModel(selectedEngramId ?? 0, {
+    query: {
+      enabled: activeView === "media" && selectedEngramId !== null,
+      queryKey: getListEngramWorldModelQueryKey(selectedEngramId ?? 0),
+    },
+  });
+  const { data: mediaAssets } = useListMedia(
+    selectedEngramId === null ? undefined : { engramId: selectedEngramId },
+    {
+      query: {
+        enabled: activeView === "media" && selectedEngramId !== null,
+        queryKey: getListMediaQueryKey(
+          selectedEngramId === null ? undefined : { engramId: selectedEngramId },
+        ),
+      },
+    },
+  );
   const createMem = useCreateMemory();
   const deleteMem = useDeleteMemory();
+
+  useEffect(() => {
+    if (selectedEngramId !== null || !engrams?.length) return;
+    const active = engrams.find((engram) => engram.isChatActive);
+    setSelectedEngramId(active?.id ?? engrams[0].id);
+  }, [engrams, selectedEngramId]);
+
+  const assetsById = useMemo(
+    () => new Map((mediaAssets ?? []).map((asset) => [asset.id, asset])),
+    [mediaAssets],
+  );
+  const mediaObservations = useMemo(
+    () =>
+      (worldModel ?? []).filter(
+        (entry): entry is WorldModelEntry =>
+          entry.provenance === "observed" && mediaAssetId(entry.source) !== null,
+      ),
+    [worldModel],
+  );
 
   function handleCreate() {
     if (!form.content.trim()) return;
@@ -74,7 +131,7 @@ export default function Memory() {
           <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        {activeView === "encoded" ? <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground" data-testid="button-create-memory">
               <Plus className="w-3 h-3 mr-2" /> {t("encodeMemory")}
@@ -114,9 +171,48 @@ export default function Memory() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog> : null}
       </div>
 
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => setActiveView("encoded")}
+          className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 border transition-colors ${
+            activeView === "encoded"
+              ? "border-primary text-primary bg-primary/10"
+              : "border-border/50 text-muted-foreground hover:border-primary/50"
+          }`}
+          data-testid="filter-encoded-memory"
+        >
+          {t("encodedView", { defaultValue: "Encoded memory" })}
+        </button>
+        <button
+          onClick={() => setActiveView("media")}
+          className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 border transition-colors flex items-center gap-1.5 ${
+            activeView === "media"
+              ? "border-cyan-400 text-cyan-300 bg-cyan-400/10"
+              : "border-border/50 text-muted-foreground hover:border-cyan-400/50"
+          }`}
+          data-testid="filter-media-observations"
+        >
+          <ScanEye className="w-3 h-3" />
+          {t("mediaObservations", { defaultValue: "Media observations" })}
+        </button>
+      </div>
+
+      {activeView === "media" ? (
+        <MediaMemoryView
+          engrams={engrams ?? []}
+          selectedEngramId={selectedEngramId}
+          onSelectEngram={setSelectedEngramId}
+          observations={mediaObservations}
+          assetsById={assetsById}
+          isLoading={worldModelLoading}
+          t={t}
+        />
+      ) : null}
+
+      {activeView === "encoded" ? <>
       {/* Layer filter tabs */}
       <div className="flex gap-2 flex-wrap">
         <button onClick={() => setActiveLayer("all")}
@@ -170,6 +266,107 @@ export default function Memory() {
           ))
         )}
       </div>
+      </> : null}
+    </div>
+  );
+}
+
+function MediaMemoryView({
+  engrams,
+  selectedEngramId,
+  onSelectEngram,
+  observations,
+  assetsById,
+  isLoading,
+  t,
+}: {
+  engrams: Array<{ id: number; name: string; symbol?: string }>;
+  selectedEngramId: number | null;
+  onSelectEngram: (id: number) => void;
+  observations: WorldModelEntry[];
+  assetsById: Map<number, { id: number; filename: string }>;
+  isLoading: boolean;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  const selected = engrams.find((engram) => engram.id === selectedEngramId);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex gap-2 flex-wrap" aria-label={t("selectEngram", { defaultValue: "Select an engram" })}>
+        {engrams.map((engram) => (
+          <button
+            key={engram.id}
+            onClick={() => onSelectEngram(engram.id)}
+            className={`font-mono text-xs uppercase tracking-wider px-3 py-1.5 border transition-colors ${
+              selectedEngramId === engram.id
+                ? "border-cyan-400 text-cyan-300 bg-cyan-400/10"
+                : "border-border/50 text-muted-foreground hover:border-cyan-400/50"
+            }`}
+            data-testid={`select-media-memory-engram-${engram.id}`}
+          >
+            {engram.symbol ? `${engram.symbol} ` : ""}{engram.name}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className="h-24 bg-primary/5" />
+          ))}
+        </div>
+      ) : !observations.length ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground font-mono">
+          <Eye className="w-8 h-8 mb-4 opacity-30" />
+          <p className="text-xs uppercase tracking-widest">
+            {selected
+              ? t("mediaEmptyForEngram", {
+                  defaultValue: "No media observations recorded for {{name}}",
+                  name: selected.name,
+                })
+              : t("mediaEmpty", { defaultValue: "No media observations recorded yet" })}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {observations.map((entry) => {
+            const assetId = mediaAssetId(entry.source)!;
+            const asset = assetsById.get(assetId);
+            return (
+              <Card key={entry.id} className="bg-card/40 border-cyan-400/20 backdrop-blur-sm" data-testid={`card-media-memory-${entry.id}`}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-[10px] uppercase font-bold text-cyan-300">
+                      {entry.provenance}
+                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground/60">
+                      {new Date(entry.createdAt).toLocaleDateString()}
+                    </span>
+                    <span className="font-mono text-[10px] text-primary ml-auto">
+                      {Math.round(entry.confidence * 100)}%
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground/80 leading-relaxed font-sans">{entry.content}</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-[10px] text-muted-foreground/70 truncate">
+                      {asset?.filename ?? entry.source}
+                    </span>
+                    <Link
+                      href={`/media?asset=${assetId}`}
+                      className="shrink-0 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-cyan-300/80 hover:text-cyan-200"
+                      aria-label={t("openSource", { defaultValue: "Open source asset" })}
+                      data-testid={`link-media-memory-source-${entry.id}`}
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      {t("openSource", { defaultValue: "Open source" })}
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

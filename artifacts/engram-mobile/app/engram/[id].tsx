@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -21,11 +21,22 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetEngramQueryKey,
   getListEngramsQueryKey,
+  getListEngramWorldModelQueryKey,
+  getListMediaQueryKey,
   useListBeliefs,
+  useListEngramWorldModel,
   useListMemories,
+  useListMedia,
   useActivateEngram,
   useGetEngram,
+  type WorldModelEntry,
 } from "@workspace/api-client-react";
+
+function mediaAssetId(source: string | undefined): number | null {
+  if (!source?.startsWith("media:")) return null;
+  const id = Number(source.slice("media:".length));
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
 
 export default function EngramDetailScreen() {
   const { t } = useTranslation("mobile");
@@ -38,6 +49,33 @@ export default function EngramDetailScreen() {
   const { selectedEngramId, setSelectedEngramId } = useEngram();
   const { data: memories } = useListMemories();
   const { data: beliefs } = useListBeliefs();
+  const { data: worldModel } = useListEngramWorldModel(id, {
+    query: {
+      enabled: !Number.isNaN(id),
+      queryKey: getListEngramWorldModelQueryKey(id),
+    },
+  });
+  const { data: mediaAssets } = useListMedia(
+    Number.isNaN(id) ? undefined : { engramId: id },
+    {
+      query: {
+        enabled: !Number.isNaN(id),
+        queryKey: getListMediaQueryKey(Number.isNaN(id) ? undefined : { engramId: id }),
+      },
+    },
+  );
+  const mediaById = useMemo(
+    () => new Map((mediaAssets ?? []).map((asset) => [asset.id, asset])),
+    [mediaAssets],
+  );
+  const mediaObservations = useMemo(
+    () =>
+      (worldModel ?? []).filter(
+        (entry): entry is WorldModelEntry =>
+          entry.provenance === "observed" && mediaAssetId(entry.source) !== null,
+      ),
+    [worldModel],
+  );
 
   const { data: engram, isLoading, isError, refetch } = useGetEngram(id, {
     query: { enabled: !Number.isNaN(id), queryKey: getGetEngramQueryKey(id) },
@@ -228,6 +266,42 @@ export default function EngramDetailScreen() {
             {!memories?.length ? (
               <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
                 {t("detail.noMemory")}
+              </Text>
+            ) : null}
+          </Section>
+
+          <Section label={t("detail.mediaMemory", { defaultValue: "Media observations" })} colors={colors}>
+            {mediaObservations.map((observation) => {
+              const assetId = mediaAssetId(observation.source)!;
+              const asset = mediaById.get(assetId);
+              return (
+                <View key={observation.id} style={styles.dataRow}>
+                  <View style={styles.dataRowTop}>
+                    <Chip label={observation.provenance} tone="success" />
+                    <Text style={[styles.dataMeta, { color: colors.mutedForeground }]}>
+                      {Math.round(observation.confidence * 100)}%
+                    </Text>
+                  </View>
+                  <Text style={[styles.body, { color: colors.foreground }]}>
+                    {observation.content}
+                  </Text>
+                  <PrimaryButton
+                    label={asset?.filename ?? t("detail.openMediaSource", { defaultValue: "Open source asset" })}
+                    tone="outline"
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/media",
+                        params: { asset: String(assetId) },
+                      })
+                    }
+                    style={{ marginTop: 10 }}
+                  />
+                </View>
+              );
+            })}
+            {!mediaObservations.length ? (
+              <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
+                {t("detail.noMediaMemory", { defaultValue: "No media observations are available yet." })}
               </Text>
             ) : null}
           </Section>
