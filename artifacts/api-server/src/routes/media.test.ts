@@ -103,6 +103,32 @@ function makeObservation() {
   };
 }
 
+function isoBox(type: string, payload: Buffer): Buffer {
+  const box = Buffer.alloc(8);
+  box.writeUInt32BE(8 + payload.length, 0);
+  box.write(type, 4, 4, "ascii");
+  return Buffer.concat([box, payload]);
+}
+
+function validMp3(): Buffer {
+  const bytes = Buffer.alloc(417);
+  bytes.set([0xff, 0xfb, 0x90, 0x64]);
+  return bytes;
+}
+
+function validMp4(): Buffer {
+  return Buffer.concat([
+    isoBox("ftyp", Buffer.concat([Buffer.from("isom"), Buffer.alloc(4), Buffer.from("isom")])),
+    isoBox("moov", isoBox("mvhd", Buffer.alloc(4))),
+    isoBox("mdat", Buffer.from([0])),
+  ]);
+}
+
+const validJpeg = Buffer.from(
+  "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYwLjMxLjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABLAAEBAAAAAAAAAAAAAAAAAAAACAEBAAAAAAAAAAAAAAAAAAAAABABAAAAAAAAAAAAAAAAAAAAABEBAAAAAAAAAAAAAAAAAAAAAP/AABEIAAIAAgMBIgACEQADEQD/2gAMAwEAAhEDEQA/AJ/AB//Z",
+  "base64",
+);
+
 // --- HTTP harness --------------------------------------------------------------
 let server: Server;
 let base: string;
@@ -346,7 +372,7 @@ describe("POST /media (upload)", () => {
     form.append("engramId", "3");
     form.append(
       "file",
-      new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0x00])], { type: "image/jpg" }),
+      new Blob([validJpeg], { type: "image/jpg" }),
       "scene.jpg",
     );
     const res = await fetch(`${base}/media`, { method: "POST", body: form });
@@ -409,15 +435,13 @@ describe("POST /media (upload)", () => {
     {
       mime: "audio/mpeg",
       filename: "log.mp3",
-      bytes: new Uint8Array([0x49, 0x44, 0x33, 0x04, 0x00, 0x00]),
+      bytes: validMp3(),
       modality: "audio",
     },
     {
       mime: "video/mp4",
       filename: "clip.mp4",
-      bytes: new Uint8Array([
-        0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d,
-      ]),
+      bytes: validMp4(),
       modality: "video",
     },
   ])("accepts a valid $modality signature", async ({ mime, filename, bytes, modality }) => {
@@ -426,7 +450,7 @@ describe("POST /media (upload)", () => {
     );
     const form = new FormData();
     form.append("engramId", "3");
-    form.append("file", new Blob([bytes], { type: mime }), filename);
+    form.append("file", new Blob([Uint8Array.from(bytes)], { type: mime }), filename);
     const res = await fetch(`${base}/media`, { method: "POST", body: form });
     expect(res.status).toBe(201);
     expect(h.createMediaAsset.mock.calls[0][0]).toMatchObject({ mimeType: mime, modality });
@@ -476,6 +500,37 @@ describe("POST /media (upload)", () => {
       new Blob(["not actually json"], { type: "application/json" }),
       "fake.json",
     );
+    const res = await fetch(`${base}/media`, { method: "POST", body: form });
+    expect(res.status).toBe(415);
+    expect(h.createMediaAsset).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["truncated WAV", "audio/wav", "broken.wav", Buffer.from("RIFF\xff\xff\xff\xffWAVEfmt ")],
+    ["truncated Ogg", "audio/ogg", "broken.ogg", Buffer.from("OggS\x00\x02")],
+    [
+      "truncated WebM",
+      "video/webm",
+      "broken.webm",
+      Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x81, 0x00]),
+    ],
+    [
+      "truncated QuickTime",
+      "video/quicktime",
+      "broken.mov",
+      Buffer.from([0, 0, 0, 16, 0x66, 0x74, 0x79, 0x70, 0x71, 0x74, 0x20, 0x20]),
+    ],
+    [
+      "truncated Matroska",
+      "video/x-matroska",
+      "broken.mkv",
+      Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x81, 0x00]),
+    ],
+    ["truncated JPEG", "image/jpeg", "broken.jpg", Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])],
+  ])("rejects a %s at upload with 415", async (_label, mime, filename, bytes) => {
+    const form = new FormData();
+    form.append("engramId", "3");
+    form.append("file", new Blob([bytes], { type: mime }), filename);
     const res = await fetch(`${base}/media`, { method: "POST", body: form });
     expect(res.status).toBe(415);
     expect(h.createMediaAsset).not.toHaveBeenCalled();
