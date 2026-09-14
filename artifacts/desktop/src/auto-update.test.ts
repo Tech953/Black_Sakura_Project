@@ -99,6 +99,19 @@ describe("setupAutoUpdates", () => {
     expect(harness.stopDesktopWork).not.toHaveBeenCalled();
   });
 
+  it("exposes the ready update installer to the renderer and deduplicates calls", async () => {
+    const harness = createHarness(1);
+
+    harness.updater.emit("update-downloaded", { version: "1.2.3" });
+    await flushPromises();
+    await Promise.all([
+      harness.controller.installDownloadedUpdate(),
+      harness.controller.installDownloadedUpdate(),
+    ]);
+
+    expect(harness.installDownloadedUpdate).toHaveBeenCalledTimes(1);
+  });
+
   it("shows up-to-date and error dialogs only for manual checks", async () => {
     const harness = createHarness(0);
 

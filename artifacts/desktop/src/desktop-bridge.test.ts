@@ -37,6 +37,7 @@ describe("desktop renderer bridge", () => {
       "getAppInfo",
       "getSettings",
       "importGguf",
+      "installDownloadedUpdate",
       "onGgufImportStatus",
       "onOfflineModelStatus",
       "onUpdateStatus",
@@ -87,5 +88,14 @@ describe("desktop renderer bridge", () => {
 
     await expect(bridge.getAppInfo()).resolves.toEqual(appInfo);
     expect(invoke).toHaveBeenCalledWith("app:info");
+  });
+
+  it("routes update installation through the dedicated main-process channel", async () => {
+    const { ipc, invoke } = fakeIpc();
+    const bridge = createEngramDesktopBridge(ipc);
+
+    await bridge.installDownloadedUpdate();
+
+    expect(invoke).toHaveBeenCalledWith("update:install");
   });
 });
