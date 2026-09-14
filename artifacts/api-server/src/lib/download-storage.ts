@@ -26,7 +26,20 @@ export type StoredDesktopDownload = {
   filename: string;
   sizeBytes: number;
   url: string;
+  publishedAt: string | null;
 };
+
+function metadataTimestamp(metadata: {
+  updated?: string | null;
+  timeCreated?: string | null;
+}): string | null {
+  for (const value of [metadata.updated, metadata.timeCreated]) {
+    if (!value) continue;
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date.toISOString();
+  }
+  return null;
+}
 
 function parseObjectPath(rawPath: string): {
   bucketName: string;
@@ -114,6 +127,7 @@ export async function resolveStoredDesktopDownload(): Promise<StoredDesktopDownl
       filename: target.filename,
       sizeBytes,
       url: await signReadUrl(target.bucketName, target.objectName),
+      publishedAt: metadataTimestamp(metadata),
     };
   } catch (error) {
     console.warn("App Storage desktop download lookup failed", error);

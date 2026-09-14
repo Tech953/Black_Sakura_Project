@@ -74,6 +74,7 @@ describe("desktop download routes", () => {
       filename,
       sizeBytes: 2_671_959_069,
       url: signedUrl,
+      publishedAt: "2026-09-09T12:00:00.000Z",
     });
 
     const metadataResponse = await fetch(`${base}/api/download/desktop`);
@@ -82,7 +83,7 @@ describe("desktop download routes", () => {
       available: true,
       source: "storage",
       version: "0.1.0",
-      publishedAt: null,
+      publishedAt: "2026-09-09T12:00:00.000Z",
       releaseNotesUrl:
         "https://github.com/Tech953/route-download-test-1/releases/latest",
       installers: [

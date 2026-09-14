@@ -15,6 +15,7 @@ import {
   downloadsRepo,
   findDesktopInstaller,
   githubReleasesUrl,
+  resolveBundledApk,
   resolveDesktop,
 } from "./downloads";
 
@@ -31,6 +32,7 @@ describe("desktop download resolution", () => {
     delete process.env["ANDROID_APK_DIR"];
     delete process.env["VITE_GITHUB_REPO"];
     delete process.env["DOWNLOADS_GITHUB_REPO"];
+    delete process.env["ANDROID_APK_PATH"];
     fs.rmSync(downloadsDir, { recursive: true, force: true });
     vi.restoreAllMocks();
   });
@@ -52,6 +54,7 @@ describe("desktop download resolution", () => {
       filename,
       sizeBytes: 99,
       url: "https://storage.example/signed",
+      publishedAt: null,
     });
 
     const resolved = await resolveDesktop();
@@ -70,6 +73,7 @@ describe("desktop download resolution", () => {
       filename: "ENGRAM-0.1.0-x64.zip",
       sizeBytes: 2_671_959_069,
       url: "https://storage.example/signed",
+      publishedAt: "2026-09-09T12:00:00.000Z",
     });
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
@@ -79,6 +83,7 @@ describe("desktop download resolution", () => {
     expect(resolved).toMatchObject({
       source: "storage",
       version: "0.1.0",
+      publishedAt: "2026-09-09T12:00:00.000Z",
       installers: [
         {
           os: "win",
@@ -93,6 +98,49 @@ describe("desktop download resolution", () => {
       url: "https://storage.example/signed",
     });
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("uses the newest bundled file timestamp as the release date", async () => {
+    const filename = "ENGRAM-1.2.3-x64.zip";
+    const filePath = path.join(downloadsDir, filename);
+    fs.writeFileSync(filePath, "bundled");
+    fs.utimesSync(
+      filePath,
+      new Date("2026-09-08T12:00:00Z"),
+      new Date("2026-09-10T12:00:00Z"),
+    );
+    resolveStoredDesktopDownload.mockResolvedValue({
+      filename,
+      sizeBytes: 99,
+      url: "https://storage.example/signed",
+      publishedAt: "2026-09-01T12:00:00.000Z",
+    });
+
+    const resolved = await resolveDesktop();
+
+    expect(resolved.source).toBe("bundled");
+    expect(resolved.publishedAt).toBe("2026-09-10T12:00:00.000Z");
+    expect(resolved.installers[0]?.publishedAt).toBe(
+      "2026-09-10T12:00:00.000Z",
+    );
+    expect(resolveStoredDesktopDownload).not.toHaveBeenCalled();
+  });
+
+  it("reports the bundled APK timestamp when it is available", () => {
+    const apkPath = path.join(downloadsDir, "ENGRAM-android-1.2.3.apk");
+    fs.writeFileSync(apkPath, "bundled apk");
+    fs.utimesSync(
+      apkPath,
+      new Date("2026-09-08T12:00:00Z"),
+      new Date("2026-09-10T12:00:00Z"),
+    );
+    process.env["ANDROID_APK_PATH"] = apkPath;
+
+    expect(resolveBundledApk()).toMatchObject({
+      kind: "bundled",
+      version: "1.2.3",
+      publishedAt: "2026-09-10T12:00:00.000Z",
+    });
   });
 
   it("returns the latest release date and matching installer assets", async () => {
