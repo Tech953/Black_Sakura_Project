@@ -514,7 +514,15 @@
     "desktopPromoDismiss": "关闭桌面应用提示",
     "personalityRadar": "人格雷达",
     "radarVizOffline": "雷达可视化离线",
-    "memoryDistribution": "记忆分布"
+    "memoryDistribution": "记忆分布",
+    "recentPerceptionTitle": "Recent Perception",
+    "recentPerceptionSubtitle": "{{name}} · latest media-derived observations",
+    "recentPerceptionNoEngram": "No engram is available",
+    "recentPerceptionObserved": "OBSERVED",
+    "recentPerceptionProcessing": "Media perception is still in progress",
+    "recentPerceptionEmpty": "No media observations recorded yet",
+    "recentPerceptionSourceUnavailable": "Source asset unavailable",
+    "openWorldModel": "Open world model"
   },
   "hub": {
     "title": "枢纽",

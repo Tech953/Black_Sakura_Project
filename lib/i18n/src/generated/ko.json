@@ -514,7 +514,15 @@
     "desktopPromoDismiss": "데스크톱 앱 메시지 닫기",
     "personalityRadar": "성격 레이더",
     "radarVizOffline": "RADAR VIZ 오프라인",
-    "memoryDistribution": "기억 분포"
+    "memoryDistribution": "기억 분포",
+    "recentPerceptionTitle": "Recent Perception",
+    "recentPerceptionSubtitle": "{{name}} · latest media-derived observations",
+    "recentPerceptionNoEngram": "No engram is available",
+    "recentPerceptionObserved": "OBSERVED",
+    "recentPerceptionProcessing": "Media perception is still in progress",
+    "recentPerceptionEmpty": "No media observations recorded yet",
+    "recentPerceptionSourceUnavailable": "Source asset unavailable",
+    "openWorldModel": "Open world model"
   },
   "hub": {
     "title": "THE HUB",
