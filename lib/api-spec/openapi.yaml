@@ -1917,6 +1917,26 @@ components:
       required:
         [syncId, engramSlug, conversationSyncId, content, confidence, createdAt]
 
+    OfflineSyncOperatorReply:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        messageId:
+          type: integer
+          minimum: 1
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        createdAt:
+          type: string
+          format: date-time
+      required: [syncId, messageId, content, createdAt]
+
     OfflineSyncInput:
       type: object
       additionalProperties: false
@@ -1945,8 +1965,20 @@ components:
           maxItems: 100
           items:
             $ref: "#/components/schemas/OfflineSyncObservedEntry"
+        operatorReplies:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncOperatorReply"
       required:
-        [deviceId, conversations, inquiries, transmissions, observedEntries]
+        [
+          deviceId,
+          conversations,
+          inquiries,
+          transmissions,
+          observedEntries,
+          operatorReplies,
+        ]
 
     OfflineSyncCounts:
       type: object
@@ -1961,8 +1993,17 @@ components:
           type: integer
         observedEntries:
           type: integer
+        operatorReplies:
+          type: integer
       required:
-        [conversations, messages, inquiries, transmissions, observedEntries]
+        [
+          conversations,
+          messages,
+          inquiries,
+          transmissions,
+          observedEntries,
+          operatorReplies,
+        ]
 
     OfflineSyncResult:
       type: object

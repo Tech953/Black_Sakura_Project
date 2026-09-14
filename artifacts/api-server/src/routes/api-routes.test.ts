@@ -2967,6 +2967,7 @@ describe("offline mobile history synchronization", () => {
         createdAt: "2026-09-04T12:00:02.000Z",
       },
     ],
+    operatorReplies: [],
   };
 
   const postSync = (body: unknown) =>
@@ -3111,6 +3112,73 @@ describe("offline mobile history synchronization", () => {
     expect(h.store.conversations).toHaveLength(0);
     expect(h.store.messages).toHaveLength(0);
     expect(h.store.mobileOfflineSyncReceiptsTable).toHaveLength(0);
+  });
+
+  it("imports operator replies with the same audit shape and receipt idempotency", async () => {
+    const engram = seedEngram({ name: "Offline Responder" });
+    h.store.engramMessagesTable.push({
+      id: 1,
+      fromEngramId: engram.id,
+      toEngramId: null,
+      spaceId: null,
+      channel: "human",
+      author: "engram",
+      priority: "meaningful",
+      status: "delivered",
+      content: "Can you hear me offline?",
+      reason: null,
+      seen: true,
+      isDigest: false,
+      digestedAt: null,
+      deliveredAt: new Date("2026-09-13T12:00:00.000Z"),
+      createdAt: new Date("2026-09-13T12:00:00.000Z"),
+    });
+
+    const replyPayload = {
+      deviceId: "phone-reply",
+      conversations: [],
+      inquiries: [],
+      transmissions: [],
+      observedEntries: [],
+      operatorReplies: [
+        {
+          syncId: "operator-reply:1",
+          messageId: 1,
+          content: "I can hear you.",
+          createdAt: "2026-09-13T12:00:01.000Z",
+        },
+      ],
+    };
+    const first = await postSync(replyPayload);
+    expect(first.status).toBe(200);
+    expect(await first.json()).toMatchObject({
+      syncedIds: ["operator-reply:1"],
+      imported: { operatorReplies: 1 },
+    });
+    expect(h.store.engramMessagesTable).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fromEngramId: engram.id,
+          toEngramId: engram.id,
+          channel: "human",
+          author: "operator",
+          priority: "meaningful",
+          status: "delivered",
+          content: "I can hear you.",
+          reason: "Operator reply to message 1",
+          seen: true,
+          isDigest: false,
+        }),
+      ]),
+    );
+
+    const retry = await postSync(replyPayload);
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toMatchObject({
+      syncedIds: ["operator-reply:1"],
+      imported: { operatorReplies: 0 },
+    });
+    expect(h.store.engramMessagesTable).toHaveLength(2);
   });
 
   it("rejects more than 100 messages across the whole batch", async () => {

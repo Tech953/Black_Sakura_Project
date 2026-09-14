@@ -28,3 +28,9 @@ Keep the exact UTF-8 JSON body comfortably below the server parser ceiling and d
 **Why:** Schema-valid record counts can still exceed transport limits, causing a permanent retry loop. Clearing caches before acknowledgement also hides local history while the server is still incomplete.
 
 **How to apply:** Enforce one serialized-byte budget across all record categories, retry on reconnect/foreground while work remains, and preserve local state on every failure or partial acknowledgement.
+
+Operator replies from offline mode are a separate durable outbox record, not ordinary local chat history. They target a cached, owner-authenticated human message and reconcile through the same receipt ledger before being marked synced.
+
+**Why:** Treating an operator reply as a normal chat row would lose the human-channel audit shape and could let a stale or cross-account message become a reply target.
+
+**How to apply:** Cache authenticated human messages, validate the target locally and again inside the server transaction, preserve the operator audit fields, and expose pending replies until their sync receipt is acknowledged.

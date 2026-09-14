@@ -12,4 +12,5 @@ export interface OfflineSyncCounts {
   inquiries: number;
   transmissions: number;
   observedEntries: number;
+  operatorReplies: number;
 }

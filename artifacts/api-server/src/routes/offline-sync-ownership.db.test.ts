@@ -47,6 +47,7 @@ const payload: OfflineSyncInput = {
   inquiries: [],
   transmissions: [],
   observedEntries: [],
+  operatorReplies: [],
 };
 
 function postAs(ownerId: string, body = payload) {

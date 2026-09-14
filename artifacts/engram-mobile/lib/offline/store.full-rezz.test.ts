@@ -172,6 +172,7 @@ describe("mobile Full Rezz archive", () => {
         inquiries: [],
         transmissions: [],
         observedEntries: [],
+        operatorReplies: [],
       },
     });
 
@@ -234,6 +235,7 @@ describe("mobile Full Rezz archive", () => {
         inquiryIds: [1],
         transmissions: [{ id: 1, syncVersion: 0 }],
         observedEntryIds: [1],
+        operatorReplyIds: [],
       },
     });
     const syncUpdates = database.runAsync.mock.calls.filter(([sql]) =>

@@ -181,6 +181,22 @@ export interface OfflineSyncObservedEntry {
   createdAt: string;
 }
 
+export interface OfflineSyncOperatorReply {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /** @minimum 1 */
+  messageId: number;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  content: string;
+  createdAt: string;
+}
+
 export interface OfflineSyncInput {
   /**
      * @minLength 1
@@ -195,6 +211,8 @@ export interface OfflineSyncInput {
   transmissions: OfflineSyncTransmission[];
   /** @maxItems 100 */
   observedEntries: OfflineSyncObservedEntry[];
+  /** @maxItems 100 */
+  operatorReplies: OfflineSyncOperatorReply[];
 }
 
 export interface OfflineSyncCounts {
@@ -203,6 +221,7 @@ export interface OfflineSyncCounts {
   inquiries: number;
   transmissions: number;
   observedEntries: number;
+  operatorReplies: number;
 }
 
 export interface OfflineSyncResult {
