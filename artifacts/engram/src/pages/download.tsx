@@ -16,13 +16,17 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-// GitHub Releases URL used ONLY for the external "release notes" link; the
-// actual downloads are served same-origin by this app's API (see below), so
-// the browser never calls the GitHub API directly. The fallback is the public
-// repository that currently hosts ENGRAM's installers.
-const RELEASES_PAGE =
-  (import.meta.env.VITE_DESKTOP_RELEASES_URL as string | undefined)?.trim() ||
-  "https://github.com/Tech953/Ch-IO/releases/latest";
+// Fallback only: the API metadata response supplies its effective release
+// repository so this link cannot drift from same-origin installer resolution.
+const GITHUB_REPO_RE = /^[\w.-]+\/[\w.-]+$/;
+const configuredReleaseRepo = (
+  import.meta.env.VITE_GITHUB_REPO as string | undefined
+)?.trim();
+const RELEASE_REPO =
+  configuredReleaseRepo && GITHUB_REPO_RE.test(configuredReleaseRepo)
+    ? configuredReleaseRepo
+    : "Tech953/Ch-IO";
+const RELEASES_PAGE = `https://github.com/${RELEASE_REPO}/releases/latest`;
 
 // Same-origin download endpoints served by this app's API
 // (artifacts/api-server routes/download.ts). Each meta endpoint reports
@@ -49,6 +53,7 @@ type DesktopMeta = {
   source: "bundled" | "github" | null;
   version: string | null;
   publishedAt: string | null;
+  releaseNotesUrl?: string;
   installers: DesktopInstaller[];
 };
 
@@ -60,6 +65,7 @@ type AndroidMeta = {
   sizeBytes: number | null;
   publishedAt: string | null;
   downloadPath: string | null;
+  releaseNotesUrl?: string;
 };
 
 type DownloadLink = {
@@ -212,6 +218,10 @@ export default function DownloadPage() {
   const version = desktopQuery.data?.version ?? android?.version ?? null;
   const publishedAt =
     desktopQuery.data?.publishedAt ?? android?.publishedAt ?? null;
+  const releaseNotesPage =
+    desktopQuery.data?.releaseNotesUrl ??
+    android?.releaseNotesUrl ??
+    RELEASES_PAGE;
   const releaseDate = formatReleaseDate(publishedAt);
 
   const orderedOs = useMemo(
@@ -369,7 +379,7 @@ export default function DownloadPage() {
               </p>
             )}
             <a
-              href={RELEASES_PAGE}
+              href={releaseNotesPage}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 border border-primary/40 text-primary font-mono text-xs uppercase tracking-widest hover:bg-primary/10 transition-colors"
@@ -440,7 +450,7 @@ export default function DownloadPage() {
           {t("servedNote")}
         </p>
         <a
-          href={RELEASES_PAGE}
+          href={releaseNotesPage}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-2 text-xs font-mono text-primary/80 hover:text-primary uppercase tracking-widest transition-colors"

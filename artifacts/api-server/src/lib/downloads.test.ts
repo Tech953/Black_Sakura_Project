@@ -11,7 +11,12 @@ vi.mock("./download-storage", () => ({
   resolveStoredDesktopDownload,
 }));
 
-import { findDesktopInstaller, resolveDesktop } from "./downloads";
+import {
+  downloadsRepo,
+  findDesktopInstaller,
+  githubReleasesUrl,
+  resolveDesktop,
+} from "./downloads";
 
 describe("desktop download resolution", () => {
   let downloadsDir: string;
@@ -24,8 +29,20 @@ describe("desktop download resolution", () => {
 
   afterEach(() => {
     delete process.env["ANDROID_APK_DIR"];
+    delete process.env["VITE_GITHUB_REPO"];
+    delete process.env["DOWNLOADS_GITHUB_REPO"];
     fs.rmSync(downloadsDir, { recursive: true, force: true });
     vi.restoreAllMocks();
+  });
+
+  it("uses the shared web/API repository setting for release fallbacks", () => {
+    process.env["VITE_GITHUB_REPO"] = "Example/engram-releases";
+    process.env["DOWNLOADS_GITHUB_REPO"] = "Legacy/api-only-releases";
+
+    expect(downloadsRepo()).toBe("Example/engram-releases");
+    expect(githubReleasesUrl()).toBe(
+      "https://github.com/Example/engram-releases/releases/latest",
+    );
   });
 
   it("prefers a bundled installer over App Storage", async () => {
