@@ -66,6 +66,10 @@ import type {
 } from "./desktop-bridge";
 import { setupAutoUpdates as setupAutoUpdateFlow } from "./auto-update";
 import { createAppInfo, createUpdateStatusStore } from "./update-status";
+import {
+  appendBoundedDiagnostic,
+  sanitizeDiagnosticText,
+} from "./smoke-diagnostics";
 
 // ---------------------------------------------------------------------------
 // Paths. In a packaged app, bundled resources live under process.resourcesPath
@@ -125,6 +129,50 @@ const packagedSmokeGguf = packagedSmokeEnabled
   : undefined;
 const packagedSmokeUsesRealRuntime =
   packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1";
+
+const smokeDiagnosticsDir = process.env.ENGRAM_SMOKE_DIAGNOSTICS_DIR;
+const smokeDiagnosticSecretValues = Object.entries(process.env)
+  .filter(
+    ([name, value]) =>
+      Boolean(value) &&
+      /(?:API_KEY|TOKEN|SECRET|PASSWORD|PRIVATE_KEY|CREDENTIAL)/i.test(name),
+  )
+  .map(([, value]) => value!)
+  .filter((value) => value.length >= 4);
+
+function sanitizeSmokeDiagnostic(value: string): string {
+  const replacements: Array<[string, string]> = [
+    [process.env.GITHUB_WORKSPACE ?? "", "<workspace>"],
+    [path.resolve(process.cwd()), "<workspace>"],
+    [process.resourcesPath, "<resources>"],
+    [os.tmpdir(), "<tmp>"],
+    [os.homedir(), "<home>"],
+  ];
+  try {
+    replacements.push([app.getPath("userData"), "<user-data>"]);
+  } catch {
+    // Electron may not expose userData until the app is ready.
+  }
+  return sanitizeDiagnosticText(
+    value,
+    replacements,
+    smokeDiagnosticSecretValues,
+  );
+}
+
+function appendSmokeDiagnostic(filename: string, value: string): void {
+  if (!smokeDiagnosticsDir || !/^[a-z0-9._-]+$/i.test(filename)) return;
+  try {
+    appendBoundedDiagnostic(
+      path.join(smokeDiagnosticsDir, filename),
+      sanitizeSmokeDiagnostic(value),
+    );
+  } catch {
+    // Diagnostics must never prevent the packaged app from starting.
+  }
+}
+
+appendSmokeDiagnostic("main.log", "desktop main process initialized\n");
 
 function bundledModelAvailable(): boolean {
   const spec = offlineModelSpec();
@@ -692,11 +740,15 @@ async function startLlama(settings: Settings): Promise<void> {
   llamaProcess = proc;
   let startupStderr = "";
   proc.stdout?.on("data", (chunk: Buffer) => {
-    process.stdout.write(`[llama] ${chunk.toString()}`);
+    const output = sanitizeSmokeDiagnostic(chunk.toString());
+    appendSmokeDiagnostic("llama.stdout.log", output);
+    process.stdout.write(`[llama] ${output}`);
   });
   proc.stderr?.on("data", (chunk: Buffer) => {
-    startupStderr = `${startupStderr}${chunk.toString()}`.slice(-12_000);
-    process.stderr.write(`[llama] ${chunk.toString()}`);
+    const output = sanitizeSmokeDiagnostic(chunk.toString());
+    startupStderr = `${startupStderr}${output}`.slice(-12_000);
+    appendSmokeDiagnostic("llama.stderr.log", output);
+    process.stderr.write(`[llama] ${output}`);
   });
   const startupError = (message: string): Error => {
     const failure = localModelFailureFromError(
@@ -718,7 +770,13 @@ async function startLlama(settings: Settings): Promise<void> {
       }
       if (!settled) {
         settled = true;
-        reject(startupError(`Local model server failed to start: ${err.message}`));
+        appendSmokeDiagnostic(
+          "main.log",
+          `llama spawn error: ${sanitizeSmokeDiagnostic(err.message)}\n`,
+        );
+        reject(
+          startupError(`Local model server failed to start: ${err.message}`),
+        );
       }
     });
     proc.on("exit", (code, signal) => {
@@ -728,12 +786,20 @@ async function startLlama(settings: Settings): Promise<void> {
       }
       if (!settled) {
         settled = true;
+        appendSmokeDiagnostic(
+          "main.log",
+          `llama exited before health: code=${code}, signal=${signal}\n`,
+        );
         reject(
           startupError(
             `Local model server exited before becoming ready (code=${code}, signal=${signal}).`,
           ),
         );
       } else if (!quitting) {
+        appendSmokeDiagnostic(
+          "main.log",
+          `llama exited unexpectedly: code=${code}, signal=${signal}\n`,
+        );
         // eslint-disable-next-line no-console
         console.error(
           `[desktop] bundled model server exited unexpectedly (code=${code}, signal=${signal}).`,
@@ -752,7 +818,11 @@ async function startLlama(settings: Settings): Promise<void> {
     settled = true;
     await stopLlama();
     if (localModelFailureOn(err)) throw err;
-    const failure = localModelFailureFromError(err, process.platform, startupStderr);
+    const failure = localModelFailureFromError(
+      err,
+      process.platform,
+      startupStderr,
+    );
     throw attachLocalModelFailure(err, failure);
   }
 }
@@ -769,6 +839,10 @@ async function startServer(
   settings = loadSettings(),
   options: { strictLocalModel?: boolean } = {},
 ): Promise<void> {
+  appendSmokeDiagnostic(
+    "main.log",
+    `starting embedded server; entry=${serverEntry}, resources=${resourcesDir}\n`,
+  );
   if (!existsSync(serverEntry)) {
     throw new Error(
       `Server bundle not found at ${serverEntry}. Run the desktop build (pnpm --filter @workspace/desktop run build) first.`,
@@ -803,7 +877,7 @@ async function startServer(
       // eslint-disable-next-line no-console
       console.error(
         "[desktop] local model unavailable, falling back:",
-        failureError,
+        sanitizeSmokeDiagnostic(errorMessage(failureError)),
       );
       if (options.strictLocalModel) throw failureError;
     }
@@ -818,25 +892,39 @@ async function startServer(
   let startupStderr = "";
   let startupSettled = false;
   const rememberStartupStderr = (chunk: Buffer): void => {
-    startupStderr = `${startupStderr}${chunk.toString()}`.slice(-12_000);
+    const output = sanitizeSmokeDiagnostic(chunk.toString());
+    startupStderr = `${startupStderr}${output}`.slice(-12_000);
+    appendSmokeDiagnostic("server.stderr.log", output);
   };
   serverProcess.stdout?.on("data", (chunk: Buffer) => {
-    process.stdout.write(`[server] ${chunk.toString()}`);
+    const output = sanitizeSmokeDiagnostic(chunk.toString());
+    appendSmokeDiagnostic("server.stdout.log", output);
+    process.stdout.write(`[server] ${output}`);
   });
   serverProcess.stderr?.on("data", (chunk: Buffer) => {
     rememberStartupStderr(chunk);
-    process.stderr.write(`[server] ${chunk.toString()}`);
+    process.stderr.write(
+      `[server] ${sanitizeSmokeDiagnostic(chunk.toString())}`,
+    );
   });
   const serverFailure = new Promise<never>((_, reject) => {
     serverProcess?.on("error", (error) => {
       if (startupSettled) return;
       startupSettled = true;
+      appendSmokeDiagnostic(
+        "main.log",
+        `embedded server spawn error: ${error.message}\n`,
+      );
       reject(new Error(`Embedded server failed to start: ${error.message}`));
     });
     serverProcess?.on("exit", (code, signal) => {
       if (serverProcess) serverProcess = null;
       if (startupSettled) {
         if (!quitting) {
+          appendSmokeDiagnostic(
+            "main.log",
+            `embedded server exited unexpectedly: code=${code}, signal=${signal}\n`,
+          );
           // eslint-disable-next-line no-console
           console.error(
             `[desktop] server process exited unexpectedly (code=${code}, signal=${signal}).`,
@@ -845,6 +933,10 @@ async function startServer(
         return;
       }
       startupSettled = true;
+      appendSmokeDiagnostic(
+        "main.log",
+        `embedded server exited before health: code=${code}, signal=${signal}\n`,
+      );
       const details = startupStderr.trim()
         ? `\n\nServer output:\n${startupStderr.trim()}`
         : "";
@@ -873,6 +965,10 @@ async function startServer(
     }
   } catch (error) {
     startupSettled = true;
+    appendSmokeDiagnostic(
+      "main.log",
+      `embedded server health/startup failure: ${errorMessage(error)}\n`,
+    );
     await stopServer();
     throw error;
   }
@@ -1001,7 +1097,9 @@ async function getCustomModelView(
 
 async function getCustomModelViews(settings: Settings) {
   return Promise.all(
-    customModelsFor(settings).map((model) => getCustomModelView(settings, model)),
+    customModelsFor(settings).map((model) =>
+      getCustomModelView(settings, model),
+    ),
   );
 }
 
@@ -1156,9 +1254,7 @@ async function runGgufImport(
     const importedModel = existing ?? markCustomModelUsed(imported);
     const customModels = existing
       ? customModelsFor(previous).map((model) =>
-          model.sha256 === existing.sha256
-            ? markCustomModelUsed(model)
-            : model,
+          model.sha256 === existing.sha256 ? markCustomModelUsed(model) : model,
         )
       : [...customModelsFor(previous), importedModel];
     const candidate: Settings = {
@@ -1565,11 +1661,7 @@ ipcMain.handle("gguf:activate", async (_event, sha256: unknown) => {
     );
     await activateDesktopSettings(
       previous,
-      withCustomModels(
-        { ...previous, mode: "custom" },
-        customModels,
-        model,
-      ),
+      withCustomModels({ ...previous, mode: "custom" }, customModels, model),
     );
     return { ok: true };
   } catch (error) {
@@ -1617,10 +1709,7 @@ ipcMain.handle("gguf:remove", async (_event, sha256?: unknown) => {
       throw new Error("Wait for the GGUF import to finish or cancel it first.");
     }
     const previous = loadSettings();
-    const model = findCustomModel(
-      previous,
-      sha256 ?? previous.custom?.sha256,
-    );
+    const model = findCustomModel(previous, sha256 ?? previous.custom?.sha256);
     const remaining = customModelsFor(previous).filter(
       (candidate) => candidate.sha256 !== model.sha256,
     );
