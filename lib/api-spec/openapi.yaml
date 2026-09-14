@@ -3743,6 +3743,10 @@ components:
           type: ["string", "null"]
         error:
           type: ["string", "null"]
+        failureKind:
+          type: ["string", "null"]
+          description: Why a failed media job needs operator attention, when a known recovery path applies.
+          enum: [recovered, null]
         observationCount:
           type: integer
         startedAt:
@@ -3767,6 +3771,7 @@ components:
         - commentary
         - transcript
         - error
+        - failureKind
         - observationCount
         - startedAt
         - completedAt

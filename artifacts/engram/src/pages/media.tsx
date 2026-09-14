@@ -301,6 +301,7 @@ function MediaCard({
   const status = STATUS_META[asset.status] ?? STATUS_META.pending;
   const Icon = MODALITY_ICON[asset.modality] ?? FileText;
   const active = asset.status === "pending" || asset.status === "processing";
+  const recovered = asset.failureKind === "recovered";
 
   const { data: detail } = useGetMediaAsset(asset.id, {
     query: {
@@ -401,14 +402,25 @@ function MediaCard({
         {asset.status === "failed" && asset.error && (
           <div className="border border-rose-500/25 bg-rose-500/[0.04] p-3 space-y-1">
             <p className="font-mono text-[10px] uppercase tracking-wider text-rose-400/80 flex items-center gap-1.5">
-              <AlertTriangle className="w-3 h-3" /> {t("perceptionFailed")}
+              <AlertTriangle className="w-3 h-3" /> {recovered ? t("recoveredTitle") : t("perceptionFailed")}
             </p>
-            <p className="text-xs font-mono text-rose-300/70 break-words">{asset.error}</p>
-            <p className="text-xs font-sans text-rose-200/70">
-              {asset.resultState === "partial"
-                ? t("partialResultSaved", { count: asset.observationCount })
-                : t("noResultSaved")}
-            </p>
+            {recovered ? (
+              <>
+                <p className="text-xs font-sans text-rose-200/80" data-testid={`media-recovery-notice-${asset.id}`}>
+                  {t("recoveredBody")}
+                </p>
+                <p className="text-xs font-sans text-rose-200/70">{t("recoveredRetry")}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-mono text-rose-300/70 break-words">{asset.error}</p>
+                <p className="text-xs font-sans text-rose-200/70">
+                  {asset.resultState === "partial"
+                    ? t("partialResultSaved", { count: asset.observationCount })
+                    : t("noResultSaved")}
+                </p>
+              </>
+            )}
           </div>
         )}
 

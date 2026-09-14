@@ -155,6 +155,22 @@ const fixtureScript = String.raw`
     completedAt: null,
     updatedAt: "2026-09-12T12:11:00.000Z"
   };
+  const recoveredMediaAsset = {
+    ...mediaAsset,
+    id: 504,
+    filename: "recovered-note.txt",
+    status: "failed",
+    resultState: "none",
+    summary: null,
+    commentary: null,
+    error: "Processing timed out and was recovered.",
+    failureKind: "recovered",
+    observationCount: 0,
+    startedAt: "2026-09-12T12:12:00.000Z",
+    completedAt: null,
+    createdAt: "2026-09-12T12:12:00.000Z",
+    updatedAt: "2026-09-12T12:17:00.000Z"
+  };
   const mediaObservations = [{
     id: 601,
     mediaAssetId: 501,
@@ -277,10 +293,13 @@ const fixtureScript = String.raw`
       return response(worldModelEntries);
     }
     if (pathname === "/api/media" && method === "GET") {
-      return response([mediaAsset, processingMediaAsset]);
+      return response([mediaAsset, processingMediaAsset, recoveredMediaAsset]);
     }
     if (pathname === "/api/media/501" && method === "GET") {
       return response({ asset: mediaAsset, observations: mediaObservations });
+    }
+    if (pathname === "/api/media/504" && method === "GET") {
+      return response({ asset: recoveredMediaAsset, observations: [] });
     }
     if (pathname === "/api/simulations" && method === "GET") {
       return response(simulations);
@@ -508,6 +527,11 @@ try {
   await waitFor("document.querySelector('[data-testid=\"media-501\"]')?.getAttribute('data-focused') === 'true'", "focused media asset");
   await waitFor("Boolean(document.querySelector('[data-testid=\"media-detail-501\"]'))", "expanded media asset");
   await waitForText("harbor-note.txt", "expanded media filename");
+
+  await devtools.call("Page.navigate", { url: `${appUrl}/media?asset=504` });
+  await waitFor("Boolean(document.querySelector('[data-testid=\"media-recovery-notice-504\"]'))", "recovered media notice");
+  await waitForText("No completed partial result was committed.", "recovered media explanation");
+  await waitForText("without creating duplicates.", "recovered retry guidance");
 
   await devtools.call("Page.navigate", { url: `${appUrl}/dashboard` });
   await waitForText("Recent Perception", "recent perception card");

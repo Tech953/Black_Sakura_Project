@@ -5,6 +5,7 @@
  * ENGRAM AI Persona Framework API
  * OpenAPI spec version: 0.1.0
  */
+import type { MediaAssetFailureKind } from './mediaAssetFailureKind';
 import type { MediaAssetModality } from './mediaAssetModality';
 import type { MediaAssetResultState } from './mediaAssetResultState';
 import type { MediaAssetStatus } from './mediaAssetStatus';
@@ -30,6 +31,11 @@ export interface MediaAsset {
   transcript: string | null;
   /** @nullable */
   error: string | null;
+  /**
+     * Why a failed media job needs operator attention, when a known recovery path applies.
+     * @nullable
+     */
+  failureKind: MediaAssetFailureKind;
   observationCount: number;
   /** @nullable */
   startedAt: string | null;

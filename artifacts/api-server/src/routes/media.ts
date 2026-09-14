@@ -21,6 +21,7 @@ import {
   loadMediaBlob,
   requeueMediaAsset,
   deleteMediaAsset,
+  MEDIA_RECOVERY_ERROR,
 } from "../lib/media-store";
 import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 import { loadOwnedConversation, loadOwnedEngram } from "../lib/account-bootstrap";
@@ -62,6 +63,7 @@ function serializeAsset(a: MediaAsset) {
     commentary: a.commentary ?? null,
     transcript: a.transcript ?? null,
     error: a.error ?? null,
+    failureKind: a.error === MEDIA_RECOVERY_ERROR ? "recovered" : null,
     observationCount: a.observationCount,
     startedAt: a.startedAt ? a.startedAt.toISOString() : null,
     completedAt: a.completedAt ? a.completedAt.toISOString() : null,
