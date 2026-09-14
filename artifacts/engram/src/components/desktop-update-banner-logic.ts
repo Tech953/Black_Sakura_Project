@@ -7,28 +7,42 @@ export type DesktopUpdateStatus =
   | { state: "downloaded"; version?: string }
   | { state: "error"; message: string };
 
+export type DesktopUpdateCopy = {
+  checking: string;
+  availableWithVersion: string;
+  available: string;
+  downloading: string;
+  downloaded: string;
+  error: string;
+  upToDate: string;
+};
+
 export function clampProgress(percent: number): number {
   return Math.max(0, Math.min(100, Math.round(percent)));
 }
 
-export function statusText(status: DesktopUpdateStatus): string {
+export function statusText(
+  status: DesktopUpdateStatus,
+  copy: DesktopUpdateCopy,
+): string {
   switch (status.state) {
     case "checking":
-      return "Checking for updates…";
+      return copy.checking;
     case "available":
       return status.version
-        ? `Update ${status.version} available — downloading…`
-        : "Update available — downloading…";
+        ? copy.availableWithVersion.replace("{{version}}", status.version)
+        : copy.available;
     case "downloading":
-      return `Downloading update… ${clampProgress(status.percent)}%`;
+      return copy.downloading.replace(
+        "{{percent}}",
+        String(clampProgress(status.percent)),
+      );
     case "downloaded":
-      return status.version
-        ? `Update ${status.version} ready to install`
-        : "Update ready to install";
+      return copy.downloaded;
     case "not-available":
-      return "ENGRAM is up to date";
+      return copy.upToDate;
     case "error":
-      return "Update check failed";
+      return copy.error;
     default:
       return "";
   }

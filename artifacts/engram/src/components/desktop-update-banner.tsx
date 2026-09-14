@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
   CheckCircle2,
@@ -9,6 +10,7 @@ import {
 import {
   clampProgress,
   statusText,
+  type DesktopUpdateCopy,
   type DesktopUpdateStatus,
 } from "./desktop-update-banner-logic";
 
@@ -25,6 +27,7 @@ function desktopBridge(): DesktopBridge | undefined {
 }
 
 export default function DesktopUpdateBanner() {
+  const { t } = useTranslation("settings");
   const [status, setStatus] = useState<DesktopUpdateStatus>({ state: "idle" });
   const [dismissed, setDismissed] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -80,6 +83,15 @@ export default function DesktopUpdateBanner() {
     status.state === "available" || status.state === "downloading";
   const isDownloading = status.state === "downloading";
   const percent = isDownloading ? clampProgress(status.percent) : 0;
+  const updateCopy: DesktopUpdateCopy = {
+    checking: t("update.checking"),
+    availableWithVersion: t("update.availableWithVersion"),
+    available: t("update.available"),
+    downloading: t("update.downloading"),
+    downloaded: t("update.downloaded"),
+    error: t("update.error"),
+    upToDate: t("update.upToDate"),
+  };
   const dismissNotice = (): void => {
     setDismissed(true);
     const target = returnFocusRef.current;
@@ -167,7 +179,7 @@ export default function DesktopUpdateBanner() {
             aria-atomic="true"
             aria-describedby={isError ? "desktop-update-error" : undefined}
           >
-            {statusText(status)}
+            {statusText(status, updateCopy)}
           </p>
           {isError && (
             <>
