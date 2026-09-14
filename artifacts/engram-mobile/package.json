@@ -10,6 +10,7 @@
     "test": "node scripts/check-font-bundle-budget.mjs && vitest run lib && node --test scripts/release-preflight.test.mjs",
     "test:e2e:history": "node scripts/history-e2e.mjs",
     "smoke:exports": "node scripts/export-device-smoke.mjs",
+    "smoke:media": "node scripts/media-device-smoke.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:font-budget": "node scripts/check-font-bundle-budget.mjs",
     "smoke:gguf": "node scripts/gguf-device-smoke.mjs",
