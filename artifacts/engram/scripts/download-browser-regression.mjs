@@ -24,6 +24,7 @@ if (!chromiumPath) {
   );
 }
 
+
 const chrome = spawn(
   chromiumPath,
   [
@@ -234,7 +235,7 @@ try {
     };
   })()`);
 
-  if (!/latest\s*v9\.8\.7/i.test(populated.body)) {
+  if (!/latest[\s\u00a0]*v9\.8\.7/i.test(populated.body)) {
     throw new Error(`Version badge was not rendered: ${populated.body}`);
   }
   if (!populated.body.includes("Published Jan 2, 2026")) {
@@ -256,10 +257,7 @@ try {
     const expectedHref = asset.endsWith(".apk")
       ? "/api/download/android.apk"
       : `/api/download/desktop/${asset}`;
-    if (
-      !link ||
-      link.href !== expectedHref
-    ) {
+    if (!link || link.href !== expectedHref) {
       throw new Error(
         `Installer target mismatch for ${asset}: ${JSON.stringify(link)}`,
       );

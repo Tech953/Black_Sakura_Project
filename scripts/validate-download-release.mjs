@@ -6,6 +6,8 @@ export const GITHUB_REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const PLACEHOLDER_PART_RE =
   /^(?:your|owner|org|organization|repo|repository|example|sample|placeholder|changeme)(?:[-_.].*)?$/i;
 const SKIP_NETWORK_ENV = "ENGRAM_RELEASE_CHECK_SKIP_NETWORK";
+const MAX_ATTEMPTS = 3;
+const INITIAL_RETRY_DELAY_MS = 100;
 
 function isCiEnvironment(env) {
   return env.CI === "1" || env.CI === "true" || env.GITHUB_ACTIONS === "true";
@@ -33,9 +35,19 @@ export function releaseUrlForRepo(repo) {
   return `https://github.com/${repo}/releases/latest`;
 }
 
+function isRetryableStatus(status) {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function retryDelayMs(attempt) {
+  return INITIAL_RETRY_DELAY_MS * 2 ** (attempt - 1);
+}
+
 export async function validateDownloadRelease({
   env = process.env,
   fetchImpl = globalThis.fetch,
+  sleepImpl = (delay) => new Promise((resolve) => setTimeout(resolve, delay)),
+  retryDelay = retryDelayMs,
 } = {}) {
   const repo = resolveReleaseRepo(env);
   const releaseUrl = releaseUrlForRepo(repo);
@@ -57,33 +69,54 @@ export async function validateDownloadRelease({
     );
   }
 
-  let response;
-  try {
-    response = await fetchImpl(releaseUrl, {
-      redirect: "manual",
-      headers: {
-        Accept: "text/html",
-        "User-Agent": "engram-release-link-validation",
-      },
-    });
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    let response;
+    try {
+      response = await fetchImpl(releaseUrl, {
+        redirect: "manual",
+        headers: {
+          Accept: "text/html",
+          "User-Agent": "engram-release-link-validation",
+        },
+      });
+    } catch (error) {
+      if (attempt < MAX_ATTEMPTS) {
+        await sleepImpl(retryDelay(attempt));
+        continue;
+      }
+
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `GitHub release URL is unreachable (${releaseUrl}): ${detail}`,
+      );
+    }
+
+    if (response.status >= 200 && response.status < 400) {
+      return {
+        repo,
+        releaseUrl,
+        networkChecked: true,
+        status: response.status,
+      };
+    }
+
+    if (response.status === 404) {
+      throw new Error(
+        `GitHub release URL check failed for ${releaseUrl}. The repository or its latest release was not found.`,
+      );
+    }
+
+    if (isRetryableStatus(response.status) && attempt < MAX_ATTEMPTS) {
+      await sleepImpl(retryDelay(attempt));
+      continue;
+    }
+
     throw new Error(
-      `GitHub release URL is unreachable (${releaseUrl}): ${detail}`,
+      `GitHub release URL check failed for ${releaseUrl}. GitHub returned HTTP ${response.status}.`,
     );
   }
 
-  if (response.status < 200 || response.status >= 400) {
-    const missing =
-      response.status === 404
-        ? "The repository or its latest release was not found."
-        : `GitHub returned HTTP ${response.status}.`;
-    throw new Error(
-      `GitHub release URL check failed for ${releaseUrl}. ${missing}`,
-    );
-  }
-
-  return { repo, releaseUrl, networkChecked: true, status: response.status };
+  throw new Error(`GitHub release URL check failed for ${releaseUrl}.`);
 }
 
 async function main() {
