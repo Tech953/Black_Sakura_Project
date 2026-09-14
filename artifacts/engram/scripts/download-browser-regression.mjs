@@ -274,6 +274,72 @@ try {
     );
   }
 
+  const installGuide = await devtools.evaluate(`Array.from(
+    document.querySelectorAll("details")
+  ).map((detail) => ({
+    summary: detail.querySelector("summary")?.textContent?.trim() ?? "",
+    paragraphs: Array.from(detail.querySelectorAll("p")).map((paragraph) => ({
+      label: paragraph.querySelector("strong")?.textContent?.trim() ?? "",
+      text: paragraph.textContent?.trim() ?? ""
+    }))
+  }))`);
+  if (installGuide.length !== 4) {
+    throw new Error(
+      `Expected one install guide section per platform: ${JSON.stringify(installGuide)}`,
+    );
+  }
+
+  const guideRequirements = [
+    {
+      platform: "macos",
+      required: ["right-click", "choose open", "gatekeeper"],
+    },
+    {
+      platform: "windows",
+      required: ["more info", "run anyway", "smartscreen"],
+    },
+    {
+      platform: "linux",
+      required: ["chmod +x", "fuse", ".deb"],
+    },
+    {
+      platform: "android",
+      required: ["sideload"],
+    },
+  ];
+  for (const requirement of guideRequirements) {
+    const section = installGuide.find((candidate) =>
+      candidate.summary.toLowerCase().includes(requirement.platform),
+    );
+    if (!section) {
+      throw new Error(
+        `Missing ${requirement.platform} install guidance: ${JSON.stringify(installGuide)}`,
+      );
+    }
+    const labels = section.paragraphs.map((paragraph) =>
+      paragraph.label.toLowerCase(),
+    );
+    if (
+      section.paragraphs.length !== 2 ||
+      !labels.includes("how to install:") ||
+      !labels.includes("system requirements:")
+    ) {
+      throw new Error(
+        `Expected install and requirements paragraphs for ${requirement.platform}: ${JSON.stringify(section)}`,
+      );
+    }
+    const sectionText = section.paragraphs
+      .map((paragraph) => paragraph.text.toLowerCase())
+      .join(" ");
+    for (const phrase of requirement.required) {
+      if (!sectionText.includes(phrase)) {
+        throw new Error(
+          `Missing ${requirement.platform} safety guidance "${phrase}": ${JSON.stringify(section)}`,
+        );
+      }
+    }
+  }
+
   await devtools.call("Page.navigate", { url: `${appUrl}/download?failure=1` });
   await waitForText(
     "Couldn't reach the download service",
