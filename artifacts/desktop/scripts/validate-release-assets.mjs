@@ -1,13 +1,32 @@
 import { readFileSync } from "node:fs";
 
-export const REQUIRED_RELEASE_ASSETS = [
-  { label: "Linux AppImage", pattern: /\.AppImage$/ },
-  { label: "Linux deb package", pattern: /\.deb$/ },
-  { label: "macOS DMG", pattern: /\.dmg$/ },
-  { label: "Windows installer", pattern: /\.exe$/ },
-  { label: "Windows update manifest", pattern: /^latest\.yml$/ },
-  { label: "Linux update manifest", pattern: /^latest-linux\.yml$/ },
-  { label: "macOS update manifest", pattern: /^latest-mac\.yml$/ },
+// Every electron-builder target that can be published must declare its
+// architecture-specific installer suffixes and updater manifest here. Adding a
+// target to electron-builder.yml without adding it to this list leaves the
+// release gate unaware of that target.
+export const RELEASE_TARGETS = [
+  {
+    id: "linux-x64",
+    requiredAssets: [
+      { label: "Linux x64 AppImage", suffix: "-x64.AppImage" },
+      { label: "Linux x64 deb package", suffix: "-x64.deb" },
+      { label: "Linux x64 update manifest", name: "latest-linux.yml" },
+    ],
+  },
+  {
+    id: "mac-x64",
+    requiredAssets: [
+      { label: "macOS x64 DMG", suffix: "-x64.dmg" },
+      { label: "macOS x64 update manifest", name: "latest-mac.yml" },
+    ],
+  },
+  {
+    id: "win-x64",
+    requiredAssets: [
+      { label: "Windows x64 installer", suffix: "-x64.exe" },
+      { label: "Windows x64 update manifest", name: "latest.yml" },
+    ],
+  },
 ];
 
 export function validateReleaseAssets({ releaseId, assetNames }) {
@@ -28,9 +47,14 @@ export function validateReleaseAssets({ releaseId, assetNames }) {
   if (!normalizedReleaseId) {
     missing.push("draft release");
   }
-  for (const asset of REQUIRED_RELEASE_ASSETS) {
-    if (!normalizedAssetNames.some((name) => asset.pattern.test(name))) {
-      missing.push(asset.label);
+  for (const target of RELEASE_TARGETS) {
+    for (const asset of target.requiredAssets) {
+      const present = normalizedAssetNames.some((name) =>
+        "name" in asset ? name === asset.name : name.endsWith(asset.suffix),
+      );
+      if (!present) {
+        missing.push(asset.label);
+      }
     }
   }
 

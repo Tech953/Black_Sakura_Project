@@ -9,6 +9,12 @@ directories:
 
 artifactName: ${productName}-${version}-${arch}.${ext}
 
+# The publish asset gate is declared in
+# scripts/validate-release-assets.mjs (RELEASE_TARGETS). Keep that list aligned
+# with every architecture added to these platform targets: each entry must
+# declare its installer suffixes and electron-updater manifest name before a
+# release can be made public.
+
 # Release feed for auto-update (electron-updater). At package time
 # electron-builder bakes provider+owner+repo into app-update.yml inside the app,
 # and `--publish` (see .github/workflows/desktop-build.yml) uploads the
