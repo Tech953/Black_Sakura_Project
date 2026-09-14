@@ -230,7 +230,10 @@ jobs:
             if ($signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
               throw "Bundled video tool Authenticode verification failed for $file`: $($signature.Status)"
             }
-            Write-Host "Verified bundled video tool: $file ($($signature.SignerCertificate.Subject))"
+            if ($null -eq $signature.TimeStamperCertificate) {
+              throw "Bundled video tool is missing an Authenticode timestamp signer certificate: $file"
+            }
+            Write-Host "Verified bundled video tool: $file ($($signature.SignerCertificate.Subject)); timestamp signer: $($signature.TimeStamperCertificate.Subject)"
           }
 
           $files = Get-ChildItem artifacts/desktop/release -Recurse -File -Filter *.exe
@@ -281,7 +284,10 @@ jobs:
               if ($signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
                 throw "Installed video tool Authenticode verification failed for $file`: $($signature.Status)"
               }
-              Write-Host "Verified installed video tool: $file ($($signature.SignerCertificate.Subject))"
+              if ($null -eq $signature.TimeStamperCertificate) {
+                throw "Installed video tool is missing an Authenticode timestamp signer certificate: $file"
+              }
+              Write-Host "Verified installed video tool: $file ($($signature.SignerCertificate.Subject)); timestamp signer: $($signature.TimeStamperCertificate.Subject)"
             }
           } catch {
             $reportedInstaller = if ($installerPath) { $installerPath } else { "<not found>" }
