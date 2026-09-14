@@ -88,4 +88,28 @@ describe("desktop release workflow concurrency", () => {
       /APPLE_TEAM_ID is not configured; skipping expected Apple team identity verification/,
     );
   });
+
+  it("requires bundled macOS executables to share the app signer", () => {
+    expect(workflow).toMatch(
+      /BUNDLED_BINARIES=\(\s*"\$APP\/Contents\/Resources\/bin\/ffmpeg"\s*"\$APP\/Contents\/Resources\/bin\/ffprobe"\s*\)/s,
+    );
+    expect(workflow).toMatch(
+      /LLAMA_SERVER="\$APP\/Contents\/Resources\/llama\/bin\/llama-server"/,
+    );
+    expect(workflow).toMatch(
+      /if \[ -f "\$LLAMA_SERVER" \]; then\s+BUNDLED_BINARIES\+=\("\$LLAMA_SERVER"\)/s,
+    );
+    expect(workflow).toMatch(
+      /BINARY_SIGNING_IDENTITY=.*sed -n 's\/\^Authority=\/\/p'/,
+    );
+    expect(workflow).toMatch(
+      /BINARY_APPLE_TEAM_ID=.*sed -n 's\/\^TeamIdentifier=\/\/p'/,
+    );
+    expect(workflow).toMatch(
+      /if \[ "\$BINARY_SIGNING_IDENTITY" != "\$APP_SIGNING_IDENTITY" \] \|\|[\s\S]*"\$BINARY_APPLE_TEAM_ID" != "\$ACTUAL_APPLE_TEAM_ID"/,
+    );
+    expect(workflow).toMatch(
+      /Nested executable .*uses signer .*expected app signer/,
+    );
+  });
 });
