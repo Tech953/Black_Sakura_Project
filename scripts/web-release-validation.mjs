@@ -46,6 +46,7 @@ try {
     ["test:browser:chat", "chat", 0],
     ["test:browser:simulations", "simulations", 1],
     ["test:browser:analytics", "Analytics", 2],
+    ["test:browser:download", "download metadata", 3],
   ]) {
     const result = spawn(
       pnpm,
