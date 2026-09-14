@@ -132,7 +132,12 @@ export type UpdateStatus =
       bytesPerSecond?: number;
     }
   | { state: "downloaded"; version?: string }
-  | { state: "error"; message: string };
+  | {
+      state: "error";
+      message: string;
+      deferred?: boolean;
+      retryable?: boolean;
+    };
 
 export interface AppInfo {
   version: string;
@@ -184,6 +189,10 @@ export interface EngramDesktopBridge {
   getAppInfo: () => Promise<AppInfo>;
   checkForUpdates: () => Promise<void>;
   installDownloadedUpdate: () => Promise<{
+    ok: boolean;
+    error?: string;
+  }>;
+  openReleaseDownloadPage: () => Promise<{
     ok: boolean;
     error?: string;
   }>;
@@ -274,6 +283,10 @@ export function createEngramDesktopBridge(
     installDownloadedUpdate: () =>
       ipc.invoke("update:install") as ReturnType<
         EngramDesktopBridge["installDownloadedUpdate"]
+      >,
+    openReleaseDownloadPage: () =>
+      ipc.invoke("update:release") as ReturnType<
+        EngramDesktopBridge["openReleaseDownloadPage"]
       >,
     onUpdateStatus: (callback) => {
       const listener = (_event: unknown, payload: unknown): void =>

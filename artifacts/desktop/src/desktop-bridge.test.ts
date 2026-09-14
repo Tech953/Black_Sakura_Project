@@ -43,6 +43,7 @@ describe("desktop renderer bridge", () => {
       "onGgufImportStatus",
       "onOfflineModelStatus",
       "onUpdateStatus",
+      "openReleaseDownloadPage",
       "removeGguf",
       "removeOfflineModel",
       "renameGguf",
@@ -111,6 +112,15 @@ describe("desktop renderer bridge", () => {
     await bridge.installDownloadedUpdate();
 
     expect(invoke).toHaveBeenCalledWith("update:install");
+  });
+
+  it("opens the fixed release page through the main-process bridge", async () => {
+    const { ipc, invoke } = fakeIpc();
+    const bridge = createEngramDesktopBridge(ipc);
+
+    await bridge.openReleaseDownloadPage();
+
+    expect(invoke).toHaveBeenCalledWith("update:release");
   });
 
   it("forwards live update status and unsubscribes cleanly", () => {

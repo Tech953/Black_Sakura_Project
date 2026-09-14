@@ -2,11 +2,14 @@ import type { AppInfo, UpdateStatus } from "./desktop-bridge";
 
 export type UpdateStatusListener = (status: UpdateStatus) => void;
 
-export function createUpdateStatusStore(notify: UpdateStatusListener): {
+export function createUpdateStatusStore(
+  notify: UpdateStatusListener,
+  initial: UpdateStatus = { state: "idle" },
+): {
   get: () => UpdateStatus;
   set: (status: UpdateStatus) => void;
 } {
-  let current: UpdateStatus = { state: "idle" };
+  let current: UpdateStatus = initial;
 
   return {
     get: () => current,
