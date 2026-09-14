@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  DEFERRED_UPDATE_FAILURE_MESSAGE,
   setupAutoUpdates,
   type AutoUpdaterLike,
   type UpdateDialogOptions,
@@ -22,7 +23,7 @@ class FakeUpdater {
   }
 }
 
-function createHarness(response: number) {
+function createHarness(response: number, installError?: Error) {
   const updater = new FakeUpdater();
   const window: UpdateWindow = {
     isDestroyed: () => false,
@@ -37,7 +38,9 @@ function createHarness(response: number) {
     },
   );
   const stopDesktopWork = vi.fn().mockResolvedValue(undefined);
-  const installDownloadedUpdate = vi.fn().mockResolvedValue(undefined);
+  const installDownloadedUpdate = installError
+    ? vi.fn().mockRejectedValue(installError)
+    : vi.fn().mockResolvedValue(undefined);
   const setStatus = vi.fn();
   const controller = setupAutoUpdates({
     isPackaged: true,
@@ -97,6 +100,44 @@ describe("setupAutoUpdates", () => {
     expect(harness.updater.autoInstallOnAppQuit).toBe(true);
     expect(harness.installDownloadedUpdate).not.toHaveBeenCalled();
     expect(harness.stopDesktopWork).not.toHaveBeenCalled();
+  });
+
+  it("records a safe recovery status when a deferred install fails", async () => {
+    const harness = createHarness(
+      1,
+      new Error("/private/path/update.yml\nat install (main.ts:123)"),
+    );
+
+    harness.updater.emit("update-downloaded", { version: "1.2.3" });
+    await flushPromises();
+
+    await expect(harness.controller.installDownloadedUpdate()).rejects.toThrow(
+      "/private/path/update.yml",
+    );
+    expect(harness.setStatus).toHaveBeenLastCalledWith({
+      state: "error",
+      message: DEFERRED_UPDATE_FAILURE_MESSAGE,
+      deferred: true,
+      retryable: true,
+    });
+  });
+
+  it("maps a deferred updater error to the safe recovery status", async () => {
+    const harness = createHarness(1);
+
+    harness.updater.emit("update-downloaded", { version: "1.2.3" });
+    await flushPromises();
+    harness.updater.emit(
+      "error",
+      new Error("/private/path/installer.exe\nstack trace"),
+    );
+
+    expect(harness.setStatus).toHaveBeenLastCalledWith({
+      state: "error",
+      message: DEFERRED_UPDATE_FAILURE_MESSAGE,
+      deferred: true,
+      retryable: true,
+    });
   });
 
   it("forwards optional transfer details with download progress", () => {

@@ -554,6 +554,26 @@
         id="update-progress-details"
         class="update-progress-details hidden"
       ></div>
+      <div
+        id="update-recovery"
+        class="panel-box hidden"
+        role="alert"
+        aria-live="polite"
+      >
+        <p
+          id="update-recovery-message"
+          class="error-text"
+          style="margin-top: 0"
+        ></p>
+        <div class="actions" style="justify-content: flex-start">
+          <button id="retry-update" type="button" class="primary">
+            Retry update
+          </button>
+          <button id="open-release-page" type="button">
+            Download latest release
+          </button>
+        </div>
+      </div>
       <div class="update-actions">
         <button id="check-updates" type="button">Check for Updates</button>
       </div>
@@ -578,6 +598,11 @@
           "downloading": "Downloading update… {{percent}}%",
           "downloaded": "Restart to update",
           "error": "Update check failed",
+          "deferredInstallFailed": "Update could not be installed",
+          "deferredInstallMessage": "The downloaded update could not be installed. Try again or download the latest release.",
+          "retryUpdate": "Retry update",
+          "downloadLatestRelease": "Download latest release",
+          "releasePageError": "Could not open the release download page.",
           "upToDate": "Up to date",
           "checkForUpdates": "Check for Updates",
           "progressLabel": "Update download progress",
@@ -1208,6 +1233,12 @@
           downloading: "Downloading update… {{percent}}%",
           downloaded: "Restart to update",
           error: "Update check failed",
+          deferredInstallFailed: "Update could not be installed",
+          deferredInstallMessage:
+            "The downloaded update could not be installed. Try again or download the latest release.",
+          retryUpdate: "Retry update",
+          downloadLatestRelease: "Download latest release",
+          releasePageError: "Could not open the release download page.",
           upToDate: "Up to date",
           checkForUpdates: "Check for Updates",
           progressLabel: "Update download progress",
@@ -1219,6 +1250,10 @@
         const progress = $("update-progress");
         const progressFill = $("update-progress-fill");
         const progressDetails = $("update-progress-details");
+        const recovery = $("update-recovery");
+        const recoveryMessage = $("update-recovery-message");
+        const retry = $("retry-update");
+        const release = $("open-release-page");
         const hideProgress = () => {
           progress.classList.add("hidden");
           progressFill.style.width = "0%";
@@ -1228,11 +1263,18 @@
           progressDetails.classList.add("hidden");
           progressDetails.textContent = "";
         };
+        const hideRecovery = () => {
+          recovery.classList.add("hidden");
+          recoveryMessage.textContent = "";
+          retry.disabled = false;
+          release.disabled = false;
+        };
         if (!info.updatesSupported) {
           el.textContent = copy.notAvailableInBuild;
           btn.disabled = true;
           hideProgress();
           hideProgressDetails();
+          hideRecovery();
           return;
         }
         const s = status || { state: "idle" };
@@ -1293,9 +1335,17 @@
           case "downloaded":
             el.textContent = copy.downloaded;
             btn.disabled = false;
+            hideRecovery();
             break;
           case "error":
-            el.textContent = copy.error;
+            if (s.deferred && s.retryable) {
+              el.textContent = copy.deferredInstallFailed;
+              recoveryMessage.textContent = copy.deferredInstallMessage;
+              recovery.classList.remove("hidden");
+            } else {
+              el.textContent = copy.error;
+              hideRecovery();
+            }
             btn.disabled = false;
             break;
           case "not-available":
@@ -1310,6 +1360,9 @@
           hideProgress();
           hideProgressDetails();
         }
+        if (s.state !== "error" || !s.deferred || !s.retryable) {
+          hideRecovery();
+        }
       }
       async function initAbout() {
         const info = await window.engram.getAppInfo();
@@ -1323,6 +1376,8 @@
           "aria-label",
           updateCopy.progressLabel,
         );
+        $("retry-update").textContent = updateCopy.retryUpdate;
+        $("open-release-page").textContent = updateCopy.downloadLatestRelease;
         $("app-version").textContent = info.version;
         renderUpdateStatus(info, info.updateStatus, updateCopy);
         window.engram.onUpdateStatus((status) =>
@@ -1330,6 +1385,24 @@
         );
         $("check-updates").addEventListener("click", () => {
           if (info.updatesSupported) window.engram.checkForUpdates();
+        });
+        $("retry-update").addEventListener("click", () => {
+          if (info.updatesSupported) window.engram.checkForUpdates();
+        });
+        $("open-release-page").addEventListener("click", async () => {
+          $("open-release-page").disabled = true;
+          try {
+            const result = await window.engram.openReleaseDownloadPage();
+            if (!result.ok) {
+              $("update-recovery-message").textContent =
+                updateCopy.releasePageError;
+            }
+          } catch {
+            $("update-recovery-message").textContent =
+              updateCopy.releasePageError;
+          } finally {
+            $("open-release-page").disabled = false;
+          }
         });
       }
       $("cancel").addEventListener("click", () => window.engram.close());
