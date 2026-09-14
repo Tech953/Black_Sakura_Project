@@ -243,6 +243,57 @@ jobs:
             Write-Host "Verified Authenticode: $($file.Name) ($($signature.SignerCertificate.Subject))"
           }
 
+      - name: Verify installed NSIS video tool signatures
+        if: github.event_name == 'push' && github.ref_type == 'tag' && matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $installerPath = $null
+          $installDir = Join-Path $env:RUNNER_TEMP ("engram-nsis-install-" + [guid]::NewGuid().ToString("N"))
+          try {
+            $installer = Get-ChildItem -LiteralPath "artifacts/desktop/release" -File -Filter "*.exe" |
+              Where-Object { $_.Name -notmatch "uninstaller" } |
+              Select-Object -First 1
+            if ($null -eq $installer) {
+              throw "No top-level NSIS installer was produced in artifacts/desktop/release."
+            }
+            $installerPath = $installer.FullName
+            New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+
+            Write-Host "Installing NSIS package $installerPath into $installDir"
+            $process = Start-Process `
+              -FilePath $installerPath `
+              -ArgumentList @("/S", "/D=$installDir") `
+              -Wait `
+              -PassThru
+            if ($process.ExitCode -ne 0) {
+              throw "NSIS installer exited with code $($process.ExitCode)."
+            }
+
+            $installedTools = @(
+              (Join-Path $installDir "resources\bin\ffmpeg.exe"),
+              (Join-Path $installDir "resources\bin\ffprobe.exe")
+            )
+            foreach ($file in $installedTools) {
+              if (-not (Test-Path $file -PathType Leaf)) {
+                throw "Installed video tool is missing: $file"
+              }
+              $signature = Get-AuthenticodeSignature (Resolve-Path $file).Path
+              if ($signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
+                throw "Installed video tool Authenticode verification failed for $file`: $($signature.Status)"
+              }
+              Write-Host "Verified installed video tool: $file ($($signature.SignerCertificate.Subject))"
+            }
+          } catch {
+            $reportedInstaller = if ($installerPath) { $installerPath } else { "<not found>" }
+            throw "NSIS installed video-tool verification failed (installer: $reportedInstaller): $($_.Exception.Message)"
+          } finally {
+            Get-Process -Name "engram" -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+            if (Test-Path $installDir) {
+              Remove-Item -LiteralPath $installDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+
       - name: Verify macOS signature and notarization
         if: matrix.platform == 'mac'
         shell: bash
