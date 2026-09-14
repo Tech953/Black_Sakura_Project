@@ -116,11 +116,18 @@ jobs:
       - name: Build API server bundle
         run: pnpm --filter @workspace/api-server run build
 
+      - name: Validate configured desktop release link
+        if: matrix.platform == 'linux'
+        env:
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
+        run: pnpm run validate:release-links
+
       - name: Build web dashboard
         env:
           PORT: "5000"
           BASE_PATH: "/"
           NODE_ENV: "production"
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
         run: pnpm --filter @workspace/engram run build
 
       - name: Install Chromium for web validation
