@@ -4,14 +4,12 @@ import {
   useUpdateHubControls,
   useListEngrams,
   useUpdateEngramConfig,
-  useListEngramMessages,
   useMarkEngramMessagesSeen,
   useReplyToEngramMessage,
   useListHubSpaces,
   useMoveEngramPresence,
   getGetHubControlsQueryKey,
   getListEngramsQueryKey,
-  getListEngramMessagesQueryKey,
   getListHubPresenceQueryKey,
   getListHubActivityQueryKey,
   EngramMode,
@@ -41,6 +39,7 @@ import {
   Download,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Moon,
   Check,
   Inbox,
@@ -53,6 +52,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
+import { usePaginatedEngramMessages } from "@/hooks/use-paginated-engram-messages";
 
 const MODE_META: Record<string, { labelKey: string; cls: string }> = {
   orientation: { labelKey: "modes.orientation", cls: "text-sky-400" },
@@ -104,15 +104,8 @@ export default function Terminal() {
   const { data: controls, isLoading: controlsLoading } = useGetHubControls();
   const { data: engrams, isLoading: engramsLoading } = useListEngrams();
   const { data: spaces } = useListHubSpaces();
-  const { data: messages, isLoading: messagesLoading } = useListEngramMessages(
-    { channel: "human", limit: 100 },
-    {
-      query: {
-        queryKey: getListEngramMessagesQueryKey({ channel: "human", limit: 100 }),
-        refetchInterval: 15000,
-      },
-    },
-  );
+  const humanHistory = usePaginatedEngramMessages("human");
+  const { messages, isLoading: messagesLoading } = humanHistory;
 
   const updateControls = useUpdateHubControls();
   const updateEngram = useUpdateEngramConfig();
@@ -127,7 +120,7 @@ export default function Terminal() {
     () => new Set(),
   );
 
-  const humanMessagesKey = getListEngramMessagesQueryKey({ channel: "human", limit: 100 });
+  const humanMessagesKey = humanHistory.latestQueryKey;
 
   const quiescenceSpace = useMemo(
     () => (spaces ?? []).find((s) => s.kind === "quiescence"),
@@ -143,7 +136,9 @@ export default function Terminal() {
   const ordered = useMemo(
     () =>
       [...(messages ?? [])].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
+          b.id - a.id,
       ),
     [messages],
   );
@@ -548,6 +543,23 @@ export default function Terminal() {
           >
             <Check className="w-3 h-3 mr-2" /> {t("markAllSeen")}
           </Button>
+          {ordered.length > 0 && humanHistory.hasOlder && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                humanHistory.loadOlder().catch(() =>
+                  toast({ title: t("toastLoadOlderFailed"), variant: "destructive" }),
+                )
+              }
+              disabled={humanHistory.isLoadingOlder}
+              className="font-mono text-xs uppercase tracking-wider border-border/50"
+              data-testid="button-load-older-human"
+            >
+              <ChevronUp className="w-3 h-3 mr-2" />
+              {humanHistory.isLoadingOlder ? t("loadingOlder") : t("loadOlder")}
+            </Button>
+          )}
         </div>
 
         {messagesLoading ? (

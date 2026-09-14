@@ -22,3 +22,7 @@ description: Non-obvious constraints when using the OpenAPI→Orval React Query 
 **Do not model multipart file bodies through this repo's shared OpenAPI-to-Zod server validator.** Document the upload endpoint, parse the multipart body at the route boundary, and use direct `FormData` from browser clients; keep non-file confirmation requests generated and validated normally.
 **Why:** multipart `File`/`Blob` schemas make the shared Node package emit browser-global types or runtime references, breaking typechecks or startup even though the browser client itself supports them.
 **How to apply:** for a new file-upload endpoint, follow the existing media/CSV upload pattern and omit only the multipart request-body schema from generated validation.
+
+**Query timestamps:** Keep cursor timestamps as OpenAPI `type: string` query parameters and validate the ISO value at the route boundary. Using `format: date-time` makes generated Zod schemas expect a `Date` object, while Express query values arrive as strings.
+**Why:** the message-history cursor needed a timestamp boundary, and the generated `zod.date()` rejected the raw query string before route parsing could run.
+**How to apply:** use a string schema for new timestamp cursors or filters that arrive through query parameters, then construct and validate `Date` only after the generated query parser succeeds.
