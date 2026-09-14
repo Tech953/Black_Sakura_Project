@@ -1119,7 +1119,19 @@
     "localServerReachableHint": "Le serveur local a répondu. Vous pouvez utiliser ce navigateur avec le moteur de bureau.",
     "localServerUnavailable": "Indisponible",
     "localServerUnavailableHint": "Démarrez l’application de bureau ou le serveur local, vérifiez l’adresse, puis réessayez.",
-    "localServerInvalid": "Utilisez une origine http:// ou https:// sans chemin, requête, fragment, nom d’utilisateur ni mot de passe."
+    "localServerInvalid": "Utilisez une origine http:// ou https:// sans chemin, requête, fragment, nom d’utilisateur ni mot de passe.",
+    "update": {
+      "notAvailableInBuild": "Not available in this build",
+      "checking": "Checking for updates…",
+      "availableWithVersion": "Update {{version}} found — downloading…",
+      "available": "Update found — downloading…",
+      "downloading": "Downloading update… {{percent}}%",
+      "downloaded": "Restart to update",
+      "error": "Update check failed",
+      "upToDate": "Up to date",
+      "checkForUpdates": "Check for Updates",
+      "progressLabel": "Update download progress"
+    }
   },
   "simulations": {
     "title": "CHAMBRES DE SIMULATION",

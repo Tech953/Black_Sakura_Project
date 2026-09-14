@@ -1119,7 +1119,19 @@
     "localServerReachableHint": "लोकल सर्वर ने प्रतिक्रिया दी। आप इस ब्राउज़र को डेस्कटॉप इंजन के साथ उपयोग कर सकते हैं।",
     "localServerUnavailable": "उपलब्ध नहीं",
     "localServerUnavailableHint": "डेस्कटॉप ऐप या लोकल सर्वर शुरू करें, पते की जाँच करें और फिर कोशिश करें।",
-    "localServerInvalid": "बिना पथ, क्वेरी, फ़्रैगमेंट, उपयोगकर्ता नाम या पासवर्ड वाला http:// या https:// origin इस्तेमाल करें।"
+    "localServerInvalid": "बिना पथ, क्वेरी, फ़्रैगमेंट, उपयोगकर्ता नाम या पासवर्ड वाला http:// या https:// origin इस्तेमाल करें।",
+    "update": {
+      "notAvailableInBuild": "Not available in this build",
+      "checking": "Checking for updates…",
+      "availableWithVersion": "Update {{version}} found — downloading…",
+      "available": "Update found — downloading…",
+      "downloading": "Downloading update… {{percent}}%",
+      "downloaded": "Restart to update",
+      "error": "Update check failed",
+      "upToDate": "Up to date",
+      "checkForUpdates": "Check for Updates",
+      "progressLabel": "Update download progress"
+    }
   },
   "simulations": {
     "title": "सिमुलेशन चैंबर्स",

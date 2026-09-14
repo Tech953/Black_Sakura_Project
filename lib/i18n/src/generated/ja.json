@@ -1119,7 +1119,19 @@
     "localServerReachableHint": "ローカルサーバーが応答しました。このブラウザーをデスクトップエンジンで使用できます。",
     "localServerUnavailable": "利用不可",
     "localServerUnavailableHint": "デスクトップアプリまたはローカルサーバーを起動し、アドレスを確認してから再試行してください。",
-    "localServerInvalid": "パス、クエリ、フラグメント、ユーザー名、パスワードのない http:// または https:// の origin を使用してください。"
+    "localServerInvalid": "パス、クエリ、フラグメント、ユーザー名、パスワードのない http:// または https:// の origin を使用してください。",
+    "update": {
+      "notAvailableInBuild": "Not available in this build",
+      "checking": "Checking for updates…",
+      "availableWithVersion": "Update {{version}} found — downloading…",
+      "available": "Update found — downloading…",
+      "downloading": "Downloading update… {{percent}}%",
+      "downloaded": "Restart to update",
+      "error": "Update check failed",
+      "upToDate": "Up to date",
+      "checkForUpdates": "Check for Updates",
+      "progressLabel": "Update download progress"
+    }
   },
   "simulations": {
     "title": "シミュレーションチャンバー",

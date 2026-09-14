@@ -1119,7 +1119,19 @@
     "localServerReachableHint": "El servidor local respondió. Puedes usar este navegador con el motor de escritorio.",
     "localServerUnavailable": "No disponible",
     "localServerUnavailableHint": "Inicia la aplicación de escritorio o el servidor local, verifica la dirección y vuelve a intentarlo.",
-    "localServerInvalid": "Usa un origen http:// o https:// sin ruta, consulta, fragmento, nombre de usuario ni contraseña."
+    "localServerInvalid": "Usa un origen http:// o https:// sin ruta, consulta, fragmento, nombre de usuario ni contraseña.",
+    "update": {
+      "notAvailableInBuild": "Not available in this build",
+      "checking": "Checking for updates…",
+      "availableWithVersion": "Update {{version}} found — downloading…",
+      "available": "Update found — downloading…",
+      "downloading": "Downloading update… {{percent}}%",
+      "downloaded": "Restart to update",
+      "error": "Update check failed",
+      "upToDate": "Up to date",
+      "checkForUpdates": "Check for Updates",
+      "progressLabel": "Update download progress"
+    }
   },
   "simulations": {
     "title": "CÁMARAS DE SIMULACIÓN",

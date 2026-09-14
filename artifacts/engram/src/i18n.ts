@@ -8,15 +8,35 @@
  */
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import { resources, NAMESPACES, DEFAULT_LANGUAGE, SUPPORTED_LANGUAGE_CODES, languageInfo } from "@workspace/i18n";
+import {
+  resources,
+  NAMESPACES,
+  DEFAULT_LANGUAGE,
+  SUPPORTED_LANGUAGE_CODES,
+  languageInfo,
+} from "@workspace/i18n";
 
 const UI_LANG_KEY = "engram.uiLang";
 const REPLY_LANG_KEY = "engram.replyLang";
 const LOCAL_SERVER_URL_KEY = "engram.localServerUrl";
 
+function syncDesktopUiLanguage(lang: string): void {
+  const bridge = (
+    window as Window & {
+      engram?: {
+        setUiLanguage?: (language: string) => Promise<void>;
+      };
+    }
+  ).engram;
+  const result = bridge?.setUiLanguage?.(lang);
+  if (result) void result.catch(() => undefined);
+}
+
 export function getStoredUiLanguage(): string {
   const stored = localStorage.getItem(UI_LANG_KEY);
-  return stored && SUPPORTED_LANGUAGE_CODES.includes(stored) ? stored : DEFAULT_LANGUAGE;
+  return stored && SUPPORTED_LANGUAGE_CODES.includes(stored)
+    ? stored
+    : DEFAULT_LANGUAGE;
 }
 
 function applyDirection(lang: string) {
@@ -28,6 +48,7 @@ export function setUiLanguage(lang: string) {
   localStorage.setItem(UI_LANG_KEY, lang);
   void i18n.changeLanguage(lang);
   applyDirection(lang);
+  syncDesktopUiLanguage(lang);
 }
 
 export type ReplyLanguageSetting = "match" | "auto" | string;
@@ -63,15 +84,18 @@ export function resolveReplyLanguage(): string | undefined {
   return SUPPORTED_LANGUAGE_CODES.includes(setting) ? setting : undefined;
 }
 
+const initialUiLanguage = getStoredUiLanguage();
+
 void i18n.use(initReactI18next).init({
   resources,
-  lng: getStoredUiLanguage(),
+  lng: initialUiLanguage,
   fallbackLng: DEFAULT_LANGUAGE,
   ns: NAMESPACES,
   defaultNS: "common",
   interpolation: { escapeValue: false },
   returnEmptyString: false,
 });
-applyDirection(getStoredUiLanguage());
+applyDirection(initialUiLanguage);
+syncDesktopUiLanguage(initialUiLanguage);
 
 export default i18n;

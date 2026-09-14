@@ -173,6 +173,8 @@ export interface EngramDesktopBridge {
     callback: (status: OfflineModelDownloadStatus) => void,
   ) => () => void;
   close: () => Promise<void>;
+  getUiLanguage: () => Promise<string>;
+  setUiLanguage: (language: string) => Promise<void>;
   getAppInfo: () => Promise<AppInfo>;
   checkForUpdates: () => Promise<void>;
   installDownloadedUpdate: () => Promise<{
@@ -258,6 +260,9 @@ export function createEngramDesktopBridge(
       };
     },
     close: () => ipc.invoke("settings:close") as Promise<void>,
+    getUiLanguage: () => ipc.invoke("ui-language:get") as Promise<string>,
+    setUiLanguage: (language) =>
+      ipc.invoke("ui-language:set", language) as Promise<void>,
     getAppInfo: () => ipc.invoke("app:info") as Promise<AppInfo>,
     checkForUpdates: () => ipc.invoke("update:check") as Promise<void>,
     installDownloadedUpdate: () =>
