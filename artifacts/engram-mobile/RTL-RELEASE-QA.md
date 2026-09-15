@@ -1,10 +1,10 @@
 # RTL release QA — Arabic
 
-Date: 2026-09-12
+Date: 2026-09-15
 
 ## Automated and code-path verification
 
-- `pnpm --filter @workspace/engram-mobile test` passed: 19 Vitest files, 85 tests, plus the 8 release-preflight tests.
+- `pnpm --filter @workspace/engram-mobile run test` passed: 21 Vitest files, 108 tests, plus the 11 release-preflight tests.
 - `pnpm --filter @workspace/engram-mobile run typecheck` passed.
 - `lib/layout-direction.test.ts` covers Arabic base and regional language tags.
 - `setUiLanguage()` persists the selected language before changing i18next, and returns whether native direction must change.
@@ -18,10 +18,15 @@ Date: 2026-09-12
 
 ## Physical-device results
 
-Not executed in this workspace:
+### Android — blocked, not signed off
 
-- Android: `adb devices` reported no connected device or emulator.
-- iOS: the Linux workspace has no `xcrun` or `ios-deploy`, and no iOS device target is attached.
+- Attempted on 2026-09-15: `adb` is not installed in the Linux workspace (`adb: command not found`).
+- No Android phone or emulator was available, so the Arabic switch/reload, force-close/reopen, and visual mirroring checklist could not be executed.
+- No Android visual exceptions can be recorded from this workspace. The Android release sign-off remains pending a connected phone or emulator.
+
+### iOS — not executed
+
+- The Linux workspace has no `xcrun` or `ios-deploy`, and no iOS device target is attached.
 
 Therefore Android/iOS restart behavior, native tab-bar mirroring, native modal back controls, populated chat/feed layouts, and right-origin progress bars remain release-QA checks for a connected Android phone and iPhone. The implementation and automated/web checks above do not replace that device sign-off.
 
