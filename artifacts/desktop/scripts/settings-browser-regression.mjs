@@ -132,6 +132,27 @@ const fixtureScript = String.raw`
   const activeSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   const readySha = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
   const failedSha = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+  const offlineFailureScenarios = [
+    {
+      kind: "checksum",
+      status: "corrupt",
+      downloadedBytes: 0,
+      error: "SHA-256 mismatch in fixture download",
+    },
+    {
+      kind: "network",
+      status: "error",
+      downloadedBytes: 4096,
+      error: "HTTP 503 from fixture host",
+    },
+    {
+      kind: "cancelled",
+      status: "partial",
+      downloadedBytes: 4096,
+      error: "Download cancelled by user",
+    },
+  ];
+  let offlineFailureIndex = 0;
   const calls = [];
   const prompts = [];
   const confirmations = [];
@@ -156,7 +177,7 @@ const fixtureScript = String.raw`
   const state = {
     mode: "custom",
     bundledAvailable: true,
-    bundledModelIncluded: true,
+    bundledModelIncluded: false,
     allowLan: false,
     lanAddresses: ["http://127.0.0.1:4312", "http://192.168.1.50:4312"],
     offline: { baseUrl: "http://127.0.0.1:11434/v1", model: "fixture" },
@@ -180,8 +201,8 @@ const fixtureScript = String.raw`
     customStorageLimitBytes: 10 * 1024 * 1024,
     offlineModel: {
       filename: "offline.gguf",
-      expectedBytes: 0,
-      expectedSha256: "",
+      expectedBytes: 8192,
+      expectedSha256: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
       storageLocation: "userData",
       status: "none",
       downloadedBytes: 0
@@ -200,7 +221,8 @@ const fixtureScript = String.raw`
     calls,
     prompts,
     confirmations,
-    snapshot
+    snapshot,
+    offlineFailures: []
   };
   window.confirm = (message) => {
     confirmations.push(message);
@@ -265,7 +287,38 @@ const fixtureScript = String.raw`
       listeners.gguf.push(callback);
       return () => {};
     },
-    downloadOfflineModel: async () => ({ ok: false, error: "fixture does not download" }),
+    downloadOfflineModel: async () => {
+      const scenario =
+        offlineFailureScenarios[
+          offlineFailureIndex % offlineFailureScenarios.length
+        ];
+      offlineFailureIndex += 1;
+      state.offlineModel = {
+        ...state.offlineModel,
+        status: scenario.status,
+        downloadedBytes: scenario.downloadedBytes,
+        errorKind: scenario.kind,
+        error: scenario.error,
+      };
+      window.__settingsFixture.offlineFailures.push(scenario.kind);
+      setTimeout(() => {
+        for (const listener of listeners.offline) {
+          listener({
+            operationId: "offline-fixture-" + offlineFailureIndex,
+            state: scenario.kind === "cancelled" ? "cancelled" : "error",
+            errorKind: scenario.kind,
+            error: scenario.error,
+            ...(scenario.kind === "cancelled"
+              ? { downloaded: true }
+              : {}),
+          });
+        }
+      }, 0);
+      return {
+        ok: true,
+        operationId: "offline-fixture-" + offlineFailureIndex,
+      };
+    },
     cancelOfflineModelDownload: async () => ({ ok: true }),
     removeOfflineModel: async () => ({ ok: true }),
     onOfflineModelStatus: (callback) => {
@@ -384,6 +437,73 @@ async function main() {
       throw new Error(`unexpected initial model cards: ${JSON.stringify(initial)}`);
     }
 
+    const offlineFailureExpectations = [
+      {
+        kind: "checksum",
+        label: "Verification failed",
+        guidance:
+          "The downloaded file did not match ENGRAM's checksum and was not activated. Retry the download.",
+        action: "Retry download",
+      },
+      {
+        kind: "network",
+        label: "Download failed",
+        guidance:
+          "The model could not be downloaded. Check your connection, then retry or resume the download.",
+        action: "Retry download",
+      },
+      {
+        kind: "cancelled",
+        label: "Download cancelled",
+        guidance:
+          "The partial download is safe to resume. Start again when you are ready.",
+        action: "Resume download",
+      },
+    ];
+    for (const expected of offlineFailureExpectations) {
+      await devtools.evaluate(
+        `document.querySelector("#btn-download-offline-model").click()`,
+      );
+      await waitFor(
+        devtools,
+        `window.__settingsFixture.offlineFailures.includes(${JSON.stringify(expected.kind)}) &&
+          document.querySelector("#offline-download-state")?.textContent === ${JSON.stringify(expected.label)} &&
+          document.querySelector("#offline-download-guidance")?.textContent === ${JSON.stringify(expected.guidance)}`,
+        `Settings did not render ${expected.kind} offline-model recovery copy`,
+      );
+      const offlineRecovery = await devtools.evaluate(`(() => {
+        const button = document.querySelector("#btn-download-offline-model");
+        const guidance = document.querySelector("#offline-download-guidance");
+        const error = document.querySelector("#offline-download-error");
+        return {
+          buttonText: button?.textContent,
+          buttonHidden: button?.classList.contains("hidden"),
+          guidance: guidance?.textContent,
+          guidanceHidden: guidance?.classList.contains("hidden"),
+          error: error?.textContent,
+          errorHidden: error?.classList.contains("hidden")
+        };
+      })()`);
+      if (
+        offlineRecovery.buttonText !== expected.action ||
+        offlineRecovery.buttonHidden ||
+        offlineRecovery.guidance !== expected.guidance ||
+        offlineRecovery.guidanceHidden ||
+        !offlineRecovery.error?.includes(
+          expected.kind === "checksum"
+            ? "SHA-256 mismatch"
+            : expected.kind === "network"
+              ? "HTTP 503"
+              : "Download cancelled",
+        ) ||
+        offlineRecovery.errorHidden
+      ) {
+        throw new Error(
+          `offline-model ${expected.kind} recovery UI failed: ${JSON.stringify(offlineRecovery)}`,
+        );
+      }
+    }
+
     await devtools.evaluate(
       `document.querySelector('#lan-addresses button')?.click()`,
     );
@@ -497,7 +617,7 @@ async function main() {
       throw new Error(`model-library action contract failed: ${JSON.stringify(finalState)}`);
     }
     console.log(
-      "[settings-browser] PASS: model cards, metadata, rename, activation, failed-model guard, and safe fallback removal",
+      "[settings-browser] PASS: model cards, metadata, rename, activation, failed-model guard, safe fallback removal, and offline checksum/network/cancellation recovery copy",
     );
   } finally {
     devtools.close();
