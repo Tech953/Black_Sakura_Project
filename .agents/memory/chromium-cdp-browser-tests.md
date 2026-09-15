@@ -80,3 +80,9 @@ Self-contained desktop HTML browser fixtures are embedded with an outer String.r
 **Why:** A nested backtick terminates the host script before Chromium starts, turning a valid browser fixture into a Node syntax failure.
 
 **How to apply:** Use string concatenation or escaped delimiters inside the injected fixture, then run node --check before the browser regression.
+
+For authenticated archive/export checks, seed transcript rows through a development-only, header-gated fixture endpoint rather than the live model-generation stream; keep the normal SSE error path covered separately.
+
+**Why:** Archive, restore, read-only send, and export behavior should not become dependent on cloud model credentials, while genuine generation failures must remain observable as failures.
+
+**How to apply:** Have the browser check require an explicit fixture response containing both user and assistant rows, and never treat a 200 SSE error frame as a successful transcript seed.
