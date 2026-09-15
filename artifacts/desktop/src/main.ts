@@ -133,6 +133,10 @@ const packagedSmokeSimulatedFailure =
 const packagedSmokeGguf = packagedSmokeEnabled
   ? process.env.ENGRAM_PACKAGED_GGUF_FIXTURE
   : undefined;
+const packagedSmokeGgufSecondary = packagedSmokeEnabled
+  ? process.env.ENGRAM_PACKAGED_GGUF_FIXTURE_B
+  : undefined;
+let packagedSmokeGgufSelectionCount = 0;
 const packagedSmokeUsesRealRuntime =
   packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1";
 const packagedSmokeUpdateEnabled =
@@ -1683,12 +1687,17 @@ ipcMain.handle("gguf:choose", async () => {
       // CI substitutes only the result of the native picker. The absolute
       // source path stays in the main process and is never included in the
       // renderer-facing selection payload.
-      if (!path.isAbsolute(packagedSmokeGguf)) {
+      const smokeFixture =
+        packagedSmokeGgufSecondary && packagedSmokeGgufSelectionCount >= 2
+          ? packagedSmokeGgufSecondary
+          : packagedSmokeGguf;
+      packagedSmokeGgufSelectionCount += 1;
+      if (!path.isAbsolute(smokeFixture)) {
         throw new Error(
           "Packaged GGUF smoke fixture must be an absolute path.",
         );
       }
-      sourcePath = packagedSmokeGguf;
+      sourcePath = smokeFixture;
     } else {
       const options: OpenDialogOptions = {
         title: "Choose a GGUF model",

@@ -442,6 +442,7 @@ jobs:
         env:
           EXPECT_SLIM_LLM: ${{ matrix.platform == 'win' && '1' || '0' }}
           ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          ENGRAM_PACKAGED_GGUF_MULTI_MODEL: "1"
           ENGRAM_SMOKE_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/diagnostics
           # Windows must prove the slim downloader against HTTPS, a redirect,
           # and a real Electron userData directory. Linux/macOS keep the fast
@@ -709,6 +710,7 @@ jobs:
         env:
           EXPECT_SLIM_LLM: "0"
           ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          ENGRAM_PACKAGED_GGUF_MULTI_MODEL: "1"
           ENGRAM_SMOKE_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/diagnostics
           ENGRAM_PACKAGED_UPDATE_SMOKE: "1"
           ENGRAM_PACKAGED_UPDATE_FEED_SMOKE: "1"
