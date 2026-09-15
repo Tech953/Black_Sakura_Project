@@ -7,6 +7,7 @@ const PLACEHOLDER_PART_RE =
   /^(?:your|owner|org|organization|repo|repository|example|sample|placeholder|changeme)(?:[-_.].*)?$/i;
 const SKIP_NETWORK_ENV = "ENGRAM_RELEASE_CHECK_SKIP_NETWORK";
 const MAX_ATTEMPTS = 3;
+const MAX_RETRIES = MAX_ATTEMPTS - 1;
 const INITIAL_RETRY_DELAY_MS = 100;
 
 function isCiEnvironment(env) {
@@ -87,7 +88,7 @@ export async function validateDownloadRelease({
 
       const detail = error instanceof Error ? error.message : String(error);
       throw new Error(
-        `GitHub release URL is unreachable (${releaseUrl}): ${detail}`,
+        `GitHub release URL is unreachable (${releaseUrl}): network failure after ${MAX_ATTEMPTS} attempts (${MAX_RETRIES} retries; retries exhausted). Last error: ${detail}`,
       );
     }
 
@@ -112,7 +113,7 @@ export async function validateDownloadRelease({
     }
 
     throw new Error(
-      `GitHub release URL check failed for ${releaseUrl}. GitHub returned HTTP ${response.status}.`,
+      `GitHub release URL check failed for ${releaseUrl}. Transient HTTP failure after ${MAX_ATTEMPTS} attempts (${MAX_RETRIES} retries; retries exhausted). GitHub returned HTTP ${response.status}.`,
     );
   }
 
