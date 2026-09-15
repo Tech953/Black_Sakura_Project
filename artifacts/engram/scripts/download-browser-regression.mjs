@@ -24,7 +24,6 @@ if (!chromiumPath) {
   );
 }
 
-
 const chrome = spawn(
   chromiumPath,
   [
@@ -170,11 +169,37 @@ const fixtureScript = String.raw`
       status,
       headers: { "Content-Type": "application/json" }
     });
+  window.__analyticsEvents = [];
+  window.umami = {
+    track(name, data) {
+      window.__analyticsEvents.push({ name, data: data ?? null });
+    }
+  };
   const desktopMeta = ${JSON.stringify(desktopMeta)};
   const androidMeta = ${JSON.stringify(androidMeta)};
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input.url;
     const pathname = new URL(url, window.location.origin).pathname;
+    if (pathname === "/api/engrams") {
+      return response([{
+        id: 1,
+        name: "Browser fixture",
+        symbol: "◇",
+        isChatActive: true
+      }]);
+    }
+    if (pathname === "/api/personality") return response({});
+    if (pathname === "/api/stats") {
+      return response({
+        activePersona: "Browser fixture",
+        totalMemories: 0,
+        totalBeliefs: 0,
+        avgBeliefConfidence: 0,
+        memoryByLayer: []
+      });
+    }
+    if (pathname === "/api/engrams/1/world-model") return response([]);
+    if (pathname === "/api/media") return response([]);
     if (failed && (pathname === "/api/download/desktop" || pathname === "/api/download/android")) {
       return response({ error: "fixture unavailable" }, 503);
     }
@@ -212,6 +237,89 @@ try {
   await devtools.call("Page.addScriptToEvaluateOnNewDocument", {
     source: `window.eval(atob(${JSON.stringify(encodedFixture)}));`,
   });
+
+  await devtools.call("Page.navigate", { url: `${appUrl}/dashboard` });
+  await waitFor(
+    "!!document.querySelector('[data-testid=\"desktop-promo-link\"]')",
+    "Overview desktop promotion",
+  );
+  await devtools.evaluate(
+    `document.querySelector('[data-testid="desktop-promo-link"]')?.click()`,
+  );
+  await waitFor(
+    "window.location.pathname === '/download'",
+    "Overview promotion navigation",
+  );
+  const promotionClickEvents = await devtools.evaluate(
+    "window.__analyticsEvents",
+  );
+  if (
+    JSON.stringify(promotionClickEvents) !==
+    JSON.stringify([
+      {
+        name: "desktop_promo_clicked",
+        data: { location: "overview_callout" },
+      },
+    ])
+  ) {
+    throw new Error(
+      `Unexpected Overview promotion event: ${JSON.stringify(promotionClickEvents)}`,
+    );
+  }
+
+  await devtools.evaluate(
+    "window.localStorage.removeItem('engram.desktopPromoDismissed')",
+  );
+  await devtools.call("Page.navigate", { url: `${appUrl}/dashboard` });
+  await waitFor(
+    "!!document.querySelector('[data-testid=\"desktop-promo-link\"]')",
+    "Overview promotion for dismissal",
+  );
+  await devtools.evaluate(
+    `document.querySelector('[data-testid="desktop-promo-dismiss"]')?.click()`,
+  );
+  await waitFor(
+    "!document.querySelector('[data-testid=\"desktop-promo-link\"]')",
+    "Overview promotion dismissal",
+  );
+  const dismissalEvents = await devtools.evaluate("window.__analyticsEvents");
+  if (
+    JSON.stringify(dismissalEvents) !==
+    JSON.stringify([
+      {
+        name: "desktop_promo_dismissed",
+        data: { location: "overview_callout" },
+      },
+    ])
+  ) {
+    throw new Error(
+      `Unexpected Overview dismissal event: ${JSON.stringify(dismissalEvents)}`,
+    );
+  }
+
+  await devtools.evaluate(
+    "window.localStorage.clear(); window.umami = undefined",
+  );
+  await devtools.call("Page.navigate", { url: `${appUrl}/dashboard` });
+  await waitFor(
+    "!!document.querySelector('[data-testid=\"desktop-promo-link\"]')",
+    "Overview promotion without tracker",
+  );
+  await devtools.evaluate(
+    `document.querySelector('[data-testid="desktop-promo-link"]')?.click()`,
+  );
+  await waitFor(
+    "window.location.pathname === '/download'",
+    "Overview navigation without tracker",
+  );
+  await devtools.evaluate(`(() => {
+    window.__analyticsEvents = [];
+    window.umami = {
+      track(name, data) {
+        window.__analyticsEvents.push({ name, data: data ?? null });
+      }
+    };
+  })()`);
 
   await devtools.call("Page.navigate", { url: `${appUrl}/download` });
   await waitFor(
@@ -340,6 +448,55 @@ try {
     }
   }
 
+  const installerLinks = await devtools.evaluate(
+    `Array.from(document.querySelectorAll('a[download]')).map((node) => ({
+      os: node.closest("section")?.textContent?.toLowerCase() ?? "",
+      download: node.getAttribute("download")
+    }))`,
+  );
+  if (installerLinks.length !== 6) {
+    throw new Error(
+      `Expected six installer links for analytics coverage: ${JSON.stringify(installerLinks)}`,
+    );
+  }
+  await devtools.evaluate(
+    "Array.from(document.querySelectorAll('a[download]')).forEach((node) => node.click())",
+  );
+  const installerEvents = await devtools.evaluate("window.__analyticsEvents");
+  const expectedInstallerEvents = [
+    ["mac", "dmg"],
+    ["win", "exe"],
+    ["win", "zip"],
+    ["linux", "AppImage"],
+    ["linux", "deb"],
+    ["android", "apk"],
+  ];
+  const expectedNormalizedInstallerEvents = expectedInstallerEvents.map(
+    ([os, installerType]) => ({
+      name: "installer_clicked",
+      data: {
+        location: "download_page",
+        os,
+        installer_type: installerType.toLowerCase(),
+      },
+    }),
+  );
+  const sortedInstallerEvents = installerEvents
+    .map((event) => ({ name: event.name, data: event.data }))
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  const sortedExpectedInstallerEvents = expectedNormalizedInstallerEvents.sort(
+    (a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)),
+  );
+  if (
+    installerEvents.length !== expectedInstallerEvents.length ||
+    JSON.stringify(sortedInstallerEvents) !==
+      JSON.stringify(sortedExpectedInstallerEvents)
+  ) {
+    throw new Error(
+      `Unexpected installer analytics events: ${JSON.stringify(installerEvents)}`,
+    );
+  }
+
   await devtools.call("Page.navigate", { url: `${appUrl}/download?failure=1` });
   await waitForText(
     "Couldn't reach the download service",
@@ -360,7 +517,7 @@ try {
     );
   }
 
-  console.log("Download metadata browser regression passed");
+  console.log("Download and analytics funnel browser regression passed");
 } finally {
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");
