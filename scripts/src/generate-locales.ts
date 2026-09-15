@@ -42,6 +42,7 @@ async function translateNamespace(ns: string, tree: Tree, lang: { code: string; 
 - Return ONLY a JSON object with the EXACT same keys and nesting; translate values only.
 - Preserve all {{placeholders}} exactly.
 - Keep translations as concise as the English (UI labels, not prose).
+- Translate ordinary UI labels such as "Off", "Short", and "Extended" when the target language has a natural equivalent; do not leave English UI words unchanged unless they are brand or technical terms.
 - Keep technical/brand terms (ENGRAM, PYRI, API, URL) unchanged.`,
         },
         { role: "user", content: JSON.stringify(tree, null, 2) },
