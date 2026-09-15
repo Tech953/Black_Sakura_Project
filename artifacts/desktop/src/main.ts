@@ -49,11 +49,13 @@ import type { LocalModelFailure } from "./desktop-settings";
 import {
   downloadOfflineModel,
   classifyOfflineModelFailure,
+  clearOfflineModelFailure,
   hasOfflineModelSync,
   offlineModelPartialPath,
   offlineModelPath,
   offlineModelStorageLocation,
   removeOfflineModel,
+  recordOfflineModelFailure,
   offlineModelSpec,
   verifyOfflineModel,
 } from "./offline-model";
@@ -1316,11 +1318,10 @@ async function runOfflineModelDownload(
 
     sendOfflineModelStatus({ operationId, state: "activating" });
     const previous = loadSettings();
-    await activateDesktopSettings(previous, {
-      ...previous,
-      mode: "bundled",
-      offlineModelFailure: undefined,
-    });
+    await activateDesktopSettings(
+      previous,
+      clearOfflineModelFailure({ ...previous, mode: "bundled" }),
+    );
     sendOfflineModelStatus({
       operationId,
       state: "completed",
@@ -1339,13 +1340,12 @@ async function runOfflineModelDownload(
       : errorMessage(error);
     try {
       const previous = loadSettings();
-      saveSettings({
-        ...previous,
-        offlineModelFailure: {
+      saveSettings(
+        recordOfflineModelFailure(previous, {
           kind: errorKind,
           message: failureMessage,
-        },
-      });
+        }),
+      );
     } catch {
       // The download result remains visible through the IPC status even if the
       // settings file cannot record the last failure.
@@ -1923,7 +1923,7 @@ ipcMain.handle("offline-model:download", () => {
       throw new Error("An offline model download is already running.");
     }
     const previous = loadSettings();
-    saveSettings({ ...previous, offlineModelFailure: undefined });
+    saveSettings(clearOfflineModelFailure(previous));
     const operationId = randomUUID();
     const controller = new AbortController();
     const entry: RunningOfflineModelDownload = {
@@ -1971,7 +1971,7 @@ ipcMain.handle("offline-model:remove", async () => {
     }
     await removeOfflineModel(offlineModelRoot(), offlineModelSpec());
     const current = loadSettings();
-    saveSettings({ ...current, offlineModelFailure: undefined });
+    saveSettings(clearOfflineModelFailure(current));
     return { ok: true };
   } catch (error) {
     return { ok: false, error: errorMessage(error) };

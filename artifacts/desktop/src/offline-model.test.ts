@@ -7,11 +7,15 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   OFFLINE_MODEL,
   classifyOfflineModelFailure,
+  clearOfflineModelFailure,
   downloadOfflineModel,
   hasOfflineModelSync,
   offlineModelPartialPath,
   offlineModelPath,
   removeOfflineModel,
+  recordOfflineModelFailure,
+  verifyOfflineModel,
+  type OfflineModelFailureState,
   type OfflineModelSpec,
 } from "./offline-model";
 
@@ -31,6 +35,67 @@ describe("offline model failure classification", () => {
     const error = new Error("The operation was aborted.");
     error.name = "AbortError";
     expect(classifyOfflineModelFailure(error)).toBe("cancelled");
+  });
+});
+
+describe("offline model failure persistence", () => {
+  it.each(["checksum", "network", "cancelled"] as const)(
+    "clears a persisted %s failure before retry and after verified activation",
+    async (kind) => {
+      const body = modelBytes();
+      const { spec } = await serve(body);
+      const root = await mkdtemp(path.join(os.tmpdir(), "engram-offline-model-"));
+      const seeded = {
+        mode: "bundled" as const,
+        offlineModelFailure: {
+          kind,
+          message: `persisted ${kind} failure`,
+        },
+      };
+
+      const retrySettings = clearOfflineModelFailure(seeded);
+      expect(retrySettings.offlineModelFailure).toBeUndefined();
+
+      const downloaded = await downloadOfflineModel(root, { spec });
+      const verified = await verifyOfflineModel(root, spec);
+      const activatedSettings = clearOfflineModelFailure(retrySettings);
+
+      expect(downloaded.path).toBe(offlineModelPath(root, spec));
+      expect(verified.sha256).toBe(spec.sha256);
+      expect(activatedSettings.offlineModelFailure).toBeUndefined();
+    },
+  );
+
+  it("records a new classified failure without activating an unverified file", async () => {
+    const body = modelBytes();
+    const { spec } = await serve(body);
+    const root = await mkdtemp(path.join(os.tmpdir(), "engram-offline-model-"));
+    const seeded: OfflineModelFailureState & { mode: "bundled" } = {
+      mode: "bundled",
+      offlineModelFailure: {
+        kind: "network" as const,
+        message: "persisted network failure",
+      },
+    };
+    const retrySettings = clearOfflineModelFailure(seeded);
+    const wrongSpec = { ...spec, sha256: "0".repeat(64) };
+
+    await expect(
+      downloadOfflineModel(root, { spec: wrongSpec }),
+    ).rejects.toThrow("SHA-256 mismatch");
+
+    const failedSettings = recordOfflineModelFailure(retrySettings, {
+      kind: "checksum",
+      message: "Offline model SHA-256 mismatch.",
+    });
+    expect(failedSettings.offlineModelFailure).toEqual({
+      kind: "checksum",
+      message: "Offline model SHA-256 mismatch.",
+    });
+    expect(hasOfflineModelSync(root, wrongSpec)).toBe(false);
+    await expect(readFile(offlineModelPath(root, wrongSpec))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 });
 

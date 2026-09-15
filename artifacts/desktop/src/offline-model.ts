@@ -78,6 +78,26 @@ export type OfflineModelFailureKind =
   | "storage"
   | "unknown";
 
+export interface OfflineModelFailureState {
+  offlineModelFailure?: {
+    kind: OfflineModelFailureKind;
+    message: string;
+  };
+}
+
+export function clearOfflineModelFailure<T extends OfflineModelFailureState>(
+  settings: T,
+): T {
+  return { ...settings, offlineModelFailure: undefined };
+}
+
+export function recordOfflineModelFailure<T extends OfflineModelFailureState>(
+  settings: T,
+  failure: NonNullable<T["offlineModelFailure"]>,
+): T {
+  return { ...settings, offlineModelFailure: failure };
+}
+
 export function classifyOfflineModelFailure(
   error: unknown,
 ): OfflineModelFailureKind {
