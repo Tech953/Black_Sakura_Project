@@ -98,8 +98,10 @@ const fixtureScript = String.raw`
   const stored = JSON.parse(window.localStorage.getItem(storageKey) || "null");
   const state = stored && typeof stored === "object"
     ? stored
-    : { showInList: false, conversation: null, messages: [], createBody: null };
+    : { showInList: false, conversation: null, messages: [], createBody: null, exchangeCount: 0 };
+  if (!Number.isInteger(state.exchangeCount)) state.exchangeCount = 0;
   const requests = [];
+  const fixtureInstanceId = crypto.randomUUID();
   const engrams = [
     {
       id: 1,
@@ -134,6 +136,7 @@ const fixtureScript = String.raw`
   ];
   const persist = () => window.localStorage.setItem(storageKey, JSON.stringify(state));
   window.__groupChatFixture = {
+    get instanceId() { return fixtureInstanceId; },
     requests,
     get createBody() { return state.createBody; },
     get conversation() { return state.conversation; },
@@ -150,8 +153,45 @@ const fixtureScript = String.raw`
     engramIds: [1, 2],
     groupContinuationMode: "short",
   });
-  const sse = (events) =>
-    new Response(events.map((event) => "data: " + JSON.stringify(event) + "\n\n").join(""), {
+  const groupStream = (initialReplies, continuationReply, signal, continuationDelay) =>
+    new Response(new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        let closed = false;
+        let timer;
+        const closeWithAbort = () => {
+          if (closed) return;
+          closed = true;
+          if (timer) clearTimeout(timer);
+          try {
+            controller.error(new DOMException("The operation was aborted.", "AbortError"));
+          } catch {}
+        };
+        const emit = (reply) => {
+          if (closed) return;
+          state.messages.push({
+            id: state.messages.length + 1,
+            role: "assistant",
+            ...reply,
+            createdAt: "2026-09-12T12:01:01.000Z",
+          });
+          persist();
+          controller.enqueue(encoder.encode("data: " + JSON.stringify(reply) + "\n\n"));
+        };
+        for (const reply of initialReplies) emit(reply);
+        timer = setTimeout(() => {
+          emit(continuationReply);
+          if (closed) return;
+          controller.enqueue(encoder.encode("data: " + JSON.stringify({ done: true }) + "\n\n"));
+          closed = true;
+          controller.close();
+        }, continuationDelay);
+        if (signal) {
+          signal.addEventListener("abort", closeWithAbort, { once: true });
+          if (signal.aborted) closeWithAbort();
+        }
+      },
+    }), {
       headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
     });
 
@@ -199,21 +239,20 @@ const fixtureScript = String.raw`
         content,
         createdAt: "2026-09-12T12:01:00.000Z",
       });
-      const replies = [
-        { speakerEngramId: 1, content: "Mira initial group reply" },
-        { speakerEngramId: 2, content: "Aster initial group reply" },
-        { speakerEngramId: 1, content: "Mira autonomous peer reply" },
-      ];
-      for (const reply of replies) {
-        state.messages.push({
-          id: state.messages.length + 1,
-          role: "assistant",
-          ...reply,
-          createdAt: "2026-09-12T12:01:01.000Z",
-        });
-      }
+      const exchange = state.exchangeCount++;
+      const replies = exchange === 0
+        ? [
+            { speakerEngramId: 1, content: "Mira initial group reply" },
+            { speakerEngramId: 2, content: "Aster initial group reply" },
+            { speakerEngramId: 1, content: "Mira autonomous peer reply" },
+          ]
+        : [
+            { speakerEngramId: 1, content: "Mira stopped exchange reply" },
+            { speakerEngramId: 2, content: "Aster stopped exchange reply" },
+            { speakerEngramId: 1, content: "Mira stopped autonomous reply" },
+          ];
       persist();
-      return sse([...replies, { done: true }]);
+      return groupStream(replies.slice(0, 2), replies[2], init.signal, exchange === 0 ? 700 : 1200);
     }
     return originalFetch(input, init);
   };
@@ -348,8 +387,16 @@ try {
   }
 
   await devtools.evaluate("window.__groupChatFixture.showConversationInList()");
+  const firstPageInstance = await devtools.evaluate("window.__groupChatFixture.instanceId");
   await devtools.call("Page.reload");
-  await waitFor(`Boolean(document.body?.innerText.includes("First Message Group"))`, "conversation after reload");
+  await waitFor(
+    `window.__groupChatFixture?.instanceId && window.__groupChatFixture.instanceId !== ${JSON.stringify(firstPageInstance)}`,
+    "reloaded chat document",
+  );
+  await waitFor(
+    `Boolean(Array.from(document.querySelectorAll("button")).some((node) => node.textContent?.toLowerCase().includes("first message group")))`,
+    "conversation button after reload",
+  );
   await click(
     `Array.from(document.querySelectorAll("button")).find((node) => node.textContent?.toLowerCase().includes("first message group"))`,
     "reloaded group conversation",
@@ -358,6 +405,45 @@ try {
   const reloadedText = await devtools.evaluate("document.body.innerText");
   for (const text of ["MIRA · ◇", "ASTER · △", "Mira initial group reply", "Aster initial group reply"]) {
     if (!reloadedText.includes(text)) throw new Error(`Reloaded transcript is missing ${text}`);
+  }
+
+  await fill(`document.querySelector("textarea")`, "Stop the next group exchange.", "stoppable group message");
+  await click(`Array.from(document.querySelectorAll("button")).find((node) => node.querySelector("svg")?.className?.baseVal?.includes("lucide-send"))`, "send stoppable group message");
+  await waitFor(`Boolean(document.body?.innerText.includes("Aster stopped exchange reply"))`, "stoppable initial peer replies");
+  const beforeStopCount = await devtools.evaluate("window.__groupChatFixture.messageCount");
+  if (beforeStopCount !== 7) {
+    throw new Error(`Unexpected persisted count before stop: ${beforeStopCount}`);
+  }
+  await click(
+    `Array.from(document.querySelectorAll("button")).find((node) => node.getAttribute("aria-label")?.toLowerCase().includes("stop"))`,
+    "stop group continuation",
+  );
+  await waitFor(`Boolean(document.querySelector("textarea") && !document.querySelector("textarea").disabled)`, "stopped group composer");
+  await delay(1500);
+  const afterStop = await devtools.evaluate("({ count: window.__groupChatFixture.messageCount, body: document.body.innerText })");
+  if (afterStop.count !== 7 || afterStop.body.includes("Mira stopped autonomous reply")) {
+    throw new Error(`Stopping the group exchange allowed a later peer reply: ${JSON.stringify(afterStop)}`);
+  }
+
+  await devtools.evaluate("window.__groupChatFixture.showConversationInList()");
+  const secondPageInstance = await devtools.evaluate("window.__groupChatFixture.instanceId");
+  await devtools.call("Page.reload");
+  await waitFor(
+    `window.__groupChatFixture?.instanceId && window.__groupChatFixture.instanceId !== ${JSON.stringify(secondPageInstance)}`,
+    "reloaded stopped chat document",
+  );
+  await waitFor(
+    `Boolean(Array.from(document.querySelectorAll("button")).some((node) => node.textContent?.toLowerCase().includes("first message group")))`,
+    "conversation button after stopped exchange reload",
+  );
+  await click(
+    `Array.from(document.querySelectorAll("button")).find((node) => node.textContent?.toLowerCase().includes("first message group"))`,
+    "reloaded stopped group conversation",
+  );
+  await waitFor(`Boolean(document.body?.innerText.includes("Aster stopped exchange reply"))`, "reloaded stopped exchange");
+  const stoppedReload = await devtools.evaluate("({ count: window.__groupChatFixture.messageCount, body: document.body.innerText })");
+  if (stoppedReload.count !== 7 || stoppedReload.body.includes("Mira stopped autonomous reply")) {
+    throw new Error(`Stopped transcript changed after reload: ${JSON.stringify(stoppedReload)}`);
   }
   console.log("Group chat browser regression passed");
 } finally {
