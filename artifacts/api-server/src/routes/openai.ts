@@ -68,6 +68,8 @@ const GROUP_CONTINUATION_TURN_LIMITS = {
 type GroupContinuationMode = keyof typeof GROUP_CONTINUATION_TURN_LIMITS;
 /** A crashed process may leave a claim behind, but never block a conversation forever. */
 const GROUP_CONTINUATION_CLAIM_TTL_MS = 15 * 60 * 1000;
+const ARCHIVE_EXPORT_FIXTURE_HEADER = "x-engram-browser-fixture";
+const ARCHIVE_EXPORT_FIXTURE_VALUE = "chat-archive-export";
 
 async function claimGroupContinuation(conversationId: number, token: string, now = new Date()) {
   const [claimed] = await db
@@ -404,6 +406,76 @@ router.get("/openai/conversations/:id/messages", async (req, res) => {
     .where(eq(messages.conversationId, parsed.data.id))
     .orderBy(messages.createdAt);
   res.json(msgs);
+});
+
+/**
+ * Deterministic transcript seed for the real Clerk archive/export browser check.
+ * This is deliberately separate from the generation endpoint: a model outage must
+ * not make archive, restore, read-only send, or export coverage unavailable.
+ * The header and non-production guard keep this out of production API behavior.
+ */
+router.post("/openai/conversations/:id/messages/fixture", async (req, res) => {
+  if (
+    process.env.NODE_ENV === "production" ||
+    req.get(ARCHIVE_EXPORT_FIXTURE_HEADER) !== ARCHIVE_EXPORT_FIXTURE_VALUE
+  ) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  const parsedParams = SendOpenaiMessageParams.safeParse({ id: Number(req.params.id) });
+  const userContent = req.body?.userContent;
+  const assistantContent = req.body?.assistantContent;
+  if (
+    !parsedParams.success ||
+    typeof userContent !== "string" ||
+    typeof assistantContent !== "string" ||
+    !userContent.trim() ||
+    !assistantContent.trim()
+  ) {
+    res.status(400).json({ error: "Invalid fixture request" });
+    return;
+  }
+
+  const { id } = parsedParams.data;
+  const conv = await loadOwnedConversation(id, req.userId!);
+  if (!conv) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+  if (conv.archivedAt) {
+    res.status(409).json({ error: "Restore this conversation before seeding a fixture." });
+    return;
+  }
+
+  const [userMessage] = await db
+    .insert(messages)
+    .values({ conversationId: id, role: "user", content: userContent })
+    .returning();
+  const [assistantMessage] = await db
+    .insert(messages)
+    .values({
+      conversationId: id,
+      role: "assistant",
+      content: assistantContent,
+      speakerEngramId: conv.engramId ?? null,
+    })
+    .returning();
+  publishEvent({
+    type: "message.created",
+    ownerId: req.userId!,
+    conversationId: id,
+    engramId: conv.engramId ?? null,
+    data: userMessage,
+  });
+  publishEvent({
+    type: "message.created",
+    ownerId: req.userId!,
+    conversationId: id,
+    engramId: conv.engramId ?? null,
+    data: assistantMessage,
+  });
+  res.status(201).json({ messages: [userMessage, assistantMessage] });
 });
 
 router.post("/openai/conversations/:id/messages", async (req, res) => {
