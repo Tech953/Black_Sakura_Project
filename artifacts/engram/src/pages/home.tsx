@@ -123,6 +123,7 @@ export default function Home() {
             <div className="flex items-center gap-2 sm:ml-auto">
               <Link
                 href="/download"
+                data-testid="desktop-promo-link"
                 onClick={() =>
                   trackEvent("desktop_promo_clicked", {
                     location: "overview_callout",
@@ -135,6 +136,7 @@ export default function Home() {
               </Link>
               <button
                 type="button"
+                data-testid="desktop-promo-dismiss"
                 onClick={dismissDesktopPromo}
                 aria-label={t("desktopPromoDismiss")}
                 className="flex h-9 w-9 items-center justify-center border border-border/60 text-muted-foreground transition-colors hover:border-primary/30 hover:bg-white/5 hover:text-foreground"

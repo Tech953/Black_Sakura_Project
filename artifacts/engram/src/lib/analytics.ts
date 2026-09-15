@@ -14,7 +14,12 @@ declare global {
  * never affect product behavior.
  */
 export function trackEvent(name: string, data?: AnalyticsData): void {
-  if (import.meta.env.DEV || typeof window === "undefined") return;
+  if (
+    (import.meta.env.DEV && import.meta.env.VITE_BROWSER_TEST !== "true") ||
+    typeof window === "undefined"
+  ) {
+    return;
+  }
 
   try {
     window.umami?.track(name, data);
