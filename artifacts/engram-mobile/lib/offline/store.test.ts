@@ -122,6 +122,11 @@ describe("offline SQLite failure harness", () => {
         sql.includes("conversations ADD COLUMN customEngram TEXT"),
       ),
     ).toBe(true);
+    expect(
+      migrations.some((sql) =>
+        sql.includes("conversations ADD COLUMN syncError TEXT"),
+      ),
+    ).toBe(true);
   });
 
   it("exports stable row IDs and maps local chat observations to conversations", async () => {

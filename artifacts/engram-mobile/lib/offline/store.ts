@@ -232,7 +232,8 @@ async function initializeDb(
       createdAt TEXT NOT NULL,
       archivedAt TEXT,
       syncVersion INTEGER NOT NULL DEFAULT 0,
-      syncedAt TEXT
+      syncedAt TEXT,
+      syncError TEXT
     );
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -331,6 +332,13 @@ async function initializeDb(
   try {
     await opened.execAsync(
       "ALTER TABLE conversations ADD COLUMN groupContinuationMode TEXT NOT NULL DEFAULT 'off';",
+    );
+  } catch (error) {
+    if (!String(error).toLowerCase().includes("duplicate column")) throw error;
+  }
+  try {
+    await opened.execAsync(
+      "ALTER TABLE conversations ADD COLUMN syncError TEXT;",
     );
   } catch (error) {
     if (!String(error).toLowerCase().includes("duplicate column")) throw error;
@@ -1233,6 +1241,7 @@ export async function buildPendingSyncBatch(
           WHERE m.conversationId = c.id AND m.syncedAt IS NULL
        )
      )
+        AND c.syncError IS NULL
        AND COALESCE(json_extract(e.data, '$.isArchival'), 0) = 0
      ORDER BY c.id
      LIMIT 100`,
@@ -1410,6 +1419,18 @@ export async function buildPendingSyncBatch(
     },
     localRows,
   });
+}
+
+export async function markConversationSyncBlocked(
+  conversationId: number,
+  message: string,
+): Promise<void> {
+  const d = await getDb();
+  await d.runAsync(
+    "UPDATE conversations SET syncError = ? WHERE id = ?",
+    message,
+    conversationId,
+  );
 }
 
 export function syncBatchIds(batch: PendingOfflineSyncBatch): string[] {
