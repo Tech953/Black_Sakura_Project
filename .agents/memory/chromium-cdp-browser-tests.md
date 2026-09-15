@@ -74,3 +74,9 @@ When a signed-in web fixture asserts that an action made no request, track route
 **Why:** The Settings health-check regression must distinguish an invalid-address probe from authentication bootstrap traffic that occurs before the page interaction.
 
 **How to apply:** Keep a complete request log for diagnostics, but count and assert only the endpoint under test for no-network guarantees.
+
+Self-contained desktop HTML browser fixtures are embedded with an outer String.raw template literal, so injected fixture code must avoid unescaped nested template literals.
+
+**Why:** A nested backtick terminates the host script before Chromium starts, turning a valid browser fixture into a Node syntax failure.
+
+**How to apply:** Use string concatenation or escaped delimiters inside the injected fixture, then run node --check before the browser regression.
