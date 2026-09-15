@@ -57,6 +57,15 @@ function createOfflineModelFixture(directory) {
   return fixture;
 }
 
+function createSecondaryGgufFixture(directory) {
+  const fixture = path.join(directory, "packaged-smoke-secondary.gguf");
+  const bytes = Buffer.alloc(1024 * 1024 + 8, 0x5a);
+  bytes.write("GGUF", 0, "ascii");
+  bytes.writeUInt32LE(3, 4);
+  writeFileSync(fixture, bytes, { mode: 0o600 });
+  return fixture;
+}
+
 function createFixtureCertificate(directory) {
   const keyPath = path.join(directory, "packaged-smoke-fixture.key");
   const certPath = path.join(directory, "packaged-smoke-fixture.crt");
@@ -717,6 +726,11 @@ async function main() {
   mkdirSync(smokeDiagnosticsDir, { recursive: true });
   rmSync(path.join(smokeDiagnosticsDir, "update.log"), { force: true });
   const ggufFixture = process.env.ENGRAM_PACKAGED_GGUF_FIXTURE;
+  const multiModelSmoke =
+    process.env.ENGRAM_PACKAGED_GGUF_MULTI_MODEL === "1";
+  const secondaryGgufFixture = multiModelSmoke
+    ? createSecondaryGgufFixture(userDataDir)
+    : null;
   if (
     !ggufFixture ||
     !path.isAbsolute(ggufFixture) ||
@@ -727,23 +741,25 @@ async function main() {
         "ENGRAM_PACKAGED_GGUF_FIXTURE to a downloaded test model",
     );
   }
-  if (
-    path
-      .resolve(ggufFixture)
-      .startsWith(`${path.resolve(resources)}${path.sep}`)
-  ) {
-    fail(
-      "the GGUF smoke fixture must not be staged inside installer resources",
-    );
-  }
-  const ggufHeader = readFileSync(ggufFixture).subarray(0, 8);
-  if (
-    ggufHeader.length !== 8 ||
-    ggufHeader.toString("ascii", 0, 4) !== "GGUF" ||
-    ggufHeader.readUInt32LE(4) < 1 ||
-    ggufHeader.readUInt32LE(4) > 3
-  ) {
-    fail(`invalid GGUF smoke fixture: ${ggufFixture}`);
+  for (const fixture of [ggufFixture, secondaryGgufFixture].filter(Boolean)) {
+    if (
+      path
+        .resolve(fixture)
+        .startsWith(`${path.resolve(resources)}${path.sep}`)
+    ) {
+      fail(
+        "the GGUF smoke fixture must not be staged inside installer resources",
+      );
+    }
+    const ggufHeader = readFileSync(fixture).subarray(0, 8);
+    if (
+      ggufHeader.length !== 8 ||
+      ggufHeader.toString("ascii", 0, 4) !== "GGUF" ||
+      ggufHeader.readUInt32LE(4) < 1 ||
+      ggufHeader.readUInt32LE(4) > 3
+    ) {
+      fail(`invalid GGUF smoke fixture: ${fixture}`);
+    }
   }
   const useHttpsRedirectFixture =
     process.env.ENGRAM_PACKAGED_OFFLINE_MODEL_HTTPS === "1";
@@ -778,6 +794,9 @@ async function main() {
     );
   }
   const args = [`--user-data-dir=${userDataDir}`];
+  const customRuntimeEnv = multiModelSmoke
+    ? {}
+    : { ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1" };
   // CI Linux runs under xvfb as a privileged user with no GPU; these switches
   // keep Electron from refusing to start. They are no-ops on the runtime paths
   // this test exercises (embedded server + dashboard render).
@@ -797,7 +816,10 @@ async function main() {
       GITHUB_ACTIONS: "true",
       ENGRAM_PACKAGED_GGUF_SMOKE: "1",
       ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
-      ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1",
+      ...(secondaryGgufFixture
+        ? { ENGRAM_PACKAGED_GGUF_FIXTURE_B: secondaryGgufFixture }
+        : {}),
+      ...customRuntimeEnv,
       ENGRAM_PACKAGED_UPGRADE_STAGE: "A",
       ENGRAM_SMOKE_DIAGNOSTICS_DIR: smokeDiagnosticsDir,
     },
@@ -984,14 +1006,68 @@ async function main() {
         importStates,
         completedStatus,
         customModel: value.customModel,
+        customModels: value.customModels.map((model) => ({
+          status: model.status,
+          fingerprint: model.metadata?.sha256,
+        })),
         mode: value.mode,
       };
     }, ggufFixture);
+    const secondCustomImport = multiModelSmoke
+      ? await settings.evaluate(async () => {
+          const selection = await window.engram.chooseGguf();
+          if (!selection.ok) {
+            throw new Error(
+              selection.error ?? "second GGUF picker selection failed",
+            );
+          }
+          let resolveImported;
+          let rejectImported;
+          const importedDone = new Promise((resolve, reject) => {
+            resolveImported = resolve;
+            rejectImported = reject;
+          });
+          const unsubscribe = window.engram.onGgufImportStatus((status) => {
+            if (status.state === "completed") resolveImported(status);
+            if (status.state === "error" || status.state === "cancelled") {
+              rejectImported(
+                new Error(status.error ?? `GGUF import ${status.state}`),
+              );
+            }
+          });
+          try {
+            const imported = await window.engram.importGguf(
+              selection.selection.selectionId,
+            );
+            if (!imported.ok || !imported.operationId) {
+              throw new Error(
+                imported.error ?? "second GGUF import did not start",
+              );
+            }
+            await importedDone;
+            const value = await window.engram.getSettings();
+            return {
+              customModel: value.customModel,
+              customModels: value.customModels.map((model) => ({
+                status: model.status,
+                fingerprint: model.metadata?.sha256,
+              })),
+              mode: value.mode,
+            };
+          } finally {
+            unsubscribe();
+          }
+        })
+      : null;
+    const currentCustomImport = secondCustomImport ?? customImport;
     const customStatus = {
-      mode: customImport.mode,
-      status: customImport.customModel.status,
-      fingerprint: customImport.customModel.metadata?.sha256,
+      mode: currentCustomImport.mode,
+      status: currentCustomImport.customModel.status,
+      fingerprint: currentCustomImport.customModel.metadata?.sha256,
     };
+    const customFingerprints = currentCustomImport.customModels
+      .map((model) => model.fingerprint)
+      .filter((fingerprint) => typeof fingerprint === "string");
     if (
       !customImport.cancelledStates.includes("copying") ||
       !customImport.cancelledStates.includes("cancelled") ||
@@ -1010,6 +1086,25 @@ async function main() {
     ) {
       throw new Error(
         `custom GGUF import/selection/launch was not active: ${JSON.stringify(customStatus)}`,
+      );
+    }
+    if (multiModelSmoke && customFingerprints.length !== 2) {
+      throw new Error(
+        `two managed GGUF entries were not imported: ${JSON.stringify(
+          customImport.customModels,
+        )}`,
+      );
+    }
+    const fallbackFingerprint = multiModelSmoke
+      ? customFingerprints.find(
+          (fingerprint) => fingerprint !== customStatus.fingerprint,
+        )
+      : undefined;
+    if (multiModelSmoke && !fallbackFingerprint) {
+      throw new Error(
+        `could not identify the non-active managed GGUF fallback: ${JSON.stringify(
+          customImport.customModels,
+        )}`,
       );
     }
     const customStorePath = path.join(userDataDir, "models", "custom");
@@ -1039,7 +1134,10 @@ async function main() {
         CI: "true",
         GITHUB_ACTIONS: "true",
         ENGRAM_PACKAGED_GGUF_SMOKE: "1",
-        ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1",
+         ...(secondaryGgufFixture
+           ? { ENGRAM_PACKAGED_GGUF_FIXTURE_B: secondaryGgufFixture }
+           : {}),
+         ...customRuntimeEnv,
         ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE: "1",
         ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
         ENGRAM_PACKAGED_UPGRADE_STAGE: "custom-restart",
@@ -1079,6 +1177,10 @@ async function main() {
             mode: value.mode,
             status: value.customModel.status,
             fingerprint: value.customModel.metadata?.sha256,
+            customModels: value.customModels.map((model) => ({
+              status: model.status,
+              fingerprint: model.metadata?.sha256,
+            })),
           };
         },
       );
@@ -1091,36 +1193,139 @@ async function main() {
           `custom GGUF was not active after restart: ${JSON.stringify(persistedCustom)}`,
         );
       }
+      if (
+        multiModelSmoke &&
+        (persistedCustom.customModels.length !== 2 ||
+          !persistedCustom.customModels.every((model) =>
+            customFingerprints.includes(model.fingerprint),
+          ))
+      ) {
+        throw new Error(
+          `both managed GGUF entries did not survive restart: ${JSON.stringify(
+            persistedCustom,
+          )}`,
+        );
+      }
       log(
-        "custom GGUF survived restart and was re-verified by the packaged runtime",
+        multiModelSmoke
+          ? "both managed GGUF entries survived restart with the selected model preserved"
+          : "custom GGUF survived restart and was re-verified by the packaged runtime",
       );
 
-      const removedCustom = await customRestartedSettings.evaluate(async () => {
-        const result = await window.engram.removeGguf();
-        if (!result.ok)
-          throw new Error(result.error ?? "custom GGUF removal failed");
-        const value = await window.engram.getSettings();
-        return {
-          mode: value.mode,
-          status: value.customModel.status,
-        };
-      });
-      if (removedCustom.status !== "none") {
+      const removedCustom = multiModelSmoke
+        ? await customRestartedSettings.evaluate(
+            async ({ fallbackModel, activeModel }) => {
+              const activated = await window.engram.activateGguf(fallbackModel);
+              if (!activated.ok) {
+                throw new Error(
+                  activated.error ?? "custom GGUF switch failed",
+                );
+              }
+              const switched = await window.engram.getSettings();
+              if (
+                switched.mode !== "custom" ||
+                switched.customModel.metadata?.sha256 !== fallbackModel
+              ) {
+                throw new Error(
+                  `custom GGUF switch did not select the fallback entry: ${JSON.stringify(
+                    {
+                      mode: switched.mode,
+                      selected: switched.customModel.metadata?.sha256,
+                    },
+                  )}`,
+                );
+              }
+              const reactivated = await window.engram.activateGguf(activeModel);
+              if (!reactivated.ok) {
+                throw new Error(
+                  reactivated.error ?? "custom GGUF reactivation failed",
+                );
+              }
+              const activeAgain = await window.engram.getSettings();
+              if (
+                activeAgain.mode !== "custom" ||
+                activeAgain.customModel.metadata?.sha256 !== activeModel
+              ) {
+                throw new Error(
+                  `custom GGUF reactivation did not select the active entry: ${JSON.stringify(
+                    {
+                      mode: activeAgain.mode,
+                      selected: activeAgain.customModel.metadata?.sha256,
+                    },
+                  )}`,
+                );
+              }
+              const removed = await window.engram.removeGguf(activeModel);
+              if (!removed.ok) {
+                throw new Error(
+                  removed.error ?? "active custom GGUF removal failed",
+                );
+              }
+              const value = await window.engram.getSettings();
+              return {
+                mode: value.mode,
+                status: value.customModel.status,
+                fingerprint: value.customModel.metadata?.sha256,
+                customModels: value.customModels.map((model) => ({
+                  status: model.status,
+                  fingerprint: model.metadata?.sha256,
+                })),
+              };
+            },
+            {
+              fallbackModel: fallbackFingerprint,
+              activeModel: customStatus.fingerprint,
+            },
+          )
+        : await customRestartedSettings.evaluate(async () => {
+            const result = await window.engram.removeGguf();
+            if (!result.ok)
+              throw new Error(result.error ?? "custom GGUF removal failed");
+            const value = await window.engram.getSettings();
+            return {
+              mode: value.mode,
+              status: value.customModel.status,
+            };
+          });
+      if (
+        multiModelSmoke
+          ? (!["bundled", "offline"].includes(removedCustom.mode) ||
+              removedCustom.fingerprint !== fallbackFingerprint ||
+              removedCustom.customModels.length !== 1 ||
+              removedCustom.customModels[0]?.fingerprint !== fallbackFingerprint)
+          : removedCustom.status !== "none"
+      ) {
         throw new Error(
-          `custom GGUF remained after removal: ${JSON.stringify(removedCustom)}`,
+          `custom GGUF fallback state was not safe after active removal: ${JSON.stringify(
+            removedCustom,
+          )}`,
         );
       }
       const afterRemoveEntries = readdirSync(customStorePath);
+      const remainingGgufEntries = afterRemoveEntries.filter((entry) =>
+        entry.endsWith(".gguf"),
+      );
       if (
-        afterRemoveEntries.some(
-          (entry) => entry.endsWith(".gguf") || entry.endsWith(".partial"),
-        )
+        remainingGgufEntries.some(
+          (entry) =>
+            !multiModelSmoke ||
+            entry !== `${fallbackFingerprint}.gguf`,
+        ) ||
+        (!multiModelSmoke && remainingGgufEntries.length > 0) ||
+        (multiModelSmoke &&
+          (remainingGgufEntries.length !== 1 ||
+            remainingGgufEntries[0] !== `${fallbackFingerprint}.gguf`)) ||
+        afterRemoveEntries.some((entry) => entry.endsWith(".partial"))
       ) {
         throw new Error(
           `custom GGUF files remained after removal: ${JSON.stringify(afterRemoveEntries)}`,
         );
       }
-      log("custom GGUF was removed through the packaged Settings IPC surface");
+      log(
+        multiModelSmoke
+          ? "switched managed GGUFs and removed the active entry without deleting the safe fallback"
+          : "custom GGUF was removed through the packaged Settings IPC surface",
+      );
 
       const cancelledStatus = await customRestartedSettings.evaluate(
         async () => {
