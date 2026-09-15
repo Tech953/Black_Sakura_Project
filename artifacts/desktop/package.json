@@ -18,6 +18,7 @@
     "dist": "pnpm run build && electron-builder --linux",
     "dist:all": "pnpm run build && electron-builder -mwl",
     "smoke": "node ./scripts/smoke-test.mjs",
+    "test:settings-browser": "node ./scripts/settings-browser-regression.mjs",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

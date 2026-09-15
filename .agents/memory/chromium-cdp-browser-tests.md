@@ -62,3 +62,9 @@ Wouter's `useLocation()` value is pathname-oriented in this app and should not b
 **Why:** A browser navigation to `/media?asset=...` updated the URL but left the focused-card logic blind to the query when it parsed the hook value.
 
 **How to apply:** Browser regressions should assert both the URL search parameter and the resulting stateful UI, such as a focused or expanded detail card.
+
+For self-contained desktop HTML pages with an injected bridge, enable Page and Runtime domains and install the fixture as `window.eval(atob(...))` through `Page.addScriptToEvaluateOnNewDocument`; a direct source string may run outside the page world and leave the bridge undefined. Run this Chromium harness on Linux only when the shared browser binary is Linux-specific.
+
+**Why:** The Settings document’s inline initialization runs in the page world and needs the bridge before its first script executes; the existing Linux Chromium helper is not present on the Windows/macOS desktop matrix.
+
+**How to apply:** Serve the real HTML, inject the encoded fixture before navigation, and gate the workflow step to Linux while keeping production renderer code unchanged.
