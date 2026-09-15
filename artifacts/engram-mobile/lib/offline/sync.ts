@@ -1,13 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  setBaseUrl,
-  syncOfflineHistory,
-} from "@workspace/api-client-react";
+import { SyncOfflineHistoryBody } from "@workspace/api-zod";
+import { setBaseUrl, syncOfflineHistory } from "@workspace/api-client-react";
 
 import { resolveServerUrl } from "../server-url";
 import {
   buildPendingSyncBatch,
   getOfflineStoreAccountId,
+  markConversationSyncBlocked,
   markSyncBatchComplete,
   syncBatchIds,
 } from "./store";
@@ -18,6 +17,8 @@ const MAX_BATCHES_PER_SYNC = 20;
 export type OfflineSyncResult = {
   syncedRows: number;
   batches: number;
+  blockedRows?: number;
+  blockedMessage?: string;
 };
 
 let activeSync: Promise<OfflineSyncResult> | null = null;
@@ -49,17 +50,54 @@ async function assertServerReachable(serverUrl: string): Promise<void> {
 async function drainPendingRows(): Promise<OfflineSyncResult> {
   const syncAccountId = getOfflineStoreAccountId();
   if (!syncAccountId) {
-    throw new Error("An authenticated account is required to synchronize offline history.");
+    throw new Error(
+      "An authenticated account is required to synchronize offline history.",
+    );
   }
   const assertSameAccount = () => {
     if (getOfflineStoreAccountId() !== syncAccountId) {
-      throw new Error("Offline account changed; synchronization was cancelled.");
+      throw new Error(
+        "Offline account changed; synchronization was cancelled.",
+      );
     }
   };
   const deviceId = await getDeviceId();
   let batch = await buildPendingSyncBatch(deviceId);
   if (syncBatchIds(batch).length === 0) {
     return { syncedRows: 0, batches: 0 };
+  }
+  const validation = SyncOfflineHistoryBody.safeParse(batch.payload);
+  if (!validation.success) {
+    const conversationIndex = validation.error.issues.find(
+      (issue) => issue.path[0] === "conversations",
+    )?.path[1];
+    const conversation =
+      typeof conversationIndex === "number"
+        ? batch.payload.conversations[conversationIndex]
+        : undefined;
+    const localConversationId = Number(
+      /^conversation:(\d+)$/.exec(conversation?.syncId ?? "")?.[1],
+    );
+    const field = validation.error.issues.find(
+      (issue) =>
+        issue.path[0] === "conversations" &&
+        issue.path[1] === conversationIndex,
+    )?.path[2];
+    const message =
+      field === "personaName"
+        ? "This offline conversation cannot sync because its persona name is over the 200-character limit. Shorten it, then retry."
+        : field === "customEngram"
+          ? "This offline conversation cannot sync because its custom persona context is over the 40,000-character limit. Shorten it, then retry."
+          : "This offline conversation cannot sync because it contains invalid data. Review it, then retry.";
+    if (Number.isFinite(localConversationId)) {
+      await markConversationSyncBlocked(localConversationId, message);
+    }
+    return {
+      syncedRows: 0,
+      batches: 0,
+      blockedRows: 1,
+      blockedMessage: message,
+    };
   }
   const serverUrl = await resolveServerUrl();
   await assertServerReachable(serverUrl);

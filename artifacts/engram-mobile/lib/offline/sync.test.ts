@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   markSyncBatchComplete: vi.fn(),
   syncBatchIds: vi.fn(),
   getOfflineStoreAccountId: vi.fn(),
+  markConversationSyncBlocked: vi.fn(),
 }));
 
 vi.mock("@react-native-async-storage/async-storage", () => ({
@@ -30,6 +31,7 @@ vi.mock("./store", () => ({
   markSyncBatchComplete: mocks.markSyncBatchComplete,
   syncBatchIds: mocks.syncBatchIds,
   getOfflineStoreAccountId: mocks.getOfflineStoreAccountId,
+  markConversationSyncBlocked: mocks.markConversationSyncBlocked,
 }));
 
 const pendingBatch = {
@@ -155,6 +157,75 @@ describe("offline reconnect synchronization", () => {
       "Server did not acknowledge every offline row",
     );
     expect(mocks.markSyncBatchComplete).not.toHaveBeenCalled();
+  });
+
+  it("blocks an oversized custom persona instead of retrying it forever", async () => {
+    const oversizedBatch = {
+      ...pendingBatch,
+      payload: {
+        ...pendingBatch.payload,
+        conversations: [
+          {
+            ...pendingBatch.payload.conversations[0],
+            customEngram: "x".repeat(40_001),
+          },
+        ],
+      },
+    };
+    mocks.buildPendingSyncBatch.mockResolvedValueOnce(oversizedBatch);
+    mocks.syncBatchIds.mockReturnValue(["conversation:7", "message:9"]);
+
+    await expect(syncOfflineData()).resolves.toEqual({
+      syncedRows: 0,
+      batches: 0,
+      blockedRows: 1,
+      blockedMessage:
+        "This offline conversation cannot sync because its custom persona context is over the 40,000-character limit. Shorten it, then retry.",
+    });
+    expect(mocks.markConversationSyncBlocked).toHaveBeenCalledWith(
+      7,
+      "This offline conversation cannot sync because its custom persona context is over the 40,000-character limit. Shorten it, then retry.",
+    );
+    expect(mocks.syncOfflineHistory).not.toHaveBeenCalled();
+    expect(mocks.markSyncBatchComplete).not.toHaveBeenCalled();
+  });
+
+  it("continues syncing legacy conversations without persona fields", async () => {
+    const {
+      personaName: _personaName,
+      customEngram: _customEngram,
+      ...legacyConversation
+    } = pendingBatch.payload.conversations[0];
+    const legacyBatch = {
+      ...pendingBatch,
+      payload: {
+        ...pendingBatch.payload,
+        conversations: [legacyConversation],
+      },
+    };
+    mocks.buildPendingSyncBatch
+      .mockResolvedValueOnce(legacyBatch)
+      .mockResolvedValueOnce(emptyBatch);
+    mocks.syncBatchIds.mockImplementation((batch) =>
+      batch === legacyBatch ? ["conversation:7", "message:9"] : [],
+    );
+    mocks.syncOfflineHistory.mockResolvedValueOnce({
+      syncedIds: ["conversation:7", "message:9"],
+      imported: {
+        conversations: 1,
+        messages: 1,
+        inquiries: 0,
+        transmissions: 0,
+        observedEntries: 0,
+      },
+    });
+
+    await expect(syncOfflineData()).resolves.toEqual({
+      syncedRows: 2,
+      batches: 1,
+    });
+    expect(mocks.markConversationSyncBlocked).not.toHaveBeenCalled();
+    expect(mocks.markSyncBatchComplete).toHaveBeenCalledOnce();
   });
 
   it("shares one in-flight upload across duplicate reconnect toggles", async () => {
