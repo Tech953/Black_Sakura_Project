@@ -441,7 +441,7 @@ export default function Environment() {
                 <div className="grid grid-cols-3 gap-2 font-mono text-center">
                   <div className="border border-border/40 py-2">
                     <div className="text-[9px] text-muted-foreground/60 uppercase">{t("mood")}</div>
-                    <div className="text-sm text-primary mt-0.5 truncate" title={selected.currentMood}>{selected.currentMood ?? "—"}</div>
+                    <div className="text-sm text-primary mt-0.5 truncate" title={selected.currentMood ?? undefined}>{selected.currentMood ?? "—"}</div>
                   </div>
                   <div className="border border-border/40 py-2">
                     <div className="text-[9px] text-muted-foreground/60 uppercase">{t("lastTick")}</div>

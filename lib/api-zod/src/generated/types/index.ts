@@ -23,6 +23,7 @@ export * from './engramArtifactStatus';
 export * from './engramArtifactTrigger';
 export * from './engramConfigInput';
 export * from './engramConfigInputMode';
+export * from './engramContinuationEligibility';
 export * from './engramDrive';
 export * from './engramDriveCharge';
 export * from './engramDriveState';

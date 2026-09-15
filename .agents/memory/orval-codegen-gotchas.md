@@ -26,3 +26,9 @@ description: Non-obvious constraints when using the OpenAPI→Orval React Query 
 **Query timestamps:** Keep cursor timestamps as OpenAPI `type: string` query parameters and validate the ISO value at the route boundary. Using `format: date-time` makes generated Zod schemas expect a `Date` object, while Express query values arrive as strings.
 **Why:** the message-history cursor needed a timestamp boundary, and the generated `zod.date()` rejected the raw query string before route parsing could run.
 **How to apply:** use a string schema for new timestamp cursors or filters that arrive through query parameters, then construct and validate `Date` only after the generated query parser succeeds.
+
+When a shared response schema is enriched by only one route, keep the new field optional on the shared component unless every endpoint using that component returns it; model nullable database columns as `nullable` in OpenAPI and normalize them at strict DOM boundaries.
+
+**Why:** The Engram schema is reused by list, synthesis, import, and single-resource responses, while list enrichment adds continuation eligibility and live state columns legitimately return null.
+
+**How to apply:** add route-specific focused response parsing for enriched list data, regenerate both clients, and run web typechecks after nullability changes.
