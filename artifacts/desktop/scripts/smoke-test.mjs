@@ -1393,10 +1393,7 @@ async function main() {
         );
       }
       log("offline model cancellation-safe lifecycle completed through IPC");
-      if (
-        process.platform === "linux" &&
-        process.env.ENGRAM_PACKAGED_UPDATE_SMOKE === "1"
-      ) {
+      if (process.env.ENGRAM_PACKAGED_UPDATE_SMOKE === "1") {
         await runPackagedUpdateSmoke(
           upgradedSettings,
           `${new URL(upgradedWindow.url()).origin}/api/healthz`,
