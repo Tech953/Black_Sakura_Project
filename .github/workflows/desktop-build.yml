@@ -218,6 +218,53 @@ jobs:
         #     an accidental Release.
         run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --publish ${{ github.event_name == 'push' && github.ref_type == 'tag' && 'always' || 'never' }}
 
+      - name: Verify Windows HTTPS smoke certificate tool
+        if: matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $candidates = @()
+          $pathOpenSsl = Get-Command openssl.exe -ErrorAction SilentlyContinue
+          if ($null -ne $pathOpenSsl) {
+            $candidates += $pathOpenSsl.Source
+          }
+          if ($env:OPENSSL_BIN) {
+            $candidates += $env:OPENSSL_BIN
+          }
+          foreach ($root in @($env:ProgramW6432, $env:ProgramFiles)) {
+            if ($root) {
+              $candidates += (Join-Path $root "OpenSSL-Win64\bin\openssl.exe")
+              $candidates += (Join-Path $root "Git\usr\bin\openssl.exe")
+              $candidates += (Join-Path $root "Git\mingw64\bin\openssl.exe")
+            }
+          }
+          if ($env:OPENSSL_HOME) {
+            $candidates += (Join-Path $env:OPENSSL_HOME "bin\openssl.exe")
+          }
+          if ($env:LOCALAPPDATA) {
+            $candidates += (Join-Path $env:LOCALAPPDATA "Programs\Git\usr\bin\openssl.exe")
+          }
+          if ($env:ChocolateyInstall) {
+            $candidates += (Join-Path $env:ChocolateyInstall "bin\openssl.exe")
+          }
+
+          foreach ($candidate in ($candidates | Where-Object { $_ } | Select-Object -Unique)) {
+            if (-not (Test-Path $candidate -PathType Leaf)) {
+              continue
+            }
+            try {
+              $version = (& $candidate version 2>&1 | Out-String).Trim()
+              if ($LASTEXITCODE -eq 0 -and $version) {
+                Write-Host "Windows HTTPS smoke OpenSSL: $version ($candidate)"
+                "OPENSSL_BIN=$candidate" >> $env:GITHUB_ENV
+                exit 0
+              }
+            } catch {
+              # Try the next known runner location.
+            }
+          }
+
+          throw "OpenSSL is required for the Windows HTTPS smoke fixture but was not found. Install OpenSSL on the runner, or set OPENSSL_BIN to a working openssl.exe path; TLS verification must remain enabled."
+
       - name: Verify Windows Authenticode signatures
         if: github.event_name == 'push' && github.ref_type == 'tag' && matrix.platform == 'win'
         shell: pwsh
