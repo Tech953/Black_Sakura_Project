@@ -20,3 +20,9 @@ After emitting an autonomous SSE event, yield once before starting the next boun
 **Why:** Immediate test adapters can otherwise run the entire continuation cap before the socket-close event is processed, masking the disconnect boundary and allowing unnecessary turns.
 
 **How to apply:** Keep the yield inside the request-scoped continuation loop, after the event is emitted and before the next loop guard checks response state.
+
+Before persisting an autonomous turn, check the response again after model generation. A disconnect can happen while generation is awaiting, so checking only before generation can still save a peer reply the user stopped.
+
+**Why:** The stop action closes the client stream immediately, but model adapters may resolve later; persistence must honor that disconnect boundary even when generation cannot be cancelled.
+
+**How to apply:** In the continuation loop, discard the generated response when the response is destroyed or ended, and cover the race with a delayed browser or route fixture.

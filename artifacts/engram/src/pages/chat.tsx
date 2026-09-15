@@ -633,7 +633,12 @@ export default function Chat() {
           variant: "destructive",
         });
       }
-      setMessages((prev) => prev.filter((_, i) => i !== assistantIdx));
+      // Group replies are persisted and appended as they arrive. Aborting a
+      // group stream must leave the already-rendered human-triggered pass
+      // intact; only the synthetic single-chat placeholder is disposable.
+      if (!isGroup) {
+        setMessages((prev) => prev.filter((_, i) => i !== assistantIdx));
+      }
     } finally {
       setStreaming(false);
       abortRef.current = null;

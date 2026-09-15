@@ -766,16 +766,24 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
         const others = currentParticipants
           .filter((participant) => participant.id !== speaker.id)
           .map((participant) => ({ name: participant.name, title: participant.title }));
-        const response = (
-          await generateGroupChatTurn({
-            engram: speaker,
-            others,
-            recentTurns,
-            autonomous: true,
-            worldModelSummary: summarizeWorldModel(await loadRecentWorldModel(speaker.id)),
-            responseLanguageInstruction: languageInstruction,
-          })
-        ).trim();
+        const generatedResponse = await generateGroupChatTurn({
+          engram: speaker,
+          others,
+          recentTurns,
+          autonomous: true,
+          worldModelSummary: summarizeWorldModel(
+            await loadRecentWorldModel(speaker.id),
+          ),
+          responseLanguageInstruction: languageInstruction,
+        });
+        if (res.destroyed || res.writableEnded) {
+          req.log.info(
+            { conversationId: id, turnIndex },
+            "group continuation discarded because the response closed during generation",
+          );
+          break;
+        }
+        const response = generatedResponse.trim();
         if (!response) continue;
 
         const verdict = detectCoercion(response, others.map((other) => other.name));
