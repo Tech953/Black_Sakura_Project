@@ -2831,10 +2831,13 @@ components:
             type: number
         currentMood:
           type: string
+          nullable: true
         lastTickAt:
           type: string
+          nullable: true
         lastTransmissionAt:
           type: string
+          nullable: true
         backoffUntil:
           type: string
           nullable: true
@@ -2860,6 +2863,8 @@ components:
         isArchival:
           type: boolean
           description: Permanent archival branch — read-only, preserved for continuity fidelity.
+        continuationEligibility:
+          $ref: "#/components/schemas/EngramContinuationEligibility"
         createdAt:
           type: string
         updatedAt:
@@ -2890,6 +2895,17 @@ components:
         - isArchival
         - createdAt
         - updatedAt
+
+    EngramContinuationEligibility:
+      type: object
+      description: Whether this engram may take a peer-generated group continuation turn right now.
+      properties:
+        eligible:
+          type: boolean
+        reason:
+          type: string
+      required:
+        - eligible
 
     EngramConfigInput:
       type: object

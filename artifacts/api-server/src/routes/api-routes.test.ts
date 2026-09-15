@@ -77,6 +77,7 @@ import {
   UpdateEngramWorldModelEntryResponse,
   ListEngramMessagesResponse,
   GetEngramStatesResponse,
+  ListEngramsResponse,
   GetHubControlsResponse,
   UpdateHubControlsResponse,
   SyncOfflineHistoryBody,
@@ -1717,6 +1718,42 @@ describe("CSV engram import", () => {
 // Manual /tick and /transmit
 // =============================================================================
 describe("live engram state", () => {
+  it("returns continuation eligibility in the list response contract", async () => {
+    const eligible = seedEngram({
+      name: "Eligible",
+      mode: "full_bounded",
+      isArchival: false,
+    });
+    const blocked = seedEngram({
+      name: "Blocked",
+      mode: "quiescent",
+      autonomyEnabled: false,
+      isArchival: false,
+    });
+
+    const res = await fetch(`${base}/api/engrams`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const parsed = ListEngramsResponse.safeParse(body);
+    if (!parsed.success) {
+      throw new Error(
+        `/api/engrams response contract failed: ${parsed.error.message}`,
+      );
+    }
+
+    expect(
+      parsed.data.find((engram) => engram.id === eligible.id)
+        ?.continuationEligibility,
+    ).toEqual({ eligible: true });
+    expect(
+      parsed.data.find((engram) => engram.id === blocked.id)
+        ?.continuationEligibility,
+    ).toEqual({
+      eligible: false,
+      reason: "autonomy is disabled for this engram",
+    });
+  });
+
   async function loadStates() {
     const res = await fetch(`${base}/api/engrams/state`);
     expect(res.status).toBe(200);

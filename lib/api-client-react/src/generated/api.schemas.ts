@@ -640,6 +640,14 @@ export const EngramMode = {
   quiescent: 'quiescent',
 } as const;
 
+/**
+ * Whether this engram may take a peer-generated group continuation turn right now.
+ */
+export interface EngramContinuationEligibility {
+  eligible: boolean;
+  reason?: string;
+}
+
 export interface Engram {
   id: number;
   slug: string;
@@ -658,9 +666,9 @@ export interface Engram {
   tickCadenceSeconds: number;
   initiationThreshold: number;
   driveState: EngramDriveState;
-  currentMood?: string;
-  lastTickAt?: string;
-  lastTransmissionAt?: string;
+  currentMood?: string | null;
+  lastTickAt?: string | null;
+  lastTransmissionAt?: string | null;
   backoffUntil?: string | null;
   isChatActive: boolean;
   mode: EngramMode;
@@ -669,6 +677,7 @@ export interface Engram {
   artifactGenerationEnabled: boolean;
   /** Permanent archival branch — read-only, preserved for continuity fidelity. */
   isArchival: boolean;
+  continuationEligibility?: EngramContinuationEligibility;
   createdAt: string;
   updatedAt: string;
 }
