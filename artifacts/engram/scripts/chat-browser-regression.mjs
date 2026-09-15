@@ -18,6 +18,8 @@ const profileDir = await mkdtemp(join(tmpdir(), "engram-chat-profile-"));
 let disposableClerk;
 let realConversationId;
 let realConversationTitle;
+const realFixtureUserMessage = "Real Clerk export fixture message";
+const realFixtureAssistantMessage = "Real Clerk export fixture reply";
 const chromiumPath =
   process.env.CHROMIUM_PATH ??
   ["/repl/tools/bin/chromium", "chromium", "chromium-browser", "google-chrome"]
@@ -435,21 +437,31 @@ try {
     realConversationTitle = createdConversation.body.title;
     const seededMessage = JSON.parse(await devtools.evaluate(`(async () => {
       const token = await window.Clerk.session.getToken();
-      const response = await fetch("/api/openai/conversations/${realConversationId}/messages", {
+      const response = await fetch("/api/openai/conversations/${realConversationId}/messages/fixture", {
         method: "POST",
         headers: {
           Authorization: "Bearer " + token,
           "Content-Type": "application/json",
+          "X-Engram-Browser-Fixture": "chat-archive-export",
         },
-        body: JSON.stringify({ content: "Real Clerk export fixture message" }),
+        body: JSON.stringify({
+          userContent: ${JSON.stringify(realFixtureUserMessage)},
+          assistantContent: ${JSON.stringify(realFixtureAssistantMessage)},
+        }),
       });
+      const body = await response.json();
       return JSON.stringify({
         status: response.status,
-        responseBytes: (await response.text()).length,
+        messages: body.messages,
       });
     })()`));
-    if (seededMessage.status !== 200) {
-      throw new Error(`Real Clerk message creation failed (${seededMessage.status})`);
+    if (
+      seededMessage.status !== 201 ||
+      !Array.isArray(seededMessage.messages) ||
+      !seededMessage.messages.some((message) => message.role === "user" && message.content === realFixtureUserMessage) ||
+      !seededMessage.messages.some((message) => message.role === "assistant" && message.content === realFixtureAssistantMessage)
+    ) {
+      throw new Error(`Real Clerk deterministic transcript fixture failed: ${JSON.stringify(seededMessage)}`);
     }
     await devtools.call("Page.navigate", { url: `${appUrl}/chat` });
   }
@@ -527,7 +539,7 @@ try {
   }
 
   const requiredMessages = realClerkMode
-    ? [conversationTitle, "Real Clerk export fixture message"]
+    ? [conversationTitle, realFixtureUserMessage, realFixtureAssistantMessage]
     : ["Browser Archive Room", "Human hello", "Context clue", "Aster group reply"];
   const visibleText = await devtools.evaluate("document.body.innerText");
   for (const message of requiredMessages) {

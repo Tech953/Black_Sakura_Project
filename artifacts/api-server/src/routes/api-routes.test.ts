@@ -1125,6 +1125,39 @@ describe("conversation persistence routes", () => {
 // Chat SSE streaming (PYRI + engram-linked)
 // =============================================================================
 describe("chat message streaming", () => {
+  it("seeds the archive/export fixture without invoking generation", async () => {
+    h.llmState.throwOnCreate = true;
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "archive fixture",
+      mode: "companion",
+      createdAt: new Date(),
+    });
+    h.seq.conversations = 1;
+
+    const res = await fetch(`${base}/api/openai/conversations/1/messages/fixture`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Engram-Browser-Fixture": "chat-archive-export",
+      },
+      body: JSON.stringify({
+        userContent: "fixture user message",
+        assistantContent: "fixture assistant message",
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toMatchObject({
+      messages: [
+        { role: "user", content: "fixture user message" },
+        { role: "assistant", content: "fixture assistant message" },
+      ],
+    });
+    expect(h.store.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
+  });
+
   it("streams a PYRI reply as SSE and persists the assistant message", async () => {
     h.llmState.streamChunks = ["Hel", "lo!"];
     const conv = h.store.conversations;
