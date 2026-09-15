@@ -489,6 +489,7 @@ jobs:
       # runtime break (stripped wasm, bad migrate/seed) fails the job here. On
       # Linux the Electron GUI needs a virtual display (xvfb).
       - name: Smoke test packaged app
+        id: packaged_smoke
         shell: bash
         env:
           EXPECT_SLIM_LLM: ${{ matrix.platform == 'win' && '1' || '0' }}
@@ -577,7 +578,7 @@ jobs:
           NODE
 
       - name: Upload packaged smoke diagnostics
-        if: always()
+        if: steps.packaged_smoke.outcome == 'failure' && matrix.platform == 'win'
         uses: actions/upload-artifact@v4
         with:
           name: desktop-smoke-diagnostics-${{ matrix.platform }}
