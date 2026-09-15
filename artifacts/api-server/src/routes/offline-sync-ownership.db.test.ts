@@ -17,15 +17,22 @@ vi.hoisted(() => {
 });
 
 import {
+  accountsTable,
   closeDb,
   conversations,
   db,
+  engramPresenceTable,
   engramsTable,
   ensureDatabaseReady,
+  hubSpacesTable,
   messages,
   mobileOfflineSyncReceiptsTable,
+  personalityTable,
+  SYSTEM_OWNER_ID,
 } from "@workspace/db";
 import type { OfflineSyncInput } from "@workspace/api-zod";
+import { and, eq } from "drizzle-orm";
+import { ensureAccountBootstrap } from "../lib/account-bootstrap";
 import offlineSyncRouter from "./offline-sync";
 
 const ready = ensureDatabaseReady({ seed: false });
@@ -81,10 +88,14 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await ready;
+  await db.delete(engramPresenceTable);
   await db.delete(mobileOfflineSyncReceiptsTable);
   await db.delete(messages);
   await db.delete(conversations);
   await db.delete(engramsTable);
+  await db.delete(hubSpacesTable);
+  await db.delete(personalityTable);
+  await db.delete(accountsTable);
 });
 
 afterAll(async () => {
@@ -95,6 +106,149 @@ afterAll(async () => {
 });
 
 describe("offline sync receipt ownership", () => {
+  it("does not adopt legacy receipts or history during account bootstrap", async () => {
+    const ownerId = "bootstrapped-owner";
+    const legacyDeviceId = "legacy-device";
+    const legacySyncId = "legacy-conversation";
+
+    await db.insert(personalityTable).values({ ownerId: SYSTEM_OWNER_ID });
+    await db.insert(hubSpacesTable).values({
+      ownerId: SYSTEM_OWNER_ID,
+      slug: "commons",
+      name: "Commons",
+      kind: "commons",
+      description: "System template space",
+      visibilityScope: "public",
+      actionScope: "converse",
+    });
+    const [templateEngram] = await db
+      .insert(engramsTable)
+      .values({
+        ownerId: SYSTEM_OWNER_ID,
+        slug: "bootstrap-template",
+        name: "Bootstrap Template",
+        title: "Bootstrap Template",
+        symbol: "T",
+        origin: "test",
+        voiceProfile: {
+          speechStyle: "terse",
+          formatting: "plain",
+          vocabulary: [],
+          sampleLines: [],
+          narrationStyle: "first-person",
+        },
+        emotionalBaseline: {
+          valence: 0,
+          arousal: 0,
+          volatility: 0,
+          mood: "even",
+        },
+        environmentAnchor: {
+          name: "Test",
+          description: "Test",
+          locations: [],
+          items: [],
+          ambient: "quiet",
+        },
+        memorySeed: { relationship: "test", facts: [], summary: "" },
+        guardrails: { framing: "test", boundaries: [] },
+        drives: [],
+        focusThemes: [],
+      })
+      .returning({ id: engramsTable.id });
+    const [legacyConversation] = await db
+      .insert(conversations)
+      .values({
+        ownerId: SYSTEM_OWNER_ID,
+        title: "Legacy system history",
+        mode: "companion",
+        engramId: templateEngram!.id,
+      })
+      .returning({ id: conversations.id });
+    await db.insert(mobileOfflineSyncReceiptsTable).values({
+      ownerId: SYSTEM_OWNER_ID,
+      deviceId: legacyDeviceId,
+      syncId: legacySyncId,
+      kind: "conversation",
+      remoteId: legacyConversation!.id,
+    });
+
+    await ensureAccountBootstrap(ownerId);
+
+    const [accountPersonality] = await db
+      .select()
+      .from(personalityTable)
+      .where(eq(personalityTable.ownerId, ownerId));
+    const accountSpaces = await db
+      .select()
+      .from(hubSpacesTable)
+      .where(eq(hubSpacesTable.ownerId, ownerId));
+    const accountEngrams = await db
+      .select()
+      .from(engramsTable)
+      .where(eq(engramsTable.ownerId, ownerId));
+    const accountConversationsBeforeSync = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.ownerId, ownerId));
+    const accountReceiptsBeforeSync = await db
+      .select()
+      .from(mobileOfflineSyncReceiptsTable)
+      .where(eq(mobileOfflineSyncReceiptsTable.ownerId, ownerId));
+
+    expect(accountPersonality).toBeDefined();
+    expect(accountSpaces.map((space) => space.slug)).toEqual(["commons"]);
+    expect(accountEngrams.map((engram) => engram.slug)).toEqual([
+      "bootstrap-template",
+    ]);
+    expect(accountConversationsBeforeSync).toEqual([]);
+    expect(accountReceiptsBeforeSync).toEqual([]);
+
+    const migratedPayload: OfflineSyncInput = {
+      ...payload,
+      deviceId: legacyDeviceId,
+      conversations: [
+        {
+          ...payload.conversations[0]!,
+          syncId: legacySyncId,
+          title: "New account history",
+          engramSlug: "bootstrap-template",
+        },
+      ],
+    };
+    const firstUpload = await postAs(ownerId, migratedPayload);
+    expect(firstUpload.status).toBe(200);
+    expect(await firstUpload.json()).toMatchObject({
+      imported: { conversations: 1 },
+    });
+
+    const accountRetry = await postAs(ownerId, migratedPayload);
+    expect(accountRetry.status).toBe(200);
+    expect(await accountRetry.json()).toMatchObject({
+      imported: { conversations: 0 },
+    });
+
+    const receipts = await db
+      .select()
+      .from(mobileOfflineSyncReceiptsTable)
+      .orderBy(mobileOfflineSyncReceiptsTable.ownerId);
+    expect(receipts).toHaveLength(2);
+    expect(receipts.map((receipt) => receipt.ownerId)).toEqual([
+      SYSTEM_OWNER_ID,
+      ownerId,
+    ]);
+    expect(receipts[0]?.remoteId).toBe(legacyConversation!.id);
+    expect(receipts[1]?.remoteId).not.toBeNull();
+
+    const accountConversations = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.ownerId, ownerId));
+    expect(accountConversations).toHaveLength(1);
+    expect(accountConversations[0]?.title).toBe("New account history");
+    expect(accountConversations[0]?.id).not.toBe(legacyConversation!.id);
+  });
+
   it("keeps the same device and sync IDs idempotent per account", async () => {
     const ownerAFirst = await postAs("owner-a");
     expect(ownerAFirst.status).toBe(200);
