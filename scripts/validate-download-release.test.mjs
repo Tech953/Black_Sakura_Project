@@ -105,7 +105,7 @@ test("retries network errors and reports the final error after exhaustion", asyn
       },
       retryDelay: (attempt) => attempt * 10,
     }),
-    /GitHub release URL is unreachable .*temporary timeout/,
+    /GitHub release URL is unreachable .*network failure after 3 attempts \(2 retries; retries exhausted\).*temporary timeout/,
   );
 
   assert.equal(requests, 3);
@@ -124,7 +124,7 @@ test("reports a transient HTTP failure after bounded retries", async () => {
       sleepImpl: async () => {},
       retryDelay: () => 0,
     }),
-    /GitHub returned HTTP 503/,
+    /Transient HTTP failure after 3 attempts \(2 retries; retries exhausted\).*GitHub returned HTTP 503/,
   );
 
   assert.equal(requests, 3);
