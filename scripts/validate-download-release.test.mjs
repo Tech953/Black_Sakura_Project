@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   DEFAULT_GITHUB_REPO,
+  parseRetryAfter,
   releaseUrlForRepo,
   resolveReleaseRepo,
   validateDownloadRelease,
@@ -54,6 +55,20 @@ test("allows an explicit local network skip but never in CI", async () => {
   );
 });
 
+test("parses bounded Retry-After seconds and HTTP dates", () => {
+  assert.equal(parseRetryAfter("2"), 2_000);
+  assert.equal(
+    parseRetryAfter(
+      "Wed, 21 Oct 2015 07:28:00 GMT",
+      Date.parse("Wed, 21 Oct 2015 07:27:59 GMT"),
+    ),
+    1_000,
+  );
+  assert.equal(parseRetryAfter("not-a-delay"), null);
+  assert.equal(parseRetryAfter("-1"), null);
+  assert.equal(parseRetryAfter("31"), null);
+});
+
 test("passes when the latest release endpoint is reachable", async () => {
   const requests = [];
   const result = await validateDownloadRelease({
@@ -80,6 +95,47 @@ test("retries a transient response before succeeding", async () => {
   const result = await validateDownloadRelease({
     env: { VITE_GITHUB_REPO: "acme/engram" },
     fetchImpl: async () => ({ status: statuses.shift() }),
+    sleepImpl: async (delay) => {
+      delays.push(delay);
+    },
+    retryDelay: (attempt) => attempt * 10,
+  });
+
+  assert.equal(result.status, 302);
+  assert.deepEqual(delays, [10, 20]);
+});
+
+test("uses a valid bounded Retry-After value for 429 responses", async () => {
+  const delays = [];
+  const statuses = [429, 302];
+  const result = await validateDownloadRelease({
+    env: { VITE_GITHUB_REPO: "acme/engram" },
+    fetchImpl: async () => {
+      const status = statuses.shift();
+      return status === 429
+        ? { status, headers: new Headers({ "Retry-After": "2" }) }
+        : { status };
+    },
+    sleepImpl: async (delay) => {
+      delays.push(delay);
+    },
+    retryDelay: () => 10,
+  });
+
+  assert.equal(result.status, 302);
+  assert.deepEqual(delays, [2_000]);
+});
+
+test("falls back to exponential retry delay for invalid or excessive Retry-After values", async () => {
+  const delays = [];
+  const responses = [
+    { status: 429, headers: { "retry-after": "not-a-delay" } },
+    { status: 429, headers: { "retry-after": "31" } },
+    { status: 302 },
+  ];
+  const result = await validateDownloadRelease({
+    env: { VITE_GITHUB_REPO: "acme/engram" },
+    fetchImpl: async () => responses.shift(),
     sleepImpl: async (delay) => {
       delays.push(delay);
     },

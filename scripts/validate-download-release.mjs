@@ -9,6 +9,7 @@ const SKIP_NETWORK_ENV = "ENGRAM_RELEASE_CHECK_SKIP_NETWORK";
 const MAX_ATTEMPTS = 3;
 const MAX_RETRIES = MAX_ATTEMPTS - 1;
 const INITIAL_RETRY_DELAY_MS = 100;
+const MAX_RETRY_AFTER_MS = 30_000;
 
 function isCiEnvironment(env) {
   return env.CI === "1" || env.CI === "true" || env.GITHUB_ACTIONS === "true";
@@ -42,6 +43,46 @@ function isRetryableStatus(status) {
 
 function retryDelayMs(attempt) {
   return INITIAL_RETRY_DELAY_MS * 2 ** (attempt - 1);
+}
+
+export function parseRetryAfter(value, now = Date.now()) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) {
+    const seconds = Number(trimmed);
+    const delayMs = seconds * 1_000;
+    return Number.isSafeInteger(delayMs) && delayMs <= MAX_RETRY_AFTER_MS
+      ? delayMs
+      : null;
+  }
+
+  if (/^[+-]?\d/.test(trimmed)) {
+    return null;
+  }
+
+  const retryAt = Date.parse(trimmed);
+  if (Number.isNaN(retryAt)) {
+    return null;
+  }
+
+  const delayMs = Math.max(0, retryAt - now);
+  return delayMs <= MAX_RETRY_AFTER_MS ? delayMs : null;
+}
+
+function retryAfterHeader(response) {
+  const headers = response?.headers;
+  if (!headers) {
+    return null;
+  }
+
+  if (typeof headers.get === "function") {
+    return headers.get("retry-after");
+  }
+
+  return headers["retry-after"] ?? headers["Retry-After"] ?? null;
 }
 
 export async function validateDownloadRelease({
@@ -108,7 +149,12 @@ export async function validateDownloadRelease({
     }
 
     if (isRetryableStatus(response.status) && attempt < MAX_ATTEMPTS) {
-      await sleepImpl(retryDelay(attempt));
+      const fallbackDelay = retryDelay(attempt);
+      const serverDelay =
+        response.status === 429
+          ? parseRetryAfter(retryAfterHeader(response))
+          : null;
+      await sleepImpl(serverDelay ?? fallbackDelay);
       continue;
     }
 
