@@ -215,6 +215,13 @@ function createFixtureCertificate(directory) {
     key: readFileSync(keyPath),
     cert: readFileSync(certPath),
     caCertPath: certPath,
+    certificateInfo: {
+      generator: "openssl",
+      command: openssl.command,
+      version: openssl.version,
+      certificatePath: certPath,
+      trust: "NODE_EXTRA_CA_CERTS",
+    },
   };
 }
 
@@ -227,9 +234,26 @@ async function serveOfflineModelFixture(
     ? createFixtureCertificate(path.dirname(fixture))
     : null;
   let redirectCount = 0;
+  const requests = [];
+  const recordRequest = (status, details = {}) => {
+    if (requests.length >= 64) return;
+    requests.push({
+      method: details.method ?? "GET",
+      status,
+      ...details,
+    });
+  };
   const serverHandler = (req, res) => {
+    const requestPath = req.url ?? "/";
+    const range = req.headers.range ?? null;
     if (httpsRedirect && req.url === "/offline-model.gguf") {
       redirectCount += 1;
+      recordRequest(302, {
+        method: req.method,
+        path: requestPath,
+        range,
+        location: "/offline-model-target.gguf",
+      });
       res.writeHead(302, { Location: "/offline-model-target.gguf" }).end();
       return;
     }
@@ -237,21 +261,23 @@ async function serveOfflineModelFixture(
       ? "/offline-model-target.gguf"
       : "/offline-model.gguf";
     if (req.url !== modelPath) {
+      recordRequest(404, { method: req.method, path: requestPath, range });
       res.writeHead(404).end();
       return;
     }
-    const range = req.headers.range;
     const match = range?.match(/^bytes=(\d+)-(\d*)$/);
     if (match) {
       const start = Number(match[1]);
       const requestedEnd = match[2] ? Number(match[2]) : bytes.length - 1;
       const end = Math.min(requestedEnd, bytes.length - 1);
       if (start >= bytes.length || end < start) {
+        recordRequest(416, { method: req.method, path: requestPath, range });
         res
           .writeHead(416, { "Content-Range": `bytes */${bytes.length}` })
           .end();
         return;
       }
+      recordRequest(206, { method: req.method, path: requestPath, range });
       res.writeHead(206, {
         "Accept-Ranges": "bytes",
         "Content-Length": end - start + 1,
@@ -261,6 +287,7 @@ async function serveOfflineModelFixture(
       res.end(bytes.subarray(start, end + 1));
       return;
     }
+    recordRequest(200, { method: req.method, path: requestPath, range });
     res.writeHead(200, {
       "Accept-Ranges": "bytes",
       "Content-Length": bytes.length,
@@ -288,6 +315,8 @@ async function serveOfflineModelFixture(
     bytes: bytes.length,
     sha256: createHash("sha256").update(bytes).digest("hex"),
     caCertPath: certificate?.caCertPath,
+    certificateInfo: certificate?.certificateInfo ?? null,
+    requestSequence: () => requests.slice(),
     get redirectCount() {
       return redirectCount;
     },
@@ -650,11 +679,6 @@ async function runDisposableUpdateFeedSmoke(
   }
 }
 
-function fail(msg) {
-  console.error(`[smoke] FAIL: ${sanitizeSmokeText(msg)}`);
-  process.exit(1);
-}
-
 const smokeWorkspaceRoot = path.resolve(desktopDir, "..", "..");
 const smokeSecretValues = Object.entries(process.env)
   .filter(
@@ -687,6 +711,66 @@ function sanitizeSmokeText(value) {
       /\b(api[_-]?key|token|secret|password|authorization)(\s*[:=]\s*)[^\s,;]+/gi,
       "$1$2[redacted]",
     );
+}
+
+let activeSmokeDiagnostics = null;
+let activeOfflineFixture = null;
+
+function classifySmokeFailure(message) {
+  const text = String(message).toLowerCase();
+  if (text.includes("certificate") || text.includes("openssl") || text.includes("tls")) {
+    return "certificate";
+  }
+  if (text.includes("redirect")) return "redirect";
+  if (text.includes("permission") || text.includes("materialized")) {
+    return "write-permission";
+  }
+  if (text.includes("verif")) return "verification";
+  if (text.includes("activat")) return "activation";
+  if (text.includes("remov")) return "removal";
+  return "other";
+}
+
+function writeSmokeDiagnostics() {
+  const diagnostics = activeSmokeDiagnostics;
+  if (!diagnostics?.diagnosticsDir) return;
+  try {
+    if (activeOfflineFixture) {
+      diagnostics.fixture.redirectCount = activeOfflineFixture.redirectCount;
+      diagnostics.fixture.requestSequence =
+        activeOfflineFixture.requestSequence();
+    }
+    diagnostics.userData.final = {
+      root: diagnostics.userData.root,
+      offlineModelPath: diagnostics.userData.offlineModelPath,
+      offlineModelPartialPath: diagnostics.userData.offlineModelPartialPath,
+      finalExists: existsSync(diagnostics.userData.offlineModelPath),
+      partialExists: existsSync(
+        diagnostics.userData.offlineModelPartialPath,
+      ),
+    };
+    writeFileSync(
+      path.join(diagnostics.diagnosticsDir, "offline-model-smoke.json"),
+      `${sanitizeSmokeText(JSON.stringify(diagnostics, null, 2))}\n`,
+    );
+  } catch (error) {
+    console.error(
+      `[smoke] Could not write offline-model diagnostics: ${sanitizeSmokeText(error)}`,
+    );
+  }
+}
+
+function fail(msg) {
+  if (activeSmokeDiagnostics) {
+    const message = String(msg);
+    activeSmokeDiagnostics.failure = {
+      category: classifySmokeFailure(message),
+      message: sanitizeSmokeText(message),
+    };
+    writeSmokeDiagnostics();
+  }
+  console.error(`[smoke] FAIL: ${sanitizeSmokeText(msg)}`);
+  process.exit(1);
 }
 
 // Hard backstop so a hung launch (e.g. a blocking native error dialog on a
@@ -821,6 +905,41 @@ async function main() {
     path.join(userDataDir, "smoke-diagnostics");
   mkdirSync(smokeDiagnosticsDir, { recursive: true });
   rmSync(path.join(smokeDiagnosticsDir, "update.log"), { force: true });
+  const offlineModelPath = path.join(
+    userDataDir,
+    "models",
+    "offline",
+    "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+  );
+  const offlineModelPartialPath = `${offlineModelPath}.partial`;
+  const diagnostics = {
+    platform: process.platform,
+    diagnosticsDir: smokeDiagnosticsDir,
+    userData: {
+      root: userDataDir,
+      offlineModelPath,
+      offlineModelPartialPath,
+      checkpoints: [],
+    },
+    fixture: {
+      url: null,
+      bytes: null,
+      sha256: null,
+      redirectCount: 0,
+      requestSequence: [],
+      certificate: null,
+      trust: null,
+    },
+    phases: {},
+    failure: null,
+  };
+  activeSmokeDiagnostics = diagnostics;
+  const markPhase = (name, details = {}) => {
+    diagnostics.phases[name] = details;
+    writeSmokeDiagnostics();
+  };
+  let offlineFixture;
+  try {
   const ggufFixture = process.env.ENGRAM_PACKAGED_GGUF_FIXTURE;
   const multiModelSmoke =
     process.env.ENGRAM_PACKAGED_GGUF_MULTI_MODEL === "1";
@@ -872,10 +991,29 @@ async function main() {
       "Windows HTTPS smoke must validate the fixture certificate; unset NODE_TLS_REJECT_UNAUTHORIZED instead of disabling TLS verification",
     );
   }
-  const offlineFixture = await serveOfflineModelFixture(
+  offlineFixture = await serveOfflineModelFixture(
     createOfflineModelFixture(userDataDir),
     { httpsRedirect: useHttpsRedirectFixture },
   );
+  activeOfflineFixture = offlineFixture;
+  diagnostics.fixture = {
+    url: offlineFixture.url,
+    bytes: offlineFixture.bytes,
+    sha256: offlineFixture.sha256,
+    redirectCount: offlineFixture.redirectCount,
+    requestSequence: offlineFixture.requestSequence(),
+    certificate: offlineFixture.certificateInfo,
+    trust: offlineFixture.caCertPath
+      ? {
+          mechanism: "NODE_EXTRA_CA_CERTS",
+          certificatePath: offlineFixture.caCertPath,
+        }
+      : null,
+  };
+  markPhase("fixture", {
+    certificate: offlineFixture.certificateInfo ? "configured" : "not-used",
+    trust: offlineFixture.caCertPath ? "NODE_EXTRA_CA_CERTS" : "not-used",
+  });
   const offlineModelFixtureEnv = {
     ENGRAM_PACKAGED_OFFLINE_MODEL_FIXTURE: "1",
     ENGRAM_PACKAGED_OFFLINE_MODEL_URL: offlineFixture.url,
@@ -885,13 +1023,6 @@ async function main() {
       ? { NODE_EXTRA_CA_CERTS: offlineFixture.caCertPath }
       : {}),
   };
-  const offlineModelPath = path.join(
-    userDataDir,
-    "models",
-    "offline",
-    "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
-  );
-  const offlineModelPartialPath = `${offlineModelPath}.partial`;
   if (useHttpsRedirectFixture) {
     log(
       "Windows offline-model fixture is HTTPS with a redirect and a trusted test certificate",
@@ -1497,19 +1628,26 @@ async function main() {
             await new Promise((resolve) => setTimeout(resolve, 100));
           }
           throw new Error(
-            `downloaded offline model did not become ${expectedStatus}: ${JSON.stringify(latest)}`,
+            `offline-model activation phase failed: downloaded model did not become ${expectedStatus}: ${JSON.stringify(latest)}`,
           );
         },
         expectedOfflineStatus,
       );
       if (
         downloadedStatus.mode !== "bundled" ||
-        downloadedStatus.status !== expectedOfflineStatus ||
+        downloadedStatus.status !== expectedOfflineStatus
+      ) {
+        throw new Error(
+          `offline-model activation phase failed: expected ${expectedOfflineStatus} in userData, got ${JSON.stringify(downloadedStatus)}`,
+        );
+      }
+      if (
         downloadedStatus.downloadedBytes !== offlineFixture.bytes ||
+        typeof downloadedStatus.storageLocation !== "string" ||
         !downloadedStatus.storageLocation.includes(userDataDir)
       ) {
         throw new Error(
-          `offline model download/activation was not ${expectedOfflineStatus} in userData: ${JSON.stringify(downloadedStatus)}`,
+          `offline-model verification phase failed: downloaded bytes or storage path was incorrect: ${JSON.stringify(downloadedStatus)}`,
         );
       }
       if (
@@ -1517,7 +1655,7 @@ async function main() {
         existsSync(offlineModelPartialPath)
       ) {
         throw new Error(
-          `offline model was not fully materialized in Electron userData: ${JSON.stringify(
+          `offline-model write-permission phase failed: model was not fully materialized in Electron userData: ${JSON.stringify(
             {
               offlineModelPath,
               finalExists: existsSync(offlineModelPath),
@@ -1528,8 +1666,33 @@ async function main() {
       }
       if (useHttpsRedirectFixture && offlineFixture.redirectCount < 1) {
         throw new Error(
-          "Windows HTTPS offline-model smoke did not traverse its redirect",
+          "offline-model redirect phase failed: Windows HTTPS smoke did not traverse its redirect",
         );
+      }
+      diagnostics.userData.checkpoints.push({
+        phase: "downloaded",
+        status: downloadedStatus.status,
+        downloadedBytes: downloadedStatus.downloadedBytes,
+        storageLocation: downloadedStatus.storageLocation,
+        finalExists: existsSync(offlineModelPath),
+        partialExists: existsSync(offlineModelPartialPath),
+      });
+      diagnostics.fixture.redirectCount = offlineFixture.redirectCount;
+      diagnostics.fixture.requestSequence = offlineFixture.requestSequence();
+      markPhase("activation", { status: downloadedStatus.status });
+      markPhase("verification", {
+        downloadedBytes: downloadedStatus.downloadedBytes,
+        sha256: offlineFixture.sha256,
+      });
+      markPhase("write-permission", {
+        finalExists: existsSync(offlineModelPath),
+        partialExists: existsSync(offlineModelPartialPath),
+      });
+      if (useHttpsRedirectFixture) {
+        markPhase("redirect", {
+          count: offlineFixture.redirectCount,
+          traversed: offlineFixture.redirectCount > 0,
+        });
       }
       log(
         `offline model downloaded, verified, and stored below Electron userData (${expectedOfflineStatus} on this package)`,
@@ -1687,12 +1850,12 @@ async function main() {
         removedStatus.downloadedBytes !== 0
       ) {
         throw new Error(
-          `offline model removal was not complete: ${JSON.stringify(removedStatus)}`,
+          `offline-model removal phase failed: status was not cleared: ${JSON.stringify(removedStatus)}`,
         );
       }
       if (existsSync(offlineModelPath) || existsSync(offlineModelPartialPath)) {
         throw new Error(
-          `offline model files remained in Electron userData after removal: ${JSON.stringify(
+          `offline-model removal phase failed: files remained in Electron userData: ${JSON.stringify(
             {
               offlineModelPath,
               finalExists: existsSync(offlineModelPath),
@@ -1701,6 +1864,18 @@ async function main() {
           )}`,
         );
       }
+      diagnostics.userData.checkpoints.push({
+        phase: "removed",
+        status: removedStatus.status,
+        downloadedBytes: removedStatus.downloadedBytes,
+        finalExists: existsSync(offlineModelPath),
+        partialExists: existsSync(offlineModelPartialPath),
+      });
+      markPhase("removal", {
+        status: removedStatus.status,
+        finalExists: existsSync(offlineModelPath),
+        partialExists: existsSync(offlineModelPartialPath),
+      });
       log("offline model cancellation-safe lifecycle completed through IPC");
       if (process.env.ENGRAM_PACKAGED_UPDATE_SMOKE === "1") {
         await runPackagedUpdateSmoke(
@@ -1755,7 +1930,39 @@ async function main() {
       const proc = app.process();
       if (proc && !proc.killed) proc.kill("SIGKILL");
     }
-    await new Promise((resolve) => offlineFixture.server.close(resolve));
+  }
+  } catch (error) {
+    const message = String(error?.stack ?? error);
+    diagnostics.failure = {
+      category: classifySmokeFailure(message),
+      message: sanitizeSmokeText(message),
+    };
+    throw error;
+  } finally {
+    if (offlineFixture) {
+      diagnostics.fixture.redirectCount = offlineFixture.redirectCount;
+      diagnostics.fixture.requestSequence = offlineFixture.requestSequence();
+      try {
+        await new Promise((resolve) => offlineFixture.server.close(resolve));
+      } catch (error) {
+        diagnostics.failure ??= {
+          category: "other",
+          message: sanitizeSmokeText(
+            `offline-model fixture cleanup failed: ${String(error)}`,
+          ),
+        };
+      }
+    }
+    diagnostics.userData.final = {
+      root: userDataDir,
+      offlineModelPath,
+      offlineModelPartialPath,
+      finalExists: existsSync(offlineModelPath),
+      partialExists: existsSync(offlineModelPartialPath),
+    };
+    writeSmokeDiagnostics();
+    activeOfflineFixture = null;
+    activeSmokeDiagnostics = null;
   }
 }
 
