@@ -34,6 +34,7 @@ describe("desktop renderer bridge", () => {
       "checkForUpdates",
       "chooseGguf",
       "close",
+      "copyText",
       "downloadOfflineModel",
       "getAppInfo",
       "getSettings",
@@ -50,6 +51,18 @@ describe("desktop renderer bridge", () => {
       "saveSettings",
       "setUiLanguage",
     ]);
+  });
+
+  it("copies text through the narrow clipboard bridge", async () => {
+    const { ipc, invoke } = fakeIpc();
+    const bridge = createEngramDesktopBridge(ipc);
+
+    await bridge.copyText("http://127.0.0.1:4312");
+
+    expect(invoke).toHaveBeenCalledWith(
+      "clipboard:write",
+      "http://127.0.0.1:4312",
+    );
   });
 
   it("selects natively and imports by opaque id without a renderer path API", async () => {

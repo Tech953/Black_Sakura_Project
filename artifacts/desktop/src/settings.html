@@ -257,6 +257,37 @@
         padding: 6px 10px;
         font-size: 11px;
       }
+      .lan-address-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .lan-address-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg);
+      }
+      .lan-address-value {
+        min-width: 0;
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        word-break: break-all;
+      }
+      .lan-address-row button {
+        flex-shrink: 0;
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+      #lan-copy-status {
+        min-height: 16px;
+        margin: 8px 0 0;
+      }
     </style>
   </head>
   <body>
@@ -518,15 +549,13 @@
           to connect (ENGRAM mobile app)</label
         >
       </div>
-      <p class="hint" id="lan-hint">
-        When enabled, the engine listens on your local network. Enter one of the
-        addresses below in the mobile app's Server setting.
-      </p>
-      <p
-        class="hint"
-        id="lan-addresses"
-        style="font-family: &quot;JetBrains Mono&quot;, monospace"
-      ></p>
+       <p class="hint" id="lan-hint">
+         When enabled, the engine listens on your local network. Copy an address
+         below into the web Settings local-server address or the mobile app's
+         Server setting.
+       </p>
+       <div id="lan-addresses" class="lan-address-list"></div>
+       <p id="lan-copy-status" class="hint" role="status" aria-live="polite"></p>
     </fieldset>
 
     <fieldset>
@@ -638,6 +667,57 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
       }
 
+      async function copyLanAddress(address, button) {
+        const status = $("lan-copy-status");
+        button.disabled = true;
+        status.textContent = "Copying address…";
+        status.style.color = "var(--muted)";
+        try {
+          const result = await window.engram.copyText(address);
+          if (!result.ok) {
+            throw new Error(result.error || "Clipboard unavailable.");
+          }
+          status.textContent =
+            `Copied ${address}. Paste it into web Settings local-server address.`;
+          status.style.color = "var(--cyan)";
+        } catch (error) {
+          status.textContent =
+            "Could not copy address: " +
+            (error instanceof Error ? error.message : "Clipboard unavailable.");
+          status.style.color = "#f87171";
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      function renderLanAddresses(addresses) {
+        const container = $("lan-addresses");
+        container.replaceChildren();
+        const entries = Array.isArray(addresses)
+          ? addresses.filter((address) => typeof address === "string" && address)
+          : [];
+        if (entries.length === 0) {
+          container.textContent = "No local server address is available.";
+          return;
+        }
+        for (const address of entries) {
+          const row = document.createElement("div");
+          row.className = "lan-address-row";
+          const value = document.createElement("span");
+          value.className = "lan-address-value";
+          value.textContent = address;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = "Copy";
+          button.setAttribute("aria-label", `Copy ${address}`);
+          button.addEventListener("click", () =>
+            copyLanAddress(address, button),
+          );
+          row.append(value, button);
+          container.appendChild(row);
+        }
+      }
+
       function setUiLock(locked) {
         document.querySelectorAll('input[name="mode"]').forEach((el) => {
           el.disabled = locked || (el.value === "bundled" && !bundledAvailable);
@@ -650,6 +730,11 @@
         $("online-model").disabled = locked;
         $("online-key").disabled = locked;
         $("allow-lan").disabled = locked;
+        document
+          .querySelectorAll("#lan-addresses button")
+          .forEach((button) => {
+            button.disabled = locked;
+          });
         $("btn-download-offline-model").disabled = locked;
         $("btn-remove-offline-model").disabled = locked;
         document
@@ -930,7 +1015,7 @@
         if (currentRadio) currentRadio.checked = true;
 
         $("allow-lan").checked = s.allowLan === true;
-        $("lan-addresses").textContent = (s.lanAddresses || []).join("   ");
+        renderLanAddresses(s.lanAddresses);
         $("offline-base").value = s.offline?.baseUrl || "";
         $("offline-model").value = s.offline?.model || "";
         $("online-base").value = s.online?.baseUrl || "";

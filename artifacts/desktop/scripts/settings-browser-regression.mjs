@@ -158,7 +158,7 @@ const fixtureScript = String.raw`
     bundledAvailable: true,
     bundledModelIncluded: true,
     allowLan: false,
-    lanAddresses: [],
+    lanAddresses: ["http://127.0.0.1:4312", "http://192.168.1.50:4312"],
     offline: { baseUrl: "http://127.0.0.1:11434/v1", model: "fixture" },
     online: { baseUrl: "https://example.invalid/v1", model: "fixture" },
     hasApiKey: false,
@@ -273,6 +273,10 @@ const fixtureScript = String.raw`
       return () => {};
     },
     close: async () => record("close"),
+    copyText: async (text) => {
+      record("copyText", text);
+      return { ok: true };
+    },
     getUiLanguage: async () => "en",
     setUiLanguage: async (language) => record("setUiLanguage", language),
     getAppInfo: async () => ({
@@ -378,6 +382,28 @@ async function main() {
       !initial.failedActivationDisabled
     ) {
       throw new Error(`unexpected initial model cards: ${JSON.stringify(initial)}`);
+    }
+
+    await devtools.evaluate(
+      `document.querySelector('#lan-addresses button')?.click()`,
+    );
+    await waitFor(
+      devtools,
+      `window.__settingsFixture.calls.some((call) =>
+        call.method === "copyText" && call.args[0] === "http://127.0.0.1:4312"
+      )`,
+      "Settings did not forward the local server address copy",
+    );
+    const copyFeedback = await devtools.evaluate(`({
+      status: document.querySelector("#lan-copy-status")?.textContent,
+      addresses: [...document.querySelectorAll(".lan-address-value")].map((node) => node.textContent)
+    })`);
+    if (
+      !copyFeedback.status?.includes("Copied http://127.0.0.1:4312") ||
+      JSON.stringify(copyFeedback.addresses) !==
+        JSON.stringify(["http://127.0.0.1:4312", "http://192.168.1.50:4312"])
+    ) {
+      throw new Error(`local server copy feedback failed: ${JSON.stringify(copyFeedback)}`);
     }
 
     await devtools.evaluate(`document.querySelector(
