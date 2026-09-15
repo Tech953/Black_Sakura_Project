@@ -24,9 +24,11 @@ Date: 2026-09-15
 - No Android phone or emulator was available, so the Arabic switch/reload, force-close/reopen, and visual mirroring checklist could not be executed.
 - No Android visual exceptions can be recorded from this workspace. The Android release sign-off remains pending a connected phone or emulator.
 
-### iOS — not executed
+### iOS — blocked, not signed off
 
-- The Linux workspace has no `xcrun` or `ios-deploy`, and no iOS device target is attached.
+- Attempted on 2026-09-15: `xcrun` and `ios-deploy` are not installed in the Linux workspace.
+- No iOS simulator or iPhone target was available, so the Arabic switch/reload, force-close/reopen, native tab-bar, modal-back, and progress-bar checklist could not be executed.
+- No iOS model/version or visual exceptions can be recorded from this workspace. The iOS release sign-off remains pending a connected iPhone or simulator.
 
 Therefore Android/iOS restart behavior, native tab-bar mirroring, native modal back controls, populated chat/feed layouts, and right-origin progress bars remain release-QA checks for a connected Android phone and iPhone. The implementation and automated/web checks above do not replace that device sign-off.
 
