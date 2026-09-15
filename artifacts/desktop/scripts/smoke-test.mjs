@@ -189,6 +189,120 @@ async function serveOfflineModelFixture(
   };
 }
 
+async function serveDisposableUpdateFeed(diagnosticsDir) {
+  const fixtureDir = mkdtempSync(path.join(os.tmpdir(), "engram-update-feed-"));
+  const artifactName = "engram-disposable-update.AppImage";
+  const artifactPath = path.join(fixtureDir, artifactName);
+  const artifactBytes = Buffer.alloc(128 * 1024, 0x5a);
+  artifactBytes.write("ENGRAM-DISPOSABLE-UPDATE", 0, "ascii");
+  writeFileSync(artifactPath, artifactBytes, { mode: 0o600 });
+  const artifactSha512 = createHash("sha512")
+    .update(artifactBytes)
+    .digest("base64");
+  const metadata = [
+    "version: 999.0.0",
+    "files:",
+    `  - url: ${artifactName}`,
+    `    sha512: ${artifactSha512}`,
+    `    size: ${artifactBytes.length}`,
+    `path: ${artifactName}`,
+    `sha512: ${artifactSha512}`,
+    "releaseDate: 2026-09-14T00:00:00.000Z",
+    "",
+  ].join("\n");
+  const requests = [];
+  const server = createHttpServer((req, res) => {
+    const requestUrl = req.url ?? "/";
+    const requestPath = new URL(requestUrl, "http://127.0.0.1").pathname;
+    const status =
+      requestPath === "/latest-linux.yml" || requestPath === `/${artifactName}`
+        ? 200
+        : 404;
+    if (requests.length < 32) {
+      requests.push({
+        method: req.method ?? "GET",
+        path: requestUrl,
+        status,
+      });
+    }
+    if (requestPath === "/latest-linux.yml") {
+      res.writeHead(200, {
+        "Content-Length": Buffer.byteLength(metadata),
+        "Content-Type": "text/yaml",
+      });
+      res.end(metadata);
+      return;
+    }
+    if (requestPath === `/${artifactName}`) {
+      res.writeHead(200, {
+        "Accept-Ranges": "bytes",
+        "Content-Length": artifactBytes.length,
+        "Content-Type": "application/octet-stream",
+      });
+      res.end(artifactBytes);
+      return;
+    }
+    res.writeHead(404).end();
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    await new Promise((resolve) => server.close(resolve));
+    rmSync(fixtureDir, { recursive: true, force: true });
+    throw new Error("disposable update feed did not expose a TCP address");
+  }
+  let closed = false;
+  return {
+    url: `http://127.0.0.1:${address.port}/`,
+    artifactName,
+    artifactBytes: artifactBytes.length,
+    requestCount: () => requests.length,
+    artifactRequestCount: () =>
+      requests.filter((request) => request.path === `/${artifactName}`).length,
+    close: async () => {
+      if (closed) return;
+      closed = true;
+      let closeError;
+      try {
+        await new Promise((resolve, reject) =>
+          server.close((error) => (error ? reject(error) : resolve())),
+        );
+      } catch (error) {
+        closeError = error;
+      }
+      try {
+        const diagnostic = JSON.stringify(
+          {
+            feed: "disposable-loopback",
+            artifact: artifactName,
+            artifactBytes: artifactBytes.length,
+            requests,
+          },
+          null,
+          2,
+        ).slice(0, 8192);
+        writeFileSync(
+          path.join(diagnosticsDir, "update-feed.json"),
+          `${diagnostic}\n`,
+        );
+      } catch (error) {
+        closeError ??= error;
+      }
+      try {
+        rmSync(fixtureDir, { recursive: true, force: true });
+      } catch (error) {
+        closeError ??= error;
+      }
+      if (closeError) {
+        throw new Error(`disposable update feed cleanup failed: ${String(closeError)}`);
+      }
+    },
+  };
+}
+
 function log(msg) {
   console.log(`[smoke] ${sanitizeSmokeText(msg)}`);
 }
@@ -319,6 +433,116 @@ async function runPackagedUpdateSmoke(
     );
   }
   log("packaged updater restart handoff waited for embedded server shutdown");
+}
+
+async function runDisposableUpdateFeedSmoke(
+  executablePath,
+  baseArgs,
+  env,
+  feed,
+) {
+  const feedUserDataDir = mkdtempSync(
+    path.join(os.tmpdir(), "engram-update-feed-user-data-"),
+  );
+  const feedArgs = [
+    ...baseArgs.filter((arg) => !arg.startsWith("--user-data-dir=")),
+    `--user-data-dir=${feedUserDataDir}`,
+  ];
+  const feedAppImagePath = path.join(
+    feedUserDataDir,
+    "disposable-update-placeholder.AppImage",
+  );
+  let feedApp;
+  try {
+    feedApp = await electron.launch({
+      executablePath,
+      args: feedArgs,
+      timeout: LAUNCH_TIMEOUT_MS,
+      env: {
+        ...env,
+        ENGRAM_PACKAGED_UPDATE_FEED_URL: feed.url,
+        APPIMAGE: feedAppImagePath,
+      },
+    });
+    const feedWindow = await feedApp.firstWindow({ timeout: LAUNCH_TIMEOUT_MS });
+    await feedWindow.waitForLoadState("domcontentloaded");
+    const settingsPromise = feedApp
+      .waitForEvent("window", { timeout: 5_000 })
+      .catch(() => null);
+    await feedWindow.keyboard.press(
+      process.platform === "darwin" ? "Meta+," : "Control+,",
+    );
+    const settings =
+      (await settingsPromise) ??
+      feedApp.windows().find((candidate) => candidate !== feedWindow);
+    if (!settings) {
+      throw new Error("Settings window did not open for disposable feed.");
+    }
+    await settings.waitForLoadState("domcontentloaded");
+    const updateResult = await settings.evaluate(async () => {
+      const statuses = [];
+      const unsubscribe = window.engram.onUpdateStatus((status) => {
+        statuses.push(status);
+      });
+      try {
+        await window.engram.checkForUpdates();
+        const deadline = Date.now() + 30_000;
+        while (
+          Date.now() < deadline &&
+          !statuses.some((status) => status.state === "downloaded")
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        return {
+          statuses,
+          appInfo: await window.engram.getAppInfo(),
+        };
+      } finally {
+        unsubscribe();
+      }
+    });
+    const states = updateResult.statuses.map((status) => status.state);
+    if (!states.includes("checking") || !states.includes("available")) {
+      throw new Error(
+        `feed setup phase failed: ${JSON.stringify(updateResult)}`,
+      );
+    }
+    if (!states.includes("downloading") || !states.includes("downloaded")) {
+      throw new Error(
+        `download handling phase failed: ${JSON.stringify(updateResult)}`,
+      );
+    }
+    if (updateResult.appInfo.updateStatus.state !== "downloaded") {
+      throw new Error(
+        `download handling phase failed: app info did not retain downloaded state: ${JSON.stringify(updateResult.appInfo)}`,
+      );
+    }
+    if (feed.requestCount() < 2 || feed.artifactRequestCount() < 1) {
+      throw new Error(
+        `download handling phase failed: feed requests were incomplete (${feed.requestCount()} total, ${feed.artifactRequestCount()} artifact)`,
+      );
+    }
+    log(
+      `disposable updater feed metadata and ${feed.artifactBytes}-byte artifact reached downloaded state`,
+    );
+  } catch (error) {
+    throw new Error(`disposable update feed check failed: ${String(error)}`);
+  } finally {
+    if (feedApp) {
+      try {
+        await feedApp.close();
+      } catch (error) {
+        const proc = feedApp.process();
+        if (proc && !proc.killed) proc.kill("SIGKILL");
+        throw new Error(`disposable update app cleanup failed: ${String(error)}`);
+      }
+    }
+    try {
+      rmSync(feedUserDataDir, { recursive: true, force: true });
+    } catch (error) {
+      throw new Error(`disposable update userData cleanup failed: ${String(error)}`);
+    }
+  }
 }
 
 function fail(msg) {
@@ -1185,6 +1409,34 @@ async function main() {
       } catch {
         const proc = upgradedApp.process();
         if (proc && !proc.killed) proc.kill("SIGKILL");
+      }
+    }
+    if (
+      process.platform === "linux" &&
+      process.env.ENGRAM_PACKAGED_UPDATE_FEED_SMOKE === "1"
+    ) {
+      const disposableUpdateFeed = await serveDisposableUpdateFeed(
+        smokeDiagnosticsDir,
+      );
+      try {
+        await runDisposableUpdateFeedSmoke(
+          exe,
+          args,
+          {
+            ...process.env,
+            ...offlineModelFixtureEnv,
+            CI: "true",
+            GITHUB_ACTIONS: "true",
+            ENGRAM_PACKAGED_GGUF_SMOKE: "1",
+            ENGRAM_PACKAGED_GGUF_SMOKE_SKIP_PREPARE: "1",
+            ENGRAM_PACKAGED_GGUF_FIXTURE: ggufFixture,
+            ENGRAM_PACKAGED_UPGRADE_STAGE: "disposable-update-feed",
+            ENGRAM_SMOKE_DIAGNOSTICS_DIR: smokeDiagnosticsDir,
+          },
+          disposableUpdateFeed,
+        );
+      } finally {
+        await disposableUpdateFeed.close();
       }
     }
     log(
