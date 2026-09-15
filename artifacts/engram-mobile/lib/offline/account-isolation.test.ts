@@ -4,8 +4,8 @@ type ConversationRow = {
   id: number;
   title: string;
   mode: string;
-  personaName: null;
-  customEngram: null;
+  personaName: string | null;
+  customEngram: string | null;
   engramId: null;
   engramSlug: null;
   createdAt: string;
@@ -92,8 +92,8 @@ function createDatabase(name: string): FakeDatabase {
           id: nextConversationId++,
           title: String(title ?? "New conversation"),
           mode: String(mode ?? "companion"),
-          personaName: (personaName as null) ?? null,
-          customEngram: (customEngram as null) ?? null,
+          personaName: (personaName as string | null) ?? null,
+          customEngram: (customEngram as string | null) ?? null,
           engramId: (engramId as null) ?? null,
           engramSlug: null,
           createdAt: String(createdAt),
@@ -177,10 +177,12 @@ function createDatabase(name: string): FakeDatabase {
         );
       }
       if (sql.includes("FROM messages")) {
+        const conversationId = Number(args[0]);
+        const pendingOnly = sql.includes("syncedAt IS NULL");
         return messages.filter(
           (message) =>
-            message.conversationId === Number(args[0]) &&
-            message.syncedAt === null,
+            message.conversationId === conversationId &&
+            (!pendingOnly || message.syncedAt === null),
         );
       }
       return [];
@@ -348,6 +350,111 @@ describe("mobile offline account boundary", () => {
       accountBDatabase?.messages.map((message) => message.content),
     ).toEqual(["only B"]);
     expect(accountADatabase?.closeAsync).toHaveBeenCalled();
+    setAuthTokenGetter(null);
+  });
+
+  it("restores a custom persona after a failed reconnect upload and retry", async () => {
+    const requests: Array<{
+      token: string | null;
+      body: {
+        deviceId: string;
+        conversations: Array<{
+          syncId: string;
+          personaName?: string | null;
+          customEngram?: string | null;
+          messages: Array<{ syncId: string; content: string }>;
+        }>;
+      };
+    }> = [];
+    let failNextUpload = true;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/api/healthz")) return jsonResponse({ status: "ok" });
+
+        const headers = new Headers(init?.headers);
+        const body = JSON.parse(
+          String(init?.body),
+        ) as (typeof requests)[number]["body"];
+        requests.push({ token: headers.get("authorization"), body });
+        if (failNextUpload) {
+          failNextUpload = false;
+          throw new Error("network lost during persona upload");
+        }
+
+        const syncedIds = body.conversations.flatMap((conversation) => [
+          conversation.syncId,
+          ...conversation.messages.map((message) => message.syncId),
+        ]);
+        return jsonResponse({
+          syncedIds,
+          imported: {
+            conversations: body.conversations.length,
+            messages: body.conversations.reduce(
+              (total, conversation) => total + conversation.messages.length,
+              0,
+            ),
+            inquiries: 0,
+            transmissions: 0,
+            observedEntries: 0,
+          },
+        });
+      }),
+    );
+
+    const {
+      appendMessage,
+      createConversation,
+      getConversation,
+      setOfflineStoreAccount,
+    } = await import("./store");
+    const { syncOfflineData } = await import("./sync");
+    const { setAuthTokenGetter } = await import("@workspace/api-client-react");
+
+    const personaName = "Night Analyst";
+    const customEngram =
+      "Be concise, evidence-led, and call out uncertainty explicitly.";
+    await setOfflineStoreAccount("reconnect-account");
+    const localConversation = await createConversation({
+      title: "Custom persona reconnect",
+      mode: "custom",
+      personaName,
+      customEngram,
+    });
+    await appendMessage(
+      localConversation.id as number,
+      "user",
+      "Drafted while offline",
+    );
+
+    setAuthTokenGetter(() => "clerk-token-reconnect-account");
+    await expect(syncOfflineData()).rejects.toThrow("network lost");
+    await expect(syncOfflineData()).resolves.toEqual({
+      syncedRows: 2,
+      batches: 1,
+    });
+
+    const restored = await getConversation(localConversation.id as number);
+    expect(restored).toMatchObject({
+      personaName,
+      customEngram,
+      messages: [{ role: "user", content: "Drafted while offline" }],
+    });
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toEqual(requests[1]);
+    expect(requests[1]).toMatchObject({
+      token: "Bearer clerk-token-reconnect-account",
+      body: {
+        conversations: [
+          {
+            personaName,
+            customEngram,
+          },
+        ],
+      },
+    });
     setAuthTokenGetter(null);
   });
 });
