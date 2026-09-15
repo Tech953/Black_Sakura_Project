@@ -634,6 +634,23 @@ jobs:
       - name: Build shared libraries
         run: pnpm run typecheck:libs
 
+      - name: Run API suite with configured provider environment
+        run: pnpm --filter @workspace/api-server run test
+
+      - name: Run API suite without cloud provider variables
+        shell: bash
+        env:
+          API_TEST_NO_CLOUD_PROVIDER: "1"
+        run: |
+          set -euo pipefail
+          env -u GENERATION_BASE_URL \
+            -u GENERATION_API_KEY \
+            -u LLM_BASE_URL \
+            -u LLM_API_KEY \
+            -u AI_INTEGRATIONS_OPENAI_BASE_URL \
+            -u AI_INTEGRATIONS_OPENAI_API_KEY \
+            pnpm --filter @workspace/api-server run test
+
       - name: Build API server bundle
         run: pnpm --filter @workspace/api-server run build
 
