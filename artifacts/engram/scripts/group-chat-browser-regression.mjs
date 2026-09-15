@@ -141,8 +141,19 @@ const fixtureScript = String.raw`
     get createBody() { return state.createBody; },
     get conversation() { return state.conversation; },
     get messageCount() { return state.messages.length; },
+    get autonomousCount() {
+      return state.messages.filter((message) => message.autonomous === true).length;
+    },
     showConversationInList() {
       state.showInList = true;
+      persist();
+    },
+    resetConversation() {
+      state.showInList = false;
+      state.conversation = null;
+      state.messages = [];
+      state.createBody = null;
+      state.exchangeCount = 0;
       persist();
     },
   };
@@ -151,9 +162,9 @@ const fixtureScript = String.raw`
   const currentConversation = () => ({
     ...state.conversation,
     engramIds: [1, 2],
-    groupContinuationMode: "short",
+    groupContinuationMode: state.conversation?.groupContinuationMode ?? "short",
   });
-  const groupStream = (initialReplies, continuationReply, signal, continuationDelay) =>
+  const groupStream = (initialReplies, continuationReplies, signal, continuationDelay) =>
     new Response(new ReadableStream({
       start(controller) {
         const encoder = new TextEncoder();
@@ -179,13 +190,20 @@ const fixtureScript = String.raw`
           controller.enqueue(encoder.encode("data: " + JSON.stringify(reply) + "\n\n"));
         };
         for (const reply of initialReplies) emit(reply);
-        timer = setTimeout(() => {
-          emit(continuationReply);
+        let continuationIndex = 0;
+        const emitContinuation = () => {
           if (closed) return;
+          const reply = continuationReplies[continuationIndex++];
+          if (reply) {
+            emit(reply);
+            timer = setTimeout(emitContinuation, continuationDelay);
+            return;
+          }
           controller.enqueue(encoder.encode("data: " + JSON.stringify({ done: true }) + "\n\n"));
           closed = true;
           controller.close();
-        }, continuationDelay);
+        };
+        timer = setTimeout(emitContinuation, continuationDelay);
         if (signal) {
           signal.addEventListener("abort", closeWithAbort, { once: true });
           if (signal.aborted) closeWithAbort();
@@ -240,19 +258,40 @@ const fixtureScript = String.raw`
         createdAt: "2026-09-12T12:01:00.000Z",
       });
       const exchange = state.exchangeCount++;
-      const replies = exchange === 0
+      const mode = state.conversation?.groupContinuationMode ?? "short";
+      const initialReplies = exchange === 0
         ? [
-            { speakerEngramId: 1, content: "Mira initial group reply" },
-            { speakerEngramId: 2, content: "Aster initial group reply" },
-            { speakerEngramId: 1, content: "Mira autonomous peer reply" },
+            {
+              speakerEngramId: 1,
+              content: mode === "short" ? "Mira initial group reply" : "Mira " + mode + " initial group reply",
+            },
+            {
+              speakerEngramId: 2,
+              content: mode === "short" ? "Aster initial group reply" : "Aster " + mode + " initial group reply",
+            },
           ]
         : [
             { speakerEngramId: 1, content: "Mira stopped exchange reply" },
             { speakerEngramId: 2, content: "Aster stopped exchange reply" },
-            { speakerEngramId: 1, content: "Mira stopped autonomous reply" },
           ];
+      const continuationReplies = exchange > 0
+        ? [{ speakerEngramId: 1, content: "Mira stopped autonomous reply", autonomous: true }]
+        : mode === "off"
+          ? []
+          : Array.from({ length: mode === "extended" ? 4 : 2 }, (_, index) => ({
+              speakerEngramId: index % 2 === 0 ? 1 : 2,
+              content: mode === "short" && index === 0
+                ? "Mira autonomous peer reply"
+                : (index % 2 === 0 ? "Mira" : "Aster") + " " + mode + " peer continuation " + (index + 1),
+              autonomous: true,
+            }));
       persist();
-      return groupStream(replies.slice(0, 2), replies[2], init.signal, exchange === 0 ? 700 : 1200);
+      return groupStream(
+        initialReplies,
+        continuationReplies,
+        init.signal,
+        exchange === 0 ? 300 : 1200,
+      );
     }
     return originalFetch(input, init);
   };
@@ -324,6 +363,79 @@ async function labeledMessageVisible(label, content) {
   }))()`);
 }
 
+async function reloadFixtureDocument(label) {
+  const previousInstance = await devtools.evaluate("window.__groupChatFixture.instanceId");
+  await devtools.call("Page.reload");
+  await waitFor(
+    `window.__groupChatFixture?.instanceId && window.__groupChatFixture.instanceId !== ${JSON.stringify(previousInstance)}`,
+    label,
+  );
+}
+
+async function resetFixtureConversation() {
+  await devtools.evaluate("window.__groupChatFixture.resetConversation()");
+  await reloadFixtureDocument("reset group chat document");
+  await waitFor(`Boolean(document.body?.innerText.includes("CONVERSATIONS"))`, "chat page after reset");
+}
+
+async function startGroupConversation(title, mode) {
+  await click(
+    `Array.from(document.querySelectorAll("button")).find((node) => node.querySelector("svg")?.className?.baseVal?.includes("lucide-plus"))`,
+    `new ${mode} conversation`,
+  );
+  await waitFor(`Boolean(document.querySelector('[role="dialog"]'))`, `${mode} conversation dialog`);
+  await waitFor(
+    `Array.from(document.querySelectorAll('[role="dialog"] button')).some((node) => node.textContent?.includes("Mira"))`,
+    `${mode} Mira participant option`,
+  );
+  await waitFor(
+    `document.body?.innerText.includes("Peer continuation blocked") && document.body?.innerText.includes("Autonomy is disabled")`,
+    `${mode} blocked continuation explanation`,
+  );
+  await fill(`document.querySelector('[role="dialog"] input')`, title, `${mode} conversation title`);
+  await click(
+    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.includes("Mira"))`,
+    `${mode} Mira participant`,
+  );
+  await click(
+    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.includes("Aster"))`,
+    `${mode} Aster participant`,
+  );
+  await click(
+    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.trim().toLowerCase().startsWith(${JSON.stringify(mode)}))`,
+    `${mode} continuation choice`,
+  );
+  await click(
+    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.toLowerCase().includes("start conversation"))`,
+    `start ${mode} group conversation`,
+  );
+  await waitFor(
+    `Boolean(document.querySelector("textarea") && !document.querySelector("textarea").disabled)`,
+    `${mode} group composer`,
+  );
+  const createBody = await devtools.evaluate("window.__groupChatFixture.createBody");
+  if (
+    JSON.stringify(createBody?.engramIds) !== JSON.stringify([1, 2]) ||
+    createBody?.groupContinuationMode !== mode
+  ) {
+    throw new Error(`${mode} group creation submitted the wrong consent: ${JSON.stringify(createBody)}`);
+  }
+}
+
+async function reloadConversation(title, content, label) {
+  await devtools.evaluate("window.__groupChatFixture.showConversationInList()");
+  await reloadFixtureDocument(`reloaded ${label} chat document`);
+  await waitFor(
+    `Boolean(Array.from(document.querySelectorAll("button")).some((node) => node.textContent?.toLowerCase().includes(${JSON.stringify(title.toLowerCase())})))`,
+    `${label} conversation button after reload`,
+  );
+  await click(
+    `Array.from(document.querySelectorAll("button")).find((node) => node.textContent?.toLowerCase().includes(${JSON.stringify(title.toLowerCase())}))`,
+    `reloaded ${label} group conversation`,
+  );
+  await waitFor(`Boolean(document.body?.innerText.includes(${JSON.stringify(content)}))`, `reloaded ${label} transcript`);
+}
+
 try {
   await devtools.connect();
   await devtools.call("Page.enable");
@@ -334,74 +446,31 @@ try {
   await devtools.call("Page.navigate", { url: `${appUrl}/chat` });
   await waitFor(`Boolean(document.body?.innerText.includes("CONVERSATIONS"))`, "chat page");
 
-  await click(
-    `Array.from(document.querySelectorAll("button")).find((node) => node.querySelector("svg")?.className?.baseVal?.includes("lucide-plus"))`,
-    "new conversation",
-  );
-  await waitFor(`Boolean(document.querySelector('[role="dialog"]'))`, "new conversation dialog");
-  await waitFor(
-    `Array.from(document.querySelectorAll('[role="dialog"] button')).some((node) => node.textContent?.includes("Mira"))`,
-    "Mira participant option",
-  );
-  await waitFor(
-    `document.body?.innerText.includes("Peer continuation blocked") && document.body?.innerText.includes("Autonomy is disabled")`,
-    "blocked continuation explanation",
-  );
-  await fill(`document.querySelector('[role="dialog"] input')`, "First Message Group", "conversation title");
-  await click(
-    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.includes("Mira"))`,
-    "Mira participant",
-  );
-  await click(
-    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.includes("Aster"))`,
-    "Aster participant",
-  );
-  await click(
-    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.toLowerCase().includes("start conversation"))`,
-    "start group conversation",
-  );
-
-  await waitFor(`Boolean(document.querySelector("textarea") && !document.querySelector("textarea").disabled)`, "group composer");
-  const createBody = await devtools.evaluate("window.__groupChatFixture.createBody");
-  if (
-    JSON.stringify(createBody?.engramIds) !== JSON.stringify([1, 2]) ||
-    createBody?.groupContinuationMode !== "short"
-  ) {
-    throw new Error(`Group creation did not submit both participants and continuation consent: ${JSON.stringify(createBody)}`);
-  }
+  await startGroupConversation("First Message Group", "short");
 
   await fill(`document.querySelector("textarea")`, "Begin the first group exchange.", "first group message");
   await click(`Array.from(document.querySelectorAll("button")).find((node) => node.querySelector("svg")?.className?.baseVal?.includes("lucide-send"))`, "send first group message");
   await waitFor(`Boolean(document.body?.innerText.includes("Mira initial group reply"))`, "Mira initial reply");
   await waitFor(`Boolean(document.body?.innerText.includes("Aster initial group reply"))`, "Aster initial reply");
   await waitFor(`Boolean(document.body?.innerText.includes("Mira autonomous peer reply"))`, "autonomous peer reply");
+  await waitFor(`Boolean(document.body?.innerText.includes("Aster short peer continuation 2"))`, "short continuation limit");
+  const shortCounts = await devtools.evaluate("({ messages: window.__groupChatFixture.messageCount, autonomous: window.__groupChatFixture.autonomousCount })");
+  if (shortCounts.messages !== 5 || shortCounts.autonomous !== 2) {
+    throw new Error(`Short continuation exceeded its documented limit: ${JSON.stringify(shortCounts)}`);
+  }
 
   for (const [label, content] of [
     ["MIRA · ◇", "Mira initial group reply"],
     ["ASTER · △", "Aster initial group reply"],
     ["MIRA · ◇", "Mira autonomous peer reply"],
+    ["ASTER · △", "Aster short peer continuation 2"],
   ]) {
     if (!(await labeledMessageVisible(label, content))) {
       throw new Error(`Reply was not labeled with ${label}: ${content}`);
     }
   }
 
-  await devtools.evaluate("window.__groupChatFixture.showConversationInList()");
-  const firstPageInstance = await devtools.evaluate("window.__groupChatFixture.instanceId");
-  await devtools.call("Page.reload");
-  await waitFor(
-    `window.__groupChatFixture?.instanceId && window.__groupChatFixture.instanceId !== ${JSON.stringify(firstPageInstance)}`,
-    "reloaded chat document",
-  );
-  await waitFor(
-    `Boolean(Array.from(document.querySelectorAll("button")).some((node) => node.textContent?.toLowerCase().includes("first message group")))`,
-    "conversation button after reload",
-  );
-  await click(
-    `Array.from(document.querySelectorAll("button")).find((node) => node.textContent?.toLowerCase().includes("first message group"))`,
-    "reloaded group conversation",
-  );
-  await waitFor(`Boolean(document.body?.innerText.includes("Mira autonomous peer reply"))`, "reloaded autonomous reply");
+  await reloadConversation("First Message Group", "Aster short peer continuation 2", "short");
   const reloadedText = await devtools.evaluate("document.body.innerText");
   for (const text of ["MIRA · ◇", "ASTER · △", "Mira initial group reply", "Aster initial group reply"]) {
     if (!reloadedText.includes(text)) throw new Error(`Reloaded transcript is missing ${text}`);
@@ -411,7 +480,7 @@ try {
   await click(`Array.from(document.querySelectorAll("button")).find((node) => node.querySelector("svg")?.className?.baseVal?.includes("lucide-send"))`, "send stoppable group message");
   await waitFor(`Boolean(document.body?.innerText.includes("Aster stopped exchange reply"))`, "stoppable initial peer replies");
   const beforeStopCount = await devtools.evaluate("window.__groupChatFixture.messageCount");
-  if (beforeStopCount !== 7) {
+  if (beforeStopCount !== 8) {
     throw new Error(`Unexpected persisted count before stop: ${beforeStopCount}`);
   }
   await click(
@@ -421,30 +490,66 @@ try {
   await waitFor(`Boolean(document.querySelector("textarea") && !document.querySelector("textarea").disabled)`, "stopped group composer");
   await delay(1500);
   const afterStop = await devtools.evaluate("({ count: window.__groupChatFixture.messageCount, body: document.body.innerText })");
-  if (afterStop.count !== 7 || afterStop.body.includes("Mira stopped autonomous reply")) {
+  if (afterStop.count !== 8 || afterStop.body.includes("Mira stopped autonomous reply")) {
     throw new Error(`Stopping the group exchange allowed a later peer reply: ${JSON.stringify(afterStop)}`);
   }
 
-  await devtools.evaluate("window.__groupChatFixture.showConversationInList()");
-  const secondPageInstance = await devtools.evaluate("window.__groupChatFixture.instanceId");
-  await devtools.call("Page.reload");
-  await waitFor(
-    `window.__groupChatFixture?.instanceId && window.__groupChatFixture.instanceId !== ${JSON.stringify(secondPageInstance)}`,
-    "reloaded stopped chat document",
-  );
-  await waitFor(
-    `Boolean(Array.from(document.querySelectorAll("button")).some((node) => node.textContent?.toLowerCase().includes("first message group")))`,
-    "conversation button after stopped exchange reload",
-  );
-  await click(
-    `Array.from(document.querySelectorAll("button")).find((node) => node.textContent?.toLowerCase().includes("first message group"))`,
-    "reloaded stopped group conversation",
-  );
-  await waitFor(`Boolean(document.body?.innerText.includes("Aster stopped exchange reply"))`, "reloaded stopped exchange");
+  await reloadConversation("First Message Group", "Aster stopped exchange reply", "stopped");
   const stoppedReload = await devtools.evaluate("({ count: window.__groupChatFixture.messageCount, body: document.body.innerText })");
-  if (stoppedReload.count !== 7 || stoppedReload.body.includes("Mira stopped autonomous reply")) {
+  if (stoppedReload.count !== 8 || stoppedReload.body.includes("Mira stopped autonomous reply")) {
     throw new Error(`Stopped transcript changed after reload: ${JSON.stringify(stoppedReload)}`);
   }
+
+  await resetFixtureConversation();
+  await startGroupConversation("Off Group", "off");
+  await fill(`document.querySelector("textarea")`, "Use the off continuation choice.", "off group message");
+  await click(`Array.from(document.querySelectorAll("button")).find((node) => node.querySelector("svg")?.className?.baseVal?.includes("lucide-send"))`, "send off group message");
+  await waitFor(`Boolean(document.body?.innerText.includes("Aster off initial group reply"))`, "off initial replies");
+  await waitFor(`window.__groupChatFixture.messageCount === 3`, "off persisted transcript");
+  const offCounts = await devtools.evaluate("({ messages: window.__groupChatFixture.messageCount, autonomous: window.__groupChatFixture.autonomousCount, body: document.body.innerText })");
+  if (
+    offCounts.messages !== 3 ||
+    offCounts.autonomous !== 0 ||
+    offCounts.body.includes("Mira off peer continuation") ||
+    offCounts.body.includes("Aster off peer continuation")
+  ) {
+    throw new Error(`Off continuation produced an unexpected peer continuation: ${JSON.stringify(offCounts)}`);
+  }
+  await reloadConversation("Off Group", "Aster off initial group reply", "off");
+  const offReload = await devtools.evaluate("({ messages: window.__groupChatFixture.messageCount, autonomous: window.__groupChatFixture.autonomousCount, body: document.body.innerText })");
+  if (
+    offReload.messages !== 3 ||
+    offReload.autonomous !== 0 ||
+    offReload.body.includes("Mira off peer continuation") ||
+    offReload.body.includes("Aster off peer continuation")
+  ) {
+    throw new Error(`Off transcript changed after reload: ${JSON.stringify(offReload)}`);
+  }
+
+  await resetFixtureConversation();
+  await startGroupConversation("Extended Group", "extended");
+  await fill(`document.querySelector("textarea")`, "Use the extended continuation choice.", "extended group message");
+  await click(`Array.from(document.querySelectorAll("button")).find((node) => node.querySelector("svg")?.className?.baseVal?.includes("lucide-send"))`, "send extended group message");
+  await waitFor(`Boolean(document.body?.innerText.includes("Aster extended peer continuation 4"))`, "extended continuation limit");
+  await waitFor(`window.__groupChatFixture.messageCount === 7`, "extended persisted transcript");
+  const extendedCounts = await devtools.evaluate("({ messages: window.__groupChatFixture.messageCount, autonomous: window.__groupChatFixture.autonomousCount, body: document.body.innerText })");
+  if (
+    extendedCounts.messages !== 7 ||
+    extendedCounts.autonomous !== 4 ||
+    extendedCounts.body.includes("continuation 5")
+  ) {
+    throw new Error(`Extended continuation exceeded its documented limit: ${JSON.stringify(extendedCounts)}`);
+  }
+  await reloadConversation("Extended Group", "Aster extended peer continuation 4", "extended");
+  const extendedReload = await devtools.evaluate("({ messages: window.__groupChatFixture.messageCount, autonomous: window.__groupChatFixture.autonomousCount, body: document.body.innerText })");
+  if (
+    extendedReload.messages !== 7 ||
+    extendedReload.autonomous !== 4 ||
+    extendedReload.body.includes("continuation 5")
+  ) {
+    throw new Error(`Extended transcript changed after reload: ${JSON.stringify(extendedReload)}`);
+  }
+
   console.log("Group chat browser regression passed");
 } finally {
   devtools.close();

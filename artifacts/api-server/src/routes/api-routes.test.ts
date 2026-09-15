@@ -582,6 +582,69 @@ describe("conversation persistence routes", () => {
     expect(h.create).toHaveBeenCalledTimes(2);
   });
 
+  it("honors the short continuation limit after the human-triggered group replies", async () => {
+    const first = seedEngram({ name: "First" });
+    const second = seedEngram({ name: "Second" });
+    h.store.conversations.push({
+      id: 1,
+      ownerId: "test-owner",
+      title: "Short peer continuation",
+      mode: "companion",
+      groupContinuationMode: "short",
+      createdAt: new Date(),
+    });
+    h.store.conversationEngramParticipants.push(
+      {
+        id: 1,
+        conversationId: 1,
+        engramId: first.id,
+        ownerId: "test-owner",
+        createdAt: new Date(),
+      },
+      {
+        id: 2,
+        conversationId: 1,
+        engramId: second.id,
+        ownerId: "test-owner",
+        createdAt: new Date(),
+      },
+    );
+
+    const response = await fetch(
+      `${base}/api/openai/conversations/1/messages`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Keep it brief." }),
+      },
+    );
+
+    expect(parseSse(await response.text())).toEqual([
+      { speakerEngramId: first.id, content: "a response" },
+      { speakerEngramId: second.id, content: "a response" },
+      { speakerEngramId: first.id, content: "a response", autonomous: true },
+      { speakerEngramId: second.id, content: "a response", autonomous: true },
+      { done: true },
+    ]);
+    expect(
+      h.store.messages
+        .filter((message) => message.role === "assistant")
+        .map((message) => message.speakerEngramId),
+    ).toEqual([first.id, second.id, first.id, second.id]);
+
+    const reloadRes = await fetch(
+      `${base}/api/openai/conversations/1`,
+    );
+    const reloaded = (await reloadRes.json()) as {
+      messages: Array<{ role: string; speakerEngramId?: number | null }>;
+    };
+    expect(
+      reloaded.messages
+        .filter((message) => message.role === "assistant")
+        .map((message) => message.speakerEngramId),
+    ).toEqual([first.id, second.id, first.id, second.id]);
+  });
+
   it("persists an overlapping human send without starting a second group reply", async () => {
     const first = seedEngram({ name: "First" });
     const second = seedEngram({ name: "Second" });
