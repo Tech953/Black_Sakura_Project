@@ -12,6 +12,7 @@ type ConversationRow = {
   archivedAt: null;
   syncVersion: number;
   syncedAt: string | null;
+  syncError: string | null;
 };
 
 type MessageRow = {
@@ -100,6 +101,7 @@ function createDatabase(name: string): FakeDatabase {
           archivedAt: null,
           syncVersion: 0,
           syncedAt: null,
+          syncError: null,
         };
         conversations.push(row);
         return { lastInsertRowId: row.id, changes: 1 };
@@ -127,6 +129,15 @@ function createDatabase(name: string): FakeDatabase {
             candidate.syncVersion === Number(syncVersion),
         );
         if (row) row.syncedAt = String(args[0]);
+        return { lastInsertRowId: 0, changes: row ? 1 : 0 };
+      }
+
+      if (sql.includes("UPDATE conversations SET syncError")) {
+        const [message, id] = args;
+        const row = conversations.find(
+          (candidate) => candidate.id === Number(id),
+        );
+        if (row) row.syncError = String(message);
         return { lastInsertRowId: 0, changes: row ? 1 : 0 };
       }
 
@@ -174,7 +185,7 @@ function createDatabase(name: string): FakeDatabase {
                 message.conversationId === conversation.id &&
                 message.syncedAt === null,
             ),
-        );
+        ).filter((conversation) => conversation.syncError === null);
       }
       if (sql.includes("FROM messages")) {
         const conversationId = Number(args[0]);

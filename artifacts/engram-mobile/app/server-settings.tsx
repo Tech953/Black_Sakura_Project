@@ -172,11 +172,12 @@ export default function ServerSettingsScreen() {
       try {
         const result = await syncOfflineData();
         queryClient.clear();
-        setOfflineMsg(
-          result.syncedRows > 0
+        const syncMessage =
+          result.blockedMessage ??
+          (result.syncedRows > 0
             ? t("settings.syncedHistory", { count: result.syncedRows })
-            : t("settings.backOnline"),
-        );
+            : t("settings.backOnline"));
+        setOfflineMsg(syncMessage);
       } catch {
         // The local rows intentionally remain pending. A later offline->online
         // transition retries the same stable IDs without creating duplicates.

@@ -79,6 +79,7 @@ import {
   GetEngramStatesResponse,
   GetHubControlsResponse,
   UpdateHubControlsResponse,
+  SyncOfflineHistoryBody,
 } from "@workspace/api-zod";
 import { engramImportDraftStore } from "../lib/engram-import-store";
 import { subscribe } from "../lib/events";
@@ -3183,6 +3184,55 @@ describe("offline mobile history synchronization", () => {
     )?.content;
     expect(systemPrompt).toContain(personaName);
     expect(systemPrompt).toContain(customEngram);
+  });
+
+  it("enforces exact and over-limit custom persona boundaries", async () => {
+    const makePayload = (
+      deviceId: string,
+      overrides: Record<string, unknown>,
+    ) => ({
+      deviceId,
+      conversations: [
+        {
+          syncId: `conversation:${deviceId}`,
+          title: "Boundary check",
+          mode: "custom",
+          engramSlug: null,
+          personaName: "x".repeat(200),
+          customEngram: "x".repeat(40_000),
+          createdAt: "2026-09-04T12:00:00.000Z",
+          messages: [],
+          ...overrides,
+        },
+      ],
+      inquiries: [],
+      transmissions: [],
+      observedEntries: [],
+      operatorReplies: [],
+    });
+
+    const exact = makePayload("phone-boundary-exact", {});
+    expect(SyncOfflineHistoryBody.safeParse(exact).success).toBe(true);
+    const exactResponse = await postSync(exact);
+    expect(exactResponse.status).toBe(200);
+
+    const oversizedPersona = makePayload("phone-boundary-persona", {
+      personaName: "x".repeat(201),
+    });
+    expect(SyncOfflineHistoryBody.safeParse(oversizedPersona).success).toBe(
+      false,
+    );
+    const oversizedPersonaResponse = await postSync(oversizedPersona);
+    expect(oversizedPersonaResponse.status).toBe(400);
+
+    const oversizedContext = makePayload("phone-boundary-context", {
+      customEngram: "x".repeat(40_001),
+    });
+    expect(SyncOfflineHistoryBody.safeParse(oversizedContext).success).toBe(
+      false,
+    );
+    const oversizedContextResponse = await postSync(oversizedContext);
+    expect(oversizedContextResponse.status).toBe(400);
   });
 
   it("reconciles a local archive and later restore through the same receipt", async () => {
