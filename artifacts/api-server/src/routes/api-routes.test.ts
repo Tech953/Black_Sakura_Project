@@ -3119,6 +3119,72 @@ describe("offline mobile history synchronization", () => {
     ]);
   });
 
+  it("uses a restored custom persona for the first post-reconnect reply", async () => {
+    const personaName = "Night Analyst";
+    const customEngram =
+      "Be concise, evidence-led, and call out uncertainty explicitly.";
+    const reconnectPayload = {
+      deviceId: "phone-custom-persona",
+      conversations: [
+        {
+          syncId: "conversation:custom-persona",
+          title: "Custom persona reconnect",
+          mode: "custom",
+          engramSlug: null,
+          personaName,
+          customEngram,
+          createdAt: "2026-09-04T12:00:00.000Z",
+          messages: [
+            {
+              syncId: "message:custom-persona",
+              role: "user",
+              content: "Drafted while offline.",
+              createdAt: "2026-09-04T12:00:01.000Z",
+            },
+          ],
+        },
+      ],
+      inquiries: [],
+      transmissions: [],
+      observedEntries: [],
+      operatorReplies: [],
+    };
+
+    const firstSync = await postSync(reconnectPayload);
+    expect(firstSync.status).toBe(200);
+    expect(await firstSync.json()).toMatchObject({
+      imported: { conversations: 1, messages: 1 },
+    });
+
+    const retry = await postSync(reconnectPayload);
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toMatchObject({
+      imported: { conversations: 0, messages: 0 },
+    });
+
+    const restored = h.store.conversations[0];
+    expect(restored).toMatchObject({ personaName, customEngram });
+    h.llmState.streamChunks = ["Post-reconnect reply"];
+    const reply = await fetch(
+      `${base}/api/openai/conversations/${String(restored.id)}/messages`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "What did I miss?" }),
+      },
+    );
+    expect(reply.status).toBe(200);
+    expect(h.create).toHaveBeenCalledOnce();
+    const modelRequest = h.create.mock.calls[0]?.[0] as {
+      messages?: Array<{ role: string; content: string }>;
+    };
+    const systemPrompt = modelRequest.messages?.find(
+      (message) => message.role === "system",
+    )?.content;
+    expect(systemPrompt).toContain(personaName);
+    expect(systemPrompt).toContain(customEngram);
+  });
+
   it("reconciles a local archive and later restore through the same receipt", async () => {
     seedEngram();
     const archivedPayload = {
