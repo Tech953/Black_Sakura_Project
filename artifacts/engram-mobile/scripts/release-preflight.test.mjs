@@ -265,7 +265,7 @@ test("rejects an APK when aapt package metadata is malformed", () => {
     assert.deepEqual(fixture.calls, [
       {
         command: "/fixture/aapt",
-        args: ["dump", "badging", fixture.apkPath, "AndroidManifest.xml"],
+        args: ["dump", "badging", fixture.apkPath],
       },
       {
         command: "/fixture/aapt",
