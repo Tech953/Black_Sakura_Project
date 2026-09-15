@@ -1,10 +1,5 @@
 import assert from "node:assert/strict";
-import {
-  mkdtempSync,
-  mkdirSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -23,7 +18,9 @@ const currentInputs = {
 };
 
 test("accepts APK metadata matching current Android build inputs", () => {
-  assert.doesNotThrow(() => assertApkFreshness(currentInputs, { ...currentInputs }));
+  assert.doesNotThrow(() =>
+    assertApkFreshness(currentInputs, { ...currentInputs }),
+  );
 });
 
 test("rejects stale APK privacy metadata with embedded and expected values", () => {
@@ -35,7 +32,10 @@ test("rejects stale APK privacy metadata with embedded and expected values", () 
   assert.throws(
     () => assertApkFreshness(currentInputs, staleArtifact),
     (error) => {
-      assert.match(error.message, /Release APK is stale relative to current Android build inputs/);
+      assert.match(
+        error.message,
+        /Release APK is stale relative to current Android build inputs/,
+      );
       assert.match(error.message, /allowBackup: embedded true; expected false/);
       return true;
     },
@@ -59,7 +59,10 @@ function writeNativeLibraries(root, abis = requiredAbis) {
 function writeDownloader(root) {
   const installDir = path.join(root, "install");
   mkdirSync(installDir, { recursive: true });
-  writeFileSync(path.join(installDir, "download-native-artifacts.js"), "// fixture");
+  writeFileSync(
+    path.join(installDir, "download-native-artifacts.js"),
+    "// fixture",
+  );
 }
 
 function makeApkFixture(entries) {
@@ -68,7 +71,7 @@ function makeApkFixture(entries) {
   writeFileSync(apkPath, "not a real APK; command output is injected");
   const calls = [];
   const manifest = [
-    'A: android:allowBackup(0x0101000f)=(type 0x12)0x0',
+    "A: android:allowBackup(0x0101000f)=(type 0x12)0x0",
     "A: android:fullBackupContent(0x01010280)=(type 0x10)0x7f0f0001",
     "A: android:dataExtractionRules(0x010105b4)=(type 0x10)0x7f0f0002",
   ].join("\n");
@@ -131,6 +134,36 @@ test("repairs a llama.rn install with missing jniLibs", () => {
       },
     });
     assert.equal(repairs, 1);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("fails before running repair when the llama.rn downloader is missing", () => {
+  const root = makeTempDir();
+  try {
+    let commands = 0;
+    assert.throws(
+      () =>
+        ensureLlamaNativeLibraries({
+          root,
+          runCommand: () => {
+            commands += 1;
+          },
+        }),
+      (error) => {
+        assert.equal(
+          error.message,
+          `llama.rn native artifact downloader not found at ${path.join(
+            root,
+            "install",
+            "download-native-artifacts.js",
+          )}`,
+        );
+        return true;
+      },
+    );
+    assert.equal(commands, 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
