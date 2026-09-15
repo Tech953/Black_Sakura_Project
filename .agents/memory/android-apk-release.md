@@ -63,3 +63,11 @@ unchanged regardless of how the page fetches.
   resolves. Build shared libs (codegen + `typecheck:libs`) before Gradle so Metro can
   bundle the workspace-lib imports for the release APK. `android/` is gitignored
   (prebuild output) so CI must regenerate it (`--clean`).
+
+## Local release verification timing
+- The authenticated history browser regression can time out during a cold Metro/Chromium run and pass on an immediate retry. For artifact-only verification, retry that check independently before using `--skip-history-e2e` for the APK-specific preflight.
+- The constrained native release build can take more than ten minutes in this workspace, especially on a cold CMake/Metro cache. Use a durable background build rather than treating a shell timeout as a Gradle failure.
+
+**Why:** A cold release run once stopped before Gradle because the history browser gate timed out, and a foreground shell timeout interrupted native compilation even though the eventual constrained build completed successfully.
+
+**How to apply:** Preserve the first failure in the release record, retry the browser gate, and only stage an APK after the remaining preflight and the APK verifier pass. Keep signing credentials private while using the background build.

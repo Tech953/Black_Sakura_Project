@@ -1,28 +1,52 @@
 # ENGRAM 1.0.2 Android device QA
 
-Date: 2026-09-12
+Date: 2026-09-15
 
 ## Artifact checked
 
 - File: `downloads/ENGRAM-android.apk`
-- Size: 179,456,136 bytes
-- SHA-256: `c903ade4fe20aef72ae689783108469cc713ba85b176af81fc5aea0b50d437bb`
+- Size: 180,317,549 bytes
+- SHA-256: `cf679540a16679570490ea882905ea900aa714dc4a5ed81f7c505644ccdf228d`
 - Checksum file: `downloads/ENGRAM-android.apk.sha256`
 - Checksum result: passed
 - File inspection: recognized as an Android package
 - Expected app inputs from `artifacts/engram-mobile/app.json`: package `ai.pyri.engram`, version `1.0.2`, version code `4`
+- Release signer continuity: passed against the configured release keystore and the previous downloadable APK
+
+## Rebuild and release preflight
+
+The stale APK was rebuilt from the current `artifacts/engram-mobile` Android project and staged as both
+`downloads/ENGRAM-android.apk` and `downloads/ENGRAM-android-1.0.2.apk`.
+
+The rebuilt APK passed:
+
+- package, version name/code, and current Android build-input freshness
+- `android:allowBackup="false"` and explicit backup exclusion resources
+- required permission policy with no forbidden storage, location, microphone, or overlay permissions
+- exactly the `arm64-v8a` and `x86_64` ABI set
+- `librnllama` presence for both release ABIs
+- Android 16 KB ZIP alignment (`zipalign -P 16`)
+- 16 KB arm64 ELF `LOAD` alignment (32 libraries checked)
+- native chat export regression (9 tests) and web export compatibility regression (4 tests)
+
+The authenticated history browser regression initially timed out during the first release script run,
+before Gradle packaging. A retry passed the hydrate, archive, restore, read-only state, and four export
+download checks. The APK-specific preflight was then run with the already-passed history check excluded
+to avoid duplicating it.
 
 ## Release-blocking artifact finding
 
-The downloaded APK was not accepted as a current release candidate. Running the APK preflight reached privacy verification and failed with:
+The previous downloadable APK was not accepted as a current release candidate. Its APK preflight
+failed with:
 
 ```text
 Release APK includes forbidden permission android.permission.READ_EXTERNAL_STORAGE.
 ```
 
-The checked-in Android privacy plugin removes this permission, and the checked-in manifest/preflight policy rejects it. This indicates that the downloaded APK predates the current privacy-hardening build or was produced from a different Android source state. The artifact must be rebuilt and re-verified before device installation is treated as release QA.
+The rebuilt artifact no longer contains that permission and passed the complete APK preflight above.
 
-The generic `unzip -tq` inspection also reported invalid extra-field warnings on native library entries. The APK checksum is valid and the archive is recognized as an Android package, but this warning should be rechecked on the rebuilt artifact with the Android release tools.
+The old generic `unzip -tq` inspection also reported invalid extra-field warnings on native library
+entries. The rebuilt artifact passed the Android release tools' ZIP alignment verification.
 
 ## Galaxy Z Flip 8 results
 
