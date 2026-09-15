@@ -47,12 +47,12 @@ const fakeEngram = { id: 1, name: "Test" } as unknown as Engram;
 describe("generation seam — offline / fail-closed", () => {
   it("reports unconfigured and throws GenerationUnavailableError when no provider env is set", async () => {
     expect(generationConfigured()).toBe(false);
-    await expect(generateImage("a quiet harbor at dawn")).rejects.toBeInstanceOf(
-      GenerationUnavailableError,
-    );
-    await expect(generateVideo("a quiet harbor at dawn")).rejects.toBeInstanceOf(
-      GenerationUnavailableError,
-    );
+    await expect(
+      generateImage("a quiet harbor at dawn"),
+    ).rejects.toBeInstanceOf(GenerationUnavailableError);
+    await expect(
+      generateVideo("a quiet harbor at dawn"),
+    ).rejects.toBeInstanceOf(GenerationUnavailableError);
   });
 
   it("reports configured once any base URL resolves", () => {
@@ -66,12 +66,41 @@ describe("generation seam — offline / fail-closed", () => {
     expect(generationConfigured()).toBe(true);
   });
 
+  it("blocks external generation requests before they reach a provider", async () => {
+    process.env.AI_INTEGRATIONS_OPENAI_BASE_URL =
+      "https://api.example.invalid/v1";
+
+    await expect(generateImage("a quiet harbor at dawn")).rejects.toThrow(
+      "Connection error",
+    );
+    await expect(generateVideo("a quiet harbor at dawn")).rejects.toThrow(
+      "Connection error",
+    );
+  });
+
+  it("blocks direct external requests when no provider is configured", async () => {
+    expect(generationConfigured()).toBe(false);
+    await expect(
+      fetch("https://api.example.invalid/v1/models"),
+    ).rejects.toThrow("[api-test-network] blocked external HTTP request");
+  });
+
   it("surfaces image/video generation offline as ProviderUnavailableError (fail-closed, never a crash)", async () => {
     await expect(
-      generateArtifact({ engram: fakeEngram, kind: "image", title: "Harbor", prompt: "dawn" }),
+      generateArtifact({
+        engram: fakeEngram,
+        kind: "image",
+        title: "Harbor",
+        prompt: "dawn",
+      }),
     ).rejects.toBeInstanceOf(ProviderUnavailableError);
     await expect(
-      generateArtifact({ engram: fakeEngram, kind: "video", title: "Harbor", prompt: "dawn" }),
+      generateArtifact({
+        engram: fakeEngram,
+        kind: "video",
+        title: "Harbor",
+        prompt: "dawn",
+      }),
     ).rejects.toBeInstanceOf(ProviderUnavailableError);
   });
 });
