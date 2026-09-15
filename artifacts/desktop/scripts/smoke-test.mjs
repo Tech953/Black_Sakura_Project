@@ -66,6 +66,96 @@ function createSecondaryGgufFixture(directory) {
   return fixture;
 }
 
+function resolveOpenSsl() {
+  const configured = process.env.OPENSSL_BIN?.trim();
+  const candidates =
+    process.platform === "win32"
+      ? [
+          configured,
+          "openssl.exe",
+          process.env.OPENSSL_HOME
+            ? path.join(process.env.OPENSSL_HOME, "bin", "openssl.exe")
+            : null,
+          process.env.ProgramW6432
+            ? path.join(
+                process.env.ProgramW6432,
+                "OpenSSL-Win64",
+                "bin",
+                "openssl.exe",
+              )
+            : null,
+          process.env.ProgramFiles
+            ? path.join(
+                process.env.ProgramFiles,
+                "OpenSSL-Win64",
+                "bin",
+                "openssl.exe",
+              )
+            : null,
+          process.env.ProgramFiles
+            ? path.join(
+                process.env.ProgramFiles,
+                "Git",
+                "usr",
+                "bin",
+                "openssl.exe",
+              )
+            : null,
+          process.env.ProgramFiles
+            ? path.join(
+                process.env.ProgramFiles,
+                "Git",
+                "mingw64",
+                "bin",
+                "openssl.exe",
+              )
+            : null,
+          process.env.LOCALAPPDATA
+            ? path.join(
+                process.env.LOCALAPPDATA,
+                "Programs",
+                "Git",
+                "usr",
+                "bin",
+                "openssl.exe",
+              )
+            : null,
+          process.env.ChocolateyInstall
+            ? path.join(process.env.ChocolateyInstall, "bin", "openssl.exe")
+            : null,
+        ]
+      : [configured || "openssl"];
+  const checked = [];
+
+  for (const candidate of [...new Set(candidates.filter(Boolean))]) {
+    try {
+      const version = execFileSync(candidate, ["version"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }).trim();
+      if (!version) throw new Error("version command returned no output");
+      log(`Windows HTTPS fixture found OpenSSL: ${version} (${candidate})`);
+      return { command: candidate, version };
+    } catch (error) {
+      checked.push(
+        `${candidate}: ${String(error?.stderr ?? error?.message ?? error).trim()}`,
+      );
+    }
+  }
+
+  throw new Error(
+    [
+      "Windows HTTPS smoke fixture requires OpenSSL to create its trusted localhost certificate.",
+      configured
+        ? `OPENSSL_BIN did not work: ${configured}`
+        : "Set OPENSSL_BIN to the full path of openssl.exe if it is not on PATH.",
+      "The Git for Windows OpenSSL binary and standard OpenSSL/Chocolatey locations were checked.",
+      `Checked candidates: ${checked.join(" | ")}`,
+      "Install OpenSSL on the Windows runner or update the runner image before rerunning the packaged smoke test.",
+    ].join(" "),
+  );
+}
+
 function createFixtureCertificate(directory) {
   const keyPath = path.join(directory, "packaged-smoke-fixture.key");
   const certPath = path.join(directory, "packaged-smoke-fixture.crt");
@@ -90,9 +180,10 @@ function createFixtureCertificate(directory) {
       "",
     ].join("\n"),
   );
+  const openssl = resolveOpenSsl();
   try {
     execFileSync(
-      "openssl",
+      openssl.command,
       [
         "req",
         "-x509",
@@ -112,7 +203,12 @@ function createFixtureCertificate(directory) {
     );
   } catch (error) {
     throw new Error(
-      `Windows HTTPS smoke fixture could not create its localhost certificate with OpenSSL: ${String(error?.message ?? error)}`,
+      [
+        "Windows HTTPS smoke fixture could not create its localhost certificate with OpenSSL.",
+        `OpenSSL preflight passed with ${openssl.version}.`,
+        `Certificate generation failed: ${String(error?.stderr ?? error?.message ?? error).trim()}`,
+        "Check the runner's OpenSSL installation and set OPENSSL_BIN to a working openssl.exe path.",
+      ].join(" "),
     );
   }
   return {
@@ -766,6 +862,14 @@ async function main() {
   if (useHttpsRedirectFixture && process.platform !== "win32") {
     fail(
       "the HTTPS redirect offline-model fixture is reserved for Windows smoke",
+    );
+  }
+  if (
+    useHttpsRedirectFixture &&
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED === "0"
+  ) {
+    fail(
+      "Windows HTTPS smoke must validate the fixture certificate; unset NODE_TLS_REJECT_UNAUTHORIZED instead of disabling TLS verification",
     );
   }
   const offlineFixture = await serveOfflineModelFixture(
