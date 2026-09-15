@@ -60,6 +60,29 @@ Not executed in this workspace:
 
 The native launch-reliability plugin is present in the checked-in app configuration. It installs a startup uncaught-exception handler and a separate `CrashActivity` that displays a selectable trace for screenshot capture, but that behavior still requires a real Android launch test.
 
+## Release-pass rerun in this workspace
+
+Date: 2026-09-15
+
+- Verified both staged APK paths contain the same rebuilt artifact.
+- Verified SHA-256: `cf679540a16679570490ea882905ea900aa714dc4a5ed81f7c505644ccdf228d`.
+- `adb` is not installed, so no Android or One UI version can be read and no phone installation or runtime smoke test can be performed.
+- The full release preflight was attempted. Its authenticated history browser step timed out while waiting for the signed-in ENGRAM card; this is a local Chromium/web-check failure and does not provide Galaxy device evidence.
+- The remaining release preflight was rerun with only that already-failing history step excluded and passed:
+  - Expo package compatibility
+  - native export regression: 9 tests
+  - font budget
+  - web export compatibility: 4 tests
+  - checked-in Android privacy/backup policy
+  - llama native libraries for `arm64-v8a` and `x86_64`
+  - APK package/version/privacy freshness
+  - APK privacy/permission policy
+  - APK ABI and `librnllama` contents
+  - 16 KB ZIP alignment
+  - 16 KB arm64 ELF alignment: 32 libraries
+
+These checks confirm the rebuilt artifact is ready for a real-device pass, but they do not replace the required Galaxy Z Flip 8 launch, fold/unfold, cold-relaunch, online chat, offline mode, language, and inquiry checks.
+
 ## Required release-device pass after rebuilding
 
 On the Galaxy Z Flip 8, record the exact Android and One UI versions, then:
