@@ -65,7 +65,7 @@ function writeDownloader(root) {
   );
 }
 
-function makeApkFixture(entries) {
+function makeApkFixture(entries, { badging } = {}) {
   const directory = makeTempDir();
   const apkPath = path.join(directory, "app-release.apk");
   writeFileSync(apkPath, "not a real APK; command output is injected");
@@ -87,7 +87,10 @@ function makeApkFixture(entries) {
       return `${entries.join("\n")}\n`;
     }
     if (args[0] === "dump" && args[1] === "badging") {
-      return "package: name='ai.pyri.engram' versionCode='4' versionName='1.0.2'\n";
+      return (
+        badging ??
+        "package: name='ai.pyri.engram' versionCode='4' versionName='1.0.2'\n"
+      );
     }
     if (args[0] === "dump" && args[1] === "xmltree") return manifest;
     if (args[0] === "dump" && args[1] === "permissions") return permissions;
@@ -239,6 +242,60 @@ test("rejects an APK whose ABIs contain no librnllama entries", () => {
           runCommand: fixture.runCommand,
         }),
       /missing librnllama native libraries for arm64-v8a, x86_64/i,
+    );
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects an APK when aapt package metadata is malformed", () => {
+  const fixture = makeApkFixture([], {
+    badging: "package: name='ai.pyri.engram' versionCode='not-a-number'\n",
+  });
+  try {
+    assert.throws(
+      () =>
+        verifyApk(fixture.apkPath, {
+          expected: currentInputs,
+          findTool: fixture.findTool,
+          runCommand: fixture.runCommand,
+        }),
+      /Release APK package\/version metadata could not be read from aapt badging output/i,
+    );
+    assert.deepEqual(fixture.calls, [
+      {
+        command: "/fixture/aapt",
+        args: ["dump", "badging", fixture.apkPath, "AndroidManifest.xml"],
+      },
+      {
+        command: "/fixture/aapt",
+        args: ["dump", "xmltree", fixture.apkPath, "AndroidManifest.xml"],
+      },
+    ]);
+  } finally {
+    rmSync(fixture.directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects an APK with an unsupported extra ABI before alignment checks", () => {
+  const fixture = makeApkFixture([
+    "lib/arm64-v8a/librnllama.so",
+    "lib/x86_64/librnllama.so",
+    "lib/armeabi-v7a/librnllama.so",
+  ]);
+  try {
+    assert.throws(
+      () =>
+        verifyApk(fixture.apkPath, {
+          expected: currentInputs,
+          findTool: fixture.findTool,
+          runCommand: fixture.runCommand,
+        }),
+      /ABI set is arm64-v8a, armeabi-v7a, x86_64; expected only arm64-v8a, x86_64/i,
+    );
+    assert.equal(
+      fixture.calls.some(({ command }) => command === "/fixture/zipalign"),
+      false,
     );
   } finally {
     rmSync(fixture.directory, { recursive: true, force: true });
