@@ -55,7 +55,7 @@ function postAs(ownerId: string, body = payload) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-test-user-id": ownerId,
+      Authorization: `Bearer clerk-${ownerId}`,
     },
     body: JSON.stringify(body),
   });
@@ -66,7 +66,10 @@ beforeAll(async () => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.userId = req.header("x-test-user-id")!;
+    const token = req.header("authorization") ?? "";
+    req.userId = token.startsWith("Bearer clerk-")
+      ? token.slice("Bearer clerk-".length)
+      : undefined;
     next();
   });
   app.use(offlineSyncRouter);
