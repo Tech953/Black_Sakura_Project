@@ -68,3 +68,9 @@ For self-contained desktop HTML pages with an injected bridge, enable Page and R
 **Why:** The Settings document’s inline initialization runs in the page world and needs the bridge before its first script executes; the existing Linux Chromium helper is not present on the Windows/macOS desktop matrix.
 
 **How to apply:** Serve the real HTML, inject the encoded fixture before navigation, and gate the workflow step to Linux while keeping production renderer code unchanged.
+
+When a signed-in web fixture asserts that an action made no request, track route-specific requests separately from the full fetch log. Clerk's DEV browser bootstrap can issue unrelated requests after navigation and otherwise creates false failures.
+
+**Why:** The Settings health-check regression must distinguish an invalid-address probe from authentication bootstrap traffic that occurs before the page interaction.
+
+**How to apply:** Keep a complete request log for diagnostics, but count and assert only the endpoint under test for no-network guarantees.

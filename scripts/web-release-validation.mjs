@@ -47,6 +47,7 @@ try {
     ["test:browser:simulations", "simulations", 1],
     ["test:browser:analytics", "Analytics", 2],
     ["test:browser:download", "download metadata", 3],
+    ["test:browser:settings", "Settings local server", 4],
   ]) {
     const result = spawn(
       pnpm,
