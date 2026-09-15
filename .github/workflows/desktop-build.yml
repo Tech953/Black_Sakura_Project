@@ -110,6 +110,10 @@ jobs:
       - name: Run desktop unit tests
         run: pnpm --filter @workspace/desktop run test
 
+      - name: Run desktop Settings browser regression
+        if: matrix.platform == 'linux'
+        run: pnpm --filter @workspace/desktop run test:settings-browser
+
       - name: Typecheck desktop
         run: pnpm --filter @workspace/desktop run typecheck
 
