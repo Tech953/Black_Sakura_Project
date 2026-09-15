@@ -447,7 +447,11 @@ jobs:
           # and a real Electron userData directory. Linux/macOS keep the fast
           # loopback fixture for their packaged smoke.
           ENGRAM_PACKAGED_OFFLINE_MODEL_HTTPS: ${{ matrix.platform == 'win' && '1' || '0' }}
-          ENGRAM_PACKAGED_UPDATE_SMOKE: ${{ matrix.platform == 'linux' && '1' || '0' }}
+          # The CI-only updater fixture is platform-neutral and must exercise
+          # the native Windows/macOS handoff paths as well as Linux. The
+          # disposable real-feed check below remains Linux-only because its
+          # artifact is intentionally an AppImage.
+          ENGRAM_PACKAGED_UPDATE_SMOKE: "1"
           ENGRAM_PACKAGED_UPDATE_FEED_SMOKE: ${{ matrix.platform == 'linux' && '1' || '0' }}
         run: |
           set -o pipefail
