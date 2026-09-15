@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useAuth } from "@clerk/react";
 import {
+  type Engram,
   useListOpenaiConversations,
   useCreateOpenaiConversation,
   useDeleteOpenaiConversation,
@@ -113,20 +114,6 @@ function continuationReasonLabel(reason: string | undefined, t: TFunction): stri
 type ChatMode = "informational" | "alert" | "tutorial" | "companion" | "analyst" | "silent" | "custom";
 type GroupContinuationMode = "off" | "short" | "extended";
 
-interface ContinuationEligibility {
-  eligible: boolean;
-  reason?: string;
-}
-
-interface ChatEngram {
-  id: number;
-  name: string;
-  title: string;
-  symbol: string;
-  isArchival: boolean;
-  continuationEligibility?: ContinuationEligibility;
-}
-
 interface Message {
   id?: number;
   role: "user" | "assistant" | "context";
@@ -179,7 +166,7 @@ export default function Chat() {
   const deleteConv = useDeleteOpenaiConversation();
   const archiveConv = useArchiveOpenaiConversation();
   const updateContinuation = useUpdateOpenaiConversationContinuation();
-  const { data: engrams } = useListEngrams<ChatEngram[]>();
+  const { data: engrams } = useListEngrams<Engram[]>();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 

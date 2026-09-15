@@ -800,9 +800,9 @@ export const ListEngramsResponseItem = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
@@ -810,6 +810,10 @@ export const ListEngramsResponseItem = zod.object({
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
   "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -896,9 +900,9 @@ export const SynthesizeEngramResponse = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
@@ -906,6 +910,10 @@ export const SynthesizeEngramResponse = zod.object({
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
   "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -1132,9 +1140,9 @@ export const ConfirmEngramCsvImportResponse = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
@@ -1142,6 +1150,10 @@ export const ConfirmEngramCsvImportResponse = zod.object({
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
   "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -1230,9 +1242,9 @@ export const GetEngramResponse = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
@@ -1240,6 +1252,10 @@ export const GetEngramResponse = zod.object({
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
   "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -1324,9 +1340,9 @@ export const UpdateEngramConfigResponse = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
@@ -1334,6 +1350,10 @@ export const UpdateEngramConfigResponse = zod.object({
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
   "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -1394,9 +1414,9 @@ export const ActivateEngramResponse = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
@@ -1404,6 +1424,10 @@ export const ActivateEngramResponse = zod.object({
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
   "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
