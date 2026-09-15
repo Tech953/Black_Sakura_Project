@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   Menu,
   ipcMain,
   safeStorage,
@@ -1548,14 +1549,21 @@ ipcMain.handle("settings:get", async () => {
     bundledAvailable: bundledModelAvailable(),
     bundledModelIncluded: packagedBundledModelAvailable(),
     allowLan: settings.allowLan === true,
-    // LAN addresses the mobile app can use when LAN access is on.
-    lanAddresses: Object.values(os.networkInterfaces())
-      .flat()
-      .filter((i) => i && i.family === "IPv4" && !i.internal)
-      .map(
-        (i) =>
-          `http://${(i as os.NetworkInterfaceInfo).address}:${currentPort}`,
-      ),
+    // These are origin-only addresses accepted by the web Settings local-server
+    // field. Keep loopback visible for this desktop, then add usable LAN IPv4
+    // interfaces for phones and other devices on the same network.
+    lanAddresses: [
+      `http://127.0.0.1:${currentPort}`,
+      ...(settings.allowLan
+        ? Object.values(os.networkInterfaces())
+            .flat()
+            .filter((i) => i && i.family === "IPv4" && !i.internal)
+            .map(
+              (i) =>
+                `http://${(i as os.NetworkInterfaceInfo).address}:${currentPort}`,
+            )
+        : []),
+    ].filter((address, index, addresses) => addresses.indexOf(address) === index),
     offline: settings.offline,
     online: {
       baseUrl: settings.online.baseUrl,
@@ -1570,6 +1578,21 @@ ipcMain.handle("settings:get", async () => {
     offlineModel: await getOfflineModelView(settings),
     localModelFailure: settings.localModelFailure,
   };
+});
+
+ipcMain.handle("clipboard:write", (_event, text: unknown) => {
+  if (typeof text !== "string" || !text.trim()) {
+    return { ok: false, error: "Nothing to copy." };
+  }
+  try {
+    clipboard.writeText(text);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Clipboard unavailable.",
+    };
+  }
 });
 
 ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {

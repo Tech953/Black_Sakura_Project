@@ -184,6 +184,7 @@ export interface EngramDesktopBridge {
     callback: (status: OfflineModelDownloadStatus) => void,
   ) => () => void;
   close: () => Promise<void>;
+  copyText: (text: string) => Promise<{ ok: boolean; error?: string }>;
   getUiLanguage: () => Promise<string>;
   setUiLanguage: (language: string) => Promise<void>;
   getAppInfo: () => Promise<AppInfo>;
@@ -275,6 +276,10 @@ export function createEngramDesktopBridge(
       };
     },
     close: () => ipc.invoke("settings:close") as Promise<void>,
+    copyText: (text) =>
+      ipc.invoke("clipboard:write", text) as ReturnType<
+        EngramDesktopBridge["copyText"]
+      >,
     getUiLanguage: () => ipc.invoke("ui-language:get") as Promise<string>,
     setUiLanguage: (language) =>
       ipc.invoke("ui-language:set", language) as Promise<void>,
