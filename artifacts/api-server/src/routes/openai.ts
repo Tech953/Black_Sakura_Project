@@ -74,6 +74,9 @@ type GroupContinuationMode = keyof typeof GROUP_CONTINUATION_TURN_LIMITS;
 const GROUP_CONTINUATION_CLAIM_TTL_MS = 15 * 60 * 1000;
 const ARCHIVE_EXPORT_FIXTURE_HEADER = "x-engram-browser-fixture";
 const ARCHIVE_EXPORT_FIXTURE_VALUE = "chat-archive-export";
+const browserFixtureModeEnabled = () =>
+  process.env.NODE_ENV !== "production" ||
+  process.env.ENGRAM_BROWSER_FIXTURE_MODE === "true";
 
 async function claimGroupContinuation(conversationId: number, token: string, now = new Date()) {
   const [claimed] = await db
@@ -414,12 +417,12 @@ router.get("/openai/conversations/:id/messages", async (req, res) => {
 
 /**
  * Remove the owner-scoped rows created by the real Clerk browser check.
- * This is development-only and deliberately uses the authenticated owner ID;
+ * This is test-only and deliberately uses the authenticated owner ID;
  * no owner ID is accepted from the request body or URL.
  */
 router.post("/openai/browser-fixture/cleanup", async (req, res) => {
   if (
-    process.env.NODE_ENV === "production" ||
+    !browserFixtureModeEnabled() ||
     req.get(ARCHIVE_EXPORT_FIXTURE_HEADER) !== ARCHIVE_EXPORT_FIXTURE_VALUE
   ) {
     res.status(404).json({ error: "Not found" });
@@ -443,7 +446,7 @@ router.post("/openai/browser-fixture/cleanup", async (req, res) => {
  */
 router.post("/openai/conversations/:id/messages/fixture", async (req, res) => {
   if (
-    process.env.NODE_ENV === "production" ||
+    !browserFixtureModeEnabled() ||
     req.get(ARCHIVE_EXPORT_FIXTURE_HEADER) !== ARCHIVE_EXPORT_FIXTURE_VALUE
   ) {
     res.status(404).json({ error: "Not found" });
