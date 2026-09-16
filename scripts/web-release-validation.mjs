@@ -1,5 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
 import { createServer } from "node:net";
+import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 function configuredPort(name) {
@@ -54,6 +56,65 @@ async function assertPortAvailable(port, label) {
       `${label} port ${port} is already in use (${portOwner(port)}). ` +
         `Set a different explicit port or stop the owning process.`,
     );
+  }
+}
+
+function waitForExit(child) {
+  return new Promise((resolveExit, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code, signal) =>
+      resolveExit(code ?? (signal ? 1 : 0)),
+    );
+  });
+}
+
+async function runCommand(command, args, options = {}) {
+  const child = spawn(command, args, {
+    ...options,
+    stdio: options.stdio ?? "inherit",
+  });
+  const exitCode = await waitForExit(child);
+  if (exitCode !== 0) {
+    throw new Error(
+      `${command} ${args.join(" ")} failed with exit code ${exitCode}`,
+    );
+  }
+}
+
+async function stopProcess(child) {
+  if (!child || child.exitCode !== null || child.killed) return;
+  child.kill("SIGTERM");
+  await Promise.race([
+    new Promise((resolveExit) => child.once("exit", resolveExit)),
+    delay(2000),
+  ]);
+}
+
+function filesContaining(root, text) {
+  const matches = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = resolve(root, entry.name);
+    if (entry.isDirectory()) {
+      matches.push(...filesContaining(path, text));
+    } else if (entry.isFile()) {
+      try {
+        if (readFileSync(path, "utf8").includes(text)) matches.push(path);
+      } catch {
+        // Ignore non-text assets in the production bundle.
+      }
+    }
+  }
+  return matches;
+}
+
+function assertProductionBundleHasNoFixtureIdentity(distDir) {
+  for (const marker of ["browser-test-user", "browser-test-session"]) {
+    const matches = filesContaining(distDir, marker);
+    if (matches.length > 0) {
+      throw new Error(
+        `Production bundle contains browser fixture marker "${marker}": ${matches.join(", ")}`,
+      );
+    }
   }
 }
 
@@ -128,6 +189,7 @@ const collectOutput = (chunk) => {
 };
 server.stdout.on("data", collectOutput);
 server.stderr.on("data", collectOutput);
+let productionServer = null;
 
 async function waitForServer() {
   const deadline = Date.now() + 30000;
@@ -146,6 +208,116 @@ async function waitForServer() {
     await delay(250);
   }
   throw new Error(`Web fixture server did not start on ${appUrl}.\n${serverOutput}`);
+}
+
+async function runProductionPreview() {
+  const excluded = new Set([port, ...debugPorts]);
+  const previewPort = await findFreePort(excluded);
+  excluded.add(previewPort);
+  const previewDebugPort = await findFreePort(excluded);
+  const previewUrl = `http://127.0.0.1:${previewPort}`;
+  const distDir = resolve("artifacts/engram/dist/public");
+
+  console.log(`Production web preview: app=${previewUrl}, cdp=${previewDebugPort}`);
+  await runCommand(
+    pnpm,
+    ["--filter", "@workspace/engram", "run", "build"],
+    {
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        PORT: String(previewPort),
+        VITE_BROWSER_TEST: "false",
+      },
+    },
+  );
+  assertProductionBundleHasNoFixtureIdentity(distDir);
+  await runCommand(
+    pnpm,
+    ["--filter", "@workspace/api-server", "run", "build"],
+    {
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+      },
+    },
+  );
+
+  let previewOutput = "";
+  let previewFailure = null;
+  productionServer = spawn(
+    pnpm,
+    ["--filter", "@workspace/api-server", "run", "start"],
+    {
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        PORT: String(previewPort),
+        WEB_DIST: distDir,
+        ENGRAM_BROWSER_FIXTURE_MODE: "true",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  productionServer.once("error", (error) => {
+    previewFailure = error;
+  });
+  productionServer.once("exit", (code, signal) => {
+    if (!previewFailure) {
+      previewFailure = new Error(
+        `process exited with ${signal ? `signal ${signal}` : `code ${code ?? "unknown"}`}`,
+      );
+    }
+  });
+  const collectPreviewOutput = (chunk) => {
+    previewOutput += chunk.toString();
+    if (previewOutput.length > 12000) previewOutput = previewOutput.slice(-12000);
+  };
+  productionServer.stdout.on("data", collectPreviewOutput);
+  productionServer.stderr.on("data", collectPreviewOutput);
+
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    if (previewFailure) {
+      throw new Error(
+        `Production web preview could not start on ${previewUrl}: ${previewFailure.message}\n${previewOutput}`,
+      );
+    }
+    try {
+      const response = await fetch(`${previewUrl}/api/healthz`);
+      if (response.ok) {
+        break;
+      }
+    } catch {
+      // The API server may still be starting.
+    }
+    await delay(250);
+  }
+  if (Date.now() >= deadline) {
+    throw new Error(
+      `Production web preview did not start on ${previewUrl}.\n${previewOutput}`,
+    );
+  }
+
+  const browserCheck = spawn(
+    pnpm,
+    ["--filter", "@workspace/engram", "run", "test:browser:chat:real-clerk"],
+    {
+      env: {
+        ...process.env,
+        ENGRAM_BROWSER_REAL_CLERK: "true",
+        ENGRAM_BROWSER_TEST_URL: previewUrl,
+        ENGRAM_BROWSER_DEBUG_PORT: String(previewDebugPort),
+      },
+      stdio: "inherit",
+    },
+  );
+  const exitCode = await waitForExit(browserCheck);
+  if (exitCode !== 0) {
+    throw new Error(
+      `Production web preview archive/export check failed with exit code ${exitCode}`,
+    );
+  }
 }
 
 try {
@@ -170,10 +342,9 @@ try {
       throw new Error(`Web ${label} browser check failed with exit code ${exitCode}`);
     }
   }
+  await stopProcess(server);
+  await runProductionPreview();
 } finally {
-  if (!server.killed) server.kill("SIGTERM");
-  await Promise.race([
-    new Promise((resolve) => server.once("exit", resolve)),
-    delay(2000),
-  ]);
+  await stopProcess(server);
+  await stopProcess(productionServer);
 }
