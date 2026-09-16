@@ -47,7 +47,11 @@ import { recordMessage } from "../lib/messages-store";
 
 import { ARCHIVAL_READ_ONLY_ERROR, isArchivalEngram } from "../lib/archival";
 import { responseLanguageInstruction } from "@workspace/i18n";
-import { loadOwnedConversation, loadOwnedEngram } from "../lib/account-bootstrap";
+import {
+  cleanupDisposableAccount,
+  loadOwnedConversation,
+  loadOwnedEngram,
+} from "../lib/account-bootstrap";
 const router = Router();
 
 /** Hard cap on a single inline upload's size. Defaults to 25 MiB; overridable via env. */
@@ -406,6 +410,29 @@ router.get("/openai/conversations/:id/messages", async (req, res) => {
     .where(eq(messages.conversationId, parsed.data.id))
     .orderBy(messages.createdAt);
   res.json(msgs);
+});
+
+/**
+ * Remove the owner-scoped rows created by the real Clerk browser check.
+ * This is development-only and deliberately uses the authenticated owner ID;
+ * no owner ID is accepted from the request body or URL.
+ */
+router.post("/openai/browser-fixture/cleanup", async (req, res) => {
+  if (
+    process.env.NODE_ENV === "production" ||
+    req.get(ARCHIVE_EXPORT_FIXTURE_HEADER) !== ARCHIVE_EXPORT_FIXTURE_VALUE
+  ) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  try {
+    await cleanupDisposableAccount(req.userId!);
+    res.status(204).send();
+  } catch (error) {
+    req.log.error(error, "Disposable browser account cleanup failed");
+    res.status(500).json({ error: "Disposable account cleanup failed" });
+  }
 });
 
 /**

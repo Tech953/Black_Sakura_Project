@@ -2,13 +2,28 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   accountsTable,
+  beliefsTable,
   conversations,
+  conversationEngramParticipants,
+  engramArtifactsTable,
+  engramSimulationParticipantsTable,
+  engramSimulationsTable,
   engramsTable,
+  evolutionTable,
+  expressionsTable,
+  hubControlsTable,
   hubSpacesTable,
   engramPresenceTable,
   engramWorldModelTable,
+  initiativeTable,
+  journalTable,
+  memoriesTable,
+  mediaAssetsTable,
   personalityTable,
+  personasTable,
   messages,
+  mobileOfflineSyncReceiptsTable,
+  mobilePushTokensTable,
   SYSTEM_OWNER_ID,
 } from "@workspace/db/schema";
 import { TRUSTED_REBECCA_ADAPTIVE_SOURCES } from "./world-model";
@@ -234,6 +249,55 @@ export async function ensureAccountBootstrap(ownerId: string): Promise<void> {
         );
       }
     }
+  });
+}
+
+/**
+ * Remove all mutable rows belonging to a disposable browser-check account.
+ *
+ * This is intentionally not an account-delete API. The caller is a local,
+ * development-only browser harness, and the reserved system owner is never a
+ * valid cleanup target.
+ */
+export async function cleanupDisposableAccount(ownerId: string): Promise<void> {
+  if (!ownerId.trim() || ownerId === SYSTEM_OWNER_ID) {
+    throw new Error("Refusing to clean up the system template account");
+  }
+
+  await db.transaction(async (tx) => {
+    // Delete rows with direct account foreign keys or owner-scoped payloads
+    // before removing the account and the engrams/spaces they reference.
+    await tx.delete(mobilePushTokensTable).where(eq(mobilePushTokensTable.ownerId, ownerId));
+    await tx
+      .delete(mobileOfflineSyncReceiptsTable)
+      .where(eq(mobileOfflineSyncReceiptsTable.ownerId, ownerId));
+    await tx
+      .delete(conversationEngramParticipants)
+      .where(eq(conversationEngramParticipants.ownerId, ownerId));
+    await tx.delete(conversations).where(eq(conversations.ownerId, ownerId));
+    await tx.delete(mediaAssetsTable).where(eq(mediaAssetsTable.ownerId, ownerId));
+    await tx.delete(engramArtifactsTable).where(eq(engramArtifactsTable.ownerId, ownerId));
+    await tx
+      .delete(engramSimulationParticipantsTable)
+      .where(eq(engramSimulationParticipantsTable.ownerId, ownerId));
+    await tx.delete(engramSimulationsTable).where(eq(engramSimulationsTable.ownerId, ownerId));
+
+    await tx.delete(beliefsTable).where(eq(beliefsTable.ownerId, ownerId));
+    await tx.delete(evolutionTable).where(eq(evolutionTable.ownerId, ownerId));
+    await tx.delete(expressionsTable).where(eq(expressionsTable.ownerId, ownerId));
+    await tx.delete(hubControlsTable).where(eq(hubControlsTable.ownerId, ownerId));
+    await tx.delete(initiativeTable).where(eq(initiativeTable.ownerId, ownerId));
+    await tx.delete(journalTable).where(eq(journalTable.ownerId, ownerId));
+    await tx.delete(memoriesTable).where(eq(memoriesTable.ownerId, ownerId));
+    await tx.delete(personalityTable).where(eq(personalityTable.ownerId, ownerId));
+    await tx.delete(personasTable).where(eq(personasTable.ownerId, ownerId));
+
+    // Engram- and space-keyed rows cascade from these two owner-scoped roots:
+    // world model, presence, messages, transmissions, inquiries, simulations,
+    // artifacts, and Hub activity are all removed without touching templates.
+    await tx.delete(engramsTable).where(eq(engramsTable.ownerId, ownerId));
+    await tx.delete(hubSpacesTable).where(eq(hubSpacesTable.ownerId, ownerId));
+    await tx.delete(accountsTable).where(eq(accountsTable.id, ownerId));
   });
 }
 

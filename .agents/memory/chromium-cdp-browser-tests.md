@@ -86,3 +86,9 @@ For authenticated archive/export checks, seed transcript rows through a developm
 **Why:** Archive, restore, read-only send, and export behavior should not become dependent on cloud model credentials, while genuine generation failures must remain observable as failures.
 
 **How to apply:** Have the browser check require an explicit fixture response containing both user and assistant rows, and never treat a 200 SSE error frame as a successful transcript seed.
+
+Real Clerk browser checks must clean up through an authenticated, development-only server seam before revoking the temporary identity; deleting only the conversation and Clerk user leaves owner-scoped bootstrap copies behind.
+
+**Why:** Authentication bootstrap copies account-owned personality, spaces, engrams, and related rows into the development database, so repeated release checks otherwise accumulate disposable data.
+
+**How to apply:** Keep cleanup owner-derived on the server, reject the reserved system owner, perform the deletion transactionally, and make the browser `finally` path fail without printing credentials or private row data if cleanup cannot complete.
