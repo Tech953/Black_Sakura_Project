@@ -3,7 +3,7 @@ import { reloadAppAsync } from "expo";
 import * as DocumentPicker from "expo-document-picker";
 import { Stack, useRouter } from "expo-router";
 import { useClerk } from "@clerk/expo";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -87,6 +87,7 @@ export default function ServerSettingsScreen() {
   const [importStorage, setImportStorage] = useState<CustomModelStorageCheck | null>(null);
   const [offlineMsg, setOfflineMsg] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const storageCheckRequest = useRef(0);
   const importPresentation = getCustomModelImportPresentation(
     checkingImportStorage,
     importStorage,
@@ -112,6 +113,12 @@ export default function ServerSettingsScreen() {
     const onLangChange = (lng: string) => setUiLang(lng);
     i18n.on("languageChanged", onLangChange);
     return () => i18n.off("languageChanged", onLangChange);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      storageCheckRequest.current += 1;
+    };
   }, []);
 
   const onSelectUiLang = useCallback(async (code: string) => {
@@ -203,6 +210,37 @@ export default function ServerSettingsScreen() {
     setOfflineMsg(t("settings.modelDeleted"));
   }, [refreshModel, t]);
 
+  const measurePendingGgufStorage = useCallback(
+    async (selection: PendingGguf, requestId: number) => {
+      setCheckingImportStorage(true);
+      try {
+        const storage = await getCustomModelStorageCheck(
+          selection.uri,
+          selection.byteSize,
+        );
+        if (storageCheckRequest.current !== requestId) return;
+        setPendingGguf((current) =>
+          current?.uri === selection.uri
+            ? { ...current, byteSize: storage.byteSize }
+            : current,
+        );
+        setImportStorage(storage);
+      } catch (err) {
+        if (storageCheckRequest.current !== requestId) return;
+        setOfflineMsg(
+          err instanceof Error
+            ? err.message
+            : t("settings.modelImportFailed"),
+        );
+      } finally {
+        if (storageCheckRequest.current === requestId) {
+          setCheckingImportStorage(false);
+        }
+      }
+    },
+    [t],
+  );
+
   const onImport = useCallback(async () => {
     const result = await DocumentPicker.getDocumentAsync({
       type: ["application/octet-stream", "application/*"],
@@ -212,30 +250,23 @@ export default function ServerSettingsScreen() {
     if (result.canceled || result.assets.length === 0) return;
 
     const asset = result.assets[0];
+    const selection: PendingGguf = {
+      uri: asset.uri,
+      filename: asset.name,
+      byteSize: asset.size ?? 0,
+    };
+    const requestId = ++storageCheckRequest.current;
     setOfflineMsg(null);
-    try {
-      setPendingGguf({
-        uri: asset.uri,
-        filename: asset.name,
-        byteSize: asset.size ?? 0,
-      });
-      setImportStorage(null);
-      setCheckingImportStorage(true);
-      const storage = await getCustomModelStorageCheck(asset.uri, asset.size);
-      setPendingGguf((current) =>
-        current ? { ...current, byteSize: storage.byteSize } : current,
-      );
-      setImportStorage(storage);
-    } catch (err) {
-      setOfflineMsg(
-        err instanceof Error
-          ? err.message
-          : t("settings.modelImportFailed"),
-      );
-    } finally {
-      setCheckingImportStorage(false);
-    }
-  }, [t]);
+    setPendingGguf(selection);
+    setImportStorage(null);
+    await measurePendingGgufStorage(selection, requestId);
+  }, [measurePendingGgufStorage]);
+
+  const onRetryStorageCheck = useCallback(async () => {
+    if (!pendingGguf || checkingImportStorage) return;
+    const requestId = ++storageCheckRequest.current;
+    await measurePendingGgufStorage(pendingGguf, requestId);
+  }, [checkingImportStorage, measurePendingGgufStorage, pendingGguf]);
 
   const onConfirmImport = useCallback(async () => {
     if (!pendingGguf || !importStorage || importStorage.hasHeadroom !== true) return;
@@ -269,6 +300,7 @@ export default function ServerSettingsScreen() {
           : t("settings.modelImportFailed"),
       );
     } finally {
+      storageCheckRequest.current += 1;
       setImporting(false);
       setImportProgress(0);
       setPendingGguf(null);
@@ -278,6 +310,8 @@ export default function ServerSettingsScreen() {
   }, [offline, pendingGguf, importStorage, refreshModel, t]);
 
   const onCancelPendingImport = useCallback(() => {
+    storageCheckRequest.current += 1;
+    setCheckingImportStorage(false);
     setPendingGguf(null);
     setImportStorage(null);
     setOfflineMsg(null);
@@ -642,16 +676,27 @@ export default function ServerSettingsScreen() {
                     </Text>
                   </>
                 ) : (
-                  <Text
-                    testID="gguf-storage-warning"
-                    style={[
-                      styles.status,
-                      rtl && styles.rtlText,
-                      { color: colors.destructive },
-                    ]}
-                  >
-                    {t("settings.storageCheckUnavailable")}
-                  </Text>
+                  <View style={styles.storageWarningRow}>
+                    <Text
+                      testID="gguf-storage-warning"
+                      style={[
+                        styles.status,
+                        rtl && styles.rtlText,
+                        { color: colors.destructive },
+                      ]}
+                    >
+                      {t("settings.storageCheckUnavailable")}
+                    </Text>
+                    <Pressable
+                      testID="retry-gguf-storage"
+                      onPress={onRetryStorageCheck}
+                      disabled={checkingImportStorage}
+                    >
+                      <Text style={[styles.buttonText, { color: colors.primary }]}>
+                        {t("simulation.retry")}
+                      </Text>
+                    </Pressable>
+                  </View>
                 )}
                 {importPresentation.state === "insufficient" ? (
                   <Text
@@ -869,6 +914,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   statusRow: { flexDirection: "row", gap: 8, marginTop: 16 },
+  storageWarningRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   fieldLabel: {
     fontFamily: "JetBrainsMono_500Medium",
     fontSize: 11,
