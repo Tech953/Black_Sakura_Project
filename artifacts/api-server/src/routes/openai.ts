@@ -357,11 +357,36 @@ router.patch("/openai/conversations/:id/continuation", async (req, res) => {
     return;
   }
 
+  const currentRevision = conv.groupContinuationRevision ?? 0;
+  const nextRevision = currentRevision + 1;
   const [updated] = await db
     .update(conversations)
-    .set({ groupContinuationMode: parsedBody.data.groupContinuationMode })
-    .where(and(eq(conversations.id, id), eq(conversations.ownerId, req.userId!)))
+    .set({
+      groupContinuationMode: parsedBody.data.groupContinuationMode,
+      groupContinuationRevision: nextRevision,
+    })
+    .where(
+      and(
+        eq(conversations.id, id),
+        eq(conversations.ownerId, req.userId!),
+        eq(conversations.groupContinuationRevision, parsedBody.data.expectedRevision),
+      ),
+    )
     .returning();
+  if (!updated) {
+    const current = await loadOwnedConversation(id, req.userId!);
+    if (!current) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+    res.status(409).json({
+      error: "The group continuation setting changed elsewhere.",
+      code: "GROUP_CONTINUATION_CONFLICT",
+      groupContinuationMode: current.groupContinuationMode,
+      groupContinuationRevision: current.groupContinuationRevision ?? 0,
+    });
+    return;
+  }
   res.json(withParticipantIds(updated, groupParticipantIds));
 });
 

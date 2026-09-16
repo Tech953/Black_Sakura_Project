@@ -1,0 +1,1 @@
+ALTER TABLE "conversations" ADD COLUMN "group_continuation_revision" integer DEFAULT 0 NOT NULL;

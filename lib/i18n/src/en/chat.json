@@ -84,6 +84,7 @@
   "groupContinuationShortHint": "Up to 2 peer turns",
   "groupContinuationExtended": "Extended",
   "groupContinuationExtendedHint": "Up to 4 peer turns",
+  "groupContinuationChangedElsewhere": "This setting changed elsewhere. The current choice is shown; save again to replace it.",
   "groupReply": "GROUP PARTICIPANT",
   "engramFallback": "ENGRAM",
   "lpemMode": "LPEM Mode",

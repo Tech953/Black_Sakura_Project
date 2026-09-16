@@ -147,6 +147,7 @@
     "groupContinuationShortHint": "До 2 ходов собеседников",
     "groupContinuationExtended": "Расширено",
     "groupContinuationExtendedHint": "До 4 ходов собеседников",
+    "groupContinuationChangedElsewhere": "This setting changed elsewhere. The current choice is shown; save again to replace it.",
     "stopGeneration": "Stop generation",
     "stopGroupContinuation": "Stop peer continuation",
     "groupReply": "УЧАСТНИК ГРУППЫ",

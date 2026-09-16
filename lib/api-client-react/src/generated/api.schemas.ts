@@ -465,6 +465,11 @@ export interface OpenaiConversation {
   engramIds: number[];
   /** Consent for peer-generated turns after the human-triggered group reply. */
   groupContinuationMode: OpenaiConversationGroupContinuationMode;
+  /**
+     * Server-owned revision for optimistic concurrency on group continuation consent.
+     * @minimum 0
+     */
+  groupContinuationRevision: number;
   createdAt: string;
   /** @nullable */
   archivedAt: string | null;
@@ -489,6 +494,11 @@ export const OpenaiConversationContinuationInputGroupContinuationMode = {
 export interface OpenaiConversationContinuationInput {
   /** Consent for peer-generated turns after the human-triggered group reply. */
   groupContinuationMode: OpenaiConversationContinuationInputGroupContinuationMode;
+  /**
+     * Server-owned revision read with the conversation before saving.
+     * @minimum 0
+     */
+  expectedRevision: number;
 }
 
 export interface OpenaiMessage {
@@ -556,6 +566,11 @@ export interface OpenaiConversationWithMessages {
   engramIds?: number[];
   /** Consent for peer-generated turns after the human-triggered group reply. */
   groupContinuationMode: OpenaiConversationWithMessagesGroupContinuationMode;
+  /**
+     * Server-owned revision for optimistic concurrency on group continuation consent.
+     * @minimum 0
+     */
+  groupContinuationRevision: number;
   createdAt: string;
   /** @nullable */
   archivedAt: string | null;
@@ -580,8 +595,21 @@ export interface PushTokenInput {
   platform: PushTokenInputPlatform;
 }
 
+export type OpenaiErrorGroupContinuationMode = typeof OpenaiErrorGroupContinuationMode[keyof typeof OpenaiErrorGroupContinuationMode];
+
+
+export const OpenaiErrorGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
+
 export interface OpenaiError {
   error: string;
+  code?: string;
+  groupContinuationMode?: OpenaiErrorGroupContinuationMode;
+  /** @minimum 0 */
+  groupContinuationRevision?: number;
 }
 
 export interface VoiceProfile {

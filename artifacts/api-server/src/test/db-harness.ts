@@ -352,6 +352,9 @@ export function createDbHarness() {
               row.paused ??= false;
               row.quietMode ??= false;
             }
+            if (name === "conversations") {
+              row.groupContinuationRevision ??= 0;
+            }
             store[name].push(row);
             const loggedRow = { ...row, __table: table };
             insertCalls.push(loggedRow);
@@ -547,7 +550,10 @@ export function createDbHarness() {
       return store.conversations;
     },
     set conversations(rows: TestRow[]) {
-      store.conversations = rows;
+      store.conversations = rows.map((row) => ({
+        groupContinuationRevision: 0,
+        ...row,
+      }));
     },
     get inserts() {
       return compatibilityInsertCalls;
