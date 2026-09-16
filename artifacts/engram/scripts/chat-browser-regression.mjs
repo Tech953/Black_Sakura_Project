@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:f
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -10,9 +11,42 @@ const realClerkMode = process.env.ENGRAM_BROWSER_REAL_CLERK === "true";
 const appUrl =
   process.env.ENGRAM_BROWSER_TEST_URL ??
   (realClerkMode
-    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-    : "http://127.0.0.1:5188");
-const debugPort = Number(process.env.ENGRAM_BROWSER_DEBUG_PORT ?? 9229);
+    ? process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : undefined
+    : undefined);
+const configuredDebugPort = process.env.ENGRAM_BROWSER_DEBUG_PORT
+  ? Number(process.env.ENGRAM_BROWSER_DEBUG_PORT)
+  : null;
+
+async function findFreePort() {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const address = probe.address();
+      const port = typeof address === "object" && address ? address.port : null;
+      probe.close((error) => (error ? reject(error) : resolve(port)));
+    });
+  });
+}
+
+if (!appUrl) {
+  throw new Error(
+    "Set ENGRAM_BROWSER_TEST_URL for local browser checks, or REPLIT_DEV_DOMAIN for real Clerk checks.",
+  );
+}
+if (
+  configuredDebugPort !== null &&
+  (!Number.isInteger(configuredDebugPort) ||
+    configuredDebugPort < 1 ||
+    configuredDebugPort > 65535)
+) {
+  throw new Error(
+    `ENGRAM_BROWSER_DEBUG_PORT must be an integer between 1 and 65535; received "${process.env.ENGRAM_BROWSER_DEBUG_PORT}"`,
+  );
+}
+const debugPort = configuredDebugPort ?? (await findFreePort());
 const downloadsDir = await mkdtemp(join(tmpdir(), "engram-chat-downloads-"));
 const profileDir = await mkdtemp(join(tmpdir(), "engram-chat-profile-"));
 let disposableClerk;
