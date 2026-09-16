@@ -1158,6 +1158,23 @@ describe("chat message streaming", () => {
     expect(h.store.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
   });
 
+  it("does not expose disposable account cleanup in production", async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const res = await fetch(`${base}/api/openai/browser-fixture/cleanup`, {
+        method: "POST",
+        headers: {
+          "X-Engram-Browser-Fixture": "chat-archive-export",
+        },
+      });
+      expect(res.status).toBe(404);
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+    }
+  });
+
   it("streams a PYRI reply as SSE and persists the assistant message", async () => {
     h.llmState.streamChunks = ["Hel", "lo!"];
     const conv = h.store.conversations;

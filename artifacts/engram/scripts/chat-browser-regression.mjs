@@ -333,6 +333,16 @@ async function realApi(path, session, init = {}) {
   return response;
 }
 
+async function cleanupDisposableAccount(session) {
+  const response = await realApi("/api/openai/browser-fixture/cleanup", session, {
+    method: "POST",
+    headers: { "X-Engram-Browser-Fixture": "chat-archive-export" },
+  });
+  if (!response.ok) {
+    throw new Error(`Disposable account cleanup returned HTTP ${response.status}`);
+  }
+}
+
 async function waitFor(expression, label, timeout = 10000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
@@ -612,10 +622,17 @@ try {
   console.log(`Browser regression passed: ${files.join(", ")}`);
 } finally {
   if (realClerkMode && disposableClerk) {
+    let cleanupFailed = false;
     if (realConversationId) {
       await realApi(`/api/openai/conversations/${realConversationId}`, disposableClerk, {
         method: "DELETE",
       }).catch(() => {});
+    }
+    try {
+      await cleanupDisposableAccount(disposableClerk);
+    } catch {
+      cleanupFailed = true;
+      console.error("Disposable account cleanup failed");
     }
     await fetch(`https://api.clerk.com/v1/sign_in_tokens/${disposableClerk.signInTokenId}/revoke`, {
       method: "POST",
@@ -629,6 +646,9 @@ try {
       method: "DELETE",
       headers: disposableClerk.clerkHeaders,
     }).catch(() => {});
+    if (cleanupFailed) {
+      throw new Error("Real Clerk browser check could not clean up its disposable account");
+    }
   }
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");
