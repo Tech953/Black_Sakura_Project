@@ -73,6 +73,30 @@ export type CustomModelStorageCheck = {
   hasHeadroom: boolean;
 };
 
+export type CustomModelImportPresentation = {
+  state: "checking" | "unavailable" | "insufficient" | "ready";
+  canConfirm: boolean;
+};
+
+/**
+ * Derive the Settings import state from the storage probe. Keep this gate
+ * fail-closed so the confirmation action cannot become enabled when a native
+ * free-space reading is unavailable.
+ */
+export function getCustomModelImportPresentation(
+  checking: boolean,
+  storage: CustomModelStorageCheck | null,
+): CustomModelImportPresentation {
+  if (checking) return { state: "checking", canConfirm: false };
+  if (!storage || storage.freeBytes === null) {
+    return { state: "unavailable", canConfirm: false };
+  }
+  if (!storage.hasHeadroom) {
+    return { state: "insufficient", canConfirm: false };
+  }
+  return { state: "ready", canConfirm: true };
+}
+
 export class ModelImportCancelledError extends Error {
   readonly code = "MODEL_IMPORT_CANCELLED";
 
