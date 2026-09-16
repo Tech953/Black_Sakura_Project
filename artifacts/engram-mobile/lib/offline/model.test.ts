@@ -160,6 +160,7 @@ import {
   cancelDownload,
   cancelCustomModelImport,
   downloadModel,
+  getCustomModelImportPresentation,
   getCustomModelStorageCheck,
   getModelStatus,
   importCustomModel,
@@ -350,6 +351,39 @@ describe("offline model download failure harness", () => {
     ).rejects.toBeInstanceOf(ModelStorageUnavailableError);
     expect(mocks.state.copy).not.toHaveBeenCalled();
     expect(mocks.state.deactivateKeepAwake).toHaveBeenCalledWith("engram-gguf-import");
+  });
+
+  it("keeps the Settings GGUF action disabled until storage is measurable and sufficient", async () => {
+    mocks.state.freeStorageError = true;
+    const unavailable = await getCustomModelStorageCheck(
+      "file:///picked-model.gguf",
+      mocks.state.sourceBytes,
+    );
+    expect(getCustomModelImportPresentation(false, unavailable)).toEqual({
+      state: "unavailable",
+      canConfirm: false,
+    });
+
+    mocks.state.freeStorageError = false;
+    mocks.state.freeBytes = 2_199_999;
+    const insufficient = await getCustomModelStorageCheck(
+      "file:///picked-model.gguf",
+      mocks.state.sourceBytes,
+    );
+    expect(getCustomModelImportPresentation(false, insufficient)).toEqual({
+      state: "insufficient",
+      canConfirm: false,
+    });
+
+    mocks.state.freeBytes = 2_200_000;
+    const sufficient = await getCustomModelStorageCheck(
+      "file:///picked-model.gguf",
+      mocks.state.sourceBytes,
+    );
+    expect(getCustomModelImportPresentation(false, sufficient)).toEqual({
+      state: "ready",
+      canConfirm: true,
+    });
   });
 
   it("rejects a non-GGUF file before copying it", async () => {

@@ -36,6 +36,7 @@ import {
   deleteActiveModel,
   downloadModel,
   getCustomModelStorageCheck,
+  getCustomModelImportPresentation,
   getModelStatus,
   importCustomModel,
   ModelImportCancelledError,
@@ -86,6 +87,10 @@ export default function ServerSettingsScreen() {
   const [importStorage, setImportStorage] = useState<CustomModelStorageCheck | null>(null);
   const [offlineMsg, setOfflineMsg] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const importPresentation = getCustomModelImportPresentation(
+    checkingImportStorage,
+    importStorage,
+  );
 
   // Language state
   const [uiLang, setUiLang] = useState(i18n.language);
@@ -620,20 +625,20 @@ export default function ServerSettingsScreen() {
                 <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
                   {t("settings.modelSize", { size: gb(pendingGguf.byteSize) })}
                 </Text>
-                {checkingImportStorage ? (
+                {importPresentation.state === "checking" ? (
                   <View style={styles.statusRow}>
                     <ActivityIndicator color={colors.primary} size="small" />
                     <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
                       {t("settings.checkingStorage")}
                     </Text>
                   </View>
-                ) : importStorage?.freeBytes != null ? (
+                ) : importPresentation.state !== "unavailable" ? (
                   <>
                     <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
-                      {t("settings.availableStorage", { size: gb(importStorage.freeBytes) })}
+                      {t("settings.availableStorage", { size: gb(importStorage!.freeBytes!) })}
                     </Text>
                     <Text style={[styles.status, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
-                      {t("settings.requiredStorage", { size: gb(importStorage.requiredBytes) })}
+                      {t("settings.requiredStorage", { size: gb(importStorage!.requiredBytes) })}
                     </Text>
                   </>
                 ) : (
@@ -648,13 +653,13 @@ export default function ServerSettingsScreen() {
                     {t("settings.storageCheckUnavailable")}
                   </Text>
                 )}
-                {importStorage?.hasHeadroom === false ? (
+                {importPresentation.state === "insufficient" ? (
                   <Text
                     testID="gguf-storage-warning"
                     style={[styles.status, rtl && styles.rtlText, { color: colors.destructive }]}
                   >
                     {t("settings.storageInsufficient", {
-                      size: gb(Math.max(importStorage.requiredBytes - (importStorage.freeBytes ?? 0), 0)),
+                      size: gb(Math.max(importStorage!.requiredBytes - (importStorage!.freeBytes ?? 0), 0)),
                     })}
                   </Text>
                 ) : null}
@@ -672,20 +677,12 @@ export default function ServerSettingsScreen() {
                 <Pressable
                   testID="confirm-gguf-import"
                   onPress={onConfirmImport}
-                  disabled={
-                    checkingImportStorage ||
-                    !importStorage ||
-                    importStorage.hasHeadroom !== true
-                  }
+                  disabled={!importPresentation.canConfirm}
                   style={[
                     styles.button,
                     {
                       backgroundColor:
-                        checkingImportStorage ||
-                        !importStorage ||
-                        importStorage.hasHeadroom !== true
-                          ? colors.muted
-                          : colors.primary,
+                        importPresentation.canConfirm ? colors.primary : colors.muted,
                       borderColor: colors.primary,
                     },
                   ]}
