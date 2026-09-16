@@ -386,6 +386,33 @@ describe("offline model download failure harness", () => {
     });
   });
 
+  it("can recheck the same GGUF after storage measurement recovers without copying it", async () => {
+    mocks.state.freeStorageError = true;
+    await expect(
+      getCustomModelStorageCheck(
+        "file:///picked-model.gguf",
+        mocks.state.sourceBytes,
+      ),
+    ).resolves.toMatchObject({
+      freeBytes: null,
+      hasHeadroom: false,
+    });
+
+    mocks.state.freeStorageError = false;
+    mocks.state.freeBytes = 2_200_000;
+    await expect(
+      getCustomModelStorageCheck(
+        "file:///picked-model.gguf",
+        mocks.state.sourceBytes,
+      ),
+    ).resolves.toMatchObject({
+      freeBytes: 2_200_000,
+      hasHeadroom: true,
+    });
+    expect(mocks.state.copy).not.toHaveBeenCalled();
+    expect(mocks.storage.has("engram.customModel.metadata")).toBe(false);
+  });
+
   it("rejects a non-GGUF file before copying it", async () => {
     await expect(
       importCustomModel(
