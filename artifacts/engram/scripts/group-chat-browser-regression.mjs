@@ -452,7 +452,7 @@ async function reloadConversation(title, content, label) {
 
 async function openGroupSettings(label) {
   await click(
-    `Array.from(document.querySelectorAll("button")).find((node) => node.getAttribute("aria-label")?.toLowerCase().includes("group continuation"))`,
+    `Array.from(document.querySelectorAll("button")).find((node) => node.getAttribute("aria-label")?.toLowerCase().includes("group continuation") || node.querySelector("svg")?.className?.baseVal?.includes("settings-2"))`,
     `${label} group settings`,
   );
   await waitFor(`Boolean(document.querySelector('[role="dialog"]'))`, `${label} group settings dialog`);
@@ -489,9 +489,9 @@ async function assertGroupConsentAfterReload(mode, baseline, label) {
     const dialog = document.querySelector('[role="dialog"]');
     const selected = Array.from(dialog?.querySelectorAll("button") ?? [])
       .find((node) => node.className.includes("border-primary/50"));
-    return selected?.textContent?.trim().toLowerCase().split(/\\s+/)[0] ?? null;
+    return selected?.textContent?.trim().toLowerCase() ?? null;
   })()`);
-  if (selectedMode !== mode) {
+  if (!selectedMode?.startsWith(mode)) {
     throw new Error(`${label} reload selected ${selectedMode}, expected ${mode}`);
   }
   await click(
