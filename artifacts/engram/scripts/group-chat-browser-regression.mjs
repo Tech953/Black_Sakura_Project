@@ -141,6 +141,14 @@ const fixtureScript = String.raw`
     get createBody() { return state.createBody; },
     get conversation() { return state.conversation; },
     get messageCount() { return state.messages.length; },
+    get transcript() {
+      return state.messages.map((message) => ({
+        role: message.role,
+        content: message.content,
+        speakerEngramId: message.speakerEngramId,
+        autonomous: message.autonomous,
+      }));
+    },
     get autonomousCount() {
       return state.messages.filter((message) => message.autonomous === true).length;
     },
@@ -247,6 +255,12 @@ const fixtureScript = String.raw`
     }
     if (pathname === "/api/openai/conversations/77" && method === "GET") {
       return response({ ...currentConversation(), messages: state.messages });
+    }
+    if (pathname === "/api/openai/conversations/77/continuation" && method === "PATCH") {
+      const body = JSON.parse(init.body || "{}");
+      state.conversation.groupContinuationMode = body.groupContinuationMode;
+      persist();
+      return response(currentConversation());
     }
     if (pathname === "/api/openai/conversations/77/messages" && method === "POST") {
       const body = JSON.parse(init.body || "{}");
@@ -436,6 +450,57 @@ async function reloadConversation(title, content, label) {
   await waitFor(`Boolean(document.body?.innerText.includes(${JSON.stringify(content)}))`, `reloaded ${label} transcript`);
 }
 
+async function openGroupSettings(label) {
+  await click(
+    `Array.from(document.querySelectorAll("button")).find((node) => node.getAttribute("aria-label")?.toLowerCase().includes("group continuation"))`,
+    `${label} group settings`,
+  );
+  await waitFor(`Boolean(document.querySelector('[role="dialog"]'))`, `${label} group settings dialog`);
+}
+
+async function saveGroupConsent(mode, label) {
+  await openGroupSettings(label);
+  await click(
+    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.trim().toLowerCase().startsWith(${JSON.stringify(mode)}))`,
+    `${label} ${mode} consent choice`,
+  );
+  await click(
+    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.trim().toLowerCase() === "save")`,
+    `${label} save consent`,
+  );
+  await waitFor(`!document.querySelector('[role="dialog"]')`, `${label} consent dialog close`);
+  await waitFor(
+    `window.__groupChatFixture.conversation?.groupContinuationMode === ${JSON.stringify(mode)}`,
+    `${label} persisted ${mode} consent`,
+  );
+}
+
+async function assertGroupConsentAfterReload(mode, baseline, label) {
+  const snapshot = await devtools.evaluate("({ participants: window.__groupChatFixture.conversation?.engramIds, transcript: window.__groupChatFixture.transcript })");
+  if (
+    JSON.stringify(snapshot.participants) !== JSON.stringify(baseline.participants) ||
+    JSON.stringify(snapshot.transcript) !== JSON.stringify(baseline.transcript)
+  ) {
+    throw new Error(`${label} consent changed group participants or prior messages: ${JSON.stringify(snapshot)}`);
+  }
+
+  await openGroupSettings(label);
+  const selectedMode = await devtools.evaluate(`(() => {
+    const dialog = document.querySelector('[role="dialog"]');
+    const selected = Array.from(dialog?.querySelectorAll("button") ?? [])
+      .find((node) => node.className.includes("border-primary/50"));
+    return selected?.textContent?.trim().toLowerCase().split(/\\s+/)[0] ?? null;
+  })()`);
+  if (selectedMode !== mode) {
+    throw new Error(`${label} reload selected ${selectedMode}, expected ${mode}`);
+  }
+  await click(
+    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.trim().toLowerCase() === "cancel")`,
+    `${label} close consent dialog`,
+  );
+  await waitFor(`!document.querySelector('[role="dialog"]')`, `${label} consent dialog close after reload`);
+}
+
 try {
   await devtools.connect();
   await devtools.call("Page.enable");
@@ -498,6 +563,19 @@ try {
   const stoppedReload = await devtools.evaluate("({ count: window.__groupChatFixture.messageCount, body: document.body.innerText })");
   if (stoppedReload.count !== 8 || stoppedReload.body.includes("Mira stopped autonomous reply")) {
     throw new Error(`Stopped transcript changed after reload: ${JSON.stringify(stoppedReload)}`);
+  }
+
+  const consentBaseline = await devtools.evaluate("({ participants: window.__groupChatFixture.conversation?.engramIds, transcript: window.__groupChatFixture.transcript })");
+  if (
+    JSON.stringify(consentBaseline.participants) !== JSON.stringify([1, 2]) ||
+    consentBaseline.transcript.length !== 8
+  ) {
+    throw new Error(`Existing group fixture was not ready for consent persistence checks: ${JSON.stringify(consentBaseline)}`);
+  }
+  for (const mode of ["off", "short", "extended"]) {
+    await saveGroupConsent(mode, `existing group ${mode}`);
+    await reloadConversation("First Message Group", "Aster stopped exchange reply", `existing group ${mode}`);
+    await assertGroupConsentAfterReload(mode, consentBaseline, `existing group ${mode}`);
   }
 
   await resetFixtureConversation();
