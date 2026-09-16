@@ -120,6 +120,7 @@ export * from './openaiConversationInputGroupContinuationMode';
 export * from './openaiConversationWithMessages';
 export * from './openaiConversationWithMessagesGroupContinuationMode';
 export * from './openaiError';
+export * from './openaiErrorGroupContinuationMode';
 export * from './openaiMessage';
 export * from './openaiMessageInput';
 export * from './persona';

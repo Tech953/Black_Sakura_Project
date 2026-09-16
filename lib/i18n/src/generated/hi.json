@@ -147,6 +147,7 @@
     "groupContinuationShortHint": "अधिकतम 2 सहकर्मी टर्न्स",
     "groupContinuationExtended": "विस्तारित",
     "groupContinuationExtendedHint": "अधिकतम 4 सहकर्मी टर्न्स",
+    "groupContinuationChangedElsewhere": "This setting changed elsewhere. The current choice is shown; save again to replace it.",
     "stopGeneration": "Stop generation",
     "stopGroupContinuation": "Stop peer continuation",
     "groupReply": "समूह प्रतिभागी",

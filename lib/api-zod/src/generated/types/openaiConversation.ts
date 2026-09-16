@@ -18,6 +18,11 @@ export interface OpenaiConversation {
   engramIds: number[];
   /** Consent for peer-generated turns after the human-triggered group reply. */
   groupContinuationMode: OpenaiConversationGroupContinuationMode;
+  /**
+     * Server-owned revision for optimistic concurrency on group continuation consent.
+     * @minimum 0
+     */
+  groupContinuationRevision: number;
   createdAt: Date;
   /** @nullable */
   archivedAt: Date | null;

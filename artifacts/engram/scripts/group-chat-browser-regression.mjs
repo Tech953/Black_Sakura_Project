@@ -76,7 +76,17 @@ class DevTools {
         returnByValue: true,
       });
     } catch (error) {
-      throw new Error(`${error.message}\nExpression: ${expression.slice(0, 240)}`);
+      if (!error.message?.includes("Inspected target navigated or closed")) {
+        throw new Error(`${error.message}\nExpression: ${expression.slice(0, 240)}`);
+      }
+      this.#socket?.close();
+      this.#socket = undefined;
+      await this.connect();
+      result = await this.call("Runtime.evaluate", {
+        expression,
+        awaitPromise: true,
+        returnByValue: true,
+      });
     }
     if (result.exceptionDetails) {
       throw new Error(result.exceptionDetails.text ?? "Browser evaluation failed");
@@ -156,6 +166,11 @@ const fixtureScript = String.raw`
       state.showInList = true;
       persist();
     },
+    makeContinuationStale() {
+      state.conversation.groupContinuationRevision =
+        (state.conversation.groupContinuationRevision ?? 0) + 1;
+      persist();
+    },
     resetConversation() {
       state.showInList = false;
       state.conversation = null;
@@ -171,6 +186,7 @@ const fixtureScript = String.raw`
     ...state.conversation,
     engramIds: [1, 2],
     groupContinuationMode: state.conversation?.groupContinuationMode ?? "short",
+    groupContinuationRevision: state.conversation?.groupContinuationRevision ?? 0,
   });
   const groupStream = (initialReplies, continuationReplies, signal, continuationDelay) =>
     new Response(new ReadableStream({
@@ -246,6 +262,7 @@ const fixtureScript = String.raw`
         engramId: null,
         engramIds: [1, 2],
         groupContinuationMode: body.groupContinuationMode || "short",
+        groupContinuationRevision: 0,
         createdAt: "2026-09-12T12:00:00.000Z",
         archivedAt: null,
       };
@@ -258,7 +275,17 @@ const fixtureScript = String.raw`
     }
     if (pathname === "/api/openai/conversations/77/continuation" && method === "PATCH") {
       const body = JSON.parse(init.body || "{}");
+      if (body.expectedRevision !== (state.conversation?.groupContinuationRevision ?? 0)) {
+        return response({
+          error: "The group continuation setting changed elsewhere.",
+          code: "GROUP_CONTINUATION_CONFLICT",
+          groupContinuationMode: state.conversation?.groupContinuationMode ?? "short",
+          groupContinuationRevision: state.conversation?.groupContinuationRevision ?? 0,
+        }, 409);
+      }
       state.conversation.groupContinuationMode = body.groupContinuationMode;
+      state.conversation.groupContinuationRevision =
+        (state.conversation.groupContinuationRevision ?? 0) + 1;
       persist();
       return response(currentConversation());
     }
@@ -458,16 +485,43 @@ async function openGroupSettings(label) {
   await waitFor(`Boolean(document.querySelector('[role="dialog"]'))`, `${label} group settings dialog`);
 }
 
-async function saveGroupConsent(mode, label) {
+async function saveGroupConsent(mode, label, { forceConflict = false } = {}) {
   await openGroupSettings(label);
   await click(
     `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.trim().toLowerCase().startsWith(${JSON.stringify(mode)}))`,
     `${label} ${mode} consent choice`,
   );
+  if (forceConflict) {
+    await devtools.evaluate("window.__groupChatFixture.makeContinuationStale()");
+  }
   await click(
     `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.trim().toLowerCase() === "save")`,
     `${label} save consent`,
   );
+  if (forceConflict) {
+    await waitFor(
+      `Boolean(document.querySelector('[role="dialog"]')) && document.body?.innerText.includes("This setting changed elsewhere")`,
+      `${label} stale consent conflict`,
+    );
+    const selectedMode = await devtools.evaluate(`(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      const selected = Array.from(dialog?.querySelectorAll("button") ?? [])
+        .find((node) => node.className.includes("border-primary/50"));
+      return selected?.textContent?.trim().toLowerCase() ?? null;
+    })()`);
+    const currentMode = await devtools.evaluate(
+      "window.__groupChatFixture.conversation?.groupContinuationMode",
+    );
+    if (!selectedMode?.startsWith(currentMode)) {
+      throw new Error(`${label} conflict selected ${selectedMode}, expected refreshed ${currentMode}`);
+    }
+    await click(
+      `Array.from(document.querySelectorAll('[role="dialog"] button')).find((node) => node.textContent?.trim().toLowerCase() === "cancel")`,
+      `${label} close stale consent dialog`,
+    );
+    await waitFor(`!document.querySelector('[role="dialog"]')`, `${label} stale consent dialog close`);
+    return;
+  }
   await waitFor(`!document.querySelector('[role="dialog"]')`, `${label} consent dialog close`);
   await waitFor(
     `window.__groupChatFixture.conversation?.groupContinuationMode === ${JSON.stringify(mode)}`,
@@ -573,7 +627,10 @@ try {
     throw new Error(`Existing group fixture was not ready for consent persistence checks: ${JSON.stringify(consentBaseline)}`);
   }
   for (const mode of ["off", "short", "extended"]) {
-    await saveGroupConsent(mode, `existing group ${mode}`);
+    await saveGroupConsent(mode, `existing group ${mode}`, { forceConflict: mode === "short" });
+    if (mode === "short") {
+      await saveGroupConsent(mode, `existing group ${mode} retry`);
+    }
     await reloadConversation("First Message Group", "Aster stopped exchange reply", `existing group ${mode}`);
     await assertGroupConsentAfterReload(mode, consentBaseline, `existing group ${mode}`);
   }

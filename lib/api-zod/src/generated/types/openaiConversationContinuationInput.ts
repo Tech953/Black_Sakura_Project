@@ -10,4 +10,9 @@ import type { OpenaiConversationContinuationInputGroupContinuationMode } from '.
 export interface OpenaiConversationContinuationInput {
   /** Consent for peer-generated turns after the human-triggered group reply. */
   groupContinuationMode: OpenaiConversationContinuationInputGroupContinuationMode;
+  /**
+     * Server-owned revision read with the conversation before saving.
+     * @minimum 0
+     */
+  expectedRevision: number;
 }

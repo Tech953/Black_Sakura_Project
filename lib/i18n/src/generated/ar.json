@@ -147,6 +147,7 @@
     "groupContinuationShortHint": "حتى دورين من الأقران",
     "groupContinuationExtended": "ممتد",
     "groupContinuationExtendedHint": "حتى 4 أدوار من الأقران",
+    "groupContinuationChangedElsewhere": "This setting changed elsewhere. The current choice is shown; save again to replace it.",
     "stopGeneration": "Stop generation",
     "stopGroupContinuation": "Stop peer continuation",
     "groupReply": "مشارك المجموعة",

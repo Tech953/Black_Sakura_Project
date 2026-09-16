@@ -143,6 +143,7 @@ interface Conversation {
   engramId?: number | null;
   engramIds?: number[];
   groupContinuationMode?: GroupContinuationMode;
+  groupContinuationRevision?: number;
   createdAt: string;
   archivedAt?: string | null;
 }
@@ -239,6 +240,7 @@ export default function Chat() {
       engramId: data.engramId,
       engramIds: data.engramIds ?? (data.engramId != null ? [data.engramId] : []),
       groupContinuationMode: data.groupContinuationMode ?? "short",
+      groupContinuationRevision: data.groupContinuationRevision ?? 0,
       createdAt: data.createdAt,
       archivedAt: data.archivedAt ?? null,
     };
@@ -342,6 +344,7 @@ export default function Chat() {
       engramId: result.engramId,
       engramIds: result.engramIds ?? [],
       groupContinuationMode: result.groupContinuationMode ?? groupContinuationMode,
+      groupContinuationRevision: result.groupContinuationRevision ?? 0,
       createdAt: String(result.createdAt),
       archivedAt: result.archivedAt ?? null,
     });
@@ -393,23 +396,74 @@ export default function Chat() {
     setShowGroupSettings(true);
   }
 
+  function isContinuationConflict(error: unknown): error is {
+    status: number;
+    data: {
+      code: string;
+      groupContinuationMode: GroupContinuationMode;
+      groupContinuationRevision: number;
+    };
+  } {
+    if (!error || typeof error !== "object") return false;
+    const candidate = error as { status?: unknown; data?: unknown };
+    if (candidate.status !== 409 || !candidate.data || typeof candidate.data !== "object") {
+      return false;
+    }
+    const data = candidate.data as Record<string, unknown>;
+    return (
+      data.code === "GROUP_CONTINUATION_CONFLICT" &&
+      (data.groupContinuationMode === "off" ||
+        data.groupContinuationMode === "short" ||
+        data.groupContinuationMode === "extended") &&
+      typeof data.groupContinuationRevision === "number"
+    );
+  }
+
   async function handleSaveGroupSettings() {
     if (!activeId || !isActiveGroup) return;
     try {
       const updated = await updateContinuation.mutateAsync({
         id: activeId,
-        data: { groupContinuationMode: groupSettingsMode },
+        data: {
+          groupContinuationMode: groupSettingsMode,
+          expectedRevision: activeConv?.groupContinuationRevision ?? 0,
+        },
       });
       setGroupContinuationMode(updated.groupContinuationMode);
       setActiveConversation((current) =>
         current
-          ? { ...current, groupContinuationMode: updated.groupContinuationMode }
+          ? {
+              ...current,
+              groupContinuationMode: updated.groupContinuationMode,
+              groupContinuationRevision: updated.groupContinuationRevision,
+            }
           : current,
       );
       queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
       setShowGroupSettings(false);
       toast({ title: t("common:success"), description: t("groupContinuationLabel") });
-    } catch {
+    } catch (error) {
+      if (isContinuationConflict(error)) {
+        const current = error.data;
+        setGroupSettingsMode(current.groupContinuationMode);
+        setGroupContinuationMode(current.groupContinuationMode);
+        setActiveConversation((previous) =>
+          previous
+            ? {
+                ...previous,
+                groupContinuationMode: current.groupContinuationMode,
+                groupContinuationRevision: current.groupContinuationRevision,
+              }
+            : previous,
+        );
+        queryClient.invalidateQueries({ queryKey: getListOpenaiConversationsQueryKey() });
+        toast({
+          title: t("common:error"),
+          description: t("groupContinuationChangedElsewhere"),
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: t("common:error"),
         description: t("common:errorGeneric"),

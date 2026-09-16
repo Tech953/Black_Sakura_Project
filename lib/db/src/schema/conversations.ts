@@ -14,6 +14,7 @@ export const conversations = pgTable("conversations", {
     onDelete: "set null",
   }),
   groupContinuationMode: text("group_continuation_mode").notNull().default("short"),
+  groupContinuationRevision: integer("group_continuation_revision").notNull().default(0),
   groupContinuationClaimToken: text("group_continuation_claim_token"),
   groupContinuationClaimedAt: timestamp("group_continuation_claimed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
