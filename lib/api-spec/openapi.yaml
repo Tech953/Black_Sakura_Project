@@ -606,7 +606,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/OpenaiError"
         "409":
-          description: Archived conversation must be restored before settings change
+          description: Archived conversation must be restored, or the supplied revision is stale.
           content:
             application/json:
               schema:
@@ -2517,6 +2517,10 @@ components:
           type: string
           enum: [off, short, extended]
           description: Consent for peer-generated turns after the human-triggered group reply.
+        groupContinuationRevision:
+          type: integer
+          minimum: 0
+          description: Server-owned revision for optimistic concurrency on group continuation consent.
         createdAt:
           type: string
           format: date-time
@@ -2529,6 +2533,7 @@ components:
         - mode
         - engramIds
         - groupContinuationMode
+        - groupContinuationRevision
         - createdAt
         - archivedAt
     OpenaiConversationArchiveInput:
@@ -2545,8 +2550,13 @@ components:
           type: string
           enum: [off, short, extended]
           description: Consent for peer-generated turns after the human-triggered group reply.
+        expectedRevision:
+          type: integer
+          minimum: 0
+          description: Server-owned revision read with the conversation before saving.
       required:
         - groupContinuationMode
+        - expectedRevision
     OpenaiMessage:
       type: object
       properties:
@@ -2632,6 +2642,10 @@ components:
           type: string
           enum: [off, short, extended]
           description: Consent for peer-generated turns after the human-triggered group reply.
+        groupContinuationRevision:
+          type: integer
+          minimum: 0
+          description: Server-owned revision for optimistic concurrency on group continuation consent.
         createdAt:
           type: string
           format: date-time
@@ -2649,6 +2663,7 @@ components:
         - createdAt
         - archivedAt
         - groupContinuationMode
+        - groupContinuationRevision
         - messages
     PushTokenInput:
       type: object
@@ -2669,6 +2684,14 @@ components:
       properties:
         error:
           type: string
+        code:
+          type: string
+        groupContinuationMode:
+          type: string
+          enum: [off, short, extended]
+        groupContinuationRevision:
+          type: integer
+          minimum: 0
       required:
         - error
 

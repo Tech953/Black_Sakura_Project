@@ -147,6 +147,7 @@
     "groupContinuationShortHint": "最多 2 轮同伴发言",
     "groupContinuationExtended": "扩展",
     "groupContinuationExtendedHint": "最多 4 轮同伴发言",
+    "groupContinuationChangedElsewhere": "This setting changed elsewhere. The current choice is shown; save again to replace it.",
     "stopGeneration": "Stop generation",
     "stopGroupContinuation": "Stop peer continuation",
     "groupReply": "群聊参与者",

@@ -147,6 +147,7 @@
     "groupContinuationShortHint": "최대 피어 2턴",
     "groupContinuationExtended": "확장",
     "groupContinuationExtendedHint": "최대 피어 4턴",
+    "groupContinuationChangedElsewhere": "This setting changed elsewhere. The current choice is shown; save again to replace it.",
     "stopGeneration": "Stop generation",
     "stopGroupContinuation": "Stop peer continuation",
     "groupReply": "그룹 참여자",

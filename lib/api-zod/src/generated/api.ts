@@ -580,6 +580,10 @@ export const ListOpenaiConversationsQueryParams = zod.object({
   "archived": zod.coerce.boolean().default(listOpenaiConversationsQueryArchivedDefault).describe('When true, list archived conversations; otherwise list active conversations.')
 })
 
+export const listOpenaiConversationsResponseGroupContinuationRevisionMin = 0;
+
+
+
 export const ListOpenaiConversationsResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -589,6 +593,7 @@ export const ListOpenaiConversationsResponseItem = zod.object({
   "engramId": zod.number().optional(),
   "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
   "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(listOpenaiConversationsResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullable()
 })
@@ -613,6 +618,10 @@ export const CreateOpenaiConversationBody = zod.object({
   "groupContinuationMode": zod.enum(['off', 'short', 'extended']).default(createOpenaiConversationBodyGroupContinuationModeDefault).describe('Consent for peer-generated turns after the human-triggered group reply.')
 })
 
+export const createOpenaiConversationResponseGroupContinuationRevisionMin = 0;
+
+
+
 export const CreateOpenaiConversationResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -622,6 +631,7 @@ export const CreateOpenaiConversationResponse = zod.object({
   "engramId": zod.number().optional(),
   "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
   "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(createOpenaiConversationResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullable()
 })
@@ -634,6 +644,10 @@ export const GetOpenaiConversationParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const getOpenaiConversationResponseGroupContinuationRevisionMin = 0;
+
+
+
 export const GetOpenaiConversationResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -643,6 +657,7 @@ export const GetOpenaiConversationResponse = zod.object({
   "engramId": zod.number().optional(),
   "engramIds": zod.array(zod.number()).optional(),
   "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(getOpenaiConversationResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullable(),
   "messages": zod.array(zod.object({
@@ -677,6 +692,10 @@ export const ArchiveOpenaiConversationBody = zod.object({
   "archived": zod.boolean()
 })
 
+export const archiveOpenaiConversationResponseGroupContinuationRevisionMin = 0;
+
+
+
 export const ArchiveOpenaiConversationResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -686,6 +705,7 @@ export const ArchiveOpenaiConversationResponse = zod.object({
   "engramId": zod.number().optional(),
   "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
   "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(archiveOpenaiConversationResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullable()
 })
@@ -698,9 +718,18 @@ export const UpdateOpenaiConversationContinuationParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const updateOpenaiConversationContinuationBodyExpectedRevisionMin = 0;
+
+
+
 export const UpdateOpenaiConversationContinuationBody = zod.object({
-  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.')
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "expectedRevision": zod.number().min(updateOpenaiConversationContinuationBodyExpectedRevisionMin).describe('Server-owned revision read with the conversation before saving.')
 })
+
+export const updateOpenaiConversationContinuationResponseGroupContinuationRevisionMin = 0;
+
+
 
 export const UpdateOpenaiConversationContinuationResponse = zod.object({
   "id": zod.number(),
@@ -711,6 +740,7 @@ export const UpdateOpenaiConversationContinuationResponse = zod.object({
   "engramId": zod.number().optional(),
   "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
   "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(updateOpenaiConversationContinuationResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullable()
 })

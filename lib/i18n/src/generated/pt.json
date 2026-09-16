@@ -147,6 +147,7 @@
     "groupContinuationShortHint": "Até 2 turnos de pares",
     "groupContinuationExtended": "Estendida",
     "groupContinuationExtendedHint": "Até 4 turnos de pares",
+    "groupContinuationChangedElsewhere": "This setting changed elsewhere. The current choice is shown; save again to replace it.",
     "stopGeneration": "Stop generation",
     "stopGroupContinuation": "Stop peer continuation",
     "groupReply": "PARTICIPANTE DO GRUPO",
