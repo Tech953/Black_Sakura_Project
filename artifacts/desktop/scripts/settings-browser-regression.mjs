@@ -175,9 +175,15 @@ const fixtureScript = String.raw`
     }
   });
   const state = {
-    mode: "custom",
+    mode: "bundled",
     bundledAvailable: true,
     bundledModelIncluded: false,
+    localModelFailure: {
+      code: "generic",
+      platform: "linux",
+      message: "The local model could not start: fixture runtime failure.",
+      automaticFixAvailable: false,
+    },
     allowLan: false,
     lanAddresses: ["http://127.0.0.1:4312", "http://192.168.1.50:4312"],
     offline: { baseUrl: "http://127.0.0.1:11434/v1", model: "fixture" },
@@ -216,6 +222,7 @@ const fixtureScript = String.raw`
   });
   const record = (method, ...args) => calls.push({ method, args });
   const listeners = { gguf: [], offline: [], updates: [] };
+  let bundledRetryAttempts = 0;
 
   window.__settingsFixture = {
     calls,
@@ -236,6 +243,20 @@ const fixtureScript = String.raw`
     getSettings: async () => snapshot(),
     saveSettings: async (payload) => {
       record("saveSettings", payload);
+      return { ok: true };
+    },
+    retryBundledModel: async () => {
+      bundledRetryAttempts += 1;
+      record("retryBundledModel", bundledRetryAttempts);
+      if (bundledRetryAttempts === 1) {
+        return {
+          ok: false,
+          error: state.localModelFailure.message,
+          localModelFailure: clone(state.localModelFailure),
+        };
+      }
+      state.localModelFailure = undefined;
+      state.mode = "bundled";
       return { ok: true };
     },
     chooseGguf: async () => ({ ok: false, cancelled: true }),
@@ -436,6 +457,37 @@ async function main() {
     ) {
       throw new Error(`unexpected initial model cards: ${JSON.stringify(initial)}`);
     }
+
+    const initialRetry = await devtools.evaluate(`(() => ({
+      hidden: document.querySelector("#retry-bundled")?.classList.contains("hidden"),
+      text: document.querySelector("#retry-bundled")?.textContent,
+      failureHidden: document.querySelector("#local-model-failure-box")?.classList.contains("hidden")
+    }))()`);
+    if (
+      initialRetry.hidden ||
+      initialRetry.text !== "Retry Built-in" ||
+      initialRetry.failureHidden
+    ) {
+      throw new Error(`built-in retry action was not initially available: ${JSON.stringify(initialRetry)}`);
+    }
+
+    await devtools.evaluate(`document.querySelector("#retry-bundled").click()`);
+    await waitFor(
+      devtools,
+      `window.__settingsFixture.calls.filter((call) => call.method === "retryBundledModel").length === 1 &&
+        !document.querySelector("#local-model-failure-box")?.classList.contains("hidden") &&
+        !document.querySelector("#retry-bundled")?.classList.contains("hidden")`,
+      "Settings did not preserve the built-in failure after a failed retry",
+    );
+
+    await devtools.evaluate(`document.querySelector("#retry-bundled").click()`);
+    await waitFor(
+      devtools,
+      `window.__settingsFixture.calls.filter((call) => call.method === "retryBundledModel").length === 2 &&
+        document.querySelector("#local-model-failure-box")?.classList.contains("hidden") &&
+        document.querySelector("#status")?.textContent === "Built-in model is ready."`,
+      "Settings did not clear the built-in failure after a successful retry",
+    );
 
     const offlineFailureExpectations = [
       {

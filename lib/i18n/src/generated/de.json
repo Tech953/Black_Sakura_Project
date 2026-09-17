@@ -1135,25 +1135,28 @@
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
     },
     "localModelFailure": {
-      "automaticRepair": "Die automatische Reparatur ist auf dieser Plattform verfügbar. Versuchen Sie es mit Built-in erneut, nachdem die Reparatur abgeschlossen ist.",
+      "automaticRepair": "Die automatische Reparatur ist auf dieser Plattform verfügbar. Versuche Built-in erneut, nachdem die Reparatur abgeschlossen ist.",
       "fallbackMessage": "Das lokale Modell konnte nicht gestartet werden.",
+      "retryBuiltIn": "Built-in erneut versuchen",
+      "retrying": "Built-in wird erneut versucht…",
+      "ready": "Built-in-Modell ist bereit.",
       "missingLinuxDependencies": {
         "title": "Built-in-Modell benötigt Linux-Bibliotheken",
         "message": "Dem integrierten lokalen Modell fehlen Linux-Laufzeitbibliotheken: {{libraries}}.",
-        "guidance": "Installieren Sie die fehlenden Laufzeitpakete für Ihre Distribution oder verwenden Sie stattdessen Local server oder Online.",
-        "recovery": "Die automatische Reparatur ist unter Linux nicht verfügbar. Wählen Sie Local server oder Online und dann Save & Restart."
+        "guidance": "Installiere die fehlenden Laufzeitpakete für deine Distribution oder verwende stattdessen Local server oder Online.",
+        "recovery": "Eine automatische Reparatur ist unter Linux nicht verfügbar. Wähle Local server oder Online und dann Save & Restart."
       },
       "missingWindowsDlls": {
         "title": "Built-in-Modell-Laufzeit ist unvollständig",
-        "message": "In der installierten llama.cpp-Laufzeit fehlen Dateien: {{libraries}}.",
-        "guidance": "Installieren Sie ENGRAM erneut oder aktualisieren Sie es, oder verwenden Sie stattdessen Local server oder Online.",
-        "recovery": "Die automatische Reparatur ist für diese Installation nicht verfügbar. Wählen Sie Local server oder Online und dann Save & Restart."
+        "message": "Der installierten llama.cpp-Laufzeit fehlen Dateien: {{libraries}}.",
+        "guidance": "Installiere ENGRAM neu oder aktualisiere es, oder verwende stattdessen Local server oder Online.",
+        "recovery": "Für diese Installation ist keine automatische Reparatur verfügbar. Wähle Local server oder Online und dann Save & Restart."
       },
       "generic": {
         "title": "Built-in-Modell konnte nicht gestartet werden",
         "message": "Das lokale Modell konnte nicht gestartet werden: {{details}}",
-        "guidance": "Das integrierte lokale Modell ist nicht verfügbar, aber der Rest von ENGRAM kann mit einem anderen Anbieter weiter genutzt werden.",
-        "recovery": "Wählen Sie Local server oder Online und dann Save & Restart. Sie können Built-in erneut versuchen, nachdem Sie die Laufzeitumgebung korrigiert haben."
+        "guidance": "Das integrierte lokale Modell ist nicht verfügbar, aber der Rest von ENGRAM kann mit einem anderen Anbieter weiterverwendet werden.",
+        "recovery": "Wähle Local server oder Online und dann Save & Restart. Du kannst Built-in erneut versuchen, nachdem die Laufzeitumgebung repariert wurde."
       }
     }
   },

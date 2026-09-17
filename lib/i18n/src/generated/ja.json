@@ -1135,12 +1135,15 @@
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
     },
     "localModelFailure": {
-      "automaticRepair": "このプラットフォームでは自動修復を利用できます。修復が完了したら、Built-in を再試行してください。",
+      "automaticRepair": "このプラットフォームでは自動修復を利用できます。修復が完了したら Built-in を再試行してください。",
       "fallbackMessage": "ローカルモデルを起動できませんでした。",
+      "retryBuiltIn": "Built-in を再試行",
+      "retrying": "Built-in を再試行しています…",
+      "ready": "Built-in モデルの準備ができました。",
       "missingLinuxDependencies": {
         "title": "Built-in モデルには Linux ライブラリが必要です",
         "message": "Built-in ローカルモデルに必要な Linux ランタイムライブラリが不足しています: {{libraries}}。",
-        "guidance": "お使いのディストリビューションに不足しているランタイムパッケージをインストールするか、代わりに Local server または Online を使用してください。",
+        "guidance": "お使いのディストリビューションに必要なランタイムパッケージをインストールするか、代わりに Local server または Online を使用してください。",
         "recovery": "Linux では自動修復を利用できません。Local server または Online を選択し、Save & Restart を選んでください。"
       },
       "missingWindowsDlls": {

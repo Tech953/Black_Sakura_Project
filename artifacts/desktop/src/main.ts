@@ -1133,9 +1133,13 @@ async function activateDesktopSettings(
       }),
     start: (settings) =>
       startServer(settings, {
+        // Only the candidate must prove that its requested local model starts.
+        // A rollback may restore a bundled setting whose runtime previously
+        // degraded to the external local-server fallback.
         strictLocalModel:
-          effectiveMode(settings) === "bundled" ||
-          effectiveMode(settings) === "custom",
+          settings === candidate &&
+          (effectiveMode(settings) === "bundled" ||
+            effectiveMode(settings) === "custom"),
       }),
     persist: async (settings) => saveSettings(settings),
   });
@@ -1685,6 +1689,44 @@ ipcMain.handle("settings:save", async (_event, payload: SettingsPayload) => {
       } catch (persistError) {
         console.error(
           "[desktop] could not persist local model activation failure:",
+          persistError,
+        );
+      }
+    }
+    return {
+      ok: false,
+      error: failure?.message ?? errorMessage(error),
+      ...(failure ? { localModelFailure: failure } : {}),
+    };
+  }
+});
+
+ipcMain.handle("settings:retry-bundled", async () => {
+  const previous = loadSettings();
+  try {
+    if (hasRunningModelOperation()) {
+      throw new Error("Wait for the GGUF import to finish or cancel it first.");
+    }
+    if (!bundledModelAvailable()) {
+      throw new Error(
+        "The built-in model is not available in this installation. Download it or use another provider.",
+      );
+    }
+    const candidate: Settings = {
+      ...previous,
+      mode: "bundled",
+      localModelFailure: undefined,
+    };
+    await activateDesktopSettings(previous, candidate);
+    return { ok: true };
+  } catch (error) {
+    const failure = localModelFailureOn(error) ?? previous.localModelFailure;
+    if (failure) {
+      try {
+        saveSettings({ ...previous, localModelFailure: failure });
+      } catch (persistError) {
+        console.error(
+          "[desktop] could not persist local model retry failure:",
           persistError,
         );
       }
