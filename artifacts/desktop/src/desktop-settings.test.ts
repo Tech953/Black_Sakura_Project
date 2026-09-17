@@ -93,8 +93,12 @@ describe("persisted desktop settings migration", () => {
       "utf8",
     );
     expect(settingsHtml).toContain('id="local-model-failure-box"');
+    expect(settingsHtml).toContain('id="retry-bundled"');
+    expect(settingsHtml).toContain("retryBundledModel()");
     expect(settingsHtml).toContain("Select Local server or Online");
     expect(settingsHtml).toContain("Save & Restart");
-    expect(settingsHtml).toContain("renderLocalModelFailure(res.localModelFailure)");
+    expect(settingsHtml).toContain(
+      "renderLocalModelFailure(res.localModelFailure, mode === \"bundled\")",
+    );
   });
 });

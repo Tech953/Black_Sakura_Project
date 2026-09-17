@@ -48,6 +48,7 @@ describe("desktop renderer bridge", () => {
       "removeGguf",
       "removeOfflineModel",
       "renameGguf",
+      "retryBundledModel",
       "saveSettings",
       "setUiLanguage",
     ]);
@@ -63,6 +64,15 @@ describe("desktop renderer bridge", () => {
       "clipboard:write",
       "http://127.0.0.1:4312",
     );
+  });
+
+  it("retries the bundled model through the settings IPC channel", async () => {
+    const { ipc, invoke } = fakeIpc();
+    const bridge = createEngramDesktopBridge(ipc);
+
+    await bridge.retryBundledModel();
+
+    expect(invoke).toHaveBeenCalledWith("settings:retry-bundled");
   });
 
   it("selects natively and imports by opaque id without a renderer path API", async () => {
