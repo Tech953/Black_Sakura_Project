@@ -1133,6 +1133,28 @@
       "checkForUpdates": "Check for Updates",
       "progressLabel": "Update download progress",
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+    },
+    "localModelFailure": {
+      "automaticRepair": "इस प्लेटफ़ॉर्म पर स्वचालित मरम्मत उपलब्ध है। मरम्मत पूरी होने के बाद Built-in को फिर से आज़माएँ।",
+      "fallbackMessage": "लोकल मॉडल शुरू नहीं हो सका।",
+      "missingLinuxDependencies": {
+        "title": "Built-in मॉडल को Linux लाइब्रेरी की आवश्यकता है",
+        "message": "Built-in लोकल मॉडल में Linux runtime लाइब्रेरी नहीं हैं: {{libraries}}.",
+        "guidance": "अपनी distribution के लिए missing runtime packages इंस्टॉल करें, या इसके बजाय Local server या Online provider का उपयोग करें।",
+        "recovery": "Linux पर स्वचालित मरम्मत उपलब्ध नहीं है। Local server या Online चुनें, फिर Save & Restart चुनें।"
+      },
+      "missingWindowsDlls": {
+        "title": "Built-in मॉडल runtime अधूरा है",
+        "message": "इंस्टॉल किए गए llama.cpp runtime में ये फ़ाइलें नहीं हैं: {{libraries}}.",
+        "guidance": "ENGRAM को फिर से इंस्टॉल करें या अपडेट करें, या इसके बजाय Local server या Online provider का उपयोग करें।",
+        "recovery": "इस installation के लिए स्वचालित मरम्मत उपलब्ध नहीं है। Local server या Online चुनें, फिर Save & Restart चुनें।"
+      },
+      "generic": {
+        "title": "Built-in मॉडल शुरू नहीं हो सका",
+        "message": "लोकल मॉडल शुरू नहीं हो सका: {{details}}",
+        "guidance": "Built-in लोकल मॉडल उपलब्ध नहीं है, लेकिन ENGRAM का बाकी हिस्सा किसी अन्य provider के साथ चलता रह सकता है।",
+        "recovery": "Local server या Online चुनें, फिर Save & Restart चुनें। runtime ठीक करने के बाद आप Built-in को फिर से आज़मा सकते हैं।"
+      }
     }
   },
   "simulations": {

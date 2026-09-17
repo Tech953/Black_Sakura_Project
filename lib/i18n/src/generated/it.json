@@ -1133,6 +1133,28 @@
       "checkForUpdates": "Check for Updates",
       "progressLabel": "Update download progress",
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+    },
+    "localModelFailure": {
+      "automaticRepair": "La riparazione automatica è disponibile su questa piattaforma. Riprova Built-in dopo il completamento della riparazione.",
+      "fallbackMessage": "Impossibile avviare il modello locale.",
+      "missingLinuxDependencies": {
+        "title": "Il modello Built-in richiede librerie Linux",
+        "message": "Nel modello locale Built-in mancano le librerie di runtime Linux: {{libraries}}.",
+        "guidance": "Installa i pacchetti di runtime mancanti per la tua distribuzione, oppure usa Local server o Online.",
+        "recovery": "La riparazione automatica non è disponibile su Linux. Seleziona Local server o Online, quindi scegli Save & Restart."
+      },
+      "missingWindowsDlls": {
+        "title": "Il runtime del modello Built-in è incompleto",
+        "message": "Nel runtime llama.cpp installato mancano i file: {{libraries}}.",
+        "guidance": "Reinstalla o aggiorna ENGRAM, oppure usa Local server o Online.",
+        "recovery": "La riparazione automatica non è disponibile per questa installazione. Seleziona Local server o Online, quindi scegli Save & Restart."
+      },
+      "generic": {
+        "title": "Impossibile avviare il modello Built-in",
+        "message": "Impossibile avviare il modello locale: {{details}}",
+        "guidance": "Il modello locale Built-in non è disponibile, ma il resto di ENGRAM può continuare a funzionare con un altro provider.",
+        "recovery": "Seleziona Local server o Online, quindi scegli Save & Restart. Puoi riprovare Built-in dopo aver corretto il runtime."
+      }
     }
   },
   "simulations": {

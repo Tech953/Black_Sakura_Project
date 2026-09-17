@@ -30,6 +30,28 @@
   "localServerUnavailable": "Unavailable",
   "localServerUnavailableHint": "Start the desktop app or local server, verify the address, then try again.",
   "localServerInvalid": "Use an http:// or https:// origin without a path, query, fragment, username, or password.",
+  "localModelFailure": {
+    "automaticRepair": "Automatic repair is available on this platform. Retry Built-in after the repair completes.",
+    "fallbackMessage": "The local model could not start.",
+    "missingLinuxDependencies": {
+      "title": "Built-in model needs Linux libraries",
+      "message": "The built-in local model is missing Linux runtime libraries: {{libraries}}.",
+      "guidance": "Install the missing runtime packages for your distribution, or use a local server or online provider instead.",
+      "recovery": "Automatic repair is not available on Linux. Select Local server or Online, then choose Save & Restart."
+    },
+    "missingWindowsDlls": {
+      "title": "Built-in model runtime is incomplete",
+      "message": "The installed llama.cpp runtime is missing files: {{libraries}}.",
+      "guidance": "Reinstall or update ENGRAM, or use a local server or online provider instead.",
+      "recovery": "Automatic repair is not available for this installation. Select Local server or Online, then choose Save & Restart."
+    },
+    "generic": {
+      "title": "Built-in model could not start",
+      "message": "The local model could not start: {{details}}",
+      "guidance": "The built-in local model is unavailable, but the rest of ENGRAM can continue with another provider.",
+      "recovery": "Select Local server or Online, then choose Save & Restart. You can retry Built-in after fixing the runtime."
+    }
+  },
   "update": {
     "notAvailableInBuild": "Not available in this build",
     "checking": "Checking for updates…",

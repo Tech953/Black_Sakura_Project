@@ -620,38 +620,73 @@
     <script id="settings-i18n-data" type="application/json">
       {
         "en": {
-          "notAvailableInBuild": "Not available in this build",
-          "checking": "Checking for updates…",
-          "availableWithVersion": "Update {{version}} found — downloading…",
-          "available": "Update found — downloading…",
-          "downloading": "Downloading update… {{percent}}%",
-          "downloaded": "Restart to update",
-          "error": "Update check failed",
-          "deferredInstallFailed": "Update could not be installed",
-          "deferredInstallMessage": "The downloaded update could not be installed. Try again or download the latest release.",
-          "retryUpdate": "Retry update",
-          "downloadLatestRelease": "Download latest release",
-          "releasePageError": "Could not open the release download page.",
-          "upToDate": "Up to date",
-          "checkForUpdates": "Check for Updates",
-          "progressLabel": "Update download progress",
-          "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+          "update": {
+            "notAvailableInBuild": "Not available in this build",
+            "checking": "Checking for updates…",
+            "availableWithVersion": "Update {{version}} found — downloading…",
+            "available": "Update found — downloading…",
+            "downloading": "Downloading update… {{percent}}%",
+            "downloaded": "Restart to update",
+            "error": "Update check failed",
+            "deferredInstallFailed": "Update could not be installed",
+            "deferredInstallMessage": "The downloaded update could not be installed. Try again or download the latest release.",
+            "retryUpdate": "Retry update",
+            "downloadLatestRelease": "Download latest release",
+            "releasePageError": "Could not open the release download page.",
+            "upToDate": "Up to date",
+            "checkForUpdates": "Check for Updates",
+            "progressLabel": "Update download progress",
+            "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+          },
+          "localModelFailure": {
+            "automaticRepair": "Automatic repair is available on this platform. Retry Built-in after the repair completes.",
+            "fallbackMessage": "The local model could not start.",
+            "missingLinuxDependencies": {
+              "title": "Built-in model needs Linux libraries",
+              "message": "The built-in local model is missing Linux runtime libraries: {{libraries}}.",
+              "guidance": "Install the missing runtime packages for your distribution, or use a local server or online provider instead.",
+              "recovery": "Automatic repair is not available on Linux. Select Local server or Online, then choose Save & Restart."
+            },
+            "missingWindowsDlls": {
+              "title": "Built-in model runtime is incomplete",
+              "message": "The installed llama.cpp runtime is missing files: {{libraries}}.",
+              "guidance": "Reinstall or update ENGRAM, or use a local server or online provider instead.",
+              "recovery": "Automatic repair is not available for this installation. Select Local server or Online, then choose Save & Restart."
+            },
+            "generic": {
+              "title": "Built-in model could not start",
+              "message": "The local model could not start: {{details}}",
+              "guidance": "The built-in local model is unavailable, but the rest of ENGRAM can continue with another provider.",
+              "recovery": "Select Local server or Online, then choose Save & Restart. You can retry Built-in after fixing the runtime."
+            }
+          }
         }
       }
     </script>
     <script>
-      const updateLocaleData = JSON.parse(
+      const settingsLocaleData = JSON.parse(
         document.getElementById("settings-i18n-data").textContent,
       );
       const $ = (id) => document.getElementById(id);
 
-      function getUpdateCopy(language) {
+      function getSettingsCopy(language) {
         const code = String(language || "en")
           .toLowerCase()
           .split("-")[0];
-        return updateLocaleData[code] || updateLocaleData.en;
+        const localized = settingsLocaleData[code] || {};
+        const fallback = settingsLocaleData.en;
+        return {
+          update: localized.update || fallback.update,
+          localModelFailure:
+            localized.localModelFailure || fallback.localModelFailure,
+        };
       }
 
+      function getUpdateCopy(language) {
+        return getSettingsCopy(language).update;
+      }
+
+      let activeSettingsCopy = settingsLocaleData.en;
       let currentSelectionId = null;
       let currentOperationId = null;
       let offlineModelOperationId = null;
@@ -797,42 +832,30 @@
           box.classList.add("hidden");
           return;
         }
-        const missing =
+        const missingLibraries =
           Array.isArray(failure.missingLibraries) &&
           failure.missingLibraries.length
-            ? ` Missing: ${failure.missingLibraries.join(", ")}.`
+            ? failure.missingLibraries.join(", ")
             : "";
+        const failureCopy = activeSettingsCopy.localModelFailure;
         const copy =
-          failure.code === "missing-linux-dependencies"
-            ? {
-                title: "Built-in model needs Linux libraries",
-                guidance:
-                  "Install the missing runtime packages for your distribution, or use a local server or online provider instead.",
-                recovery:
-                  "Automatic repair is not available on Linux. Select Local server or Online, then choose Save & Restart.",
-              }
-            : failure.code === "missing-windows-dlls"
-              ? {
-                  title: "Built-in model runtime is incomplete",
-                  guidance:
-                    "The installed llama.cpp runtime is missing files. Reinstall or update ENGRAM, or use a local server or online provider instead.",
-                  recovery:
-                    "Automatic repair is not available for this installation. Select Local server or Online, then choose Save & Restart.",
-                }
-              : {
-                  title: "Built-in model could not start",
-                  guidance:
-                    "The built-in local model is unavailable, but the rest of ENGRAM can continue with another provider.",
-                  recovery:
-                    "Select Local server or Online, then choose Save & Restart. You can retry Built-in after fixing the runtime.",
-                };
+          failureCopy[
+            failure.code === "missing-linux-dependencies"
+              ? "missingLinuxDependencies"
+              : failure.code === "missing-windows-dlls"
+                ? "missingWindowsDlls"
+                : "generic"
+          ];
+        const detail = missingLibraries || failure.message || failureCopy.fallbackMessage;
+        const message = copy.message
+          .replace("{{libraries}}", detail)
+          .replace("{{details}}", detail);
         $("local-model-failure-title").textContent = copy.title;
-        $("local-model-failure-message").textContent =
-          (failure.message || "The local model could not start.") + missing;
+        $("local-model-failure-message").textContent = message;
         $("local-model-failure-guidance").textContent = copy.guidance;
         $("local-model-failure-recovery").textContent =
           failure.automaticFixAvailable
-            ? "Automatic repair is available on this platform. Retry Built-in after the repair completes."
+            ? failureCopy.automaticRepair
             : copy.recovery;
         box.classList.remove("hidden");
       }
@@ -984,9 +1007,9 @@
 
       async function init() {
         const s = await window.engram.getSettings();
+        renderLocalModelFailure(s.localModelFailure);
         bundledAvailable = s.bundledAvailable;
         bundledModelIncluded = s.bundledModelIncluded;
-        renderLocalModelFailure(s.localModelFailure);
         renderOfflineModel(s.offlineModel);
         if (s.customModel) {
           renderCustomModels(
@@ -1451,11 +1474,7 @@
       }
       async function initAbout() {
         const info = await window.engram.getAppInfo();
-        const language = await window.engram
-          .getUiLanguage()
-          .catch(() => navigator.language);
-        const updateCopy = getUpdateCopy(language);
-        document.documentElement.lang = String(language || "en").split("-")[0];
+        const updateCopy = activeSettingsCopy.update;
         $("check-updates").textContent = updateCopy.checkForUpdates;
         $("update-progress").setAttribute(
           "aria-label",
@@ -1512,8 +1531,18 @@
           renderLocalModelFailure(res.localModelFailure);
         }
       });
-      init();
-      initAbout();
+      async function initLocale() {
+        const language = await window.engram
+          .getUiLanguage()
+          .catch(() => navigator.language);
+        activeSettingsCopy = getSettingsCopy(language);
+        document.documentElement.lang = String(language || "en").split("-")[0];
+      }
+
+      (async () => {
+        await initLocale();
+        await Promise.all([init(), initAbout()]);
+      })();
     </script>
   </body>
 </html>

@@ -1133,6 +1133,28 @@
       "checkForUpdates": "Check for Updates",
       "progressLabel": "Update download progress",
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+    },
+    "localModelFailure": {
+      "automaticRepair": "O reparo automático está disponível nesta plataforma. Tente novamente o Built-in após a conclusão do reparo.",
+      "fallbackMessage": "Não foi possível iniciar o modelo local.",
+      "missingLinuxDependencies": {
+        "title": "O modelo Built-in precisa de bibliotecas Linux",
+        "message": "Faltam bibliotecas de tempo de execução do Linux para o modelo local built-in: {{libraries}}.",
+        "guidance": "Instale os pacotes de tempo de execução ausentes para a sua distribuição ou use um Local server ou provedor Online.",
+        "recovery": "O reparo automático não está disponível no Linux. Selecione Local server ou Online e, em seguida, escolha Save & Restart."
+      },
+      "missingWindowsDlls": {
+        "title": "O tempo de execução do modelo Built-in está incompleto",
+        "message": "Faltam arquivos no tempo de execução instalado do llama.cpp: {{libraries}}.",
+        "guidance": "Reinstale ou atualize o ENGRAM, ou use um Local server ou provedor Online.",
+        "recovery": "O reparo automático não está disponível para esta instalação. Selecione Local server ou Online e, em seguida, escolha Save & Restart."
+      },
+      "generic": {
+        "title": "Não foi possível iniciar o modelo Built-in",
+        "message": "Não foi possível iniciar o modelo local: {{details}}",
+        "guidance": "O modelo local built-in não está disponível, mas o restante do ENGRAM pode continuar com outro provedor.",
+        "recovery": "Selecione Local server ou Online e, em seguida, escolha Save & Restart. Você poderá tentar novamente o Built-in após corrigir o tempo de execução."
+      }
     }
   },
   "simulations": {
