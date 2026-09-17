@@ -1133,6 +1133,28 @@
       "checkForUpdates": "Check for Updates",
       "progressLabel": "Update download progress",
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+    },
+    "localModelFailure": {
+      "automaticRepair": "La réparation automatique est disponible sur cette plateforme. Réessayez Built-in une fois la réparation terminée.",
+      "fallbackMessage": "Le modèle local n’a pas pu démarrer.",
+      "missingLinuxDependencies": {
+        "title": "Le modèle Built-in nécessite des bibliothèques Linux",
+        "message": "Il manque au modèle local Built-in des bibliothèques d’exécution Linux : {{libraries}}.",
+        "guidance": "Installez les paquets d’exécution manquants pour votre distribution, ou utilisez plutôt Local server ou Online.",
+        "recovery": "La réparation automatique n’est pas disponible sur Linux. Sélectionnez Local server ou Online, puis choisissez Save & Restart."
+      },
+      "missingWindowsDlls": {
+        "title": "L’environnement d’exécution du modèle Built-in est incomplet",
+        "message": "Il manque des fichiers dans l’environnement d’exécution llama.cpp installé : {{libraries}}.",
+        "guidance": "Réinstallez ou mettez à jour ENGRAM, ou utilisez plutôt Local server ou Online.",
+        "recovery": "La réparation automatique n’est pas disponible pour cette installation. Sélectionnez Local server ou Online, puis choisissez Save & Restart."
+      },
+      "generic": {
+        "title": "Le modèle Built-in n’a pas pu démarrer",
+        "message": "Le modèle local n’a pas pu démarrer : {{details}}",
+        "guidance": "Le modèle local Built-in n’est pas disponible, mais le reste d’ENGRAM peut continuer avec un autre fournisseur.",
+        "recovery": "Sélectionnez Local server ou Online, puis choisissez Save & Restart. Vous pourrez réessayer Built-in après avoir corrigé l’environnement d’exécution."
+      }
     }
   },
   "simulations": {

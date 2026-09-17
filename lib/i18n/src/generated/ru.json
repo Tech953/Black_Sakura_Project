@@ -1133,6 +1133,28 @@
       "checkForUpdates": "Check for Updates",
       "progressLabel": "Update download progress",
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+    },
+    "localModelFailure": {
+      "automaticRepair": "На этой платформе доступно автоматическое восстановление. Повторите попытку Built-in после завершения восстановления.",
+      "fallbackMessage": "Не удалось запустить локальную модель.",
+      "missingLinuxDependencies": {
+        "title": "Для Built-in модели нужны библиотеки Linux",
+        "message": "Во встроенной локальной модели отсутствуют библиотеки среды выполнения Linux: {{libraries}}.",
+        "guidance": "Установите недостающие пакеты среды выполнения для вашего дистрибутива или используйте вместо этого Local server или Online.",
+        "recovery": "Автоматическое восстановление недоступно в Linux. Выберите Local server или Online, затем нажмите Save & Restart."
+      },
+      "missingWindowsDlls": {
+        "title": "Среда выполнения Built-in модели неполная",
+        "message": "В установленной среде выполнения llama.cpp отсутствуют файлы: {{libraries}}.",
+        "guidance": "Переустановите или обновите ENGRAM либо используйте вместо этого Local server или Online.",
+        "recovery": "Автоматическое восстановление недоступно для этой установки. Выберите Local server или Online, затем нажмите Save & Restart."
+      },
+      "generic": {
+        "title": "Не удалось запустить Built-in модель",
+        "message": "Не удалось запустить локальную модель: {{details}}",
+        "guidance": "Built-in локальная модель недоступна, но остальная часть ENGRAM может продолжить работу с другим провайдером.",
+        "recovery": "Выберите Local server или Online, затем нажмите Save & Restart. После исправления среды выполнения можно снова попробовать Built-in."
+      }
     }
   },
   "simulations": {

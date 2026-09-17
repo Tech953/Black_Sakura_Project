@@ -1133,6 +1133,28 @@
       "checkForUpdates": "Check for Updates",
       "progressLabel": "Update download progress",
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+    },
+    "localModelFailure": {
+      "automaticRepair": "الإصلاح التلقائي متاح على هذه المنصة. أعد المحاولة مع Built-in بعد اكتمال الإصلاح.",
+      "fallbackMessage": "تعذر بدء النموذج المحلي.",
+      "missingLinuxDependencies": {
+        "title": "يحتاج نموذج Built-in إلى مكتبات Linux",
+        "message": "يفتقد النموذج المحلي المدمج مكتبات وقت تشغيل Linux التالية: {{libraries}}.",
+        "guidance": "ثبّت حزم وقت التشغيل المفقودة لتوزيعتك، أو استخدم Local server أو مزودًا Online بدلًا من ذلك.",
+        "recovery": "الإصلاح التلقائي غير متاح على Linux. حدّد Local server أو Online، ثم اختر Save & Restart."
+      },
+      "missingWindowsDlls": {
+        "title": "وقت تشغيل نموذج Built-in غير مكتمل",
+        "message": "يفتقد وقت تشغيل llama.cpp المثبّت الملفات التالية: {{libraries}}.",
+        "guidance": "أعد تثبيت ENGRAM أو حدّثه، أو استخدم Local server أو مزودًا Online بدلًا من ذلك.",
+        "recovery": "الإصلاح التلقائي غير متاح لهذا التثبيت. حدّد Local server أو Online، ثم اختر Save & Restart."
+      },
+      "generic": {
+        "title": "تعذر بدء نموذج Built-in",
+        "message": "تعذر بدء النموذج المحلي: {{details}}",
+        "guidance": "نموذج Built-in المحلي غير متاح، لكن يمكن لبقية ENGRAM المتابعة باستخدام مزود آخر.",
+        "recovery": "حدّد Local server أو Online، ثم اختر Save & Restart. يمكنك إعادة المحاولة مع Built-in بعد إصلاح وقت التشغيل."
+      }
     }
   },
   "simulations": {
