@@ -709,6 +709,10 @@ describe("conversation persistence routes", () => {
       body: JSON.stringify({ content: "First question." }),
     });
     await firstCreateDidStart;
+    expect(h.store.conversations[0]).toMatchObject({
+      groupContinuationClaimedAt: expect.any(Date),
+    });
+    expect(h.store.conversations[0]?.groupContinuationClaimToken).not.toBeNull();
 
     const secondResponse = await fetch(
       `${base}/api/openai/conversations/1/messages`,
@@ -777,7 +781,18 @@ describe("conversation persistence routes", () => {
       },
     );
 
-    const response = await fetch(
+    let releaseFirstCreate!: () => void;
+    const firstCreateBlocked = new Promise<void>((resolve) => {
+      releaseFirstCreate = resolve;
+    });
+    let firstCreateStarted!: () => void;
+    const firstCreateDidStart = new Promise<void>((resolve) => {
+      firstCreateStarted = resolve;
+    });
+    h.llmState.blockNextCreate = firstCreateBlocked;
+    h.llmState.onCreateStarted = firstCreateStarted;
+
+    const request = fetch(
       `${base}/api/openai/conversations/1/messages`,
       {
         method: "POST",
@@ -786,6 +801,16 @@ describe("conversation persistence routes", () => {
       },
     );
 
+    await firstCreateDidStart;
+    expect(h.store.conversations[0]).toMatchObject({
+      groupContinuationClaimedAt: expect.any(Date),
+    });
+    expect(h.store.conversations[0]?.groupContinuationClaimToken).not.toBe(
+      "abandoned-request",
+    );
+
+    releaseFirstCreate();
+    const response = await request;
     expect(response.status).toBe(200);
     expect(parseSse(await response.text())).toHaveLength(7);
     expect(h.store.conversations[0]).toMatchObject({
