@@ -882,11 +882,23 @@ async function startLlama(settings: Settings): Promise<void> {
     appendSmokeDiagnostic("llama.stderr.log", output);
     process.stderr.write(`[llama] ${output}`);
   });
-  const startupError = (message: string): Error => {
+  const startupError = (message: string, sourceError?: unknown): Error => {
+    const diagnosticError = new Error(message);
+    if (
+      sourceError &&
+      typeof sourceError === "object" &&
+      "code" in sourceError
+    ) {
+      Object.defineProperty(diagnosticError, "code", {
+        configurable: true,
+        value: (sourceError as { code?: unknown }).code,
+      });
+    }
     const failure = localModelFailureFromError(
-      new Error(`${message}${startupStderr ? ` ${startupStderr.trim()}` : ""}`),
+      diagnosticError,
       process.platform,
       startupStderr,
+      llamaBin,
     );
     return attachLocalModelFailure(new Error(failure.message), failure);
   };
@@ -907,7 +919,7 @@ async function startLlama(settings: Settings): Promise<void> {
           `llama spawn error: ${sanitizeSmokeDiagnostic(err.message)}\n`,
         );
         reject(
-          startupError(`Local model server failed to start: ${err.message}`),
+          startupError(`Local model server failed to start: ${err.message}`, err),
         );
       }
     });
@@ -954,6 +966,7 @@ async function startLlama(settings: Settings): Promise<void> {
       err,
       process.platform,
       startupStderr,
+      llamaBin,
     );
     throw attachLocalModelFailure(err, failure);
   }

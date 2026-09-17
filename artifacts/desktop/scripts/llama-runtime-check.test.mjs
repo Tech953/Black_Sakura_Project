@@ -121,6 +121,7 @@ describe("checkLlamaRuntime", () => {
     expect(result).toEqual({
       ok: false,
       code: "ldd-failed",
+      repairAction: "restage-runtime",
       message: expect.stringContaining("not a dynamic executable"),
     });
   });
@@ -319,6 +320,7 @@ describe("checkLlamaRuntime", () => {
     expect(result).toEqual({
       ok: false,
       code: "unsupported-architecture",
+      repairAction: "build-target-runtime",
       message:
         "No pinned llama.cpp runtime dependency contract exists for darwin-ia32.",
     });
@@ -381,6 +383,7 @@ describe("checkLlamaRuntime", () => {
     ).toEqual({
       ok: false,
       code: "missing-server",
+      repairAction: "restage-runtime",
       message: `Packaged llama.cpp server is missing: ${executablePath}`,
     });
     expect(mockedSpawnSync).not.toHaveBeenCalled();

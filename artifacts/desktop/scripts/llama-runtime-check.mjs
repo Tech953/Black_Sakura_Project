@@ -1,6 +1,10 @@
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import {
+  llamaRuntimeFailureMessage,
+  llamaRuntimeRepairAction,
+} from "./llama-runtime-diagnosis.mjs";
 
 const LINUX_PACKAGE_HINTS = {
   "libgcc_s.so.1": "libgcc-s1",
@@ -66,35 +70,47 @@ function runtimeExecutionCheck(
 
   const errorCode = String(result.error.code ?? "").toUpperCase();
   if (errorCode === "EACCES" || errorCode === "EPERM") {
+    const reason = "permission-denied";
     return {
       ok: false,
       code: "runtime-not-executable",
-      reason: "permission-denied",
-      message:
-        `Packaged llama.cpp server exists but cannot execute due to permission ` +
-        `denied: ${executablePath}. Re-stage the binary with execute permission ` +
-        "(chmod +x) and rerun the packaged smoke test.",
+      reason,
+      repairAction: llamaRuntimeRepairAction("runtime-not-executable", reason),
+      message: llamaRuntimeFailureMessage({
+        code: "runtime-not-executable",
+        reason,
+        executablePath,
+        platform,
+        architecture,
+      }),
     };
   }
   if (errorCode === "ENOEXEC") {
+    const reason = "exec-format-error";
     return {
       ok: false,
       code: "runtime-not-executable",
-      reason: "exec-format-error",
-      message:
-        `Packaged llama.cpp server exists but has an execution-format error: ` +
-        `${executablePath}. Rebuild or re-stage the llama.cpp binary for ` +
-        `${platform}-${architecture}, then rerun the packaged smoke test.`,
+      reason,
+      repairAction: llamaRuntimeRepairAction("runtime-not-executable", reason),
+      message: llamaRuntimeFailureMessage({
+        code: "runtime-not-executable",
+        reason,
+        executablePath,
+        platform,
+        architecture,
+      }),
     };
   }
 
   return {
     ok: false,
     code: "runtime-execution-failed",
-    message:
-      `Packaged llama.cpp server exists but could not be executed: ` +
-      `${executablePath}: ${result.error.message}. Re-stage the runtime and ` +
-      "rerun the packaged smoke test.",
+    repairAction: llamaRuntimeRepairAction("runtime-execution-failed"),
+    message: llamaRuntimeFailureMessage({
+      code: "runtime-execution-failed",
+      executablePath,
+      details: result.error.message,
+    }),
   };
 }
 
@@ -133,8 +149,12 @@ function unsupportedArchitecture(platform, architecture) {
   return {
     ok: false,
     code: "unsupported-architecture",
-    message:
-      `No pinned llama.cpp runtime dependency contract exists for ${platform}-${architecture}.`,
+    repairAction: llamaRuntimeRepairAction("unsupported-architecture"),
+    message: llamaRuntimeFailureMessage({
+      code: "unsupported-architecture",
+      platform,
+      architecture,
+    }),
   };
 }
 
@@ -147,9 +167,11 @@ function linuxDependencyCheck(executablePath, env) {
     return {
       ok: false,
       code: "ldd-unavailable",
-      message:
-        `Linux llama.cpp runtime preflight could not run ldd: ${result.error.message}. ` +
-        "Run the packaged smoke test on a Linux host with ldd installed.",
+      repairAction: llamaRuntimeRepairAction("ldd-unavailable"),
+      message: llamaRuntimeFailureMessage({
+        code: "ldd-unavailable",
+        details: result.error.message,
+      }),
     };
   }
 
@@ -163,28 +185,30 @@ function linuxDependencyCheck(executablePath, env) {
     return {
       ok: false,
       code: "ldd-failed",
-      message:
-        `Linux llama.cpp runtime preflight could not inspect ${executablePath}: ` +
-        `${output.trim() || `ldd exited with status ${result.status}`}`,
+      repairAction: llamaRuntimeRepairAction("ldd-failed"),
+      message: llamaRuntimeFailureMessage({
+        code: "ldd-failed",
+        executablePath,
+        details: output.trim() || `ldd exited with status ${result.status}`,
+      }),
     };
   }
   if (missing.length > 0) {
     const packageNames = unique(
       missing.map((name) => LINUX_PACKAGE_HINTS[name]).filter(Boolean),
     );
-    const packageHint = packageNames.length
-      ? ` Install the equivalent runtime packages (Debian/Ubuntu: ${packageNames.join(", ")}).`
-      : "";
     return {
       ok: false,
       code: "missing-linux-dependencies",
       missing,
-      message:
-        `Linux llama.cpp runtime preflight failed for ${executablePath}: ` +
-        `unresolved shared libraries: ${missing.join(", ")}.${packageHint} ` +
-        "AppImage users must provide equivalent libraries; the .deb declares these " +
-        "dependencies. For local NixOS smoke runs, set LD_LIBRARY_PATH to compatible " +
-        "GCC/OpenSSL/OpenMP runtime directories before launching the smoke test.",
+      missingLibraries: missing,
+      repairAction: llamaRuntimeRepairAction("missing-linux-dependencies"),
+      message: llamaRuntimeFailureMessage({
+        code: "missing-linux-dependencies",
+        executablePath,
+        missingLibraries: missing,
+        packageNames,
+      }),
     };
   }
 
@@ -202,9 +226,11 @@ function macOSDependencyCheck(executablePath, architecture) {
     return {
       ok: false,
       code: "otool-unavailable",
-      message:
-        `macOS llama.cpp runtime preflight could not run otool: ${result.error.message}. ` +
-        "Run the packaged smoke test on a macOS host with Xcode command-line tools installed.",
+      repairAction: llamaRuntimeRepairAction("otool-unavailable"),
+      message: llamaRuntimeFailureMessage({
+        code: "otool-unavailable",
+        details: result.error.message,
+      }),
     };
   }
 
@@ -213,9 +239,12 @@ function macOSDependencyCheck(executablePath, architecture) {
     return {
       ok: false,
       code: "otool-failed",
-      message:
-        `macOS llama.cpp runtime preflight could not inspect ${executablePath}: ` +
-        `${output.trim() || `otool exited with status ${result.status}`}`,
+      repairAction: llamaRuntimeRepairAction("otool-failed"),
+      message: llamaRuntimeFailureMessage({
+        code: "otool-failed",
+        executablePath,
+        details: output.trim() || `otool exited with status ${result.status}`,
+      }),
     };
   }
 
@@ -237,10 +266,14 @@ function macOSDependencyCheck(executablePath, architecture) {
       ok: false,
       code: "missing-macos-dylibs",
       missing,
-      message:
-        `macOS ${architecture} llama.cpp runtime preflight failed for ${executablePath}: ` +
-        `missing adjacent runtime dylibs: ${missing.join(", ")}. ` +
-        "Re-stage the complete pinned macOS llama.cpp archive.",
+      missingLibraries: missing,
+      repairAction: llamaRuntimeRepairAction("missing-macos-dylibs"),
+      message: llamaRuntimeFailureMessage({
+        code: "missing-macos-dylibs",
+        executablePath,
+        architecture,
+        missingLibraries: missing,
+      }),
     };
   }
 
@@ -261,10 +294,13 @@ function windowsDependencyCheck(executablePath) {
       ok: false,
       code: "missing-windows-dlls",
       missing,
-      message:
-        `Windows llama.cpp runtime preflight failed for ${executablePath}: ` +
-        `missing adjacent runtime DLLs: ${missing.join(", ")}. ` +
-        "Re-stage the complete pinned win-cpu-x64 llama.cpp archive.",
+      missingLibraries: missing,
+      repairAction: llamaRuntimeRepairAction("missing-windows-dlls"),
+      message: llamaRuntimeFailureMessage({
+        code: "missing-windows-dlls",
+        executablePath,
+        missingLibraries: missing,
+      }),
     };
   }
 
@@ -285,7 +321,11 @@ export function checkLlamaRuntime({
     return {
       ok: false,
       code: "missing-server",
-      message: `Packaged llama.cpp server is missing: ${executablePath}`,
+      repairAction: llamaRuntimeRepairAction("missing-server"),
+      message: llamaRuntimeFailureMessage({
+        code: "missing-server",
+        executablePath,
+      }),
     };
   }
   const supported = SUPPORTED_ARCHITECTURES[platform];
