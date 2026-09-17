@@ -44,6 +44,7 @@
 - [API server testing](api-server-testing.md) — conventions and constraints for unit-testing the api-server artifact.
 - [Chromium CDP browser tests](chromium-cdp-browser-tests.md) — run local signed-in UI regressions with existing Chromium, CDP page targets, and no Playwright dependency.
 - [Chromium CDP navigation reconnect](chromium-cdp-navigation-reconnect.md) — page reloads can invalidate a Runtime socket; reconnect before post-navigation evaluation.
+- [Expo web E2E cold start](expo-web-e2e-cold-start.md) — the first Metro web bundle can leave Chromium on static HTML; retry once warm before debugging app code.
 - [Chromium CDP keyboard activation](chromium-cdp-keyboard-events.md) — CDP Enter events may focus native buttons without synthesizing their implicit click; use native semantics plus pointer coverage.
 - [CDP Radix switch limitation](chromium-cdp-radix-switch.md) — controlled Radix switches can deadlock CDP input under the DEV auth fixture; keep persistence checks on the same browser page.
 - [api-routes test db/schema mock](api-routes-test-mock.md) — why engine-touching route tests break, and how to keep the hand-rolled db/schema mock in sync.
