@@ -15,6 +15,7 @@
 - [Packaged smoke diagnostics](packaged-smoke-diagnostics.md) — CI-only, bounded, redacted logs must survive Electron launch, child startup, and health failures.
 - [Desktop embedded DB seam (pglite)](desktop-embedded-db.md) — running with an embedded DB for desktop, and the non-obvious bundling constraints.
 - [Desktop online key storage](desktop-online-key-storage.md) — security rule for how the desktop build persists the cloud LLM API key (no plaintext).
+- [Desktop built-in model retry](desktop-built-in-retry.md) — strict candidate activation with non-strict rollback preserves the local-server fallback after retry failure.
 - [Offline LLM seam](offline-llm-seam.md) — why model calls go through an app-level OpenAI-compatible client, not the Replit integration package.
 - [Media perception provenance & idempotency](media-perception.md) — invariants for uploads→OBSERVED world-model entries: provenance hardcoding, retry idempotency, deletion, worker test mock.
 - [Engram synthesis & directed sims](engram-synthesis.md) — new personas seed from observed/remembered only; simulation steps are CAS-claimed (never bypass); initiation is drive-based, not cadence-bound.
