@@ -1135,24 +1135,27 @@
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
     },
     "localModelFailure": {
-      "automaticRepair": "La riparazione automatica è disponibile su questa piattaforma. Riprova Built-in dopo il completamento della riparazione.",
+      "automaticRepair": "La riparazione automatica è disponibile su questa piattaforma. Riprova Built-in al termine della riparazione.",
       "fallbackMessage": "Impossibile avviare il modello locale.",
+      "retryBuiltIn": "Riprova Built-in",
+      "retrying": "Nuovo tentativo di avvio di Built-in…",
+      "ready": "Il modello Built-in è pronto.",
       "missingLinuxDependencies": {
         "title": "Il modello Built-in richiede librerie Linux",
-        "message": "Nel modello locale Built-in mancano le librerie di runtime Linux: {{libraries}}.",
-        "guidance": "Installa i pacchetti di runtime mancanti per la tua distribuzione, oppure usa Local server o Online.",
+        "message": "Nel modello locale built-in mancano le librerie di runtime Linux: {{libraries}}.",
+        "guidance": "Installa i pacchetti runtime mancanti per la tua distribuzione, oppure usa invece un Local server o un provider Online.",
         "recovery": "La riparazione automatica non è disponibile su Linux. Seleziona Local server o Online, quindi scegli Save & Restart."
       },
       "missingWindowsDlls": {
         "title": "Il runtime del modello Built-in è incompleto",
         "message": "Nel runtime llama.cpp installato mancano i file: {{libraries}}.",
-        "guidance": "Reinstalla o aggiorna ENGRAM, oppure usa Local server o Online.",
+        "guidance": "Reinstalla o aggiorna ENGRAM, oppure usa invece un Local server o un provider Online.",
         "recovery": "La riparazione automatica non è disponibile per questa installazione. Seleziona Local server o Online, quindi scegli Save & Restart."
       },
       "generic": {
         "title": "Impossibile avviare il modello Built-in",
         "message": "Impossibile avviare il modello locale: {{details}}",
-        "guidance": "Il modello locale Built-in non è disponibile, ma il resto di ENGRAM può continuare a funzionare con un altro provider.",
+        "guidance": "Il modello locale built-in non è disponibile, ma il resto di ENGRAM può continuare con un altro provider.",
         "recovery": "Seleziona Local server o Online, quindi scegli Save & Restart. Puoi riprovare Built-in dopo aver corretto il runtime."
       }
     }

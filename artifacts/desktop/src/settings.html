@@ -350,6 +350,9 @@
         ></p>
         <p id="local-model-failure-guidance" class="hint"></p>
         <p id="local-model-failure-recovery" class="hint"></p>
+        <button id="retry-bundled" type="button" class="primary hidden">
+          Retry Built-in
+        </button>
       </div>
       <div id="offline-download-box" class="panel-box hidden">
         <p
@@ -641,6 +644,9 @@
           "localModelFailure": {
             "automaticRepair": "Automatic repair is available on this platform. Retry Built-in after the repair completes.",
             "fallbackMessage": "The local model could not start.",
+            "retryBuiltIn": "Retry Built-in",
+            "retrying": "Retrying Built-in…",
+            "ready": "Built-in model is ready.",
             "missingLinuxDependencies": {
               "title": "Built-in model needs Linux libraries",
               "message": "The built-in local model is missing Linux runtime libraries: {{libraries}}.",
@@ -759,6 +765,7 @@
         });
         $("save").disabled = locked;
         $("cancel").disabled = locked;
+        $("retry-bundled").disabled = locked;
         $("offline-base").disabled = locked;
         $("offline-model").disabled = locked;
         $("online-base").disabled = locked;
@@ -826,10 +833,13 @@
         $("offline-download-error").classList.add("hidden");
       }
 
-      function renderLocalModelFailure(failure) {
+      function renderLocalModelFailure(failure, canRetry = bundledAvailable) {
         const box = $("local-model-failure-box");
+        const retry = $("retry-bundled");
         if (!failure) {
           box.classList.add("hidden");
+          retry.classList.add("hidden");
+          retry.disabled = false;
           return;
         }
         const missingLibraries =
@@ -857,6 +867,9 @@
           failure.automaticFixAvailable
             ? failureCopy.automaticRepair
             : copy.recovery;
+        retry.textContent = failureCopy.retryBuiltIn;
+        retry.classList.toggle("hidden", !canRetry || !bundledAvailable);
+        retry.disabled = false;
         box.classList.remove("hidden");
       }
 
@@ -1007,9 +1020,9 @@
 
       async function init() {
         const s = await window.engram.getSettings();
-        renderLocalModelFailure(s.localModelFailure);
         bundledAvailable = s.bundledAvailable;
         bundledModelIncluded = s.bundledModelIncluded;
+        renderLocalModelFailure(s.localModelFailure, s.mode === "bundled");
         renderOfflineModel(s.offlineModel);
         if (s.customModel) {
           renderCustomModels(
@@ -1510,6 +1523,27 @@
         });
       }
       $("cancel").addEventListener("click", () => window.engram.close());
+      $("retry-bundled").addEventListener("click", async () => {
+        if (!bundledAvailable) return;
+        setUiLock(true);
+        $("status").textContent = activeSettingsCopy.localModelFailure.retrying;
+        const res = await window.engram.retryBundledModel();
+        setUiLock(false);
+        if (res.ok) {
+          const bundledRadio = document.querySelector(
+            'input[name="mode"][value="bundled"]',
+          );
+          bundledRadio.checked = true;
+          applyMode("bundled");
+          renderLocalModelFailure(undefined);
+          $("status").textContent = activeSettingsCopy.localModelFailure.ready;
+        } else {
+          $("status").textContent = "Error: " + (res.error || "unknown");
+          if (res.localModelFailure) {
+            renderLocalModelFailure(res.localModelFailure, true);
+          }
+        }
+      });
       $("save").addEventListener("click", async () => {
         $("status").textContent = "Restarting engine…";
         const mode = document.querySelector('input[name="mode"]:checked').value;
@@ -1528,7 +1562,7 @@
         });
         if (!res.ok) {
           $("status").textContent = "Error: " + (res.error || "unknown");
-          renderLocalModelFailure(res.localModelFailure);
+          renderLocalModelFailure(res.localModelFailure, mode === "bundled");
         }
       });
       async function initLocale() {

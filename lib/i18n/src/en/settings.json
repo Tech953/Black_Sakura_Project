@@ -33,6 +33,9 @@
   "localModelFailure": {
     "automaticRepair": "Automatic repair is available on this platform. Retry Built-in after the repair completes.",
     "fallbackMessage": "The local model could not start.",
+    "retryBuiltIn": "Retry Built-in",
+    "retrying": "Retrying Built-in…",
+    "ready": "Built-in model is ready.",
     "missingLinuxDependencies": {
       "title": "Built-in model needs Linux libraries",
       "message": "The built-in local model is missing Linux runtime libraries: {{libraries}}.",

@@ -1135,25 +1135,28 @@
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
     },
     "localModelFailure": {
-      "automaticRepair": "O reparo automático está disponível nesta plataforma. Tente novamente o Built-in após a conclusão do reparo.",
+      "automaticRepair": "O reparo automático está disponível nesta plataforma. Tente Built-in novamente após a conclusão do reparo.",
       "fallbackMessage": "Não foi possível iniciar o modelo local.",
+      "retryBuiltIn": "Tentar Built-in novamente",
+      "retrying": "Tentando Built-in novamente…",
+      "ready": "O modelo Built-in está pronto.",
       "missingLinuxDependencies": {
-        "title": "O modelo Built-in precisa de bibliotecas Linux",
-        "message": "Faltam bibliotecas de tempo de execução do Linux para o modelo local built-in: {{libraries}}.",
-        "guidance": "Instale os pacotes de tempo de execução ausentes para a sua distribuição ou use um Local server ou provedor Online.",
-        "recovery": "O reparo automático não está disponível no Linux. Selecione Local server ou Online e, em seguida, escolha Save & Restart."
+        "title": "O modelo Built-in precisa de bibliotecas do Linux",
+        "message": "Faltam bibliotecas de runtime do Linux para o modelo local built-in: {{libraries}}.",
+        "guidance": "Instale os pacotes de runtime ausentes para a sua distribuição ou use um Local server ou provedor Online.",
+        "recovery": "O reparo automático não está disponível no Linux. Selecione Local server ou Online e depois escolha Save & Restart."
       },
       "missingWindowsDlls": {
-        "title": "O tempo de execução do modelo Built-in está incompleto",
-        "message": "Faltam arquivos no tempo de execução instalado do llama.cpp: {{libraries}}.",
+        "title": "O runtime do modelo Built-in está incompleto",
+        "message": "Faltam arquivos no runtime instalado do llama.cpp: {{libraries}}.",
         "guidance": "Reinstale ou atualize o ENGRAM, ou use um Local server ou provedor Online.",
-        "recovery": "O reparo automático não está disponível para esta instalação. Selecione Local server ou Online e, em seguida, escolha Save & Restart."
+        "recovery": "O reparo automático não está disponível para esta instalação. Selecione Local server ou Online e depois escolha Save & Restart."
       },
       "generic": {
         "title": "Não foi possível iniciar o modelo Built-in",
         "message": "Não foi possível iniciar o modelo local: {{details}}",
         "guidance": "O modelo local built-in não está disponível, mas o restante do ENGRAM pode continuar com outro provedor.",
-        "recovery": "Selecione Local server ou Online e, em seguida, escolha Save & Restart. Você poderá tentar novamente o Built-in após corrigir o tempo de execução."
+        "recovery": "Selecione Local server ou Online e depois escolha Save & Restart. Você pode tentar Built-in novamente após corrigir o runtime."
       }
     }
   },

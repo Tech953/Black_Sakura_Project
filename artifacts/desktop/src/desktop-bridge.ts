@@ -152,6 +152,11 @@ export interface EngramDesktopBridge {
     error?: string;
     localModelFailure?: LocalModelFailure;
   }>;
+  retryBundledModel: () => Promise<{
+    ok: boolean;
+    error?: string;
+    localModelFailure?: LocalModelFailure;
+  }>;
   chooseGguf: () => Promise<
     | { ok: true; selection: GgufSelectionView }
     | { ok: false; cancelled?: boolean; error?: string }
@@ -219,6 +224,12 @@ export function createEngramDesktopBridge(
     getSettings: () => ipc.invoke("settings:get") as Promise<SettingsView>,
     saveSettings: (payload) =>
       ipc.invoke("settings:save", payload) as Promise<{
+        ok: boolean;
+        error?: string;
+        localModelFailure?: LocalModelFailure;
+      }>,
+    retryBundledModel: () =>
+      ipc.invoke("settings:retry-bundled") as Promise<{
         ok: boolean;
         error?: string;
         localModelFailure?: LocalModelFailure;
