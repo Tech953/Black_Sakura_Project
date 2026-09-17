@@ -79,12 +79,27 @@ import {
 import {
   exportNativeChatConversation,
   getNativeChatExportFailureKind,
+  type NativeChatExportDependencies,
   type NativeChatExportFailureKind,
 } from "@/lib/native-chat-export";
 import {
   buildWebChatExport,
   downloadWebChatExport,
 } from "@/lib/web-chat-export";
+
+const getE2eNativeChatExportDependencies = (): NativeChatExportDependencies | null => {
+  if (
+    Platform.OS !== "web" ||
+    process.env.EXPO_PUBLIC_E2E_NATIVE_EXPORT !== "true"
+  ) {
+    return null;
+  }
+  return (
+    globalThis as typeof globalThis & {
+      __engramNativeChatExportE2E?: NativeChatExportDependencies;
+    }
+  ).__engramNativeChatExportE2E ?? null;
+};
 
 export default function ChatScreen() {
   const { t, i18n } = useTranslation("mobile");
@@ -294,7 +309,8 @@ export default function ChatScreen() {
           createdAt: conversation.createdAt,
           entries,
         };
-        if (Platform.OS === "web") {
+        const e2eNativeExport = getE2eNativeChatExportDependencies();
+        if (Platform.OS === "web" && !e2eNativeExport) {
           downloadWebChatExport(
             await buildWebChatExport(format, exportInput, safeTitle),
           );
@@ -305,7 +321,7 @@ export default function ChatScreen() {
           format === "md"
             ? buildMarkdownTranscript(exportInput)
             : buildPlainTextTranscript(exportInput);
-        if (!(await Sharing.isAvailableAsync())) {
+        if (!e2eNativeExport && !(await Sharing.isAvailableAsync())) {
           const result = await Share.share({ title, message: fallback });
           if (result.action === Share.dismissedAction) {
             setExportError("cancelled");
@@ -315,21 +331,26 @@ export default function ChatScreen() {
           return;
         }
 
-        await exportNativeChatConversation(format, exportInput, safeTitle, {
-          cacheDirectory: FileSystem.cacheDirectory ?? "",
-          writeAsStringAsync: (uri, contents, options) =>
-            FileSystem.writeAsStringAsync(uri, contents, {
-              encoding:
-                options.encoding === "base64"
-                  ? FileSystem.EncodingType.Base64
-                  : FileSystem.EncodingType.UTF8,
-            }),
-          printToFileAsync: ({ html }) => Print.printToFileAsync({ html }),
-          getInfoAsync: (uri) => FileSystem.getInfoAsync(uri),
-          deleteAsync: (uri, options) => FileSystem.deleteAsync(uri, options),
-          shareAsync: (uri, options) => Sharing.shareAsync(uri, options),
-          dialogTitle: t("chat.shareConversation"),
-        });
+        await exportNativeChatConversation(
+          format,
+          exportInput,
+          safeTitle,
+          e2eNativeExport ?? {
+            cacheDirectory: FileSystem.cacheDirectory ?? "",
+            writeAsStringAsync: (uri, contents, options) =>
+              FileSystem.writeAsStringAsync(uri, contents, {
+                encoding:
+                  options.encoding === "base64"
+                    ? FileSystem.EncodingType.Base64
+                    : FileSystem.EncodingType.UTF8,
+              }),
+            printToFileAsync: ({ html }) => Print.printToFileAsync({ html }),
+            getInfoAsync: (uri) => FileSystem.getInfoAsync(uri),
+            deleteAsync: (uri, options) => FileSystem.deleteAsync(uri, options),
+            shareAsync: (uri, options) => Sharing.shareAsync(uri, options),
+            dialogTitle: t("chat.shareConversation"),
+          },
+        );
         completed = true;
       } catch (error) {
         setExportError(getNativeChatExportFailureKind(error));
