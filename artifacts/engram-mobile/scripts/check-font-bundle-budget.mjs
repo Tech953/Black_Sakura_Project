@@ -3,26 +3,15 @@
 import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  validateWebExportFontAssets,
+} from "./check-web-export-font-assets.mjs";
 
 const mobileRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fontDirectory = path.join(mobileRoot, "assets", "fonts");
 const fontBudgetBytes = 1_350_000;
-const requiredFonts = [
-  "engram-noto-arabic.woff2",
-  "engram-noto-cjk.woff2",
-  "engram-noto-cyrillic.woff2",
-  "engram-noto-devanagari.woff2",
-  "engram-noto-greek.woff2",
-  "engram-noto-hebrew.woff2",
-  "engram-noto-latin.woff2",
-];
 
-const missingFonts = requiredFonts.filter(
-  (font) => !statSync(path.join(fontDirectory, font), { throwIfNoEntry: false }),
-);
-if (missingFonts.length > 0) {
-  throw new Error(`Missing bundled Unicode PDF fonts: ${missingFonts.join(", ")}`);
-}
+validateWebExportFontAssets();
 
 const fontFiles = readdirSync(fontDirectory)
   .filter((font) => font.endsWith(".woff2"))
