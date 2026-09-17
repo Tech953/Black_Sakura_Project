@@ -118,6 +118,7 @@ function runNativeExportRegression() {
 function runWebExportCompatibilityRegression() {
   console.log("Running web export browser compatibility regression...");
   run("pnpm", ["run", "check:font-budget"]);
+  run("pnpm", ["run", "check:web-export-glyphs"]);
   run("pnpm", [
     "exec",
     "vitest",

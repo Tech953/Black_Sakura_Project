@@ -87,6 +87,12 @@ For authenticated archive/export checks, seed transcript rows through a developm
 
 **How to apply:** Have the browser check require an explicit fixture response containing both user and assistant rows, and never treat a 200 SSE error frame as a successful transcript seed.
 
+For visual Unicode regressions without Playwright in the mobile package, bundle the production export module with esbuild, load the vendored WOFF2 assets through browser FontFace, and compare checked-in Chromium canvas signatures for representative scripts. Do not silently refresh signatures after a browser or font change.
+
+**Why:** Text extraction can pass while shaping, fallback, combining marks, or RTL placement regress visually; a deterministic canvas fixture catches those changes without adding another browser dependency.
+
+**How to apply:** Keep the fixture in the mobile release preflight, report the font family on load/render/signature failures, and update baselines only after reviewing the rendered output.
+
 Real Clerk browser checks must clean up through an authenticated, development-only server seam before revoking the temporary identity; deleting only the conversation and Clerk user leaves owner-scoped bootstrap copies behind.
 
 **Why:** Authentication bootstrap copies account-owned personality, spaces, engrams, and related rows into the development database, so repeated release checks otherwise accumulate disposable data.
