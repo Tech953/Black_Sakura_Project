@@ -24,6 +24,14 @@ describe("checkLlamaRuntime", () => {
     vi.resetAllMocks();
     mockedExistsSync.mockReturnValue(true);
     mockedReaddirSync.mockReturnValue([]);
+    mockedSpawnSync.mockReturnValue({
+      status: 0,
+      stdout: "",
+      stderr: "",
+      pid: 1,
+      output: [],
+      signal: null,
+    });
   });
 
   it("reports missing Linux libraries and deduplicated Debian package guidance", () => {
@@ -115,6 +123,84 @@ describe("checkLlamaRuntime", () => {
       code: "ldd-failed",
       message: expect.stringContaining("not a dynamic executable"),
     });
+  });
+
+  it("reports an existing runtime that lacks execute permission", () => {
+    mockedSpawnSync
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: "libstdc++.so.6 => /lib/libstdc++.so.6 (0x00007f)\n",
+        stderr: "",
+        pid: 1,
+        output: [],
+        signal: null,
+      })
+      .mockReturnValueOnce({
+        error: Object.assign(new Error("spawn EACCES"), { code: "EACCES" }),
+        status: null,
+        stdout: "",
+        stderr: "",
+        pid: undefined,
+        output: [],
+        signal: null,
+      });
+
+    const result = checkLlamaRuntime({
+      executablePath,
+      platform: "linux",
+      architecture: "x64",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "runtime-not-executable",
+      reason: "permission-denied",
+    });
+    expect(result.message).toContain("chmod +x");
+    expect(result.message).toContain(executablePath);
+    expect(mockedSpawnSync).toHaveBeenLastCalledWith(
+      executablePath,
+      ["--version"],
+      expect.objectContaining({
+        encoding: "utf8",
+        env: process.env,
+      }),
+    );
+  });
+
+  it("reports an existing runtime with an execution-format error", () => {
+    mockedSpawnSync
+      .mockReturnValueOnce({
+        status: 1,
+        stdout: "not a dynamic executable",
+        stderr: "ldd: unsupported format",
+        pid: 1,
+        output: [],
+        signal: null,
+      })
+      .mockReturnValueOnce({
+        error: Object.assign(new Error("spawn ENOEXEC"), { code: "ENOEXEC" }),
+        status: null,
+        stdout: "",
+        stderr: "",
+        pid: undefined,
+        output: [],
+        signal: null,
+      });
+
+    const result = checkLlamaRuntime({
+      executablePath,
+      platform: "linux",
+      architecture: "x64",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "runtime-not-executable",
+      reason: "exec-format-error",
+    });
+    expect(result.message).toContain("execution-format error");
+    expect(result.message).toContain("linux-x64");
   });
 
   it("accepts a Linux runtime when ldd has no unresolved dependencies", () => {

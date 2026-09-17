@@ -14,3 +14,9 @@ For packaged network fixtures, write a bounded evidence file during lifecycle cl
 **Why:** A Windows model-download failure can occur after redirects, certificate setup, partial-file writes, or removal, and the final console excerpt does not identify which boundary failed.
 
 **How to apply:** Update the evidence while the fixture is active so thrown failures preserve the latest request/path state; sanitize temp and credential-shaped values before writing, and upload it only for the relevant failed smoke job.
+
+Runtime preflight should preserve specific missing-library or missing-DLL diagnoses, then probe an otherwise inspectable server with `--version` so permission-denied and execution-format failures get stable, actionable codes.
+
+**Why:** Dependency inspection can prove that a file exists without proving the staged binary can execute. Replacing a precise dependency diagnosis with a generic launch error makes release repair slower.
+
+**How to apply:** Keep the execution probe deterministic in unit tests by mocking process results; include the stable code and staged binary path in packaged smoke failures. Local NixOS verification may still require the compatible `LD_LIBRARY_PATH` used by resource preparation.
