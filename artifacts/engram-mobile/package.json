@@ -18,6 +18,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:font-budget": "node scripts/check-font-bundle-budget.mjs",
     "check:web-export-font-assets": "node scripts/check-web-export-font-assets.mjs",
+    "check:web-export-glyphs": "node scripts/check-web-export-glyphs.mjs",
     "smoke:gguf": "node scripts/gguf-device-smoke.mjs",
     "release:preflight": "node scripts/release-preflight.mjs",
     "test:release-preflight": "node --test scripts/release-preflight.test.mjs",
