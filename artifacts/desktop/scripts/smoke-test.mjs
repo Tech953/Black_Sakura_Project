@@ -878,7 +878,10 @@ const llamaRuntime = checkLlamaRuntime({
   architecture: process.arch,
 });
 if (!llamaRuntime.ok) {
-  fail(llamaRuntime.message);
+  fail(
+    `llama.cpp runtime preflight failed (${llamaRuntime.code}) for staged ` +
+      `binary ${llamaServer}: ${llamaRuntime.message}`,
+  );
 }
 log(
   `trusted llama.cpp runtime present for managed custom GGUFs ` +

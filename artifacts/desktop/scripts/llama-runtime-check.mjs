@@ -49,6 +49,80 @@ function unique(values) {
   return [...new Set(values)];
 }
 
+function runtimeExecutionCheck(
+  executablePath,
+  platform,
+  architecture,
+  env,
+) {
+  const result = spawnSync(executablePath, ["--version"], {
+    encoding: "utf8",
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (!result.error) {
+    return { ok: true, code: "runtime-executable" };
+  }
+
+  const errorCode = String(result.error.code ?? "").toUpperCase();
+  if (errorCode === "EACCES" || errorCode === "EPERM") {
+    return {
+      ok: false,
+      code: "runtime-not-executable",
+      reason: "permission-denied",
+      message:
+        `Packaged llama.cpp server exists but cannot execute due to permission ` +
+        `denied: ${executablePath}. Re-stage the binary with execute permission ` +
+        "(chmod +x) and rerun the packaged smoke test.",
+    };
+  }
+  if (errorCode === "ENOEXEC") {
+    return {
+      ok: false,
+      code: "runtime-not-executable",
+      reason: "exec-format-error",
+      message:
+        `Packaged llama.cpp server exists but has an execution-format error: ` +
+        `${executablePath}. Rebuild or re-stage the llama.cpp binary for ` +
+        `${platform}-${architecture}, then rerun the packaged smoke test.`,
+    };
+  }
+
+  return {
+    ok: false,
+    code: "runtime-execution-failed",
+    message:
+      `Packaged llama.cpp server exists but could not be executed: ` +
+      `${executablePath}: ${result.error.message}. Re-stage the runtime and ` +
+      "rerun the packaged smoke test.",
+  };
+}
+
+function inspectRuntimeExecution(
+  dependencyResult,
+  executablePath,
+  platform,
+  architecture,
+  env,
+) {
+  // Missing libraries/DLLs and unavailable inspection tools already have more
+  // actionable diagnoses. Probe after a successful inspection, or after the
+  // generic ldd/otool failure that can itself be caused by a bad executable.
+  if (
+    !dependencyResult.ok &&
+    !["ldd-failed", "otool-failed"].includes(dependencyResult.code)
+  ) {
+    return dependencyResult;
+  }
+  const executionResult = runtimeExecutionCheck(
+    executablePath,
+    platform,
+    architecture,
+    env,
+  );
+  return executionResult.ok ? dependencyResult : executionResult;
+}
+
 const SUPPORTED_ARCHITECTURES = {
   linux: ["x64", "arm64"],
   darwin: ["x64", "arm64"],
@@ -218,11 +292,33 @@ export function checkLlamaRuntime({
   if (supported && !supported.includes(architecture)) {
     return unsupportedArchitecture(platform, architecture);
   }
-  if (platform === "linux") return linuxDependencyCheck(executablePath, env);
-  if (platform === "darwin") {
-    return macOSDependencyCheck(executablePath, architecture);
+  if (platform === "linux") {
+    return inspectRuntimeExecution(
+      linuxDependencyCheck(executablePath, env),
+      executablePath,
+      platform,
+      architecture,
+      env,
+    );
   }
-  if (platform === "win32") return windowsDependencyCheck(executablePath);
+  if (platform === "darwin") {
+    return inspectRuntimeExecution(
+      macOSDependencyCheck(executablePath, architecture),
+      executablePath,
+      platform,
+      architecture,
+      env,
+    );
+  }
+  if (platform === "win32") {
+    return inspectRuntimeExecution(
+      windowsDependencyCheck(executablePath),
+      executablePath,
+      platform,
+      architecture,
+      env,
+    );
+  }
   return {
     ok: true,
     code: "platform-not-inspected",
