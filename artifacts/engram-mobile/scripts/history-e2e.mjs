@@ -11,6 +11,7 @@ const mobileRoot = path.resolve(new URL("..", import.meta.url).pathname);
 const port = 4177;
 const cdpPort = 9233;
 const appUrl = `http://127.0.0.1:${port}`;
+const nativeExportMode = process.env.MOBILE_NATIVE_EXPORT_E2E === "true";
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -146,6 +147,37 @@ const browserMock = String.raw`(() => {
     [102, { id: 102, title: "Hydrated history", mode: "companion", engramId: 1, engramIds: [1], groupContinuationMode: "off", createdAt: "2026-09-10T12:01:00.000Z", archivedAt: null }],
   ]);
   window.__historyE2E = { conversations, messages, shares: [], downloads: [], archiveRequests: [], requests: [] };
+  const nativeExportFiles = new Map();
+  window.__historyE2E.nativeExport = { attempts: 0, shares: [], deleted: [], files: nativeExportFiles };
+  window.__engramNativeChatExportE2E = {
+    cacheDirectory: "e2e-native-cache/",
+    writeAsStringAsync: async (uri, contents) => {
+      nativeExportFiles.set(uri, contents);
+    },
+    printToFileAsync: async () => {
+      const uri = "e2e-native-cache/transcript.pdf";
+      nativeExportFiles.set(uri, "native pdf fixture");
+      return { uri };
+    },
+    getInfoAsync: async (uri) => {
+      const contents = nativeExportFiles.get(uri);
+      return contents == null
+        ? { exists: false }
+        : { exists: true, size: String(contents).length };
+    },
+    deleteAsync: async (uri) => {
+      window.__historyE2E.nativeExport.deleted.push(uri);
+      nativeExportFiles.delete(uri);
+    },
+    shareAsync: async (uri) => {
+      window.__historyE2E.nativeExport.attempts += 1;
+      if (window.__historyE2E.nativeExport.attempts === 1) {
+        throw new Error("native share failed");
+      }
+      window.__historyE2E.nativeExport.shares.push(uri);
+    },
+    dialogTitle: "Share conversation",
+  };
   const response = (body, status = 200) => new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
@@ -318,6 +350,7 @@ try {
       ...process.env,
       CI: "1",
       EXPO_PUBLIC_E2E_AUTH_BYPASS: "true",
+      EXPO_PUBLIC_E2E_NATIVE_EXPORT: nativeExportMode ? "true" : "false",
       EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY:
         process.env.CLERK_PUBLISHABLE_KEY ?? process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
     },
@@ -403,69 +436,106 @@ try {
   await waitForValue(client, `window.__historyE2E.archiveRequests.some((item) => item.id === 102 && item.archived === false)`, "restore request");
   await waitForValue(client, `document.body.innerText.includes("Hydrated history message")`, "restored conversation");
   await clickLabel(client, "Export conversation");
-  for (const label of ["Markdown", "Plain text", "PDF", "Word document"]) {
-    await clickText(client, label);
-    await waitForValue(client, `window.__historyE2E.downloads.length >= ${label === "Markdown" ? 1 : label === "Plain text" ? 2 : label === "PDF" ? 3 : 4}`, `${label} download`);
-    await clickLabel(client, "Export conversation");
-  }
-  const result = await client.evaluate(`JSON.stringify({
-    archiveRequests: window.__historyE2E.archiveRequests,
-    downloads: window.__historyE2E.downloads
-  })`);
-  const parsed = JSON.parse(result);
-  const expectedDownloads = [
-    ["Hydrated-history.md", "text/markdown", []],
-    ["Hydrated-history.txt", "text/plain", []],
-    ["Hydrated-history.pdf", "application/pdf", [37, 80, 68, 70], true, true, true, true],
-    [
-      "Hydrated-history.docx",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      [80, 75, 3, 4],
-      false,
-    ],
-  ];
-  if (
-    parsed.downloads.length !== expectedDownloads.length ||
-    parsed.downloads.some(
-      (download, index) =>
-        download.filename !== expectedDownloads[index][0] ||
-        download.type !== expectedDownloads[index][1] ||
-        download.size <= 0 ||
-        Boolean(download.hasJpegImage) !== Boolean(expectedDownloads[index][3]) ||
-        Boolean(download.hasToUnicodeMap) !== Boolean(expectedDownloads[index][4]) ||
-        Boolean(download.hasInvisibleTextLayer) !== Boolean(expectedDownloads[index][5]) ||
-        Boolean(download.hasCjkMapping) !== Boolean(expectedDownloads[index][6]) ||
-        expectedDownloads[index][2].some(
-          (byte, byteIndex) => download.prefix[byteIndex] !== byte,
-        ),
-    )
-  ) {
-    throw new Error(`Unexpected export payloads: ${result}`);
-  }
-  const pdfDownload = parsed.downloads.find((download) => download.filename.endsWith(".pdf"));
-  const pdfProbePath = path.join(os.tmpdir(), `engram-history-e2e-${process.pid}.pdf`);
-  if (!pdfDownload?.pdfBase64) {
-    throw new Error("PDF download did not include a probe payload");
-  }
-  writeFileSync(pdfProbePath, Buffer.from(pdfDownload.pdfBase64, "base64"));
-  try {
-    const extractedText = execFileSync("pdftotext", [pdfProbePath, "-"], {
-      encoding: "utf8",
-    });
-    for (const expectedText of ["Café", "你好", "Привет", "नमस्ते", "Γειά"]) {
-      if (!extractedText.includes(expectedText)) {
-        throw new Error(`PDF text extraction omitted ${expectedText}: ${JSON.stringify(extractedText)}`);
-      }
+  if (nativeExportMode) {
+    const retryMessage = "Export could not be created. Tap a format to try again.";
+    await clickText(client, "Markdown");
+    await waitForValue(
+      client,
+      `document.body.innerText.includes(${JSON.stringify(retryMessage)}) && Boolean(document.querySelector('[aria-label="Dismiss export error"]'))`,
+      "native export retry guidance",
+    );
+    await waitForValue(
+      client,
+      `Boolean(document.querySelector('[aria-label="Close export options"]'))`,
+      "export sheet remains open after failure",
+    );
+    await clickLabel(client, "Dismiss export error");
+    await waitForValue(
+      client,
+      `!document.body.innerText.includes(${JSON.stringify(retryMessage)}) && Boolean(document.querySelector('[aria-label="Close export options"]'))`,
+      "dismissed export retry guidance",
+    );
+    await clickText(client, "Markdown");
+    await waitForValue(
+      client,
+      `window.__historyE2E.nativeExport.attempts === 2 && window.__historyE2E.nativeExport.shares.length === 1 && !document.querySelector('[aria-label="Close export options"]')`,
+      "successful native export retry closes the sheet",
+    );
+    const nativeResult = await client.evaluate(`JSON.stringify(window.__historyE2E.nativeExport)`);
+    const nativeParsed = JSON.parse(nativeResult);
+    if (
+      nativeParsed.attempts !== 2 ||
+      nativeParsed.shares.length !== 1 ||
+      nativeParsed.deleted.length !== 2
+    ) {
+      throw new Error(`Unexpected native export lifecycle: ${nativeResult}`);
     }
-    for (const expectedCharacter of Array.from("مرحباשלום")) {
-      if (!extractedText.includes(expectedCharacter)) {
-        throw new Error(`PDF text extraction omitted Arabic character ${expectedCharacter}: ${JSON.stringify(extractedText)}`);
-      }
+    console.log("Mobile native export browser regression passed: failure guidance, dismissal, retry, and successful close.");
+  } else {
+    for (const label of ["Markdown", "Plain text", "PDF", "Word document"]) {
+      await clickText(client, label);
+      await waitForValue(client, `window.__historyE2E.downloads.length >= ${label === "Markdown" ? 1 : label === "Plain text" ? 2 : label === "PDF" ? 3 : 4}`, `${label} download`);
+      await clickLabel(client, "Export conversation");
     }
-  } finally {
-    rmSync(pdfProbePath, { force: true });
+    const result = await client.evaluate(`JSON.stringify({
+      archiveRequests: window.__historyE2E.archiveRequests,
+      downloads: window.__historyE2E.downloads
+    })`);
+    const parsed = JSON.parse(result);
+    const expectedDownloads = [
+      ["Hydrated-history.md", "text/markdown", []],
+      ["Hydrated-history.txt", "text/plain", []],
+      ["Hydrated-history.pdf", "application/pdf", [37, 80, 68, 70], true, true, true, true],
+      [
+        "Hydrated-history.docx",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        [80, 75, 3, 4],
+        false,
+      ],
+    ];
+    if (
+      parsed.downloads.length !== expectedDownloads.length ||
+      parsed.downloads.some(
+        (download, index) =>
+          download.filename !== expectedDownloads[index][0] ||
+          download.type !== expectedDownloads[index][1] ||
+          download.size <= 0 ||
+          Boolean(download.hasJpegImage) !== Boolean(expectedDownloads[index][3]) ||
+          Boolean(download.hasToUnicodeMap) !== Boolean(expectedDownloads[index][4]) ||
+          Boolean(download.hasInvisibleTextLayer) !== Boolean(expectedDownloads[index][5]) ||
+          Boolean(download.hasCjkMapping) !== Boolean(expectedDownloads[index][6]) ||
+          expectedDownloads[index][2].some(
+            (byte, byteIndex) => download.prefix[byteIndex] !== byte,
+          ),
+      )
+    ) {
+      throw new Error(`Unexpected export payloads: ${result}`);
+    }
+    const pdfDownload = parsed.downloads.find((download) => download.filename.endsWith(".pdf"));
+    const pdfProbePath = path.join(os.tmpdir(), `engram-history-e2e-${process.pid}.pdf`);
+    if (!pdfDownload?.pdfBase64) {
+      throw new Error("PDF download did not include a probe payload");
+    }
+    writeFileSync(pdfProbePath, Buffer.from(pdfDownload.pdfBase64, "base64"));
+    try {
+      const extractedText = execFileSync("pdftotext", [pdfProbePath, "-"], {
+        encoding: "utf8",
+      });
+      for (const expectedText of ["Café", "你好", "Привет", "नमस्ते", "Γειά"]) {
+        if (!extractedText.includes(expectedText)) {
+          throw new Error(`PDF text extraction omitted ${expectedText}: ${JSON.stringify(extractedText)}`);
+        }
+      }
+      for (const expectedCharacter of Array.from("مرحباשלום")) {
+        if (!extractedText.includes(expectedCharacter)) {
+          throw new Error(`PDF text extraction omitted ${expectedCharacter}: ${JSON.stringify(extractedText)}`);
+        }
+      }
+    } finally {
+      rmSync(pdfProbePath, { force: true });
+    }
+    console.log("Mobile history browser regression passed: hydrate, archive, restore, read-only state, and four export downloads.");
   }
-  console.log("Mobile history browser regression passed: hydrate, archive, restore, read-only state, and four export downloads.");
 } finally {
   client?.close();
   for (const child of processes.reverse()) await stopProcess(child);

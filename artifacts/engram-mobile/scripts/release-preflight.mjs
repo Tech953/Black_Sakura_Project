@@ -105,6 +105,11 @@ function runHistoryBrowserRegression() {
   run("pnpm", ["run", "test:e2e:history"]);
 }
 
+function runNativeExportUiRegression() {
+  console.log("Running authenticated native export UI regression...");
+  run("pnpm", ["run", "test:e2e:export-failure"]);
+}
+
 function runNativeExportRegression() {
   console.log("Running native chat export regression...");
   run("pnpm", ["run", "smoke:exports", "--", "--ci"]);
@@ -472,6 +477,7 @@ try {
     const { skipExpo, skipHistoryE2e, apkPath } = parseArgs(process.argv.slice(2));
     if (!skipExpo) checkExpoPackageVersions();
     if (!skipHistoryE2e) runHistoryBrowserRegression();
+    if (!skipHistoryE2e) runNativeExportUiRegression();
     runNativeExportRegression();
     runWebExportCompatibilityRegression();
     verifyCheckedInAndroidPrivacyPolicy();
