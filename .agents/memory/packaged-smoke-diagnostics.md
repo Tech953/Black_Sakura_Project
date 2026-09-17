@@ -20,3 +20,9 @@ Runtime preflight should preserve specific missing-library or missing-DLL diagno
 **Why:** Dependency inspection can prove that a file exists without proving the staged binary can execute. Replacing a precise dependency diagnosis with a generic launch error makes release repair slower.
 
 **How to apply:** Keep the execution probe deterministic in unit tests by mocking process results; include the stable code and staged binary path in packaged smoke failures. Local NixOS verification may still require the compatible `LD_LIBRARY_PATH` used by resource preparation.
+
+The release checker and desktop Settings must consume one shared runtime-diagnosis contract; Settings should preserve OS spawn error codes through startup wrappers instead of classifying only rendered error text.
+
+**Why:** Permission and execution-format failures are emitted as structured child-process errors, and wrapping them into a plain Error silently turns actionable recovery into generic startup guidance.
+
+**How to apply:** Keep runtime codes, missing-library metadata, repair-action keys, and canonical diagnostic formatting in the standalone diagnosis module that both the Node release scripts and bundled desktop TypeScript can import.

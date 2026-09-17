@@ -1,11 +1,20 @@
 import path from "node:path";
 import type { CustomGgufMetadata } from "./custom-gguf";
 import type { DesktopLlmMode } from "./desktop-bridge";
+import {
+  classifyLlamaRuntimeError,
+  LLAMA_RUNTIME_FAILURE_CODES,
+  llamaRuntimeFailureMessage,
+  llamaRuntimeRepairAction,
+} from "../scripts/llama-runtime-diagnosis.mjs";
+import type {
+  LlamaRuntimeFailureCode,
+  LlamaRuntimeFailureReason,
+  LlamaRuntimeRepairAction,
+} from "../scripts/llama-runtime-diagnosis.mjs";
 
 export type LocalModelFailureCode =
-  | "missing-linux-dependencies"
-  | "missing-windows-dlls"
-  | "missing-server"
+  | LlamaRuntimeFailureCode
   | "spawn-failed"
   | "exited-before-ready"
   | "health-timeout"
@@ -16,13 +25,13 @@ export interface LocalModelFailure {
   platform: string;
   message: string;
   missingLibraries?: string[];
+  reason?: LlamaRuntimeFailureReason;
+  repairAction: LlamaRuntimeRepairAction;
   automaticFixAvailable: boolean;
 }
 
-const LOCAL_MODEL_FAILURE_CODES: LocalModelFailureCode[] = [
-  "missing-linux-dependencies",
-  "missing-windows-dlls",
-  "missing-server",
+const LOCAL_MODEL_FAILURE_CODES: readonly LocalModelFailureCode[] = [
+  ...LLAMA_RUNTIME_FAILURE_CODES,
   "spawn-failed",
   "exited-before-ready",
   "health-timeout",
@@ -79,8 +88,14 @@ export function normalizeLocalModelFailure(
             typeof name === "string" && name.length <= 256,
         )
       : [];
+  const code = candidate.code as LocalModelFailureCode;
+  const reason =
+    candidate.reason === "permission-denied" ||
+    candidate.reason === "exec-format-error"
+      ? candidate.reason
+      : undefined;
   return {
-    code: candidate.code as LocalModelFailureCode,
+    code,
     platform:
       typeof candidate.platform === "string"
         ? candidate.platform
@@ -89,6 +104,11 @@ export function normalizeLocalModelFailure(
     ...(missingLibraries.length > 0
       ? { missingLibraries: uniqueStrings(missingLibraries) }
       : {}),
+    ...(reason ? { reason } : {}),
+    repairAction: llamaRuntimeRepairAction(
+      code as LlamaRuntimeFailureCode,
+      reason,
+    ),
     automaticFixAvailable: candidate.automaticFixAvailable === true,
   };
 }
@@ -97,6 +117,7 @@ export function localModelFailureFromError(
   error: unknown,
   platform = process.platform,
   stderr = "",
+  executablePath?: string,
 ): LocalModelFailure {
   const structured =
     error && typeof error === "object" && "localModelFailure" in error
@@ -109,16 +130,21 @@ export function localModelFailureFromError(
 
   const message = error instanceof Error ? error.message : String(error);
   const text = `${message}\n${stderr}`;
-  const missingLibraries = missingLibrariesFromText(text, platform);
   const errorCode =
     error && typeof error === "object" && "code" in error
       ? String((error as { code?: unknown }).code ?? "")
       : "";
+  const runtimeFailure = classifyLlamaRuntimeError({
+    errorCode,
+    message,
+    stderr,
+    platform,
+  });
+  const missingLibraries =
+    runtimeFailure.missingLibraries ?? missingLibrariesFromText(text, platform);
   let code: LocalModelFailureCode = "unknown";
-  if (missingLibraries.length > 0 && platform === "linux") {
-    code = "missing-linux-dependencies";
-  } else if (missingLibraries.length > 0 && platform === "win32") {
-    code = "missing-windows-dlls";
+  if (runtimeFailure.code !== "runtime-execution-failed") {
+    code = runtimeFailure.code;
   } else if (/missing.*server|server.*missing/i.test(message)) {
     code = "missing-server";
   } else if (/before becoming ready|exited before/i.test(message)) {
@@ -136,12 +162,33 @@ export function localModelFailureFromError(
   } else if (code === "missing-windows-dlls") {
     userMessage =
       `The built-in local model is missing Windows runtime DLLs: ${missingLibraries.join(", ")}.`;
+  } else if (
+    LLAMA_RUNTIME_FAILURE_CODES.includes(code as LlamaRuntimeFailureCode)
+  ) {
+    userMessage = llamaRuntimeFailureMessage({
+      code: code as LlamaRuntimeFailureCode,
+      executablePath,
+      platform,
+      architecture: process.arch,
+      missingLibraries,
+      reason: runtimeFailure.reason,
+      details: message,
+    });
   }
   return {
     code,
     platform,
     message: userMessage,
     ...(missingLibraries.length > 0 ? { missingLibraries } : {}),
+    ...(runtimeFailure.reason ? { reason: runtimeFailure.reason } : {}),
+    repairAction: LLAMA_RUNTIME_FAILURE_CODES.includes(
+      code as LlamaRuntimeFailureCode,
+    )
+      ? llamaRuntimeRepairAction(
+          code as LlamaRuntimeFailureCode,
+          runtimeFailure.reason,
+        )
+      : "restage-runtime",
     automaticFixAvailable: false,
   };
 }
@@ -151,7 +198,7 @@ export function localModelFailureCopy(failure: LocalModelFailure): {
   guidance: string;
   recovery: string;
 } {
-  if (failure.code === "missing-linux-dependencies") {
+  if (failure.repairAction === "install-linux-runtime") {
     return {
       title: "Built-in model needs Linux libraries",
       guidance:
@@ -160,7 +207,7 @@ export function localModelFailureCopy(failure: LocalModelFailure): {
         "Automatic repair is not available on Linux. Select Local server or Online, then choose Save & Restart.",
     };
   }
-  if (failure.code === "missing-windows-dlls") {
+  if (failure.repairAction === "restage-complete-runtime") {
     return {
       title: "Built-in model runtime is incomplete",
       guidance:

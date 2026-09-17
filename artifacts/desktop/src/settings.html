@@ -850,9 +850,9 @@
         const failureCopy = activeSettingsCopy.localModelFailure;
         const copy =
           failureCopy[
-            failure.code === "missing-linux-dependencies"
+            failure.repairAction === "install-linux-runtime"
               ? "missingLinuxDependencies"
-              : failure.code === "missing-windows-dlls"
+              : failure.repairAction === "restage-complete-runtime"
                 ? "missingWindowsDlls"
                 : "generic"
           ];

@@ -8,6 +8,7 @@ import {
   normalizeCustomGgufMetadata,
   normalizeDesktopMode,
 } from "./desktop-settings";
+import { llamaRuntimeFailureMessage } from "../scripts/llama-runtime-diagnosis.mjs";
 
 const sha256 = "a".repeat(64);
 const valid = {
@@ -73,6 +74,7 @@ describe("persisted desktop settings migration", () => {
       code: "missing-linux-dependencies",
       platform: "linux",
       missingLibraries: ["libgomp.so.1"],
+      repairAction: "install-linux-runtime",
       automaticFixAvailable: false,
     });
     expect(localModelFailureCopy(failure)).toMatchObject({
@@ -87,6 +89,44 @@ describe("persisted desktop settings migration", () => {
     ).toMatchObject(failure);
   });
 
+  it.each([
+    {
+      code: "EACCES",
+      expectedCode: "runtime-not-executable",
+      expectedReason: "permission-denied",
+      expectedRepair: "restore-execute-permission",
+    },
+    {
+      code: "ENOEXEC",
+      expectedCode: "runtime-not-executable",
+      expectedReason: "exec-format-error",
+      expectedRepair: "rebuild-target-runtime",
+    },
+  ] as const)("keeps packaged runtime execution diagnosis aligned with Settings", (fixture) => {
+    const failure = localModelFailureFromError(
+      Object.assign(new Error(`spawn ${fixture.code}`), { code: fixture.code }),
+      "linux",
+    );
+
+    expect(failure).toMatchObject({
+      code: fixture.expectedCode,
+      reason: fixture.expectedReason,
+      repairAction: fixture.expectedRepair,
+    });
+    expect(failure.message).toBe(
+      llamaRuntimeFailureMessage({
+        code: fixture.expectedCode,
+        reason: fixture.expectedReason,
+        platform: "linux",
+        architecture: process.arch,
+        details: `spawn ${fixture.code}`,
+      }),
+    );
+    expect(localModelFailureCopy(failure).recovery).toContain(
+      "Select Local server or Online",
+    );
+  });
+
   it("keeps the Settings recovery panel and provider-switch instruction visible", () => {
     const settingsHtml = readFileSync(
       path.join(__dirname, "settings.html"),
@@ -99,6 +139,9 @@ describe("persisted desktop settings migration", () => {
     expect(settingsHtml).toContain("Save & Restart");
     expect(settingsHtml).toContain(
       "renderLocalModelFailure(res.localModelFailure, mode === \"bundled\")",
+    );
+    expect(settingsHtml).toContain(
+      'failure.repairAction === "install-linux-runtime"',
     );
   });
 });
