@@ -1133,6 +1133,28 @@
       "checkForUpdates": "Check for Updates",
       "progressLabel": "Update download progress",
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+    },
+    "localModelFailure": {
+      "automaticRepair": "此平台支持自动修复。修复完成后，请重试 Built-in。",
+      "fallbackMessage": "本地模型无法启动。",
+      "missingLinuxDependencies": {
+        "title": "Built-in 模型需要 Linux 库",
+        "message": "Built-in 本地模型缺少 Linux 运行时库：{{libraries}}。",
+        "guidance": "请为你的发行版安装缺失的运行时软件包，或改用 Local server 或 Online 提供方。",
+        "recovery": "Linux 不支持自动修复。请选择 Local server 或 Online，然后点击 Save & Restart。"
+      },
+      "missingWindowsDlls": {
+        "title": "Built-in 模型运行时不完整",
+        "message": "已安装的 llama.cpp 运行时缺少以下文件：{{libraries}}。",
+        "guidance": "请重新安装或更新 ENGRAM，或改用 Local server 或 Online 提供方。",
+        "recovery": "此安装不支持自动修复。请选择 Local server 或 Online，然后点击 Save & Restart。"
+      },
+      "generic": {
+        "title": "Built-in 模型无法启动",
+        "message": "本地模型无法启动：{{details}}",
+        "guidance": "Built-in 本地模型当前不可用，但 ENGRAM 的其余功能可通过其他提供方继续使用。",
+        "recovery": "请选择 Local server 或 Online，然后点击 Save & Restart。修复运行时后，你可以再次尝试 Built-in。"
+      }
     }
   },
   "simulations": {

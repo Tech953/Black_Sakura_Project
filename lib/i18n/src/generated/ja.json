@@ -1133,6 +1133,28 @@
       "checkForUpdates": "Check for Updates",
       "progressLabel": "Update download progress",
       "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+    },
+    "localModelFailure": {
+      "automaticRepair": "このプラットフォームでは自動修復を利用できます。修復が完了したら、Built-in を再試行してください。",
+      "fallbackMessage": "ローカルモデルを起動できませんでした。",
+      "missingLinuxDependencies": {
+        "title": "Built-in モデルには Linux ライブラリが必要です",
+        "message": "Built-in ローカルモデルに必要な Linux ランタイムライブラリが不足しています: {{libraries}}。",
+        "guidance": "お使いのディストリビューションに不足しているランタイムパッケージをインストールするか、代わりに Local server または Online を使用してください。",
+        "recovery": "Linux では自動修復を利用できません。Local server または Online を選択し、Save & Restart を選んでください。"
+      },
+      "missingWindowsDlls": {
+        "title": "Built-in モデルのランタイムが不完全です",
+        "message": "インストールされている llama.cpp ランタイムに不足しているファイルがあります: {{libraries}}。",
+        "guidance": "ENGRAM を再インストールまたは更新するか、代わりに Local server または Online を使用してください。",
+        "recovery": "このインストールでは自動修復を利用できません。Local server または Online を選択し、Save & Restart を選んでください。"
+      },
+      "generic": {
+        "title": "Built-in モデルを起動できませんでした",
+        "message": "ローカルモデルを起動できませんでした: {{details}}",
+        "guidance": "Built-in ローカルモデルは利用できませんが、ENGRAM の他の機能は別のプロバイダーで引き続き使用できます。",
+        "recovery": "Local server または Online を選択し、Save & Restart を選んでください。ランタイムを修正した後で Built-in を再試行できます。"
+      }
     }
   },
   "simulations": {

@@ -34,16 +34,20 @@ const localeFiles = [
       path.join(i18nRoot, "generated", file),
     ]),
 ];
-const updateLocales = Object.fromEntries(
+const settingsLocales = Object.fromEntries(
   localeFiles.map(([language, file]) => {
     const locale = JSON.parse(readFileSync(file, "utf8"));
     const settings = language === "en" ? locale : locale.settings;
-    if (!settings?.update) {
-      throw new Error(
-        `Missing settings.update translations for desktop locale ${language}.`,
-      );
+    if (!settings?.update || !settings?.localModelFailure) {
+      throw new Error(`Missing desktop Settings translations for locale ${language}.`);
     }
-    return [language, settings.update];
+    return [
+      language,
+      {
+        update: settings.update,
+        localModelFailure: settings.localModelFailure,
+      },
+    ];
   }),
 );
 const sourceSettingsHtml = readFileSync(
@@ -61,7 +65,7 @@ if (start < 0 || end < 0) {
 }
 const generatedSettingsHtml =
   sourceSettingsHtml.slice(0, dataStart) +
-  JSON.stringify(updateLocales).replaceAll("<", "\\u003c") +
+  JSON.stringify(settingsLocales).replaceAll("<", "\\u003c") +
   sourceSettingsHtml.slice(end);
 writeFileSync(path.join(outdir, "settings.html"), generatedSettingsHtml);
 
