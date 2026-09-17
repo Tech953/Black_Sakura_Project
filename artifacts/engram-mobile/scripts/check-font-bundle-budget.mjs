@@ -4,14 +4,14 @@ import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  validateWebExportFontAssets,
-} from "./check-web-export-font-assets.mjs";
+  validateWebExportFontUnicodeCoverage,
+} from "./check-font-unicode-coverage.mjs";
 
 const mobileRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fontDirectory = path.join(mobileRoot, "assets", "fonts");
 const fontBudgetBytes = 1_350_000;
 
-validateWebExportFontAssets();
+validateWebExportFontUnicodeCoverage();
 
 const fontFiles = readdirSync(fontDirectory)
   .filter((font) => font.endsWith(".woff2"))

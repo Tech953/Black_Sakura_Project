@@ -20,3 +20,9 @@ Unicode PDF font additions must be downloaded as compact WOFF2 subsets, explicit
 **Why:** The mobile bundle already carries a large CJK subset, so adding whole-font TTFs would impose an avoidable size cost; text extraction order is not a reliable proxy for visual RTL order.
 
 **How to apply:** Keep script-specific assets and their expected ranges visible in the asset-budget validation, and assert RTL scripts character-by-character in extracted-PDF checks.
+
+Fontconfig's `fc-query --format=%{charset}` can inspect vendored WOFF2 cmap coverage directly; parse its inclusive hexadecimal ranges in JavaScript and report missing code points by family and asset.
+
+**Why:** This catches a replaced or truncated subset without adding a font parser package or decompressing WOFF2 tables in the release script.
+
+**How to apply:** Treat `fc-query` as a release-environment prerequisite, fail clearly when it is unavailable, and keep representative combining/diacritic code points in focused fixture tests.
