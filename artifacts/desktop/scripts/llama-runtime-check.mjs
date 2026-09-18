@@ -39,7 +39,7 @@ const MACOS_RUNTIME_FILES = {
 // These are the stable runtime pieces shipped by the pinned Windows CPU
 // archive. The archive is self-contained; unlike Linux, Windows users should
 // not need to install a system package for llama.cpp.
-const WINDOWS_RUNTIME_FILES = [
+export const WINDOWS_RUNTIME_FILES = Object.freeze([
   "ggml.dll",
   "ggml-base.dll",
   "ggml-cpu-x64.dll",
@@ -47,7 +47,7 @@ const WINDOWS_RUNTIME_FILES = [
   "llama-common.dll",
   "llama-server-impl.dll",
   "libomp140.x86_64.dll",
-];
+]);
 
 function unique(values) {
   return [...new Set(values)];
