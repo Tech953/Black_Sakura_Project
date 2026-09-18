@@ -142,6 +142,9 @@ const packagedSmokeGgufSecondary = packagedSmokeEnabled
 let packagedSmokeGgufSelectionCount = 0;
 const packagedSmokeUsesRealRuntime =
   packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1";
+const packagedSmokeGgufRequestEnabled =
+  packagedSmokeUsesRealRuntime &&
+  process.env.ENGRAM_PACKAGED_GGUF_REQUEST_SMOKE === "1";
 const packagedSmokeUpdateEnabled =
   packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_UPDATE_SMOKE === "1";
 const packagedSmokeUpdateFeedUrl =
@@ -954,6 +957,59 @@ async function startLlama(settings: Settings): Promise<void> {
   try {
     await Promise.race([waitForLlamaHealth(llamaPort), spawnFailure]);
     settled = true;
+    if (packagedSmokeGgufRequestEnabled && mode === "custom") {
+      let response: Response;
+      try {
+        response = await fetch(
+          `http://127.0.0.1:${llamaPort}/v1/chat/completions`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              model: "local",
+              messages: [{ role: "user", content: "Reply with OK." }],
+              max_tokens: 8,
+              temperature: 0,
+            }),
+          },
+        );
+      } catch (error) {
+        throw new Error(
+          `Packaged local GGUF request failed to reach llama.cpp: ${errorMessage(error)}`,
+        );
+      }
+      const responseBody = await response.text();
+      if (!response.ok) {
+        throw new Error(
+          `Packaged local GGUF request failed with HTTP ${response.status}: ${responseBody.slice(0, 1000)}`,
+        );
+      }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(responseBody);
+      } catch {
+        throw new Error(
+          `Packaged local GGUF request returned invalid JSON: ${responseBody.slice(0, 1000)}`,
+        );
+      }
+      const content =
+        parsed &&
+        typeof parsed === "object" &&
+        "choices" in parsed &&
+        Array.isArray((parsed as { choices?: unknown }).choices)
+          ? (parsed as { choices: Array<{ message?: { content?: unknown } }> })
+              .choices[0]?.message?.content
+          : undefined;
+      if (typeof content !== "string" || content.trim().length === 0) {
+        throw new Error(
+          `Packaged local GGUF request returned no assistant content: ${responseBody.slice(0, 1000)}`,
+        );
+      }
+      appendSmokeDiagnostic(
+        "main.log",
+        "packaged local GGUF completion request passed\n",
+      );
+    }
     if (mode === "custom" && settings.custom) {
       customRuntimeFingerprint = settings.custom.sha256;
       customRuntimeError = null;
