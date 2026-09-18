@@ -2,8 +2,9 @@ name: Desktop & Android builds
 
 # Builds the ENGRAM desktop app (Electron) on each native OS so the produced
 # installers match their platform:
-#   - ubuntu-latest  -> .AppImage + .deb
-#   - macos-latest   -> .dmg
+  #   - ubuntu-latest  -> .AppImage + .deb
+  #   - macos-13       -> Intel .dmg
+  #   - macos-14       -> Apple Silicon .dmg
 #   - windows-latest -> .exe (NSIS)
 # and builds the ENGRAM mobile app (Expo) into an installable Android .apk on
 # ubuntu (the `android` job below). All artifacts publish to the SAME GitHub
@@ -48,7 +49,7 @@ jobs:
   # Release packaging remains a full native matrix. Ordinary branch/PR changes
   # use the Linux-only pre-release-smoke job below instead.
   build:
-    name: ${{ matrix.platform }}
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
     if: github.event_name == 'workflow_dispatch' || github.ref_type == 'tag'
     runs-on: ${{ matrix.os }}
     # Required so electron-builder's GitHub publisher can create the Release and
@@ -61,10 +62,16 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
+            arch: x64
           - os: macos-latest
             platform: mac
+            arch: arm64
+          - os: macos-13
+            platform: mac
+            arch: x64
           - os: windows-latest
             platform: win
+            arch: x64
 
     steps:
       - uses: actions/checkout@v4
@@ -161,6 +168,7 @@ jobs:
           # servers; Linux/macOS retain the optional bundled-model behavior.
           DESKTOP_BUNDLE_LLM: ${{ matrix.platform == 'win' && '0' || '1' }}
           DESKTOP_REQUIRE_LLAMA_RUNTIME: "1"
+          LLAMA_ARCH: ${{ matrix.arch }}
         run: pnpm --filter @workspace/desktop run build
 
       - name: Require native release signing credentials
@@ -216,7 +224,7 @@ jobs:
         #   - manual run (workflow_dispatch) -> `--publish never`: only the
         #     workflow-artifact upload below runs, so manual builds never create
         #     an accidental Release.
-        run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --publish ${{ github.event_name == 'push' && github.ref_type == 'tag' && 'always' || 'never' }}
+        run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish ${{ github.event_name == 'push' && github.ref_type == 'tag' && 'always' || 'never' }}
 
       - name: Verify Windows HTTPS smoke certificate tool
         if: matrix.platform == 'win'
@@ -361,18 +369,33 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
+          APP="$(find artifacts/desktop/release -type d -name ENGRAM.app -print -quit)"
+          test -n "$APP" || { echo "macOS packaging failure: no packaged ENGRAM.app found" >&2; exit 1; }
+          EXPECTED_ARCH="${{ matrix.arch }}"
+          EXPECTED_MACH_ARCH="$([ "$EXPECTED_ARCH" = "x64" ] && echo "x86_64" || echo "$EXPECTED_ARCH")"
+          ACTUAL_ARCHS="$(lipo -archs "$APP/Contents/MacOS/engram" 2>&1)" || {
+            echo "macOS packaging failure: could not inspect app architecture for $APP: $ACTUAL_ARCHS" >&2
+            exit 1
+          }
+          printf 'macOS packaged app architectures: %s (expected %s)\n' "$ACTUAL_ARCHS" "$EXPECTED_MACH_ARCH"
+          printf '%s\n' "$ACTUAL_ARCHS" | tr ' ' '\n' | grep -Fxq "$EXPECTED_MACH_ARCH" || {
+            echo "macOS packaging failure: expected $EXPECTED_MACH_ARCH app, found $ACTUAL_ARCHS." >&2
+            exit 1
+          }
           if [ -z "${CSC_LINK:-}" ]; then
             echo "No macOS signing certificate configured; skipping signature verification for this unsigned build."
             exit 0
           fi
 
-          APP="$(find artifacts/desktop/release -type d -name ENGRAM.app -print -quit)"
           DMG="$(find artifacts/desktop/release -maxdepth 1 -type f -name '*.dmg' -print -quit)"
           test -n "$APP" || { echo "No packaged ENGRAM.app found" >&2; exit 1; }
           test -n "$DMG" || { echo "No DMG found for notarization validation" >&2; exit 1; }
 
           echo "Verifying the signed ENGRAM app bundle..."
-          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP" || {
+            echo "macOS signing failure: app signature verification failed for $APP." >&2
+            exit 1
+          }
           APP_DETAILS="$(codesign -dv --verbose=4 "$APP" 2>&1)"
           printf '%s\n' "$APP_DETAILS"
           APP_SIGNING_IDENTITY="$(printf '%s\n' "$APP_DETAILS" | sed -n 's/^Authority=//p' | head -n1)"
@@ -405,7 +428,10 @@ jobs:
               echo "Expected signed bundled binary is missing: $BINARY" >&2
               exit 1
             }
-            codesign --verify --strict --verbose=2 "$BINARY"
+            codesign --verify --strict --verbose=2 "$BINARY" || {
+              echo "macOS signing failure: nested executable signature verification failed for $BINARY." >&2
+              exit 1
+            }
             DETAILS="$(codesign -dv --verbose=4 "$BINARY" 2>&1)"
             printf '%s\n' "$DETAILS"
             printf '%s\n' "$DETAILS" | grep -Eq 'flags=.*\(runtime\)' || {
@@ -495,6 +521,9 @@ jobs:
           EXPECT_SLIM_LLM: ${{ matrix.platform == 'win' && '1' || '0' }}
           ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
           ENGRAM_PACKAGED_GGUF_MULTI_MODEL: "1"
+          ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: ${{ matrix.platform == 'mac' && '1' || '0' }}
+          ENGRAM_PACKAGED_GGUF_REQUEST_SMOKE: ${{ matrix.platform == 'mac' && '1' || '0' }}
+          ENGRAM_EXPECTED_ARCH: ${{ matrix.arch }}
           ENGRAM_SMOKE_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/diagnostics
           # Windows must prove the slim downloader against HTTPS, a redirect,
           # and a real Electron userData directory. Linux/macOS keep the fast
@@ -578,10 +607,10 @@ jobs:
           NODE
 
       - name: Upload packaged smoke diagnostics
-        if: steps.packaged_smoke.outcome == 'failure' && matrix.platform == 'win'
+        if: steps.packaged_smoke.outcome == 'failure' && (matrix.platform == 'win' || matrix.platform == 'mac')
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-smoke-diagnostics-${{ matrix.platform }}
+          name: desktop-smoke-diagnostics-${{ matrix.platform }}-${{ matrix.arch }}
           if-no-files-found: warn
           retention-days: 7
           path: artifacts/desktop/.ci-smoke/diagnostics
@@ -589,7 +618,7 @@ jobs:
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: engram-${{ matrix.platform }}
+          name: engram-${{ matrix.platform }}-${{ matrix.arch }}
           if-no-files-found: error
           path: |
             artifacts/desktop/release/*.AppImage
