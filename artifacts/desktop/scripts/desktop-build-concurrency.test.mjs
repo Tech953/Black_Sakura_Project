@@ -151,4 +151,22 @@ describe("desktop release workflow concurrency", () => {
       /timestamp signer: \$\(\$signature\.TimeStamperCertificate\.Subject\)/,
     );
   });
+
+  it("extracts and verifies the Windows portable ZIP before smoke testing", () => {
+    expect(workflow).toMatch(
+      /- name: Verify Windows portable ZIP completeness/,
+    );
+    expect(workflow).toMatch(
+      /id: windows_zip_check[\s\S]*Expand-Archive -LiteralPath \$zip\.FullName -DestinationPath \$extractDir -Force/,
+    );
+    expect(workflow).toMatch(
+      /run verify:windows-zip -- [\s\S]*--unpacked \(Join-Path \$releaseDir "win-unpacked"\)[\s\S]*--extracted \$extractDir[\s\S]*--diagnostics \$diagnosticsPath/,
+    );
+    expect(workflow).toMatch(
+      /- name: Collect packaged smoke diagnostics\s+if: always\(\)/,
+    );
+    expect(workflow).toMatch(
+      /steps\.windows_zip_check\.outcome == 'failure'/,
+    );
+  });
 });
