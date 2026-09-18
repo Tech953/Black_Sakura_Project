@@ -2,9 +2,9 @@ name: Desktop & Android builds
 
 # Builds the ENGRAM desktop app (Electron) on each native OS so the produced
 # installers match their platform:
-  #   - ubuntu-latest  -> .AppImage + .deb
-  #   - macos-13       -> Intel .dmg
-  #   - macos-14       -> Apple Silicon .dmg
+#   - ubuntu-latest  -> .AppImage + .deb
+#   - macos-13       -> Intel .dmg
+#   - macos-14       -> Apple Silicon .dmg
 #   - windows-latest -> .exe (NSIS)
 # and builds the ENGRAM mobile app (Expo) into an installable Android .apk on
 # ubuntu (the `android` job below). All artifacts publish to the SAME GitHub
@@ -63,7 +63,7 @@ jobs:
           - os: ubuntu-latest
             platform: linux
             arch: x64
-          - os: macos-latest
+          - os: macos-14
             platform: mac
             arch: arm64
           - os: macos-13
@@ -643,11 +643,11 @@ jobs:
             platform: linux
             arch: arm64
             sha256: c79ae4262304cdab2698201b1bba01648fcff8f8aada237b64797bc97ebe452d
-          - os: macos-latest
+          - os: macos-13
             platform: darwin
             arch: x64
             sha256: d7ccf0251ff9087ee4f4c0ea6c8c7f4f3575aa187b2c2e755d2d4c5d234490ba
-          - os: macos-latest
+          - os: macos-14
             platform: darwin
             arch: arm64
             sha256: fd93f5c97086b434d17855eaaf95ba56758ade7a4af3a4ad74714bb70784c8b9

@@ -718,6 +718,12 @@ let activeOfflineFixture = null;
 
 function classifySmokeFailure(message) {
   const text = String(message).toLowerCase();
+  if (text.includes("macos packaging failure")) return "packaging";
+  if (text.includes("macos signing failure")) return "signing";
+  if (text.includes("dylib") || text.includes("mach-o")) return "dylib-loading";
+  if (text.includes("local gguf") || text.includes("model startup")) {
+    return "model-startup";
+  }
   if (text.includes("certificate") || text.includes("openssl") || text.includes("tls")) {
     return "certificate";
   }
@@ -839,6 +845,36 @@ if (!exe || !existsSync(exe)) {
 }
 log(`packaged app: ${exe}`);
 
+if (process.platform === "darwin") {
+  const expectedArchitecture = process.env.ENGRAM_EXPECTED_ARCH?.trim();
+  const expectedMachArchitecture =
+    expectedArchitecture === "x64" ? "x86_64" : expectedArchitecture;
+  if (!expectedMachArchitecture) {
+    fail(
+      "macOS packaging failure: ENGRAM_EXPECTED_ARCH was not set for the architecture smoke test",
+    );
+  }
+  let packagedArchitectures;
+  try {
+    packagedArchitectures = execFileSync("lipo", ["-archs", exe], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  } catch (error) {
+    fail(
+      `macOS packaging failure: could not inspect packaged app architecture: ${String(error?.message ?? error)}`,
+    );
+  }
+  if (!packagedArchitectures.split(/\s+/).includes(expectedMachArchitecture)) {
+    fail(
+      `macOS packaging failure: expected ${expectedMachArchitecture}, found ${packagedArchitectures || "no architectures"} in ${exe}`,
+    );
+  }
+  log(
+    `macOS packaged architecture verified (${packagedArchitectures}; expected ${expectedMachArchitecture})`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // 1. PGlite assets must ship next to the server bundle, or the embedded DB
 //    can't open and the server crashes on boot.
@@ -871,6 +907,30 @@ const llamaServer = path.join(
 );
 if (!existsSync(llamaServer)) {
   fail(`packaged custom-GGUF runtime missing: ${llamaServer}`);
+}
+if (process.platform === "darwin") {
+  const expectedArchitecture = process.env.ENGRAM_EXPECTED_ARCH?.trim();
+  const expectedMachArchitecture =
+    expectedArchitecture === "x64" ? "x86_64" : expectedArchitecture;
+  let llamaArchitectures;
+  try {
+    llamaArchitectures = execFileSync("lipo", ["-archs", llamaServer], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  } catch (error) {
+    fail(
+      `macOS packaging failure: could not inspect llama.cpp architecture: ${String(error?.message ?? error)}`,
+    );
+  }
+  if (!llamaArchitectures.split(/\s+/).includes(expectedMachArchitecture)) {
+    fail(
+      `macOS packaging failure: expected llama.cpp ${expectedMachArchitecture}, found ${llamaArchitectures || "no architectures"} in ${llamaServer}`,
+    );
+  }
+  log(
+    `macOS llama.cpp architecture verified (${llamaArchitectures}; expected ${expectedMachArchitecture})`,
+  );
 }
 const llamaRuntime = checkLlamaRuntime({
   executablePath: llamaServer,
@@ -1032,9 +1092,10 @@ async function main() {
     );
   }
   const args = [`--user-data-dir=${userDataDir}`];
-  const customRuntimeEnv = multiModelSmoke
-    ? {}
-    : { ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1" };
+  const customRuntimeEnv =
+    process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1" || !multiModelSmoke
+      ? { ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1" }
+      : {};
   // CI Linux runs under xvfb as a privileged user with no GPU; these switches
   // keep Electron from refusing to start. They are no-ops on the runtime paths
   // this test exercises (embedded server + dashboard render).
@@ -1325,6 +1386,18 @@ async function main() {
       throw new Error(
         `custom GGUF import/selection/launch was not active: ${JSON.stringify(customStatus)}`,
       );
+    }
+    if (process.env.ENGRAM_PACKAGED_GGUF_REQUEST_SMOKE === "1") {
+      const mainLogPath = path.join(smokeDiagnosticsDir, "main.log");
+      const mainLog = existsSync(mainLogPath)
+        ? readFileSync(mainLogPath, "utf8")
+        : "";
+      if (!mainLog.includes("packaged local GGUF completion request passed")) {
+        throw new Error(
+          `local GGUF model startup phase failed: completion request marker was missing from ${mainLogPath}`,
+        );
+      }
+      log("real local GGUF completion request passed through llama.cpp");
     }
     if (multiModelSmoke && customFingerprints.length !== 2) {
       throw new Error(
