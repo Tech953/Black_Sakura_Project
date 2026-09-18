@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import {
@@ -51,6 +51,172 @@ const WINDOWS_RUNTIME_FILES = [
 
 function unique(values) {
   return [...new Set(values)];
+}
+
+const ELF_MACHINES = {
+  3: "ia32",
+  62: "x64",
+  183: "arm64",
+};
+const MACH_CPU_TYPES = {
+  0x01000007: "x64",
+  0x0100000c: "arm64",
+  7: "ia32",
+};
+const PE_MACHINES = {
+  0x014c: "ia32",
+  0x8664: "x64",
+  0xaa64: "arm64",
+};
+
+function architectureFromMachCpuType(cpuType) {
+  return MACH_CPU_TYPES[cpuType & 0xffffffff];
+}
+
+function readElfArchitectures(bytes) {
+  if (
+    bytes.length < 20 ||
+    bytes[0] !== 0x7f ||
+    bytes[1] !== 0x45 ||
+    bytes[2] !== 0x4c ||
+    bytes[3] !== 0x46
+  ) {
+    return [];
+  }
+  const littleEndian = bytes[5] === 1;
+  const machine = littleEndian
+    ? bytes.readUInt16LE(18)
+    : bytes.readUInt16BE(18);
+  const architecture = ELF_MACHINES[machine];
+  return architecture ? [architecture] : [];
+}
+
+function readMachArchitectures(bytes) {
+  if (bytes.length < 8) return [];
+  const littleMagic = bytes.readUInt32LE(0);
+  const bigMagic = bytes.readUInt32BE(0);
+  const thinLittle =
+    littleMagic === 0xfeedface || littleMagic === 0xfeedfacf;
+  const thinBig = bigMagic === 0xfeedface || bigMagic === 0xfeedfacf;
+  if (thinLittle || thinBig) {
+    const cpuType = thinLittle
+      ? bytes.readUInt32LE(4)
+      : bytes.readUInt32BE(4);
+    const architecture = architectureFromMachCpuType(cpuType);
+    return architecture ? [architecture] : [];
+  }
+
+  const fatMagic =
+    bigMagic === 0xcafebabe ||
+    bigMagic === 0xcafebabf ||
+    littleMagic === 0xbebafeca ||
+    littleMagic === 0xbfbafeca;
+  if (!fatMagic) return [];
+  const littleEndian = littleMagic === 0xbebafeca || littleMagic === 0xbfbafeca;
+  const fat64 =
+    bigMagic === 0xcafebabf || littleMagic === 0xbfbafeca;
+  const count = littleEndian
+    ? bytes.readUInt32LE(4)
+    : bytes.readUInt32BE(4);
+  const entrySize = fat64 ? 32 : 20;
+  const architectures = [];
+  for (let index = 0; index < count; index += 1) {
+    const offset = 8 + index * entrySize;
+    if (offset + 4 > bytes.length) break;
+    const cpuType = littleEndian
+      ? bytes.readUInt32LE(offset)
+      : bytes.readUInt32BE(offset);
+    const architecture = architectureFromMachCpuType(cpuType);
+    if (architecture) architectures.push(architecture);
+  }
+  return unique(architectures);
+}
+
+function readPeArchitectures(bytes) {
+  if (
+    bytes.length < 0x40 ||
+    bytes[0] !== 0x4d ||
+    bytes[1] !== 0x5a
+  ) {
+    return [];
+  }
+  const peOffset = bytes.readUInt32LE(0x3c);
+  if (
+    peOffset < 0 ||
+    peOffset + 6 > bytes.length ||
+    bytes[peOffset] !== 0x50 ||
+    bytes[peOffset + 1] !== 0x45 ||
+    bytes[peOffset + 2] !== 0 ||
+    bytes[peOffset + 3] !== 0
+  ) {
+    return [];
+  }
+  const machine = bytes.readUInt16LE(peOffset + 4);
+  const architecture = PE_MACHINES[machine];
+  return architecture ? [architecture] : [];
+}
+
+export function inspectLlamaRuntimeArchitecture(executablePath) {
+  let bytes;
+  try {
+    bytes = readFileSync(executablePath);
+  } catch (error) {
+    return {
+      ok: false,
+      details: `could not read executable: ${error?.message ?? error}`,
+    };
+  }
+  const architectures = unique([
+    ...readElfArchitectures(bytes),
+    ...readMachArchitectures(bytes),
+    ...readPeArchitectures(bytes),
+  ]);
+  if (architectures.length === 0) {
+    return {
+      ok: false,
+      details: "unrecognized ELF, Mach-O, or PE executable format",
+    };
+  }
+  return { ok: true, architectures };
+}
+
+export function checkLlamaRuntimeArchitecture({
+  executablePath,
+  platform,
+  architecture,
+}) {
+  const inspected = inspectLlamaRuntimeArchitecture(executablePath);
+  if (!inspected.ok) {
+    return {
+      ok: false,
+      code: "runtime-architecture-unreadable",
+      repairAction: llamaRuntimeRepairAction("runtime-architecture-unreadable"),
+      message: llamaRuntimeFailureMessage({
+        code: "runtime-architecture-unreadable",
+        executablePath,
+        platform,
+        architecture,
+        details: inspected.details,
+      }),
+    };
+  }
+  if (!inspected.architectures.includes(architecture)) {
+    const detected = inspected.architectures.join(", ");
+    return {
+      ok: false,
+      code: "runtime-architecture-mismatch",
+      detectedArchitectures: inspected.architectures,
+      repairAction: llamaRuntimeRepairAction("runtime-architecture-mismatch"),
+      message: llamaRuntimeFailureMessage({
+        code: "runtime-architecture-mismatch",
+        executablePath,
+        platform,
+        architecture,
+        details: detected,
+      }),
+    };
+  }
+  return { ok: true, architectures: inspected.architectures };
 }
 
 function runtimeExecutionCheck(
@@ -331,6 +497,14 @@ export function checkLlamaRuntime({
   const supported = SUPPORTED_ARCHITECTURES[platform];
   if (supported && !supported.includes(architecture)) {
     return unsupportedArchitecture(platform, architecture);
+  }
+  if (supported) {
+    const architectureResult = checkLlamaRuntimeArchitecture({
+      executablePath,
+      platform,
+      architecture,
+    });
+    if (!architectureResult.ok) return architectureResult;
   }
   if (platform === "linux") {
     return inspectRuntimeExecution(

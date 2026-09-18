@@ -8,6 +8,8 @@ export type LlamaRuntimeFailureCode =
   | "otool-unavailable"
   | "otool-failed"
   | "missing-windows-dlls"
+  | "runtime-architecture-mismatch"
+  | "runtime-architecture-unreadable"
   | "runtime-not-executable"
   | "runtime-execution-failed";
 
@@ -35,6 +37,7 @@ export function llamaRuntimeFailureMessage(input: {
   platform?: string;
   architecture?: string;
   missingLibraries?: string[];
+  detectedArchitectures?: string[];
   packageNames?: string[];
   reason?: LlamaRuntimeFailureReason;
   details?: string;
@@ -49,4 +52,25 @@ export function classifyLlamaRuntimeError(input: {
   reason?: LlamaRuntimeFailureReason;
   missingLibraries?: string[];
   repairAction: LlamaRuntimeRepairAction;
+};
+export function inspectLlamaRuntimeArchitecture(executablePath: string): {
+  ok: true;
+  architectures: string[];
+} | {
+  ok: false;
+  details: string;
+};
+export function checkLlamaRuntimeArchitecture(input: {
+  executablePath: string;
+  platform: string;
+  architecture: string;
+}): {
+  ok: true;
+  architectures: string[];
+} | {
+  ok: false;
+  code: "runtime-architecture-mismatch" | "runtime-architecture-unreadable";
+  detectedArchitectures?: string[];
+  repairAction: LlamaRuntimeRepairAction;
+  message: string;
 };

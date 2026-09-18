@@ -11,6 +11,8 @@ export const LLAMA_RUNTIME_FAILURE_CODES = Object.freeze([
   "otool-unavailable",
   "otool-failed",
   "missing-windows-dlls",
+  "runtime-architecture-mismatch",
+  "runtime-architecture-unreadable",
   "runtime-not-executable",
   "runtime-execution-failed",
 ]);
@@ -27,6 +29,8 @@ export function llamaRuntimeRepairAction(code, reason) {
     return "rebuild-target-runtime";
   }
   if (code === "unsupported-architecture") return "build-target-runtime";
+  if (code === "runtime-architecture-mismatch") return "rebuild-target-runtime";
+  if (code === "runtime-architecture-unreadable") return "restage-runtime";
   if (code === "ldd-unavailable" || code === "otool-unavailable") {
     return "run-on-supported-host";
   }
@@ -100,6 +104,21 @@ export function llamaRuntimeFailureMessage({
       `Windows llama.cpp runtime preflight failed${target}: ` +
       `missing adjacent runtime DLLs: ${missing}. ` +
       "Re-stage the complete pinned win-cpu-x64 llama.cpp archive."
+    );
+  }
+  if (code === "runtime-architecture-mismatch") {
+    return (
+      `Packaged llama.cpp server architecture mismatch${target}: ` +
+      `detected ${details || "an incompatible architecture"}, expected ` +
+      `${platform}-${architecture}. Rebuild or re-stage the llama.cpp binary ` +
+      "for the requested target and rerun the packaged smoke test."
+    );
+  }
+  if (code === "runtime-architecture-unreadable") {
+    return (
+      `Packaged llama.cpp server architecture could not be verified${target}: ` +
+      `${details || "unrecognized executable format"}. Re-stage the pinned ` +
+      "runtime and rerun the packaged smoke test."
     );
   }
   if (code === "runtime-not-executable" && reason === "permission-denied") {
