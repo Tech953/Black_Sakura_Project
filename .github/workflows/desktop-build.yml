@@ -492,6 +492,39 @@ jobs:
           }
           NODE
 
+      - name: Verify Windows portable ZIP completeness
+        id: windows_zip_check
+        if: matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\desktop\release"
+          $zip = Get-ChildItem -LiteralPath $releaseDir -File -Filter "*.zip" |
+            Select-Object -First 1
+          if ($null -eq $zip) {
+            throw "No Windows portable ZIP was produced in $releaseDir."
+          }
+
+          $extractDir = Join-Path $env:RUNNER_TEMP ("engram-windows-zip-" + [guid]::NewGuid().ToString("N"))
+          $diagnosticsDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\desktop\.ci-smoke\diagnostics"
+          $diagnosticsPath = Join-Path $diagnosticsDir "windows-zip-check.json"
+          New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
+          New-Item -ItemType Directory -Path $diagnosticsDir -Force | Out-Null
+          $zipSha256 = (Get-FileHash -LiteralPath $zip.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          @{
+            ok = $false
+            stage = "zip-extraction"
+            zipPath = $zip.FullName
+            zipSha256 = $zipSha256
+          } | ConvertTo-Json | Set-Content -LiteralPath $diagnosticsPath
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath $extractDir -Force
+
+          Write-Host "Extracted Windows portable ZIP $($zip.FullName) to $extractDir"
+          pnpm --filter @workspace/desktop run verify:windows-zip -- `
+            --zip $zip.FullName `
+            --unpacked (Join-Path $releaseDir "win-unpacked") `
+            --extracted $extractDir `
+            --diagnostics $diagnosticsPath
+
       # Download a small, pinned real GGUF only after packaging. It exercises
       # the custom-model picker/import/runtime path without ever entering the
       # installer resources or the published installer artifact.
@@ -607,7 +640,7 @@ jobs:
           NODE
 
       - name: Upload packaged smoke diagnostics
-        if: steps.packaged_smoke.outcome == 'failure' && (matrix.platform == 'win' || matrix.platform == 'mac')
+        if: always() && (steps.packaged_smoke.outcome == 'failure' || steps.windows_zip_check.outcome == 'failure') && (matrix.platform == 'win' || matrix.platform == 'mac')
         uses: actions/upload-artifact@v4
         with:
           name: desktop-smoke-diagnostics-${{ matrix.platform }}-${{ matrix.arch }}
