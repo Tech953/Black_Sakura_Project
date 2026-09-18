@@ -36,7 +36,10 @@ import { createServer as createHttpsServer } from "node:https";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkLlamaRuntime } from "./llama-runtime-check.mjs";
+import {
+  checkLlamaRuntime,
+  checkLlamaRuntimeArchitecture,
+} from "./llama-runtime-check.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const desktopDir = path.join(here, ".."); // artifacts/desktop
@@ -908,34 +911,28 @@ const llamaServer = path.join(
 if (!existsSync(llamaServer)) {
   fail(`packaged custom-GGUF runtime missing: ${llamaServer}`);
 }
-if (process.platform === "darwin") {
-  const expectedArchitecture = process.env.ENGRAM_EXPECTED_ARCH?.trim();
-  const expectedMachArchitecture =
-    expectedArchitecture === "x64" ? "x86_64" : expectedArchitecture;
-  let llamaArchitectures;
-  try {
-    llamaArchitectures = execFileSync("lipo", ["-archs", llamaServer], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
-  } catch (error) {
-    fail(
-      `macOS packaging failure: could not inspect llama.cpp architecture: ${String(error?.message ?? error)}`,
-    );
-  }
-  if (!llamaArchitectures.split(/\s+/).includes(expectedMachArchitecture)) {
-    fail(
-      `macOS packaging failure: expected llama.cpp ${expectedMachArchitecture}, found ${llamaArchitectures || "no architectures"} in ${llamaServer}`,
-    );
-  }
-  log(
-    `macOS llama.cpp architecture verified (${llamaArchitectures}; expected ${expectedMachArchitecture})`,
+const expectedLlamaArchitecture =
+  process.env.ENGRAM_EXPECTED_ARCH?.trim() || process.arch;
+const llamaArchitectureResult = checkLlamaRuntimeArchitecture({
+  executablePath: llamaServer,
+  platform: process.platform,
+  architecture: expectedLlamaArchitecture,
+});
+if (!llamaArchitectureResult.ok) {
+  fail(
+    `llama.cpp runtime architecture preflight failed for staged binary ` +
+      `${llamaServer}: ${llamaArchitectureResult.message}`,
   );
 }
+log(
+  `llama.cpp staged architecture verified (` +
+    `${llamaArchitectureResult.architectures.join(", ")}; expected ` +
+    `${process.platform}-${expectedLlamaArchitecture})`,
+);
 const llamaRuntime = checkLlamaRuntime({
   executablePath: llamaServer,
   platform: process.platform,
-  architecture: process.arch,
+  architecture: expectedLlamaArchitecture,
 });
 if (!llamaRuntime.ok) {
   fail(

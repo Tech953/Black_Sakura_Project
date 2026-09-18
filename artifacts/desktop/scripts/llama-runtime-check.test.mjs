@@ -1,9 +1,10 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
+  readFileSync: vi.fn(),
   readdirSync: vi.fn(),
 }));
 
@@ -11,11 +12,49 @@ vi.mock("node:child_process", () => ({
   spawnSync: vi.fn(),
 }));
 
-const { checkLlamaRuntime } = await import("./llama-runtime-check.mjs");
+const {
+  checkLlamaRuntime,
+  checkLlamaRuntimeArchitecture,
+} = await import("./llama-runtime-check.mjs");
 
 const mockedExistsSync = vi.mocked(existsSync);
+const mockedReadFileSync = vi.mocked(readFileSync);
 const mockedReaddirSync = vi.mocked(readdirSync);
 const mockedSpawnSync = vi.mocked(spawnSync);
+
+function elfFixture(machine) {
+  const bytes = Buffer.alloc(20);
+  bytes.set([0x7f, 0x45, 0x4c, 0x46, 2, 1], 0);
+  bytes.writeUInt16LE(machine, 18);
+  return bytes;
+}
+
+function machThinFixture(cpuType) {
+  const bytes = Buffer.alloc(8);
+  bytes.writeUInt32LE(0xfeedfacf, 0);
+  bytes.writeUInt32LE(cpuType, 4);
+  return bytes;
+}
+
+function machFatFixture(cpuTypes) {
+  const bytes = Buffer.alloc(8 + cpuTypes.length * 20);
+  bytes.writeUInt32BE(0xcafebabe, 0);
+  bytes.writeUInt32BE(cpuTypes.length, 4);
+  cpuTypes.forEach((cpuType, index) => {
+    bytes.writeUInt32BE(cpuType, 8 + index * 20);
+  });
+  return bytes;
+}
+
+function peFixture(machine) {
+  const bytes = Buffer.alloc(0x40 + 6);
+  bytes[0] = 0x4d;
+  bytes[1] = 0x5a;
+  bytes.writeUInt32LE(0x40, 0x3c);
+  bytes.set([0x50, 0x45, 0, 0], 0x40);
+  bytes.writeUInt16LE(machine, 0x44);
+  return bytes;
+}
 
 describe("checkLlamaRuntime", () => {
   const executablePath = "/fixture/resources/llama/bin/llama-server";
@@ -23,6 +62,11 @@ describe("checkLlamaRuntime", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockImplementation((candidate) =>
+      String(candidate).endsWith(".exe")
+        ? peFixture(0x8664)
+        : machFatFixture([0x01000007, 0x0100000c]),
+    );
     mockedReaddirSync.mockReturnValue([]);
     mockedSpawnSync.mockReturnValue({
       status: 0,
@@ -78,6 +122,83 @@ describe("checkLlamaRuntime", () => {
         env: { LD_LIBRARY_PATH: "/fixture/lib" },
       }),
     );
+  });
+
+  it("accepts ELF x64 and rejects an ELF ARM64 binary for Linux x64", () => {
+    mockedReadFileSync.mockReturnValue(elfFixture(62));
+    expect(
+      checkLlamaRuntimeArchitecture({
+        executablePath,
+        platform: "linux",
+        architecture: "x64",
+      }),
+    ).toMatchObject({ ok: true, architectures: ["x64"] });
+
+    mockedReadFileSync.mockReturnValue(elfFixture(183));
+    const result = checkLlamaRuntimeArchitecture({
+      executablePath,
+      platform: "linux",
+      architecture: "x64",
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      code: "runtime-architecture-mismatch",
+      detectedArchitectures: ["arm64"],
+      repairAction: "rebuild-target-runtime",
+    });
+    expect(result.message).toContain("detected arm64, expected linux-x64");
+  });
+
+  it("recognizes thin and universal Mach-O architectures", () => {
+    mockedReadFileSync.mockReturnValue(machThinFixture(0x0100000c));
+    expect(
+      checkLlamaRuntimeArchitecture({
+        executablePath,
+        platform: "darwin",
+        architecture: "arm64",
+      }),
+    ).toMatchObject({ ok: true, architectures: ["arm64"] });
+
+    mockedReadFileSync.mockReturnValue(
+      machFatFixture([0x01000007, 0x0100000c]),
+    );
+    expect(
+      checkLlamaRuntimeArchitecture({
+        executablePath,
+        platform: "darwin",
+        architecture: "arm64",
+      }),
+    ).toMatchObject({ ok: true, architectures: ["x64", "arm64"] });
+  });
+
+  it("recognizes PE ARM64 and rejects it for a Windows x64 target", () => {
+    mockedReadFileSync.mockReturnValue(peFixture(0xaa64));
+    const result = checkLlamaRuntimeArchitecture({
+      executablePath: "C:\\fixture\\llama-server.exe",
+      platform: "win32",
+      architecture: "x64",
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      code: "runtime-architecture-mismatch",
+      detectedArchitectures: ["arm64"],
+    });
+    expect(result.message).toContain("detected arm64, expected win32-x64");
+  });
+
+  it("fails closed when the staged server is not a recognized executable", () => {
+    mockedReadFileSync.mockReturnValue(Buffer.from("not an executable"));
+    const result = checkLlamaRuntimeArchitecture({
+      executablePath,
+      platform: "linux",
+      architecture: "x64",
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      code: "runtime-architecture-unreadable",
+      repairAction: "restage-runtime",
+    });
+    expect(result.message).toContain("could not be verified");
   });
 
   it("reports when ldd itself is unavailable", () => {
