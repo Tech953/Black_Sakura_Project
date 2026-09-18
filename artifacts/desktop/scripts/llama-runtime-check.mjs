@@ -112,7 +112,8 @@ function readMachArchitectures(bytes) {
     littleMagic === 0xbebafeca ||
     littleMagic === 0xbfbafeca;
   if (!fatMagic) return [];
-  const littleEndian = littleMagic === 0xbebafeca || littleMagic === 0xbfbafeca;
+  const littleEndian =
+    bigMagic === 0xbebafeca || bigMagic === 0xbfbafeca;
   const fat64 =
     bigMagic === 0xcafebabf || littleMagic === 0xbfbafeca;
   const count = littleEndian

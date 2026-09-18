@@ -17,7 +17,10 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
-import { checkLlamaRuntime } from "./llama-runtime-check.mjs";
+import {
+  checkLlamaRuntime,
+  checkLlamaRuntimeArchitecture,
+} from "./llama-runtime-check.mjs";
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -321,27 +324,39 @@ function stageLlama(includeDefaultModel) {
     console.warn(message);
     return false;
   }
-  if (
-    requireLlamaRuntime &&
-    llamaTarget === process.platform &&
-    llamaArchitecture === process.arch
-  ) {
-    const runtime = checkLlamaRuntime({
+  if (requireLlamaRuntime) {
+    const architectureResult = checkLlamaRuntimeArchitecture({
       executablePath: stagedServer,
       platform: llamaTarget,
       architecture: llamaArchitecture,
     });
-    if (!runtime.ok) {
-      throw new Error(runtime.message);
+    if (!architectureResult.ok) {
+      throw new Error(architectureResult.message);
     }
     console.log(
-      `[desktop] llama.cpp native dependency preflight passed (${runtime.code})`,
+      `[desktop] llama.cpp staged architecture verified (` +
+        `${architectureResult.architectures.join(", ")}; expected ` +
+        `${llamaTarget}-${llamaArchitecture})`,
     );
-  } else if (requireLlamaRuntime) {
-    console.warn(
-      `[desktop] deferred llama.cpp dependency preflight for cross-target ` +
-        `${llamaTarget}-${llamaArchitecture}; run it on a matching runner.`,
-    );
+
+    if (llamaTarget === process.platform && llamaArchitecture === process.arch) {
+      const runtime = checkLlamaRuntime({
+        executablePath: stagedServer,
+        platform: llamaTarget,
+        architecture: llamaArchitecture,
+      });
+      if (!runtime.ok) {
+        throw new Error(runtime.message);
+      }
+      console.log(
+        `[desktop] llama.cpp native dependency preflight passed (${runtime.code})`,
+      );
+    } else {
+      console.warn(
+        `[desktop] deferred llama.cpp dependency preflight for cross-target ` +
+          `${llamaTarget}-${llamaArchitecture}; run it on a matching runner.`,
+      );
+    }
   }
   if (includeDefaultModel && !existsSync(modelSrc)) {
     throw new Error(
