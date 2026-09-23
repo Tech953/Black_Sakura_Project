@@ -14,6 +14,9 @@ description: How to build the Expo release APK locally (no CI), and the Babel/He
 - On a 7.8 GiB workspace with no swap, the full dual-ABI Gradle JVM can terminate with `SIGBUS` during native compilation even with one worker; treat that as an environment limit, not a signing result.
   **Why:** the Java process crashed while configuring/building the native release after dependency preflight passed.
   **How to apply:** preserve the full-ABI requirement for release claims and move the confirmation to CI or a larger native runner instead of silently narrowing the release target.
+- After a clean dual-ABI build, Gradle may incorrectly treat `react-native-worklets:prefabReleaseConfigurePackage` as up to date while its Prefab output directory is missing. Force that task with `--rerun-tasks` once, then resume `app:assembleRelease` without cleaning again.
+  **Why:** the first clean release assembly failed during Reanimated configuration because the missing Prefab directory was hidden by a stale Gradle task state.
+  **How to apply:** regenerate the worklets Prefab output before retrying; do not clean between the repair and the cached assembly.
 
 ## The Hermes/Babel trap (why a plain build fails)
 The bundled `hermesc` (react-native sdks/hermesc) does NOT accept, by default:
