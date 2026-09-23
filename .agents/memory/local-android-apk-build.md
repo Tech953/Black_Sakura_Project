@@ -17,6 +17,9 @@ description: How to build the Expo release APK locally (no CI), and the Babel/He
 - After a clean dual-ABI build, Gradle may incorrectly treat `react-native-worklets:prefabReleaseConfigurePackage` as up to date while its Prefab output directory is missing. Force that task with `--rerun-tasks` once, then resume `app:assembleRelease` without cleaning again.
   **Why:** the first clean release assembly failed during Reanimated configuration because the missing Prefab directory was hidden by a stale Gradle task state.
   **How to apply:** regenerate the worklets Prefab output before retrying; do not clean between the repair and the cached assembly.
+- Source-manifest removal markers do not prove the manifest merger kept forbidden permissions out; inspect the release merged manifest after assembly and before staging, while separately verifying the final APK.
+  **Why:** a stale APK once retained `READ_EXTERNAL_STORAGE` even though the checked-in manifest had removal directives.
+  **How to apply:** validate required/forbidden permissions in `build/intermediates/merged_manifests/release` and include both the generated and checked-in manifest paths in drift failures.
 
 ## The Hermes/Babel trap (why a plain build fails)
 The bundled `hermesc` (react-native sdks/hermesc) does NOT accept, by default:

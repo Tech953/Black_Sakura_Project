@@ -150,7 +150,11 @@ function findAndroidBuildTool(name) {
   );
 }
 
-function assertAndroidPrivacyPolicy(manifest, context) {
+function assertAndroidPrivacyPolicy(
+  manifest,
+  context,
+  { allowForbiddenRemovalMarkers = true } = {},
+) {
   if (!/android:allowBackup\s*=\s*"false"/.test(manifest)) {
     throw new Error(`${context} must set android:allowBackup="false".`);
   }
@@ -173,7 +177,9 @@ function assertAndroidPrivacyPolicy(manifest, context) {
     );
     if (
       permissionTags.some(
-        ([tag]) => !tag.includes('tools:node="remove"'),
+        ([tag]) =>
+          !allowForbiddenRemovalMarkers ||
+          !tag.includes('tools:node="remove"'),
       )
     ) {
       throw new Error(`${context} includes forbidden permission ${permission}.`);
@@ -279,6 +285,42 @@ function verifyCheckedInAndroidPrivacyPolicy() {
     }
   }
   console.log("Checked-in Android backup and permission policy is hardened.");
+}
+
+export function verifyMergedAndroidManifest(
+  mergedManifestPath,
+  {
+    sourceManifestPath = path.join(
+      mobileRoot,
+      "android/app/src/main/AndroidManifest.xml",
+    ),
+  } = {},
+) {
+  const mergedResolved = path.resolve(process.cwd(), mergedManifestPath);
+  const sourceResolved = path.resolve(process.cwd(), sourceManifestPath);
+  if (!existsSync(sourceResolved) || !statSync(sourceResolved).isFile()) {
+    throw new Error(
+      `Checked-in Android manifest policy not found at ${sourceResolved}; generated manifest was ${mergedResolved}.`,
+    );
+  }
+  if (!existsSync(mergedResolved) || !statSync(mergedResolved).isFile()) {
+    throw new Error(
+      `Merged Android manifest not found at ${mergedResolved}; checked-in policy is ${sourceResolved}.`,
+    );
+  }
+
+  assertAndroidPrivacyPolicy(
+    readFileSync(sourceResolved, "utf8"),
+    `Checked-in Android manifest at ${sourceResolved}`,
+  );
+  assertAndroidPrivacyPolicy(
+    readFileSync(mergedResolved, "utf8"),
+    `Merged Android manifest at ${mergedResolved} (checked-in policy: ${sourceResolved})`,
+    { allowForbiddenRemovalMarkers: false },
+  );
+  console.log(
+    `Merged Android manifest matches the checked-in privacy policy (${mergedResolved}; policy: ${sourceResolved}).`,
+  );
 }
 
 function verifyApkPrivacyPolicy(

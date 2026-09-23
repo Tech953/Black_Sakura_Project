@@ -1038,6 +1038,21 @@ jobs:
           chmod +x ./gradlew
           ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
+      - name: Verify merged Android manifest privacy policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          MERGED_MANIFEST="$(find artifacts/engram-mobile/android/app/build/intermediates/merged_manifests/release \
+            -type f -name AndroidManifest.xml -print -quit)"
+          if [ -z "$MERGED_MANIFEST" ]; then
+            echo "Merged Android manifest was not produced under the release build intermediates." >&2
+            exit 1
+          fi
+          node --input-type=module -e '
+            import { verifyMergedAndroidManifest } from "./artifacts/engram-mobile/scripts/release-preflight.mjs";
+            verifyMergedAndroidManifest(process.argv[1]);
+          ' "$MERGED_MANIFEST"
+
       - name: Verify packaged llama native libraries
         run: pnpm --filter @workspace/engram-mobile run release:verify-apk
 
