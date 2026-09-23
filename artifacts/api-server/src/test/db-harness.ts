@@ -27,6 +27,7 @@ const TABLE_NAMES = [
   "mediaObservationsTable",
   "mobileOfflineSyncReceiptsTable",
   "mobilePushTokensTable",
+  "mobilePushDeliveryResultsTable",
 ] as const;
 
 const REQUIRED_SCHEMA_SENTINELS = [
@@ -54,6 +55,7 @@ const REQUIRED_SCHEMA_SENTINELS = [
   "mediaObservationsTable",
   "mobileOfflineSyncReceiptsTable",
   "mobilePushTokensTable",
+  "mobilePushDeliveryResultsTable",
   "HUB_CONTROLS_ID",
   "SYSTEM_OWNER_ID",
 ] as const;
