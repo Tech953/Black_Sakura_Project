@@ -977,6 +977,16 @@
       "continue": "Продолжить"
     },
     "notifications": {
+      "kicker": "ENGRAM // OUTREACH",
+      "title": "Notification readiness",
+      "hint": "Check whether ENGRAM can deliver outreach notifications to this phone. The push token is never shown here.",
+      "statusLabel": "Current status",
+      "statusUnknown": "Not checked yet.",
+      "statusRegistering": "Checking notification registration…",
+      "statusRegistered": "Registered for outreach notifications.",
+      "statusPermissionDenied": "Notifications are disabled.",
+      "statusOffline": "Offline mode is active; outreach notifications are paused.",
+      "statusFailed": "Registration failed recently. ENGRAM will retry when the app is active.",
       "permissionDeniedTitle": "Notifications are off",
       "permissionDeniedBody": "Allow ENGRAM notifications in system settings to know when an engram reaches out.",
       "openSettings": "Open Settings",

@@ -2,12 +2,16 @@ import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
-import { Alert, Linking, Platform } from "react-native";
+import { Alert, AppState, Linking, Platform } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@clerk/expo";
 
 import { useEngram } from "@/context/engram-context";
-import { isOfflineMode } from "@/lib/offline/mode";
+import { useOfflineMode } from "@/lib/offline/mode";
+import {
+  hydratePushRegistrationStatus,
+  setPushRegistrationStatus,
+} from "@/lib/push-registration";
 import {
   useRegisterPushToken,
   useUnregisterPushToken,
@@ -28,10 +32,15 @@ type PushTokenRegistration = {
   platform: "ios" | "android";
 };
 
+type PushTokenRequestResult =
+  | PushTokenRegistration
+  | { kind: "permission-denied"; canAskAgain: boolean }
+  | null;
+
 async function requestPushToken(
   showSettingsPrompt: () => void,
-): Promise<PushTokenRegistration | null> {
-  if (Platform.OS === "web" || isOfflineMode()) return null;
+): Promise<PushTokenRequestResult> {
+  if (Platform.OS === "web") return null;
 
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("engram-outreach", {
@@ -46,13 +55,19 @@ async function requestPushToken(
   if (permission.status !== Notifications.PermissionStatus.GRANTED) {
     if (permission.status === Notifications.PermissionStatus.DENIED && !permission.canAskAgain) {
       showSettingsPrompt();
-      return null;
+      return {
+        kind: "permission-denied",
+        canAskAgain: permission.canAskAgain,
+      };
     }
     permission = await Notifications.requestPermissionsAsync();
   }
   if (permission.status !== Notifications.PermissionStatus.GRANTED) {
     if (!permission.canAskAgain) showSettingsPrompt();
-    return null;
+    return {
+      kind: "permission-denied",
+      canAskAgain: permission.canAskAgain,
+    };
   }
 
   const projectId =
@@ -84,16 +99,24 @@ export function MobilePushNotifications({
   const { isSignedIn } = useAuth();
   const { setSelectedEngramId } = useEngram();
   const router = useRouter();
+  const offline = useOfflineMode();
   const register = useRegisterPushToken();
   const unregister = useUnregisterPushToken();
   const activeToken = useRef<PushTokenRegistration | null>(null);
 
   useEffect(() => {
-    if (!accountReady || !isSignedIn || Platform.OS === "web" || isOfflineMode()) {
+    if (Platform.OS === "web") return;
+    if (offline) {
+      setPushRegistrationStatus("offline");
+      return;
+    }
+    if (!accountReady || !isSignedIn) {
+      setPushRegistrationStatus("unknown");
       return;
     }
 
     let active = true;
+    let attempting = false;
     const showSettingsPrompt = () => {
       Alert.alert(
         t("notifications.permissionDeniedTitle"),
@@ -110,18 +133,42 @@ export function MobilePushNotifications({
       );
     };
 
-    void requestPushToken(showSettingsPrompt)
-      .then((registration) => {
-        if (!active || !registration) return;
+    const attemptRegistration = async () => {
+      if (!active || attempting) return;
+      attempting = true;
+      setPushRegistrationStatus("registering");
+      try {
+        const registration = await requestPushToken(showSettingsPrompt);
+        if (!active) return;
+        if (!registration) {
+          setPushRegistrationStatus("offline");
+          return;
+        }
+        if ("kind" in registration) {
+          setPushRegistrationStatus("permission-denied", {
+            canAskAgain: registration.canAskAgain,
+          });
+          return;
+        }
         activeToken.current = registration;
-        return register.mutateAsync({ data: registration });
-      })
-      .catch((error) => {
+        await register.mutateAsync({ data: registration });
+        if (active) setPushRegistrationStatus("registered");
+      } catch (error) {
+        if (active) setPushRegistrationStatus("failed");
         console.warn("Unable to register for ENGRAM push notifications:", error);
-      });
+      } finally {
+        attempting = false;
+      }
+    };
+
+    void hydratePushRegistrationStatus().then(attemptRegistration);
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void attemptRegistration();
+    });
 
     return () => {
       active = false;
+      appStateSubscription.remove();
       const registration = activeToken.current;
       activeToken.current = null;
       if (registration) {
@@ -132,7 +179,7 @@ export function MobilePushNotifications({
           });
       }
     };
-  }, [accountReady, isSignedIn]);
+  }, [accountReady, isSignedIn, offline]);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
