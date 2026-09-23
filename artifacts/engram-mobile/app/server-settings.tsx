@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -54,6 +55,10 @@ import i18n, {
   type ReplyLanguageSetting,
 } from "@/lib/i18n";
 import { isRtlLanguage } from "@/lib/layout-direction";
+import {
+  usePushRegistrationStatus,
+  type PushRegistrationStatus,
+} from "@/lib/push-registration";
 
 function gb(bytes: number): string {
   return `${(bytes / 1e9).toFixed(2)} GB`;
@@ -97,6 +102,7 @@ export default function ServerSettingsScreen() {
   const [uiLang, setUiLang] = useState(i18n.language);
   const [replyLang, setReplyLang] = useState<ReplyLanguageSetting>("match");
   const rtl = isRtlLanguage(uiLang);
+  const pushRegistration = usePushRegistrationStatus();
 
   useEffect(() => {
     getServerUrlOverride().then((override) => {
@@ -390,6 +396,24 @@ export default function ServerSettingsScreen() {
   const activeModelName = activeModel?.filename ?? MODEL_NAME;
   const activeModelBytes = activeModel?.bytes ?? MODEL_BYTES;
   const showBundledDownload = modelStatus?.bundledAvailable !== true;
+  const pushStatusCopy: Record<PushRegistrationStatus, string> = {
+    unknown: t("notifications.statusUnknown"),
+    registering: t("notifications.statusRegistering"),
+    registered: t("notifications.statusRegistered"),
+    "permission-denied": t("notifications.statusPermissionDenied"),
+    offline: t("notifications.statusOffline"),
+    failed: t("notifications.statusFailed"),
+  };
+  const pushStatusColor =
+    pushRegistration.status === "registered"
+      ? colors.primary
+      : pushRegistration.status === "permission-denied" ||
+          pushRegistration.status === "failed"
+        ? colors.destructive
+        : colors.mutedForeground;
+  const openNotificationSettings = useCallback(() => {
+    void Linking.openSettings();
+  }, []);
 
   return (
     <ScrollView
@@ -572,6 +596,60 @@ export default function ServerSettingsScreen() {
           );
         })}
       </View>
+
+      {Platform.OS !== "web" ? (
+        <>
+          <Text style={[styles.kicker, rtl && styles.rtlText, { color: colors.primary, marginTop: 36 }]}>
+            {t("notifications.kicker")}
+          </Text>
+          <Text style={[styles.h1, rtl && styles.rtlText, { color: colors.foreground }]}>
+            {t("notifications.title")}
+          </Text>
+          <Text style={[styles.sub, rtl && styles.rtlText, { color: colors.mutedForeground }]}>
+            {t("notifications.hint")}
+          </Text>
+          <View
+            testID="push-registration-status"
+            style={[
+              styles.pushStatusCard,
+              { borderColor: colors.border, backgroundColor: colors.card },
+            ]}
+          >
+            <Feather
+              name={
+                pushRegistration.status === "registered"
+                  ? "check-circle"
+                  : pushRegistration.status === "permission-denied" ||
+                      pushRegistration.status === "failed"
+                    ? "alert-circle"
+                    : "bell"
+              }
+              size={20}
+              color={pushStatusColor}
+            />
+            <View style={styles.pushStatusCopy}>
+              <Text style={[styles.fieldLabel, rtl && styles.rtlText, { color: colors.mutedForeground, marginTop: 0 }]}>
+                {t("notifications.statusLabel")}
+              </Text>
+              <Text style={[styles.status, rtl && styles.rtlText, { color: pushStatusColor }]}>
+                {pushStatusCopy[pushRegistration.status]}
+              </Text>
+            </View>
+          </View>
+          {pushRegistration.status === "permission-denied" &&
+          pushRegistration.canAskAgain === false ? (
+            <Pressable
+              testID="open-notification-settings"
+              onPress={openNotificationSettings}
+              style={[styles.button, { borderColor: colors.primary, marginTop: 12 }]}
+            >
+              <Text style={[styles.buttonText, { color: colors.primary }]}>
+                {t("notifications.openSettings")}
+              </Text>
+            </Pressable>
+          ) : null}
+        </>
+      ) : null}
 
       {Platform.OS !== "web" ? (
         <>
@@ -957,6 +1035,16 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 12,
   },
+  pushStatusCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 20,
+  },
+  pushStatusCopy: { flex: 1, gap: 4 },
   progressTrack: {
     height: 10,
     borderRadius: 5,
