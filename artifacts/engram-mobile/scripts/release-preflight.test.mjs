@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   assertApkFreshness,
   ensureLlamaNativeLibraries,
+  verifyMergedAndroidManifest,
   verifyApk,
 } from "./release-preflight.mjs";
 
@@ -65,6 +66,45 @@ function writeDownloader(root) {
   );
 }
 
+function writeAndroidManifestFixture(root, { driftPermission = null } = {}) {
+  const sourceManifestPath = path.join(root, "AndroidManifest.source.xml");
+  const mergedManifestPath = path.join(root, "AndroidManifest.merged.xml");
+  const removablePermissions = [
+    "android.permission.ACCESS_COARSE_LOCATION",
+    "android.permission.ACCESS_FINE_LOCATION",
+    "android.permission.READ_EXTERNAL_STORAGE",
+    "android.permission.WRITE_EXTERNAL_STORAGE",
+    "android.permission.RECORD_AUDIO",
+    "android.permission.SYSTEM_ALERT_WINDOW",
+  ]
+    .map(
+      (permission) =>
+        `<uses-permission android:name="${permission}" tools:node="remove"/>`,
+    )
+    .join("\n");
+  const sourceManifest = `<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.VIBRATE"/>
+  ${removablePermissions}
+  <application android:allowBackup="false" android:fullBackupContent="@xml/backup_rules" android:dataExtractionRules="@xml/data_extraction_rules"/>
+</manifest>`;
+  const mergedManifest = sourceManifest
+    .replace(/\s+xmlns:tools="[^"]+"/, "")
+    .replace(
+      /\s*<uses-permission\b[^>]*tools:node="remove"[^>]*\/>\s*/g,
+      "\n",
+    )
+    .replace(
+      "</manifest>",
+      driftPermission
+        ? `\n  <uses-permission android:name="${driftPermission}"/>\n</manifest>`
+        : "</manifest>",
+    );
+  writeFileSync(sourceManifestPath, sourceManifest);
+  writeFileSync(mergedManifestPath, mergedManifest);
+  return { sourceManifestPath, mergedManifestPath };
+}
+
 function makeApkFixture(entries, { badging } = {}) {
   const directory = makeTempDir();
   const apkPath = path.join(directory, "app-release.apk");
@@ -108,6 +148,38 @@ function makeApkFixture(entries, { badging } = {}) {
     findTool: (name) => `/fixture/${name}`,
   };
 }
+
+test("rejects generated manifest drift with source and output paths", () => {
+  const directory = makeTempDir();
+  const fixture = writeAndroidManifestFixture(directory, {
+    driftPermission: "android.permission.READ_EXTERNAL_STORAGE",
+  });
+  try {
+    assert.throws(
+      () =>
+        verifyMergedAndroidManifest(fixture.mergedManifestPath, {
+          sourceManifestPath: fixture.sourceManifestPath,
+        }),
+      (error) => {
+        assert.match(
+          error.message,
+          /Merged Android manifest at .*AndroidManifest\.merged\.xml/,
+        );
+        assert.match(
+          error.message,
+          /checked-in policy: .*AndroidManifest\.source\.xml/,
+        );
+        assert.match(
+          error.message,
+          /includes forbidden permission android\.permission\.READ_EXTERNAL_STORAGE/,
+        );
+        return true;
+      },
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test("passes a clean llama.rn install without running repair", () => {
   const root = makeTempDir();
