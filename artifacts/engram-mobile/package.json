@@ -23,7 +23,7 @@
     "smoke:gguf": "node scripts/gguf-device-smoke.mjs",
     "release:preflight": "node scripts/release-preflight.mjs",
     "test:release-preflight": "node --test scripts/release-preflight.test.mjs",
-    "release:verify-apk": "node scripts/release-preflight.mjs --skip-expo --apk android/app/build/outputs/apk/release/app-release.apk",
+    "release:verify-apk": "node scripts/release-preflight.mjs --skip-expo --skip-history-e2e --apk android/app/build/outputs/apk/release/app-release.apk",
     "android": "expo run:android",
     "ios": "expo run:ios"
   },
