@@ -82,6 +82,95 @@ describe("sendTransmissionPush", () => {
     expect(String(payload[0].body).length).toBe(158);
   });
 
+  it("keeps payloads and ticket cleanup aligned across multiple batches", async () => {
+    const tokens = Array.from(
+      { length: 205 },
+      (_, index) => `ExpoPushToken[device-${String(index + 1).padStart(3, "0")}]`,
+    );
+    for (const token of tokens) seedToken(token);
+    seedToken("ExpoPushToken[other-owner]", "owner-b", "ios");
+
+    const removedTokens = new Set([tokens[2], tokens[103]]);
+    const fetchMock = vi.fn().mockImplementation(
+      async (_url: string, options: RequestInit) => {
+        const payload = JSON.parse(String(options.body)) as Array<{
+          to: string;
+          title: string;
+          body: string;
+          sound: string;
+          priority: string;
+          channelId: string;
+          data: {
+            type: string;
+            engramId: string;
+            transmissionId: string;
+          };
+        }>;
+        return {
+          ok: true,
+          json: async () => ({
+            data: payload.map(({ to }) =>
+              removedTokens.has(to)
+                ? {
+                    status: "error",
+                    details: { error: "DeviceNotRegistered" },
+                  }
+                : { status: "ok" },
+            ),
+          }),
+        };
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendTransmissionPush({
+      ownerId,
+      engramId: 42,
+      engramName: "Testra",
+      transmissionId: 99,
+      content: "A short transmission.",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const requests = fetchMock.mock.calls.map(([, options]) => {
+      const payload = JSON.parse(
+        String((options as RequestInit).body),
+      ) as Array<Record<string, unknown>>;
+      return payload;
+    });
+    expect(requests.map((payload) => payload.map((message) => message.to))).toEqual([
+      tokens.slice(0, 100),
+      tokens.slice(100, 200),
+      tokens.slice(200),
+    ]);
+    for (const payload of requests) {
+      for (const message of payload) {
+        expect(message).toMatchObject({
+          title: "Testra",
+          body: "A short transmission.",
+          sound: "default",
+          priority: "high",
+          channelId: "engram-outreach",
+          data: {
+            type: "engram-transmission",
+            engramId: "42",
+            transmissionId: "99",
+          },
+        });
+      }
+    }
+
+    expect(h.store.mobilePushTokensTable.map(({ token }) => token)).toEqual([
+      ...tokens.filter((token) => !removedTokens.has(token)),
+      "ExpoPushToken[other-owner]",
+    ]);
+    expect(
+      h.store.mobilePushDeliveryResultsTable.filter(
+        ({ errorCategory }) => errorCategory === "device-not-registered",
+      ),
+    ).toHaveLength(2);
+  });
+
   it("removes only tokens rejected as no longer registered", async () => {
     seedToken(tokenA);
     seedToken(tokenB);
