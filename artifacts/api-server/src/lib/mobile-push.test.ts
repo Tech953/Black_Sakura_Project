@@ -116,6 +116,90 @@ describe("sendTransmissionPush", () => {
         ownerId,
       },
     ]);
+    expect(h.store.mobilePushDeliveryResultsTable).toMatchObject([
+      {
+        transmissionId: 99,
+        platform: "android",
+        status: "error",
+        errorCategory: "device-not-registered",
+      },
+      {
+        transmissionId: 99,
+        platform: "android",
+        status: "error",
+        errorCategory: "message-too-big",
+      },
+    ]);
+    expect(
+      h.store.mobilePushDeliveryResultsTable[0],
+    ).not.toHaveProperty("token");
+  });
+
+  it("records accepted tickets with platform and timestamp but no token", async () => {
+    seedToken(tokenA, ownerId, "ios");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ status: "ok" }] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendTransmissionPush({
+      ownerId,
+      engramId: 42,
+      engramName: "Testra",
+      transmissionId: 100,
+      content: "A short transmission.",
+    });
+
+    expect(h.store.mobilePushDeliveryResultsTable).toMatchObject([
+      {
+        transmissionId: 100,
+        platform: "ios",
+        status: "ok",
+        errorCategory: null,
+      },
+    ]);
+    expect(h.store.mobilePushDeliveryResultsTable[0].createdAt).toBeInstanceOf(
+      Date,
+    );
+    expect(
+      h.store.mobilePushDeliveryResultsTable[0],
+    ).not.toHaveProperty("token");
+  });
+
+  it("records provider HTTP failures for every affected device", async () => {
+    seedToken(tokenA, ownerId, "android");
+    seedToken(tokenB, ownerId, "ios");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      sendTransmissionPush({
+        ownerId,
+        engramId: 42,
+        engramName: "Testra",
+        transmissionId: 101,
+        content: "A short transmission.",
+      }),
+    ).rejects.toThrow("HTTP 503");
+
+    expect(h.store.mobilePushDeliveryResultsTable).toMatchObject([
+      {
+        transmissionId: 101,
+        platform: "android",
+        status: "error",
+        errorCategory: "provider-http-error",
+      },
+      {
+        transmissionId: 101,
+        platform: "ios",
+        status: "error",
+        errorCategory: "provider-http-error",
+      },
+    ]);
   });
 });
 
