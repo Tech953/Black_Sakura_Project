@@ -16,6 +16,11 @@ import {
   useRegisterPushToken,
   useUnregisterPushToken,
 } from "@workspace/api-client-react";
+import {
+  handleLastNotificationResponse,
+  handleNotificationResponse,
+  MOBILE_FEED_ROUTE,
+} from "@/lib/push-notification-routing";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -80,14 +85,6 @@ async function requestPushToken(
     token: expoToken.data,
     platform: Platform.OS === "ios" ? "ios" : "android",
   };
-}
-
-function transmissionEngramId(
-  response: Notifications.NotificationResponse,
-): number | null {
-  const value = response.notification.request.content.data?.engramId;
-  const id = typeof value === "number" ? value : Number(value);
-  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 export function MobilePushNotifications({
@@ -184,20 +181,19 @@ export function MobilePushNotifications({
   useEffect(() => {
     if (Platform.OS === "web") return;
 
-    const openTransmission = (
-      response: Notifications.NotificationResponse,
-    ) => {
-      const engramId = transmissionEngramId(response);
-      if (!engramId) return;
-      setSelectedEngramId(engramId);
-      router.replace("/(tabs)/feed");
+    const handlers = {
+      selectEngram: setSelectedEngramId,
+      replace: (route: typeof MOBILE_FEED_ROUTE) => router.replace(route),
     };
 
     const subscription =
-      Notifications.addNotificationResponseReceivedListener(openTransmission);
-    void Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (response) openTransmission(response);
-    });
+      Notifications.addNotificationResponseReceivedListener((response) =>
+        handleNotificationResponse(response, handlers),
+      );
+    void handleLastNotificationResponse(
+      Notifications.getLastNotificationResponseAsync,
+      handlers,
+    );
     return () => subscription.remove();
   }, [router, setSelectedEngramId]);
 
