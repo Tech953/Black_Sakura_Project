@@ -262,6 +262,24 @@ function validateDuplicatePositions(issues: ValidationIssue[]) {
   }
 }
 
+export function validatePresenterNotes(
+  entries: ReadonlyArray<
+    Pick<SlideEntry, 'position' | 'title' | 'speakerNotes'>
+  >,
+): Array<ValidationIssue> {
+  return entries.flatMap((slide) =>
+    typeof slide.speakerNotes === 'string' && slide.speakerNotes.trim() !== ''
+      ? []
+      : [
+          {
+            message:
+              `Missing or blank presenter notes for slide ${slide.position} ` +
+              `"${slide.title}"`,
+          },
+        ],
+  );
+}
+
 function validateDuplicateIds(issues: ValidationIssue[]) {
   const ids = new Map<string, string[]>();
   for (const slide of slides) {
@@ -490,6 +508,7 @@ async function main() {
   }
 
   slides = parsedManifest.entries;
+  issues.push(...validatePresenterNotes(slides));
   if (mode === 'fix') {
     repairs.push(...pendingSdmRepairs());
     applyRepairs(repairs);
