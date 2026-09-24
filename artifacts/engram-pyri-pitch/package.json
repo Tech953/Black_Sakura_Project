@@ -9,6 +9,7 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "validate-slides": "pnpm exec tsx scripts/validate-slides.ts",
     "optimize-pptx": "pnpm exec tsx scripts/optimize-pptx.ts",
+    "generate-handout": "bash scripts/generate-investor-handout.sh",
     "test": "node --import tsx --test scripts/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

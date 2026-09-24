@@ -98,3 +98,17 @@ mtime_ms = 1789311973710
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:d8d76f30-60ca-487c-b77f-ebf37ab48c82/7e94f7f1-887c-406a-bf6d-d39b02b0cc51/d604f1ed-e8d4-456e-899c-308af5c6c16b"
 storage_version_token = "1789311998481096"
 content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+[[outputs]]
+id = "c7ouTTBlfiu-bVWTQzbC7"
+uri = "file://.local/outputs/ENGRAM-PYRI-Investor-Handout.pdf"
+type = "pdf"
+title = "ENGRAM // PYRI Investor Handout (PDF)"
+description = "A verified one-page investor overview to accompany the full 30-slide pitch deck PDF and PowerPoint."
+logical_id = "d3eea7f4-781e-4b76-aaf3-65a465cb1434"
+content_hash = "sha256:483a9fe43c29dd5a8aef43c1d3b831f1db04cb9d1103eb5c57fb31f42c36fab9"
+size = 333526
+mtime_ms = 1790281255031
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:d8d76f30-60ca-487c-b77f-ebf37ab48c82/d3eea7f4-781e-4b76-aaf3-65a465cb1434/c9d7b852-ccb6-4a78-92ed-221cd648d7d4"
+storage_version_token = "1790281301715955"
+content_type = "application/pdf"
