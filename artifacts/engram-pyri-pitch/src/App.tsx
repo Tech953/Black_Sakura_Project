@@ -40,6 +40,17 @@ function SlideEditor() {
   const touchHandledRefStable = useRef(false);
 
   useEffect(() => {
+    if (currentIndex < 0 || window.parent === window) return;
+    window.parent.postMessage(
+      {
+        type: 'engramPresenterSlideChanged',
+        position: slides[currentIndex].position,
+      },
+      '*',
+    );
+  }, [currentIndex]);
+
+  useEffect(() => {
     if (currentIndex === -1) return;
 
     const INTERACTIVE =
@@ -231,16 +242,21 @@ function AllSlides() {
 // This component is used for the deployed view at `/`
 function SlideViewer() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [dims, setDims] = useState(() => ({
-    width: Math.min(window.innerWidth, window.innerHeight * (16 / 9)),
-    height: Math.min(window.innerHeight, window.innerWidth * (9 / 16)),
+  const firstPosition = slides.length > 0 ? slides[0].position : 1;
+  const [viewport, setViewport] = useState(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
   }));
+  const [currentPosition, setCurrentPosition] = useState(firstPosition);
+  const [showNotes, setShowNotes] = useState(false);
+  const presenterControlsAvailable =
+    import.meta.env.DEV || window.self !== window.top;
 
   useEffect(() => {
     const update = () => {
-      setDims({
-        width: Math.min(window.innerWidth, window.innerHeight * (16 / 9)),
-        height: Math.min(window.innerHeight, window.innerWidth * (9 / 16)),
+      setViewport({
+        width: window.innerWidth,
+        height: window.innerHeight,
       });
     };
     window.addEventListener('resize', update);
@@ -248,7 +264,29 @@ function SlideViewer() {
   }, []);
 
   useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (
+        event.source !== iframeRef.current?.contentWindow ||
+        event.data?.type !== 'engramPresenterSlideChanged' ||
+        typeof event.data.position !== 'number' ||
+        !slides.some((slide) => slide.position === event.data.position)
+      ) {
+        return;
+      }
+      setCurrentPosition(event.data.position);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest('[data-presenter-notes]')
+      ) {
+        return;
+      }
       if (
         event.key !== 'ArrowLeft' &&
         event.key !== 'ArrowRight' &&
@@ -270,21 +308,93 @@ function SlideViewer() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  const notesPanelWidth = Math.min(360, Math.max(260, viewport.width * 0.3));
+  const horizontalSpace = showNotes
+    ? viewport.width > 720
+      ? notesPanelWidth + 68
+      : 24
+    : 0;
+  const maxSlideHeight =
+    showNotes && viewport.width <= 720 ? viewport.height * 0.52 : viewport.height;
+  const slideWidth = Math.min(
+    Math.max(1, viewport.width - horizontalSpace),
+    maxSlideHeight * (16 / 9),
+  );
+  const dims = { width: slideWidth, height: slideWidth * (9 / 16) };
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-  const firstPosition = slides.length > 0 ? slides[0].position : 1;
+  const currentSlide =
+    slides.find((slide) => slide.position === currentPosition) ?? slides[0];
 
   return (
     <div
-      className="slide-viewer h-screen w-screen overflow-hidden bg-black flex items-center justify-center"
-      onClick={() => iframeRef.current?.focus()}
+      className={`slide-viewer presenter-viewer h-screen w-screen overflow-hidden bg-black flex items-center justify-center${showNotes ? ' presenter-viewer--with-notes' : ''}`}
+      onClick={(event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest('[data-presenter-notes]')
+        ) {
+          return;
+        }
+        iframeRef.current?.focus();
+      }}
     >
-      <iframe
-        ref={iframeRef}
-        src={`${base}/slide${firstPosition}?replitMotion=1`}
-        style={{ width: dims.width, height: dims.height, border: 'none' }}
-        onLoad={() => iframeRef.current?.focus()}
-        title="Slide viewer"
-      />
+      <div
+        className="presenter-slide-frame"
+        style={{ width: dims.width, height: dims.height }}
+      >
+        <iframe
+          ref={iframeRef}
+          src={`${base}/slide${firstPosition}?replitMotion=1`}
+          style={{ width: dims.width, height: dims.height, border: 'none' }}
+          onLoad={() => iframeRef.current?.focus()}
+          title="Slide viewer"
+        />
+      </div>
+      {showNotes && currentSlide ? (
+        <aside
+          className="presenter-notes-panel"
+          data-presenter-notes
+          aria-label="Presenter notes"
+          aria-live="polite"
+        >
+          <div className="presenter-notes-heading">
+            <div>
+              <div className="presenter-notes-kicker">Presenter / Notes</div>
+              <div className="presenter-notes-position">
+                Slide {String(currentSlide.position).padStart(2, '0')} /{' '}
+                {String(slides.length).padStart(2, '0')}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="presenter-notes-close"
+              aria-label="Hide presenter notes"
+              onClick={() => setShowNotes(false)}
+            >
+              ×
+            </button>
+          </div>
+          <h2 className="presenter-notes-title">{currentSlide.title}</h2>
+          <div className="presenter-notes-copy">
+            {currentSlide.speakerNotes?.trim() ||
+              'No presenter notes are available for this slide.'}
+          </div>
+          <div className="presenter-notes-foot">
+            NOTES FOLLOW THE ACTIVE SLIDE
+          </div>
+        </aside>
+      ) : null}
+      {presenterControlsAvailable && !showNotes ? (
+        <button
+          type="button"
+          className="presenter-notes-toggle"
+          data-presenter-notes
+          aria-expanded={showNotes}
+          onClick={() => setShowNotes(true)}
+        >
+          PRESENTER NOTES
+        </button>
+      ) : null}
     </div>
   );
 }
