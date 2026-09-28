@@ -839,6 +839,7 @@ export async function createConversation(opts: {
     engramId: opts.engramId ?? undefined,
     engramIds: opts.engramId != null ? [opts.engramId] : [],
     groupContinuationMode: opts.groupContinuationMode ?? "off",
+    groupContinuationRevision: 0,
     createdAt: t,
     archivedAt: null,
   };
@@ -866,6 +867,7 @@ export async function getConversation(
       typeof conv.customEngram === "string" ? conv.customEngram : undefined,
     engramId: typeof conv.engramId === "number" ? conv.engramId : undefined,
     engramIds: typeof conv.engramId === "number" ? [conv.engramId] : [],
+    groupContinuationRevision: 0,
     archivedAt: typeof conv.archivedAt === "string" ? conv.archivedAt : null,
     messages: msgs,
   };
@@ -897,6 +899,7 @@ export async function listConversations(
       typeof conv.customEngram === "string" ? conv.customEngram : undefined,
     engramId: typeof conv.engramId === "number" ? conv.engramId : undefined,
     engramIds: typeof conv.engramId === "number" ? [conv.engramId] : [],
+    groupContinuationRevision: 0,
     archivedAt: typeof conv.archivedAt === "string" ? conv.archivedAt : null,
   }));
 }

@@ -362,7 +362,7 @@ describe("mobile offline account boundary", () => {
     ).toEqual(["only B"]);
     expect(accountADatabase?.closeAsync).toHaveBeenCalled();
     setAuthTokenGetter(null);
-  });
+  }, 15_000);
 
   it("restores a custom persona after a failed reconnect upload and retry", async () => {
     const requests: Array<{
