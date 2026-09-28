@@ -16,6 +16,7 @@ vi.hoisted(() => {
   delete process.env.PGLITE_DATA_DIR;
 });
 
+
 import {
   accountsTable,
   closeDb,
@@ -41,6 +42,10 @@ import {
   FULL_REZZ_SLUG,
   fullRezzTranscript,
 } from "@workspace/db/seed/full-rezz-data";
+import {
+  LIVE_FULL_REZZ_CONVERSATION_TITLE,
+  LIVE_FULL_REZZ_SLUG,
+} from "@workspace/db/seed/full-rezz-live-data";
 import { and, eq } from "drizzle-orm";
 import { ensureAccountBootstrap } from "../lib/account-bootstrap";
 import { loadRecentWorldModel } from "../lib/world-model-store";
@@ -271,6 +276,7 @@ describe("Rebecca source authority with account ownership", () => {
   it("backfills Full Rezz for an account created before the archive was seeded", async () => {
     await seedAndBootstrap("owner-a");
     await seedFullRezzArchive(db);
+    await seedAll(db);
 
     await expect(ensureAccountBootstrap("owner-a")).resolves.toBeUndefined();
 
@@ -297,5 +303,128 @@ describe("Rebecca source authority with account ownership", () => {
         ),
       );
     expect(accountConversations).toHaveLength(1);
+
+    const [accountLive] = await db
+      .select()
+      .from(engramsTable)
+      .where(
+        and(
+          eq(engramsTable.ownerId, "owner-a"),
+          eq(engramsTable.slug, LIVE_FULL_REZZ_SLUG),
+        ),
+      );
+    expect(accountLive).toMatchObject({
+      name: "Rebecca (Full Rezz · Live)",
+      isArchival: false,
+      autonomyEnabled: false,
+      humanContactEnabled: false,
+      simulationEnabled: false,
+    });
+    const liveConversations = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.engramId, accountLive!.id));
+    expect(liveConversations).toHaveLength(1);
+    expect(liveConversations[0]).toMatchObject({
+      title: LIVE_FULL_REZZ_CONVERSATION_TITLE,
+      personaName: "Rebecca (Full Rezz · Live)",
+    });
+    const liveMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, liveConversations[0]!.id))
+      .orderBy(messages.createdAt, messages.id);
+    expect(liveMessages).toHaveLength(fullRezzTranscript.length);
+    expect(liveMessages[0]).toMatchObject({
+      role: fullRezzTranscript[0]!.role,
+      content: fullRezzTranscript[0]!.content,
+    });
+    expect(liveMessages.at(-1)).toMatchObject({
+      role: fullRezzTranscript.at(-1)!.role,
+      content: fullRezzTranscript.at(-1)!.content,
+    });
+  });
+
+  it("gives each account a writable Full Rezz continuation without changing its archive", async () => {
+    await seedAll(db);
+    await ensureAccountBootstrap("owner-a");
+    await ensureAccountBootstrap("owner-b");
+
+    const [liveA] = await db
+      .select()
+      .from(engramsTable)
+      .where(
+        and(
+          eq(engramsTable.ownerId, "owner-a"),
+          eq(engramsTable.slug, LIVE_FULL_REZZ_SLUG),
+        ),
+      );
+    const [liveB] = await db
+      .select()
+      .from(engramsTable)
+      .where(
+        and(
+          eq(engramsTable.ownerId, "owner-b"),
+          eq(engramsTable.slug, LIVE_FULL_REZZ_SLUG),
+        ),
+      );
+    expect(liveA).toBeDefined();
+    expect(liveB).toBeDefined();
+    expect(liveA!.id).not.toBe(liveB!.id);
+    expect(liveA!.isArchival).toBe(false);
+    expect(liveB!.isArchival).toBe(false);
+
+    const [archiveA] = await db
+      .select()
+      .from(engramsTable)
+      .where(
+        and(
+          eq(engramsTable.ownerId, "owner-a"),
+          eq(engramsTable.slug, FULL_REZZ_SLUG),
+        ),
+      );
+    const [archiveConversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.engramId, archiveA!.id));
+    const originalArchiveMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, archiveConversation!.id))
+      .orderBy(messages.createdAt, messages.id);
+
+    const [liveConversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.engramId, liveA!.id));
+    await db.insert(messages).values({
+      conversationId: liveConversation!.id,
+      role: "user",
+      content: "I would like to speak with you.",
+    });
+
+    const updatedLiveMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, liveConversation!.id));
+    expect(updatedLiveMessages).toHaveLength(fullRezzTranscript.length + 1);
+    expect(
+      await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, archiveConversation!.id))
+        .orderBy(messages.createdAt, messages.id),
+    ).toEqual(originalArchiveMessages);
+
+    const [liveBConversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.engramId, liveB!.id));
+    expect(
+      await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, liveBConversation!.id)),
+    ).toHaveLength(fullRezzTranscript.length);
   });
 });

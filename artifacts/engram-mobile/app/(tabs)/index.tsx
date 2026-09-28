@@ -17,10 +17,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EngramCard } from "@/components/engram-card";
 import { EmptyState } from "@/components/ui";
-import { useEngram } from "@/context/engram-context";
-import { useColors } from "@/hooks/useColors";
 import {
-  getListEngramsQueryKey,
+  getEngramListModeQueryKey,
+  useEngram,
+} from "@/context/engram-context";
+import { useColors } from "@/hooks/useColors";
+import { useOfflineMode } from "@/lib/offline/mode";
+import {
   useActivateEngram,
   useListEngrams,
 } from "@workspace/api-client-react";
@@ -33,8 +36,11 @@ export default function EngramsScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { selectedEngramId, setSelectedEngramId } = useEngram();
+  const offlineActive = useOfflineMode();
   const { data: engrams, isLoading, isError, refetch, isRefetching } =
-    useListEngrams();
+    useListEngrams({
+      query: { queryKey: getEngramListModeQueryKey(offlineActive) },
+    });
   const activate = useActivateEngram();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -44,16 +50,28 @@ export default function EngramsScreen() {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
-      setSelectedEngramId(id);
-      try {
-        await activate.mutateAsync({ id });
-        queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
-      } catch {
-        // selection is local even if activate fails
+      const selected = engrams?.find((engram) => engram.id === id);
+      setSelectedEngramId(id, selected?.slug);
+      if (selected?.isArchival !== true) {
+        try {
+          await activate.mutateAsync({ id });
+          queryClient.invalidateQueries({
+            queryKey: getEngramListModeQueryKey(offlineActive),
+          });
+        } catch {
+          // selection is local even if activation fails
+        }
       }
       router.push(`/engram/${id}`);
     },
-    [activate, queryClient, router, setSelectedEngramId],
+    [
+      activate,
+      engrams,
+      offlineActive,
+      queryClient,
+      router,
+      setSelectedEngramId,
+    ],
   );
 
   return (
@@ -125,7 +143,15 @@ export default function EngramsScreen() {
         </View>
       ) : (
         <FlatList
-          data={engrams ?? []}
+          data={[...(engrams ?? [])].sort((a, b) => {
+            const rank = (slug: string) =>
+              slug === "rebecca-full-rezz-live"
+                ? 0
+                : slug === "rebecca-full-rezz"
+                  ? 1
+                  : 2;
+            return rank(a.slug) - rank(b.slug);
+          })}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           scrollEnabled={!!engrams && engrams.length > 0}

@@ -5,6 +5,7 @@
  * ENGRAM AI Persona Framework API
  * OpenAPI spec version: 0.1.0
  */
+import type { OfflineSyncConversationSeedKey } from './offlineSyncConversationSeedKey';
 import type { OfflineSyncMessage } from './offlineSyncMessage';
 
 export interface OfflineSyncConversation {
@@ -41,6 +42,7 @@ export interface OfflineSyncConversation {
   createdAt: Date;
   /** @nullable */
   archivedAt?: Date | null;
+  seedKey?: OfflineSyncConversationSeedKey;
   /** @maxItems 100 */
   messages: OfflineSyncMessage[];
 }

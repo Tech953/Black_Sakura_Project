@@ -113,6 +113,7 @@ export const SyncOfflineHistoryBody = zod.object({
   "customEngram": zod.string().max(syncOfflineHistoryBodyConversationsItemCustomEngramMax).nullish(),
   "createdAt": zod.coerce.date(),
   "archivedAt": zod.coerce.date().nullish(),
+  "seedKey": zod.enum(['rebecca-full-rezz-live-v1']).optional(),
   "messages": zod.array(zod.object({
   "syncId": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemMessagesItemSyncIdMax),
   "role": zod.enum(['user', 'assistant']),

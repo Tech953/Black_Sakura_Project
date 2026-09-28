@@ -16,6 +16,7 @@ import { TransmissionCard } from "@/components/transmission-card";
 import { EmptyState, IconButton, PrimaryButton } from "@/components/ui";
 import { useEngram } from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
+import { useOfflineMode } from "@/lib/offline/mode";
 import {
   markSeenRequest,
   unseenTransmissionIds,
@@ -36,14 +37,26 @@ export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { selectedEngramId } = useEngram();
+  const offlineActive = useOfflineMode();
+  const modeScope = offlineActive ? "offline-selection" : "online-selection";
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const engramId = selectedEngramId ?? 0;
   const enabled = selectedEngramId != null;
 
   const { data: engram } = useGetEngram(engramId, {
-    query: { enabled, queryKey: getGetEngramQueryKey(engramId) },
+    query: {
+      enabled,
+      queryKey: [
+        ...getGetEngramQueryKey(engramId),
+        modeScope,
+      ],
+    },
   });
+  const transmissionsQueryKey = [
+    ...getListEngramTransmissionsQueryKey(engramId),
+    modeScope,
+  ] as const;
   const {
     data: transmissions,
     isLoading,
@@ -55,7 +68,7 @@ export default function FeedScreen() {
       query: {
         enabled,
         refetchInterval: 5000,
-        queryKey: getListEngramTransmissionsQueryKey(engramId),
+        queryKey: transmissionsQueryKey,
       },
     },
   );
@@ -71,12 +84,12 @@ export default function FeedScreen() {
       .mutateAsync(markSeenRequest(engramId, unseenIds))
       .then(() =>
         queryClient.invalidateQueries({
-          queryKey: getListEngramTransmissionsQueryKey(engramId),
+          queryKey: transmissionsQueryKey,
         }),
       )
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unseenIds.join(",")]);
+  }, [engramId, offlineActive, unseenIds.join(",")]);
 
   const onPulse = useCallback(async () => {
     if (!enabled) return;
@@ -87,12 +100,12 @@ export default function FeedScreen() {
     try {
       await transmit.mutateAsync({ id: engramId });
       queryClient.invalidateQueries({
-        queryKey: getListEngramTransmissionsQueryKey(engramId),
+        queryKey: transmissionsQueryKey,
       });
     } catch {
       setPulseFailed(true);
     }
-  }, [enabled, engramId, queryClient, transmit]);
+  }, [enabled, engramId, modeScope, queryClient, transmit]);
 
   if (!enabled) {
     return (
