@@ -10,7 +10,9 @@ import {
   DEFAULT_ENGLISH_LOCALE_DIR,
   DEFAULT_GENERATED_LOCALE_DIR,
   diffKeyTrees,
+  findEnglishFallbackKeys,
   loadEnglish,
+  TRACKED_MOBILE_FALLBACK_KEYS,
   type KeyTreeDiff,
   type Tree,
 } from "./locale-key-tree.js";
@@ -19,6 +21,7 @@ interface LocaleFailure {
   code: string;
   error?: string;
   diff?: KeyTreeDiff;
+  englishFallbacks?: string[];
 }
 
 const englishDir =
@@ -44,12 +47,18 @@ for (const language of targets) {
       Tree
     >;
     const diff = diffKeyTrees(english, generated);
+    const englishFallbacks = findEnglishFallbackKeys(
+      english.mobile,
+      generated.mobile,
+      TRACKED_MOBILE_FALLBACK_KEYS,
+    );
     if (
       diff.missing.length > 0 ||
       diff.extra.length > 0 ||
-      diff.typeMismatches.length > 0
+      diff.typeMismatches.length > 0 ||
+      englishFallbacks.length > 0
     ) {
-      failures.push({ code: language.code, diff });
+      failures.push({ code: language.code, diff, englishFallbacks });
     }
   } catch (error) {
     failures.push({
@@ -62,7 +71,9 @@ for (const language of targets) {
 }
 
 if (failures.length > 0) {
-  console.error("Generated locale keys do not match the English source tree.");
+  console.error(
+    "Generated locales have structural differences or tracked English fallbacks.",
+  );
   for (const failure of failures) {
     console.error(`\n[${failure.code}]`);
     if (failure.error) console.error(`  ERROR: ${failure.error}`);
@@ -74,6 +85,9 @@ if (failures.length > 0) {
     }
     for (const mismatch of failure.diff?.typeMismatches ?? []) {
       console.error(`  TYPE: ${mismatch}`);
+    }
+    for (const key of failure.englishFallbacks ?? []) {
+      console.error(`  ENGLISH FALLBACK: mobile.${key}`);
     }
     console.error(
       `  Fix: pnpm --filter @workspace/scripts run generate:locales ${failure.code}`,
