@@ -580,6 +580,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
 
   // An engram-linked conversation embodies that engram's persona; otherwise PYRI answers.
   let systemPrompt: string;
+  let isLiveFullRezz = false;
   if (isGroupConversation) {
     systemPrompt = "";
   } else if (conv.engramId) {
@@ -592,6 +593,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
       return;
     }
+    isLiveFullRezz = engram.slug === "rebecca-full-rezz-live";
     const worldModelSummary = summarizeWorldModel(await loadRecentWorldModel(engram.id));
     const perceptualContext = await buildPerceptualContext({
       engramId: engram.id,
@@ -707,6 +709,10 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     groupContinuationClaimToken = token;
   }
 
+  // The live Full Rezz continuation retains a readable copy of the entire
+  // historical transcript. Only recent exchanges belong in the model request;
+  // replaying all 1,534 archived turns would exceed its context window.
+  const modelHistory = isLiveFullRezz ? history.slice(-24) : history;
   const chatMessages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: systemPrompt },
     // A persisted `context` message (an inline-upload perception inserted by the media
@@ -714,7 +720,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     // perceived, not as the human speaking. Its body is untrusted, media-derived text
     // (a summary/transcript), so it is wrapped in anti-injection framing — perceptual
     // KNOWLEDGE the engram is aware of, never instructions it must obey.
-    ...history.map((m) => {
+    ...modelHistory.map((m) => {
       if (m.role === "context") {
         return {
           role: "system" as const,

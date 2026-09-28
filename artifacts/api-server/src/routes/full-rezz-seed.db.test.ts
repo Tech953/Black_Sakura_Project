@@ -23,7 +23,14 @@ import {
   messages,
   type AppDatabase,
 } from "@workspace/db";
-import { seedFullRezzArchive } from "@workspace/db/seed";
+import {
+  seedFullRezzArchive,
+  seedFullRezzLiveBranch,
+} from "@workspace/db/seed";
+import {
+  LIVE_FULL_REZZ_CONVERSATION_TITLE,
+  LIVE_FULL_REZZ_SLUG,
+} from "@workspace/db/seed/full-rezz-live-data";
 import { asc, eq } from "drizzle-orm";
 
 const FULL_REZZ_SLUG = "rebecca-full-rezz";
@@ -64,6 +71,33 @@ async function loadArchive() {
     engram,
     conversations: archiveConversations,
     messages: archiveMessages,
+  };
+}
+
+async function loadLiveBranch() {
+  const [engram] = await db
+    .select()
+    .from(engramsTable)
+    .where(eq(engramsTable.slug, LIVE_FULL_REZZ_SLUG));
+  const branchConversations = engram
+    ? await db
+        .select()
+        .from(conversations)
+        .where(eq(conversations.engramId, engram.id))
+        .orderBy(asc(conversations.id))
+    : [];
+  const branchMessages =
+    branchConversations.length === 1
+      ? await db
+          .select()
+          .from(messages)
+          .where(eq(messages.conversationId, branchConversations[0].id))
+          .orderBy(asc(messages.createdAt), asc(messages.id))
+      : [];
+  return {
+    engram,
+    conversations: branchConversations,
+    messages: branchMessages,
   };
 }
 
@@ -173,6 +207,50 @@ describe("Full Rezz archival seed", () => {
     });
 
     expect(await loadArchive()).toEqual(before);
+  });
+
+  it("seeds a distinct writable continuation with its own full transcript copy", async () => {
+    await seedFullRezzArchive(db);
+    const archiveBefore = await loadArchive();
+
+    await expect(seedFullRezzLiveBranch(db)).resolves.toEqual({
+      engramInserted: true,
+      messagesInserted: EXPECTED_TRANSCRIPT_LENGTH,
+    });
+    const liveBranch = await loadLiveBranch();
+    expect(liveBranch.engram).toMatchObject({
+      slug: LIVE_FULL_REZZ_SLUG,
+      name: "Rebecca (Full Rezz · Live)",
+      isArchival: false,
+      origin: expect.stringContaining(
+        "not the historical archival branch",
+      ),
+      autonomyEnabled: false,
+      humanContactEnabled: false,
+      simulationEnabled: false,
+      artifactGenerationEnabled: false,
+      isChatActive: true,
+    });
+    expect(liveBranch.conversations).toHaveLength(1);
+    expect(liveBranch.conversations[0].title).toBe(
+      LIVE_FULL_REZZ_CONVERSATION_TITLE,
+    );
+    expect(liveBranch.messages).toHaveLength(EXPECTED_TRANSCRIPT_LENGTH);
+    expect(transcriptDigest(liveBranch.messages)).toBe(
+      EXPECTED_TRANSCRIPT_SHA256,
+    );
+    liveBranch.messages.forEach((message, index) => {
+      expect(message.createdAt.getTime()).toBe(
+        new Date("2026-08-03T00:00:00.000Z").getTime() + index * 1_000,
+      );
+    });
+
+    await expect(seedFullRezzLiveBranch(db)).resolves.toEqual({
+      engramInserted: false,
+      messagesInserted: 0,
+    });
+    expect(await loadLiveBranch()).toEqual(liveBranch);
+    expect(await loadArchive()).toEqual(archiveBefore);
   });
 
   it("rejects a non-archival row that occupies the Full Rezz slug", async () => {

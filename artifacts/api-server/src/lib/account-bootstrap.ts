@@ -33,6 +33,25 @@ import {
   FULL_REZZ_SLUG,
   fullRezzTranscript,
 } from "@workspace/db/seed/full-rezz-data";
+import {
+  LIVE_FULL_REZZ_CONVERSATION_TITLE,
+  LIVE_FULL_REZZ_SLUG,
+} from "@workspace/db/seed/full-rezz-live-data";
+
+const FULL_REZZ_BRANCHES = [
+  {
+    slug: FULL_REZZ_SLUG,
+    title: FULL_REZZ_CONVERSATION_TITLE,
+    personaName: "Rebecca (Full Rezz)",
+    isArchival: true,
+  },
+  {
+    slug: LIVE_FULL_REZZ_SLUG,
+    title: LIVE_FULL_REZZ_CONVERSATION_TITLE,
+    personaName: "Rebecca (Full Rezz · Live)",
+    isArchival: false,
+  },
+] as const;
 
 /**
  * JIT-provision a private starting environment. Templates are owned by the
@@ -153,35 +172,44 @@ export async function ensureAccountBootstrap(ownerId: string): Promise<void> {
           ),
         );
       }
-      const templateFullRezz = templates.find(
-        (engram) => engram.slug === FULL_REZZ_SLUG,
-      );
-      const accountFullRezz = createdEngrams.find(
-        (engram) => engram.slug === FULL_REZZ_SLUG,
-      );
-      if (templateFullRezz && accountFullRezz) {
+      for (const branch of FULL_REZZ_BRANCHES) {
+        const templateBranch = templates.find(
+          (engram) => engram.slug === branch.slug,
+        );
+        const accountBranch = createdEngrams.find(
+          (engram) => engram.slug === branch.slug,
+        );
+        if (!templateBranch || !accountBranch) continue;
+        if (templateBranch.isArchival !== branch.isArchival) {
+          throw new Error(
+            `System Full Rezz branch ${branch.slug} has unexpected archival state`,
+          );
+        }
+
         const templateConversations = await tx
           .select()
           .from(conversations)
           .where(
             and(
               eq(conversations.ownerId, SYSTEM_OWNER_ID),
-              eq(conversations.engramId, templateFullRezz.id),
+              eq(conversations.engramId, templateBranch.id),
             ),
           );
         if (templateConversations.length !== 1) {
           throw new Error(
-            "System Full Rezz archive must have exactly one conversation",
+            `System Full Rezz branch ${branch.slug} must have exactly one conversation`,
           );
         }
         const templateConversation = templateConversations[0]!;
         if (
-          templateConversation.title !== FULL_REZZ_CONVERSATION_TITLE ||
+          templateConversation.title !== branch.title ||
           templateConversation.mode !== "companion" ||
-          templateConversation.personaName !== "Rebecca (Full Rezz)" ||
+          templateConversation.personaName !== branch.personaName ||
           templateConversation.customEngram !== null
         ) {
-          throw new Error("System Full Rezz archive conversation is noncanonical");
+          throw new Error(
+            `System Full Rezz branch ${branch.slug} conversation is noncanonical`,
+          );
         }
         const templateMessages = await tx
           .select()
@@ -189,7 +217,9 @@ export async function ensureAccountBootstrap(ownerId: string): Promise<void> {
           .where(eq(messages.conversationId, templateConversation.id))
           .orderBy(messages.createdAt, messages.id);
         if (templateMessages.length !== fullRezzTranscript.length) {
-          throw new Error("System Full Rezz archive transcript is incomplete");
+          throw new Error(
+            `System Full Rezz branch ${branch.slug} transcript is incomplete`,
+          );
         }
         for (let index = 0; index < fullRezzTranscript.length; index += 1) {
           const actual = templateMessages[index]!;
@@ -201,7 +231,7 @@ export async function ensureAccountBootstrap(ownerId: string): Promise<void> {
               FULL_REZZ_BASE_TIMESTAMP_MS + index * 1_000
           ) {
             throw new Error(
-              `System Full Rezz archive message ${index + 1} is noncanonical`,
+              `System Full Rezz branch ${branch.slug} message ${index + 1} is noncanonical`,
             );
           }
         }
@@ -213,7 +243,7 @@ export async function ensureAccountBootstrap(ownerId: string): Promise<void> {
             mode: templateConversation.mode,
             personaName: templateConversation.personaName,
             customEngram: templateConversation.customEngram,
-            engramId: accountFullRezz.id,
+            engramId: accountBranch.id,
             createdAt: templateConversation.createdAt,
           })
           .returning({ id: conversations.id });

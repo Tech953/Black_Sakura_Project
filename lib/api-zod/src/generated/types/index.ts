@@ -101,6 +101,7 @@ export * from './memoryInputLayer';
 export * from './memorySeed';
 export * from './movePresenceInput';
 export * from './offlineSyncConversation';
+export * from './offlineSyncConversationSeedKey';
 export * from './offlineSyncCounts';
 export * from './offlineSyncInput';
 export * from './offlineSyncInquiry';

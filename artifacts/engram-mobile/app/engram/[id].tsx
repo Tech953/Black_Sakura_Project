@@ -15,12 +15,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Glyph } from "@/components/glyph";
 import { Chip, MonoLabel, PrimaryButton, ScoreBar } from "@/components/ui";
-import { useEngram } from "@/context/engram-context";
+import {
+  getEngramListModeQueryKey,
+  useEngram,
+} from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
+import { useOfflineMode } from "@/lib/offline/mode";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetEngramQueryKey,
-  getListEngramsQueryKey,
   getListEngramWorldModelQueryKey,
   getListMediaQueryKey,
   useListBeliefs,
@@ -46,6 +49,7 @@ export default function EngramDetailScreen() {
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
+  const offlineActive = useOfflineMode();
   const { selectedEngramId, setSelectedEngramId } = useEngram();
   const { data: memories } = useListMemories();
   const { data: beliefs } = useListBeliefs();
@@ -78,20 +82,29 @@ export default function EngramDetailScreen() {
   );
 
   const { data: engram, isLoading, isError, refetch } = useGetEngram(id, {
-    query: { enabled: !Number.isNaN(id), queryKey: getGetEngramQueryKey(id) },
+    query: {
+      enabled: !Number.isNaN(id),
+      queryKey: [
+        ...getGetEngramQueryKey(id),
+        offlineActive ? "offline-selection" : "online-selection",
+      ],
+    },
   });
   const activate = useActivateEngram();
 
   const isActive = selectedEngramId === id;
 
   const onActivate = useCallback(async () => {
+    if (engram?.isArchival === true) return;
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
-    setSelectedEngramId(id);
+    setSelectedEngramId(id, engram?.slug);
     try {
       await activate.mutateAsync({ id });
-      void queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
+      void queryClient.invalidateQueries({
+        queryKey: getEngramListModeQueryKey(offlineActive),
+      });
       // Dismiss back to the root route rather than relying on the Android
       // back-stack shape. This also handles a detail screen opened by a link.
       router.dismissTo("/");
@@ -99,7 +112,21 @@ export default function EngramDetailScreen() {
       // Keep the detail screen mounted so a transient activation failure does
       // not look like an app crash or strand the user on a blank route.
     }
-  }, [activate, id, queryClient, router, setSelectedEngramId]);
+  }, [
+    activate,
+    engram?.isArchival,
+    engram?.slug,
+    id,
+    offlineActive,
+    queryClient,
+    router,
+    setSelectedEngramId,
+  ]);
+
+  const onOpenPreservedTranscript = useCallback(() => {
+    setSelectedEngramId(id, engram?.slug);
+    router.dismissTo("/(tabs)/chat");
+  }, [engram?.slug, id, router, setSelectedEngramId]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -158,6 +185,9 @@ export default function EngramDetailScreen() {
                 ) : (
                   <Chip label={t("detail.dormant")} tone="muted" />
                 )}
+                {engram.isArchival ? (
+                  <Chip label={t("chat.archived")} tone="muted" />
+                ) : null}
               </View>
             </View>
           </View>
@@ -364,10 +394,18 @@ export default function EngramDetailScreen() {
         >
           <PrimaryButton
             testID="activate-button"
-            label={isActive ? t("detail.activeEngram") : t("detail.makeActive")}
-            onPress={onActivate}
-            loading={activate.isPending}
-            disabled={isActive}
+            label={
+              engram.isArchival
+                ? t("chat.history")
+                : isActive
+                  ? t("detail.activeEngram")
+                  : t("detail.makeActive")
+            }
+            onPress={
+              engram.isArchival ? onOpenPreservedTranscript : onActivate
+            }
+            loading={!engram.isArchival && activate.isPending}
+            disabled={!engram.isArchival && isActive}
           />
         </View>
       ) : null}

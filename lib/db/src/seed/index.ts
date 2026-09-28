@@ -3,6 +3,7 @@ import { seedExpressions } from "./expressions";
 import { seedEngrams } from "./engrams";
 import { seedHub } from "./hub";
 import { seedFullRezzArchive } from "./full-rezz";
+import { seedFullRezzLiveBranch } from "./full-rezz-live";
 import {
   REBECCA_NARRATIVE_MEMORY_FACTS,
   REBECCA_NARRATIVE_MEMORY_NODES,
@@ -23,6 +24,7 @@ export {
   seedEngrams,
   seedHub,
   seedFullRezzArchive,
+  seedFullRezzLiveBranch,
   REBECCA_NARRATIVE_MEMORY_FACTS,
   REBECCA_NARRATIVE_MEMORY_NODES,
   seedRebeccaNarrativeMemories,
@@ -55,6 +57,7 @@ export async function seedAll(db: AppDatabase): Promise<{
   };
   hub: { spacesInserted: number; spacesTotal: number; placed: number };
   fullRezz: { engramInserted: boolean; messagesInserted: number };
+  fullRezzLive: { engramInserted: boolean; messagesInserted: number };
 }> {
   const expressions = await seedExpressions(db);
   const engrams = await seedEngrams(db);
@@ -62,6 +65,7 @@ export async function seedAll(db: AppDatabase): Promise<{
   const rebeccaAdaptiveProfile = await seedRebeccaAdaptiveProfile(db);
   const hub = await seedHub(db);
   const fullRezz = await seedFullRezzArchive(db);
+  const fullRezzLive = await seedFullRezzLiveBranch(db);
   return {
     expressions,
     engrams,
@@ -69,5 +73,6 @@ export async function seedAll(db: AppDatabase): Promise<{
     rebeccaAdaptiveProfile,
     hub,
     fullRezz,
+    fullRezzLive,
   };
 }

@@ -32,6 +32,13 @@ export interface OfflineSyncMessage {
   createdAt: string;
 }
 
+export type OfflineSyncConversationSeedKey = typeof OfflineSyncConversationSeedKey[keyof typeof OfflineSyncConversationSeedKey];
+
+
+export const OfflineSyncConversationSeedKey = {
+  'rebecca-full-rezz-live-v1': 'rebecca-full-rezz-live-v1',
+} as const;
+
 export interface OfflineSyncConversation {
   /**
      * @minLength 1
@@ -66,6 +73,7 @@ export interface OfflineSyncConversation {
   createdAt: string;
   /** @nullable */
   archivedAt?: string | null;
+  seedKey?: OfflineSyncConversationSeedKey;
   /** @maxItems 100 */
   messages: OfflineSyncMessage[];
 }

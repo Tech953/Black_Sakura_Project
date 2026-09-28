@@ -1799,6 +1799,9 @@ components:
         archivedAt:
           type: [string, "null"]
           format: date-time
+        seedKey:
+          type: string
+          enum: [rebecca-full-rezz-live-v1]
         messages:
           type: array
           maxItems: 100

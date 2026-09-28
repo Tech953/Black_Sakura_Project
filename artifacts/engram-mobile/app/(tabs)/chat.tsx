@@ -25,7 +25,10 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/ui";
-import { useEngram } from "@/context/engram-context";
+import {
+  getEngramListModeQueryKey,
+  useEngram,
+} from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
 import {
   getGetEngramQueryKey,
@@ -35,9 +38,13 @@ import {
   useCreateOpenaiConversation,
   useGetEngram,
   useGetOpenaiConversation,
+  useListEngrams,
   useListOpenaiConversations,
 } from "@workspace/api-client-react";
-import type { OpenaiConversation } from "@workspace/api-client-react";
+import type {
+  OpenaiConversation,
+  OpenaiConversationWithMessages,
+} from "@workspace/api-client-react";
 
 interface ChatMessage {
   id: string;
@@ -57,7 +64,10 @@ function uid(): string {
 
 import { isOfflineMode, useOfflineMode } from "@/lib/offline/mode";
 import { sendOfflineMessage } from "@/lib/offline/chat";
-import { getArchivalConversationId } from "@/lib/offline/store";
+import {
+  getArchivalConversationByEngramSlug,
+  getWritableConversationIdForEngramSlug,
+} from "@/lib/offline/store";
 import { resolveReplyLanguage } from "@/lib/i18n";
 import {
   consumeSseChunk,
@@ -86,6 +96,10 @@ import {
   buildWebChatExport,
   downloadWebChatExport,
 } from "@/lib/web-chat-export";
+
+// Keep this small identity check local: importing the data builder here would
+// eagerly pull the full transcript into the chat screen's module graph.
+const LIVE_FULL_REZZ_SLUG = "rebecca-full-rezz-live";
 
 const getE2eNativeChatExportDependencies = (): NativeChatExportDependencies | null => {
   if (
@@ -139,10 +153,21 @@ export default function ChatScreen() {
   const engramId = selectedEngramId ?? 0;
 
   const { data: engram } = useGetEngram(engramId, {
-    query: { enabled, queryKey: getGetEngramQueryKey(engramId) },
+    query: {
+      enabled,
+      queryKey: [
+        ...getGetEngramQueryKey(engramId),
+        offlineActive ? "offline-selection" : "online-selection",
+      ],
+    },
   });
 
   const [conversationId, setLocalConversationId] = useState<number | null>(null);
+  const [localArchivalConversation, setLocalArchivalConversation] =
+    useState<OpenaiConversationWithMessages | null>(null);
+  const [conversationResolutionError, setConversationResolutionError] =
+    useState<"archive" | "live" | "conversation" | null>(null);
+  const [resolutionRetry, setResolutionRetry] = useState(0);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -155,9 +180,27 @@ export default function ChatScreen() {
     useState<NativeChatExportFailureKind | null>(null);
   const inputRef = useRef<TextInput>(null);
   const initializedRef = useRef(false);
+  const lastConversationTargetRef = useRef<string | null>(null);
 
   const createConversation = useCreateOpenaiConversation();
   const archiveConversation = useArchiveOpenaiConversation();
+  const resolvingLiveFullRezz =
+    !offlineActive && engram?.slug === LIVE_FULL_REZZ_SLUG;
+  const {
+    data: liveFullRezzHistory,
+    isLoading: liveFullRezzHistoryLoading,
+    isFetching: liveFullRezzHistoryFetching,
+    isError: liveFullRezzHistoryError,
+    refetch: refetchLiveFullRezzHistory,
+  } = useListOpenaiConversations(
+    { archived: false },
+    {
+      query: {
+        enabled: resolvingLiveFullRezz,
+        queryKey: getListOpenaiConversationsQueryKey({ archived: false }),
+      },
+    },
+  );
   const { data: history, isLoading: historyLoading } =
     useListOpenaiConversations(
       { archived: showArchived },
@@ -170,27 +213,83 @@ export default function ChatScreen() {
         },
       },
     );
+  const { data: historyEngrams } = useListEngrams({
+    query: {
+      queryKey: getEngramListModeQueryKey(offlineActive),
+    },
+  });
 
   // Resolve / create the conversation for the selected engram.
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !engram) return;
     let canceled = false;
-    initializedRef.current = false;
-    setMessages([]);
-    const existing = getConversationId(engramId);
-    if (existing != null) {
-      setLocalConversationId(existing);
-      return;
+    const targetKey = `${engramId}:${offlineActive}:${engram.slug}:${Boolean(
+      engram.isArchival,
+    )}`;
+    if (lastConversationTargetRef.current !== targetKey) {
+      lastConversationTargetRef.current = targetKey;
+      initializedRef.current = false;
+      setMessages([]);
+      setLocalArchivalConversation(null);
+      setLocalConversationId(null);
     }
-    setLocalConversationId(null);
+    setConversationResolutionError(null);
+    if (
+      !offlineActive &&
+      engram.slug === LIVE_FULL_REZZ_SLUG &&
+      liveFullRezzHistoryFetching
+    ) {
+      return () => {
+        canceled = true;
+      };
+    }
     void (async () => {
+      if (engram.isArchival === true) {
+        const original = await getArchivalConversationByEngramSlug(engram.slug);
+        if (!original) {
+          throw new Error("The preserved transcript is not available locally.");
+        }
+        if (canceled) return;
+        setLocalArchivalConversation(
+          original as unknown as OpenaiConversationWithMessages,
+        );
+        setLocalConversationId(Number(original.id));
+        return;
+      }
+
       if (offlineActive) {
-        const archivalConversationId =
-          await getArchivalConversationId(engramId);
-        if (archivalConversationId != null) {
+        const existing =
+          engram.slug === LIVE_FULL_REZZ_SLUG
+            ? await getWritableConversationIdForEngramSlug(LIVE_FULL_REZZ_SLUG)
+            : getConversationId(engramId);
+        if (existing != null) {
           if (canceled) return;
-          setConversationId(engramId, archivalConversationId);
-          setLocalConversationId(archivalConversationId);
+          setConversationId(engramId, existing);
+          setLocalConversationId(existing);
+          return;
+        }
+        if (engram.slug === LIVE_FULL_REZZ_SLUG) {
+          throw new Error("The saved Full Rezz continuation is missing locally.");
+        }
+      } else if (engram.slug === LIVE_FULL_REZZ_SLUG) {
+        if (liveFullRezzHistoryLoading || liveFullRezzHistoryFetching) return;
+        if (liveFullRezzHistoryError) {
+          throw new Error("The saved Full Rezz continuation could not be loaded.");
+        }
+        const existing = liveFullRezzHistory?.find(
+          (item) => item.engramId === engramId && !item.archivedAt,
+        );
+        if (existing) {
+          if (canceled) return;
+          setConversationId(engramId, existing.id);
+          setLocalConversationId(existing.id);
+          return;
+        }
+        throw new Error("The saved Full Rezz continuation is missing.");
+      } else {
+        const existing = getConversationId(engramId);
+        if (existing != null) {
+          setLocalConversationId(existing);
           return;
         }
       }
@@ -207,19 +306,42 @@ export default function ChatScreen() {
       setConversationId(engramId, convo.id);
       setLocalConversationId(convo.id);
       initializedRef.current = true;
-    })().catch(() => {});
+    })().catch(() => {
+      if (canceled) return;
+      setConversationResolutionError(
+        engram.isArchival === true
+          ? "archive"
+          : engram.slug === LIVE_FULL_REZZ_SLUG
+            ? "live"
+            : "conversation",
+      );
+    });
     return () => {
       canceled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engramId, enabled, offlineActive]);
+  }, [
+    engramId,
+    enabled,
+    engram?.slug,
+    engram?.isArchival,
+    offlineActive,
+    liveFullRezzHistory,
+    liveFullRezzHistoryFetching,
+    liveFullRezzHistoryError,
+    resolutionRetry,
+  ]);
 
-  const { data: conversation } = useGetOpenaiConversation(conversationId ?? 0, {
+  const { data: remoteConversation } = useGetOpenaiConversation(conversationId ?? 0, {
     query: {
-      enabled: conversationId != null,
+      enabled: conversationId != null && engram?.isArchival !== true,
       queryKey: getGetOpenaiConversationQueryKey(conversationId ?? 0),
     },
   });
+  const conversation =
+    engram?.isArchival === true
+      ? localArchivalConversation
+      : remoteConversation;
 
   // Hydrate history once per conversation.
   useEffect(() => {
@@ -238,24 +360,85 @@ export default function ChatScreen() {
   }, [conversation?.messages]);
 
   const selectHistoryConversation = useCallback(
-    (selected: OpenaiConversation) => {
+    async (selected: OpenaiConversation) => {
+      const selectedEngram =
+        historyEngrams?.find((item) => item.id === selected.engramId) ??
+        (engram?.id === selected.engramId ? engram : undefined);
+      if (selected.engramId != null && !selectedEngram) return;
+      if (selectedEngram?.isArchival === true) {
+        setConversationResolutionError(null);
+        try {
+          const original = await getArchivalConversationByEngramSlug(
+            selectedEngram.slug,
+          );
+          if (!original) {
+            setConversationResolutionError("archive");
+            setHistoryOpen(false);
+            return;
+          }
+          const localConversation =
+            original as unknown as OpenaiConversationWithMessages;
+          initializedRef.current = true;
+          setMessages(
+            localConversation.messages.map((message) => ({
+              id: String(message.id),
+              role: message.role === "user" ? "user" : "assistant",
+              content: message.content,
+              createdAt: message.createdAt,
+              speakerEngramId: message.speakerEngramId,
+            })),
+          );
+          setLocalArchivalConversation(localConversation);
+          setLocalConversationId(Number(original.id));
+          setSelectedEngramId(
+            selected.engramId!,
+            historyEngrams?.find((item) => item.id === selected.engramId)
+              ?.slug,
+          );
+          setHistoryOpen(false);
+        } catch {
+          setConversationResolutionError("archive");
+          setHistoryOpen(false);
+        }
+        return;
+      }
+
       initializedRef.current = false;
       setMessages([]);
+      setLocalArchivalConversation(null);
       setLocalConversationId(selected.id);
       if (selected.engramId != null) {
         setConversationId(selected.engramId, selected.id);
-        setSelectedEngramId(selected.engramId);
+        setSelectedEngramId(
+          selected.engramId,
+          historyEngrams?.find((item) => item.id === selected.engramId)?.slug,
+        );
       }
+      setConversationResolutionError(null);
       setHistoryOpen(false);
       void queryClient.invalidateQueries({
         queryKey: getGetOpenaiConversationQueryKey(selected.id),
       });
     },
-    [queryClient, setConversationId, setSelectedEngramId],
+    [
+      engram,
+      historyEngrams,
+      queryClient,
+      setConversationId,
+      setSelectedEngramId,
+    ],
   );
 
   const handleArchiveConversation = useCallback(
-    async (selected: Pick<OpenaiConversation, "id">, archived = !showArchived) => {
+    async (
+      selected: Pick<OpenaiConversation, "id" | "engramId">,
+      archived = !showArchived,
+    ) => {
+      const selectedEngram =
+        historyEngrams?.find((item) => item.id === selected.engramId) ??
+        (engram?.id === selected.engramId ? engram : undefined);
+      if (selected.engramId != null && !selectedEngram) return;
+      if (selectedEngram?.isArchival === true) return;
       try {
         await archiveConversation.mutateAsync({
           id: selected.id,
@@ -276,7 +459,7 @@ export default function ChatScreen() {
         // Leave the history sheet open; the next refresh shows the unchanged state.
       }
     },
-    [archiveConversation, queryClient, showArchived],
+    [archiveConversation, engram, historyEngrams, queryClient, showArchived],
   );
 
   const handleExport = useCallback(
@@ -590,6 +773,18 @@ export default function ChatScreen() {
             )}
           </View>
         </View>
+        {engram?.title ? (
+          <Text
+            numberOfLines={2}
+            style={[
+              styles.branchTitle,
+              rtl && styles.rtlText,
+              { color: colors.mutedForeground },
+            ]}
+          >
+            {engram.title}
+          </Text>
+        ) : null}
         <Pressable
           accessibilityRole={serverMode === "custom" ? "button" : "text"}
           accessibilityLabel={
@@ -628,6 +823,34 @@ export default function ChatScreen() {
             <Feather name="chevron-right" size={13} color={colors.primary} />
           ) : null}
         </Pressable>
+        {conversationResolutionError ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("personas.retryConnection")}
+            testID="retry-conversation-resolution"
+            onPress={() => {
+              if (conversationResolutionError === "live" && !offlineActive) {
+                void refetchLiveFullRezzHistory();
+              }
+              setResolutionRetry((attempt) => attempt + 1);
+            }}
+            style={({ pressed }) => [
+              styles.resolutionError,
+              { borderColor: colors.border, opacity: pressed ? 0.65 : 1 },
+            ]}
+          >
+            <Feather name="refresh-cw" size={14} color={colors.destructive} />
+            <Text
+              style={[
+                styles.resolutionErrorText,
+                rtl && styles.rtlText,
+                { color: colors.destructive },
+              ]}
+            >
+              {t("chat.signalInterrupted")}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <KeyboardAvoidingView
@@ -733,7 +956,7 @@ export default function ChatScreen() {
             onChangeText={setInput}
             placeholder={t("chat.inputPlaceholder")}
             placeholderTextColor={colors.mutedForeground}
-            editable={!archivalReadOnly}
+            editable={!archivalReadOnly && conversationId != null}
             multiline
             maxLength={OFFLINE_LIMITS.maxInputChars}
             blurOnSubmit={false}
@@ -744,7 +967,8 @@ export default function ChatScreen() {
                 borderColor: colors.border,
                 color: colors.foreground,
                 borderRadius: colors.radius,
-                opacity: archivalReadOnly ? 0.6 : 1,
+                opacity:
+                  archivalReadOnly || conversationId == null ? 0.6 : 1,
                 writingDirection: rtl ? "rtl" : "ltr",
                 textAlign: rtl ? "right" : "left",
               },
@@ -757,7 +981,10 @@ export default function ChatScreen() {
               inputRef.current?.focus();
             }}
             disabled={
-              archivalReadOnly || isStreaming || input.trim().length === 0
+              archivalReadOnly ||
+              conversationId == null ||
+              isStreaming ||
+              input.trim().length === 0
             }
             style={({ pressed }) => [
               styles.send,
@@ -765,7 +992,10 @@ export default function ChatScreen() {
                 backgroundColor: colors.primary,
                 borderRadius: colors.radius,
                 opacity:
-                  archivalReadOnly || isStreaming || input.trim().length === 0
+                  archivalReadOnly ||
+                  conversationId == null ||
+                  isStreaming ||
+                  input.trim().length === 0
                     ? 0.4
                     : pressed
                       ? 0.8
@@ -862,22 +1092,29 @@ export default function ChatScreen() {
                         {new Date(item.createdAt).toLocaleDateString()}
                       </Text>
                     </Pressable>
-                    <Pressable
-                      accessibilityLabel={
-                        showArchived
-                          ? t("chat.restoreConversation")
-                          : t("chat.archiveConversation")
-                      }
-                      disabled={archiveConversation.isPending}
-                      onPress={() => void handleArchiveConversation(item)}
-                      style={styles.historyAction}
-                    >
-                      <Feather
-                        name={showArchived ? "archive" : "archive"}
-                        size={17}
-                        color={colors.primary}
-                      />
-                    </Pressable>
+                    {item.engramId == null ||
+                    historyEngrams?.some(
+                      (persona) =>
+                        persona.id === item.engramId &&
+                        persona.isArchival !== true,
+                    ) ? (
+                      <Pressable
+                        accessibilityLabel={
+                          showArchived
+                            ? t("chat.restoreConversation")
+                            : t("chat.archiveConversation")
+                        }
+                        disabled={archiveConversation.isPending}
+                        onPress={() => void handleArchiveConversation(item)}
+                        style={styles.historyAction}
+                      >
+                        <Feather
+                          name="archive"
+                          size={17}
+                          color={colors.primary}
+                        />
+                      </Pressable>
+                    ) : null}
                   </View>
                 ))
               ) : (
@@ -1022,11 +1259,32 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     maxWidth: "100%",
   },
+  branchTitle: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    lineHeight: 17,
+  },
   connectionIndicatorText: {
     fontFamily: "JetBrainsMono_500Medium",
     fontSize: 10,
     letterSpacing: 0.4,
     textTransform: "uppercase",
+  },
+  resolutionError: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  resolutionErrorText: {
+    flex: 1,
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    lineHeight: 17,
   },
   headerButton: {
     width: 34,

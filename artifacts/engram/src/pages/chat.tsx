@@ -946,10 +946,12 @@ export default function Chat() {
                       <span className="text-primary/60 text-sm mt-0.5">{modeGlyph}</span>
                       <span className="min-w-0 flex-1">
                         <span className={`block font-mono text-xs truncate ${activeId === c.id ? "text-primary" : "text-foreground/80"}`}>{c.title}</span>
-                        <span className="block font-mono text-[9px] text-muted-foreground/50 uppercase mt-0.5 truncate">{modeLabel}</span>
+                        <span className="block font-mono text-[9px] text-muted-foreground/50 uppercase mt-0.5 truncate">
+                          {modeLabel}{listEngram?.isArchival ? ` · ${t("common:archivalBadge")}` : ""}
+                        </span>
                       </span>
                     </button>
-                    <div className="flex shrink-0 items-center gap-0.5">
+                    {!listEngram?.isArchival && <div className="flex shrink-0 items-center gap-0.5">
                       <button
                         type="button"
                         onClick={(e) => handleArchive(c.id, !showArchived, e)}
@@ -968,7 +970,7 @@ export default function Chat() {
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
-                    </div>
+                    </div>}
                   </div>
                 );
               })

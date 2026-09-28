@@ -126,6 +126,49 @@ describe("offline chat persistence failure harness", () => {
     );
   });
 
+  it("continues the writable Full Rezz branch in its own conversation", async () => {
+    mocks.getEngramPersona.mockResolvedValueOnce({
+      ...persona,
+      id: 22,
+      slug: "rebecca-full-rezz-live",
+      name: "Rebecca (Full Rezz · Live)",
+      isArchival: false,
+    });
+    mocks.listMessages.mockResolvedValueOnce([
+      { id: 1, role: "user", content: "archived context" },
+      { id: 2, role: "assistant", content: "last preserved reply" },
+    ]);
+    mocks.completeStream.mockResolvedValue("live continuation reply");
+
+    await expect(
+      sendOfflineMessage({
+        conversationId: 23,
+        engramId: 22,
+        content: "continue with me",
+        onToken: vi.fn(),
+      }),
+    ).resolves.toBe("live continuation reply");
+
+    expect(mocks.appendMessage).toHaveBeenNthCalledWith(
+      1,
+      23,
+      "user",
+      "continue with me",
+    );
+    expect(mocks.appendMessage).toHaveBeenNthCalledWith(
+      2,
+      23,
+      "assistant",
+      "live continuation reply",
+    );
+    expect(mocks.appendObservedEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        engramId: 22,
+        source: "chat:23",
+      }),
+    );
+  });
+
   it("rejects direct and mixed-reference archival chat before generation", async () => {
     mocks.getEngramPersona.mockResolvedValueOnce({
       ...persona,
