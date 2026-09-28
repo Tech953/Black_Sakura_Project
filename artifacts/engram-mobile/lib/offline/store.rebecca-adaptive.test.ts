@@ -66,6 +66,16 @@ function createDatabase() {
       slug: "rebecca-full-rezz",
       data: JSON.stringify({ slug: "rebecca-full-rezz", isArchival: true }),
     },
+    live: {
+      id: 3,
+      slug: "rebecca-full-rezz-live",
+      data: JSON.stringify({ slug: "rebecca-full-rezz-live", isArchival: false }),
+    },
+    liveConversation: {
+      id: 4,
+      engramId: 3,
+      seedKey: "rebecca-full-rezz-live-v1",
+    },
     worldModel: [] as Array<{
       id: number;
       engramId: number;
@@ -102,14 +112,19 @@ function createDatabase() {
       }
       return { lastInsertRowId: 0, changes: 0 };
     }),
-    getFirstAsync: vi.fn(
-      async (sql: string, value: unknown) => {
+    getFirstAsync: vi.fn(async (sql: string, value: unknown, seedKey?: unknown) => {
+      if (sql.includes("FROM conversations WHERE engramId = ? AND seedKey = ?")) {
+        return value === state.liveConversation.engramId &&
+          seedKey === state.liveConversation.seedKey
+          ? state.liveConversation
+          : null;
+      }
       if (!sql.includes("FROM engrams WHERE slug = ?")) return null;
       if (value === "rebecca") return state.rebecca;
       if (value === "rebecca-full-rezz") return state.archive;
+      if (value === "rebecca-full-rezz-live") return state.live;
       return null;
-      },
-    ),
+    }),
     getAllAsync: vi.fn(async (sql: string, ...args: unknown[]) => {
       const engramId = Number(args[0]);
       if (sql.includes("source IN")) {
