@@ -50,7 +50,7 @@ describe("locale key tree comparison", () => {
         unrelated: "Existing English copy",
       },
       environment: {
-        unavailable: "Environment unavailable",
+        unavailable: "ENVIRONMENT UNAVAILABLE",
       },
     };
     const generated = {

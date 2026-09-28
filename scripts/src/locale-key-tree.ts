@@ -29,7 +29,6 @@ export const TRACKED_MOBILE_FALLBACK_KEYS = [
   "hub.activity",
   "hub.noActivity",
   "hub.unknownSpace",
-  "hub.system",
   "hub.connectionLost",
   "hub.connectionLostSubtitle",
   "detail.memory",

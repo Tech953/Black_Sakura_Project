@@ -96,6 +96,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Locale key trees match English for ${targets.length} generated languages.`,
+    `Locale key trees match English with no tracked mobile fallbacks across ${targets.length} generated languages.`,
   );
 }
