@@ -51,6 +51,12 @@ For async fixture-backed UI, wait for the query result that enables the next con
 
 **How to apply:** Gate dialog interaction on the participant option being present, then select controls by normalized visible text and keep reload assertions on the rendered transcript.
 
+On React Native Web, CSS `textTransform` can uppercase headings in `innerText` while the source label in `textContent` keeps its original casing.
+
+**Why:** Exact-case browser assertions against section headings failed even though the expected labels rendered correctly.
+
+**How to apply:** Normalize rendered `innerText` comparisons for display copy; keep click selectors matched to visible `textContent` so source labels remain stable.
+
 For polling-failure regressions, toggle the injected API failure while the page under test is actively observing the query; a shared React Query cache can mask the failure after an SPA route remount.
 
 **Why:** Route changes may reuse a successful cached query without immediately exposing a newly injected failure, making a cross-route assertion test cache/refetch timing instead of the user-visible stale-state contract.

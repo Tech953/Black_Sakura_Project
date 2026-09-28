@@ -12,6 +12,57 @@ export const DEFAULT_GENERATED_LOCALE_DIR = path.join(
   "lib/i18n/src/generated",
 );
 
+export const TRACKED_MOBILE_FALLBACK_KEYS = [
+  "tabs.hub",
+  "hub.kicker",
+  "hub.title",
+  "hub.subtitle",
+  "hub.telemetry",
+  "hub.live",
+  "hub.paused",
+  "hub.quiet",
+  "hub.ready",
+  "hub.waiting",
+  "hub.noMood",
+  "hub.spaces",
+  "hub.occupants",
+  "hub.activity",
+  "hub.noActivity",
+  "hub.unknownSpace",
+  "hub.system",
+  "hub.connectionLost",
+  "hub.connectionLostSubtitle",
+  "detail.memory",
+  "detail.noMemory",
+  "detail.beliefs",
+  "detail.noBeliefs",
+  "detail.confident",
+  "detail.revisions",
+  "detail.environment",
+  "detail.openEnvironment",
+  "environment.title",
+  "environment.subtitle",
+  "environment.liveState",
+  "environment.autonomyOn",
+  "environment.autonomyOff",
+  "environment.topCharge",
+  "environment.threshold",
+  "environment.cooldown",
+  "environment.backoff",
+  "environment.ready",
+  "environment.waiting",
+  "environment.anchor",
+  "environment.drives",
+  "environment.unavailable",
+  "environment.unavailableSubtitle",
+] as const;
+
+const ALLOWLISTED_PRODUCT_TERMS = ["ENGRAM", "PYRI", "Hub", "engram"] as const;
+const PRODUCT_TERM_PATTERN = new RegExp(
+  `\\b(?:${ALLOWLISTED_PRODUCT_TERMS.join("|")})\\b`,
+  "giu",
+);
+
 export function loadEnglish(
   englishDir = DEFAULT_ENGLISH_LOCALE_DIR,
 ): Record<string, Tree> {
@@ -24,6 +75,57 @@ export function loadEnglish(
     ) as Tree;
   }
   return out;
+}
+
+function getStringAtPath(tree: unknown, path: string): string | undefined {
+  let value = tree;
+  for (const segment of path.split(".")) {
+    if (!isTree(value)) return undefined;
+    value = value[segment];
+  }
+  return typeof value === "string" ? value : undefined;
+}
+
+function normalizeLocaleText(value: string): string {
+  return value
+    .normalize("NFKC")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function hasTranslatableCopy(value: string): boolean {
+  const withoutPlaceholders = normalizeLocaleText(value).replace(
+    /\{\{[^}]+\}\}/gu,
+    " ",
+  );
+  const withoutProductTerms = withoutPlaceholders.replace(
+    PRODUCT_TERM_PATTERN,
+    " ",
+  );
+  return /\p{L}/u.test(withoutProductTerms);
+}
+
+/**
+ * Find English fallback values only for the explicitly tracked mobile labels.
+ * Product-only strings are permitted, but a sentence containing a product term
+ * is still reported when its translatable copy remains English.
+ */
+export function findEnglishFallbackKeys(
+  englishMobile: unknown,
+  generatedMobile: unknown,
+  keyPaths: readonly string[] = TRACKED_MOBILE_FALLBACK_KEYS,
+): string[] {
+  return keyPaths.filter((keyPath) => {
+    const englishValue = getStringAtPath(englishMobile, keyPath);
+    const generatedValue = getStringAtPath(generatedMobile, keyPath);
+    if (englishValue === undefined || generatedValue === undefined) return false;
+
+    return (
+      normalizeLocaleText(englishValue) === normalizeLocaleText(generatedValue) &&
+      hasTranslatableCopy(englishValue)
+    );
+  });
 }
 
 export interface KeyTreeDiff {

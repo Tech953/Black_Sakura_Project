@@ -8,10 +8,39 @@ import os from "node:os";
 import path from "node:path";
 
 const mobileRoot = path.resolve(new URL("..", import.meta.url).pathname);
-const port = 4177;
-const cdpPort = 9233;
-const appUrl = `http://127.0.0.1:${port}`;
+const scenario = process.argv.find((arg) => arg.startsWith("--scenario="))?.split("=")[1] ?? "history";
 const nativeExportMode = process.env.MOBILE_NATIVE_EXPORT_E2E === "true";
+
+async function reserveEphemeralPort() {
+  const server = http.createServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    throw new Error("Could not reserve an ephemeral port for the browser regression");
+  }
+  return {
+    port: address.port,
+    close: () => new Promise((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    }),
+  };
+}
+
+if (!["history", "hub-environment"].includes(scenario)) {
+  throw new Error(`Unknown browser regression scenario: ${scenario}`);
+}
+
+const [appPortReservation, cdpPortReservation] = await Promise.all([
+  reserveEphemeralPort(),
+  reserveEphemeralPort(),
+]);
+const port = appPortReservation.port;
+const cdpPort = cdpPortReservation.port;
+await Promise.all([appPortReservation.close(), cdpPortReservation.close()]);
+const appUrl = `http://127.0.0.1:${port}`;
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -147,6 +176,7 @@ const browserMock = String.raw`(() => {
     [102, { id: 102, title: "Hydrated history", mode: "companion", engramId: 1, engramIds: [1], groupContinuationMode: "off", createdAt: "2026-09-10T12:01:00.000Z", archivedAt: null }],
   ]);
   window.__historyE2E = { conversations, messages, shares: [], downloads: [], archiveRequests: [], requests: [] };
+  window.__hubEnvironmentE2E = { emptyResponses: [] };
   const nativeExportFiles = new Map();
   window.__historyE2E.nativeExport = { attempts: 0, shares: [], deleted: [], files: nativeExportFiles };
   window.__engramNativeChatExportE2E = {
@@ -182,6 +212,10 @@ const browserMock = String.raw`(() => {
     status,
     headers: { "content-type": "application/json" },
   });
+    const emptyList = (name) => {
+      window.__hubEnvironmentE2E.emptyResponses.push(name);
+      return response([]);
+    };
   const conversationWithMessages = (id) => ({
     ...conversations.get(id),
     messages: messages[id] ?? [],
@@ -233,7 +267,25 @@ const browserMock = String.raw`(() => {
     if (path.endsWith("/api/mobile/offline-sync")) {
       return response({ syncedIds: [], imported: { conversations: 0, messages: 0, inquiries: 0, transmissions: 0, observedEntries: 0 } });
     }
+    if (path === "/api/engrams/state" && method === "GET") return emptyList("telemetry");
+    if (path === "/api/hub/spaces" && method === "GET") return emptyList("spaces");
+    if (path === "/api/hub/presence" && method === "GET") return emptyList("presence");
+    if (path === "/api/hub/activity" && method === "GET") return emptyList("activity");
+    if (path === "/api/simulations" && method === "GET") return emptyList("simulations");
+    if (path === "/api/messages" && method === "GET") return emptyList("humanMessages");
+    if (path === "/api/memories" && method === "GET") return emptyList("memories");
+    if (path === "/api/beliefs" && method === "GET") return emptyList("beliefs");
+    if (/^\/api\/engrams\/\d+\/world-model$/.test(path) && method === "GET") {
+      return emptyList("worldModel");
+    }
+    if (path === "/api/media" && method === "GET") return emptyList("media");
+    if (path === "/api/hub/controls" && method === "GET") {
+      return response({ paused: false, quietMode: false });
+    }
     if (path.endsWith("/api/engrams") && method === "GET") return response([engram]);
+    if (path.endsWith("/api/engrams/999") && method === "GET") {
+      return response({ error: "not found" }, 404);
+    }
     if (path.endsWith("/api/engrams/1") && method === "GET") return response(engram);
     if (path.endsWith("/api/engrams/1/activate") && method === "POST") return response(engram);
     if (path.endsWith("/api/openai/conversations") && method === "POST") {
@@ -292,6 +344,13 @@ async function clickText(client, text) {
   if (!clicked) throw new Error(`Could not click text ${text}`);
 }
 
+async function clickVisibleText(client, text) {
+  const clicked = await client.evaluate(
+    `(() => { const wanted = ${JSON.stringify(text)}; const nodes = [...document.querySelectorAll('a,button,[role="button"],*')]; const node = nodes.find((item) => item.textContent?.trim() === wanted && item.getClientRects().length > 0); if (!node) return false; node.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); node.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); node.click(); return true; })()`,
+  );
+  if (!clicked) throw new Error(`Could not click visible text ${text}`);
+}
+
 async function clickLabel(client, label) {
   const clicked = await client.evaluate(
     `(() => { const node = document.querySelector('[aria-label=${JSON.stringify(label)}]'); if (!node) return false; node.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); node.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); node.click(); return true; })()`,
@@ -319,6 +378,111 @@ async function clickRowAction(client, rowText, actionLabel) {
     })()`,
   );
   if (!clicked) throw new Error(`Could not click ${actionLabel} for ${rowText}`);
+}
+
+async function clickVisibleBackControl(client) {
+  const result = JSON.parse(
+    await client.evaluate(`(() => {
+      const controls = [...document.querySelectorAll('button,a,[role="button"]')];
+      const named = controls.map((node) => ({
+        node,
+        name: [node.getAttribute("aria-label"), node.getAttribute("title"), node.textContent]
+          .filter(Boolean)
+          .join(" ")
+          .trim()
+          .toLowerCase(),
+      }));
+      const back = named.find(({ node, name }) =>
+        /\\b(back|go back|previous)\\b/.test(name) && node.getClientRects().length > 0
+      );
+      if (!back) {
+        return JSON.stringify({
+          clicked: false,
+          controls: named.map(({ name }) => name).filter(Boolean),
+        });
+      }
+      back.node.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+      back.node.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      back.node.click();
+      return JSON.stringify({ clicked: true });
+    })()`),
+  );
+  if (!result.clicked) {
+    throw new Error(`Could not find a visible Environment back control: ${JSON.stringify(result.controls)}`);
+  }
+}
+
+async function runHubEnvironmentRegression(client, appUrl) {
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
+    "signed-in engram card",
+  );
+  await clickVisibleText(client, "Hub");
+  await waitForValue(
+    client,
+    `document.body.innerText.toLowerCase().includes("no hub activity yet.") && ["telemetry", "spaces", "presence", "activity", "simulations", "humanMessages"].every((name) => window.__hubEnvironmentE2E.emptyResponses.includes(name))`,
+    "Hub empty activity, spaces, telemetry, and contact fixture",
+  );
+  const hubText = await client.evaluate("document.body.innerText");
+  const normalizedHubText = hubText.toLowerCase();
+  for (const expected of [
+    "live telemetry",
+    "spaces",
+    "recent activity",
+    "no hub activity yet.",
+    "no human contact yet.",
+    "no bounded simulation runs yet.",
+  ]) {
+    if (!normalizedHubText.includes(expected)) {
+      throw new Error(`Hub empty state omitted ${JSON.stringify(expected)}: ${hubText}`);
+    }
+  }
+
+  await clickVisibleText(client, "Personas");
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
+    "personas tab",
+  );
+  await clickTestId(client, "engram-card-1");
+  await waitForValue(
+    client,
+    `location.pathname.includes("/engram/1") && document.body.innerText.toLowerCase().includes("no memory entries are available yet.") && document.body.innerText.toLowerCase().includes("no beliefs are registered yet.") && ["memories", "beliefs"].every((name) => window.__hubEnvironmentE2E.emptyResponses.includes(name))`,
+    "detail with readable empty Memory and Beliefs",
+  );
+  await clickVisibleText(client, "Open environment");
+  await waitForValue(
+    client,
+    `location.pathname.includes("/engram/environment") && document.body.innerText.toLowerCase().includes("e2e room")`,
+    "Environment opened from detail",
+  );
+  const environmentText = await client.evaluate("document.body.innerText");
+  if (!environmentText.toLowerCase().includes("environment anchor")) {
+    throw new Error(`Environment content was not readable: ${environmentText}`);
+  }
+  await clickVisibleBackControl(client);
+  await waitForValue(
+    client,
+    `location.pathname.includes("/engram/1") && document.body.innerText.toLowerCase().includes("no memory entries are available yet.") && document.body.innerText.toLowerCase().includes("no beliefs are registered yet.")`,
+    "return from Environment to the same detail screen",
+  );
+
+  await client.call("Page.navigate", { url: `${appUrl}/engram/environment?id=999` });
+  await waitForValue(
+    client,
+    `location.pathname.includes("/engram/environment") && document.body.innerText.toLowerCase().includes("environment unavailable") && document.body.innerText.toLowerCase().includes("could not load this engram's live environment.")`,
+    "readable unavailable Environment state",
+  );
+  const unavailableRequests = await client.evaluate(
+    `window.__historyE2E.requests.some(({ path, method }) => path.endsWith("/api/engrams/999") && method === "GET")`,
+  );
+  if (!unavailableRequests) {
+    throw new Error("Unavailable Environment did not use the deterministic missing-engram response");
+  }
+  console.log(
+    "Mobile Hub/Environment browser regression passed: empty Hub sections, empty Memory/Beliefs, detail → Environment → detail, and unavailable Environment.",
+  );
 }
 
 const processes = [];
@@ -409,6 +573,9 @@ try {
   await client.call("Page.addScriptToEvaluateOnNewDocument", { source: browserMock });
   await client.call("Page.navigate", { url: `${appUrl}/` });
 
+  if (scenario === "hub-environment") {
+    await runHubEnvironmentRegression(client, appUrl);
+  } else {
   await waitForValue(client, `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`, "signed-in engram card");
   await clickTestId(client, "engram-card-1");
   await waitForValue(client, `location.pathname.includes("/engram/1")`, "engram detail route");
@@ -535,6 +702,7 @@ try {
       rmSync(pdfProbePath, { force: true });
     }
     console.log("Mobile history browser regression passed: hydrate, archive, restore, read-only state, and four export downloads.");
+  }
   }
 } finally {
   client?.close();
