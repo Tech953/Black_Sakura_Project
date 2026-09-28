@@ -32,6 +32,17 @@ import {
 } from "@workspace/db";
 import type { OfflineSyncInput } from "@workspace/api-zod";
 import { and, eq } from "drizzle-orm";
+import {
+  seedFullRezzArchive,
+  seedFullRezzLiveBranch,
+} from "@workspace/db/seed";
+import {
+  FULL_REZZ_SLUG,
+} from "@workspace/db/seed/full-rezz-data";
+import {
+  LIVE_FULL_REZZ_CONVERSATION_TITLE,
+  LIVE_FULL_REZZ_SLUG,
+} from "@workspace/db/seed/full-rezz-live-data";
 import { ensureAccountBootstrap } from "../lib/account-bootstrap";
 import offlineSyncRouter from "./offline-sync";
 
@@ -66,6 +77,96 @@ function postAs(ownerId: string, body = payload) {
     },
     body: JSON.stringify(body),
   });
+}
+
+async function seedLiveFullRezzAccount(ownerId: string) {
+  await seedFullRezzArchive(db);
+  await seedFullRezzLiveBranch(db);
+  await ensureAccountBootstrap(ownerId);
+
+  const [liveEngram] = await db
+    .select()
+    .from(engramsTable)
+    .where(
+      and(
+        eq(engramsTable.ownerId, ownerId),
+        eq(engramsTable.slug, LIVE_FULL_REZZ_SLUG),
+      ),
+    );
+  if (!liveEngram) throw new Error("Live Full Rezz account seed is missing");
+  const [liveConversation] = await db
+    .select()
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.ownerId, ownerId),
+        eq(conversations.engramId, liveEngram.id),
+      ),
+    );
+  if (!liveConversation) {
+    throw new Error("Live Full Rezz continuation conversation is missing");
+  }
+
+  const [archiveEngram] = await db
+    .select()
+    .from(engramsTable)
+    .where(
+      and(
+        eq(engramsTable.ownerId, ownerId),
+        eq(engramsTable.slug, FULL_REZZ_SLUG),
+      ),
+    );
+  if (!archiveEngram) throw new Error("Full Rezz account archive is missing");
+  const [archiveConversation] = await db
+    .select()
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.ownerId, ownerId),
+        eq(conversations.engramId, archiveEngram.id),
+      ),
+    );
+  if (!archiveConversation) {
+    throw new Error("Full Rezz account archive conversation is missing");
+  }
+  return { liveEngram, liveConversation, archiveConversation };
+}
+
+function liveContinuationPayload(
+  deviceId: string,
+  syncId: string,
+  messageSyncId: string,
+  overrides: Partial<OfflineSyncInput["conversations"][number]> = {},
+): OfflineSyncInput {
+  return {
+    deviceId,
+    conversations: [
+      {
+        syncId,
+        seedKey: "rebecca-full-rezz-live-v1",
+        title: LIVE_FULL_REZZ_CONVERSATION_TITLE,
+        mode: "companion",
+        engramSlug: LIVE_FULL_REZZ_SLUG,
+        personaName: "Rebecca (Full Rezz · Live)",
+        customEngram: null,
+        createdAt: new Date("2026-09-20T12:00:00.000Z"),
+        archivedAt: null,
+        messages: [
+          {
+            syncId: messageSyncId,
+            role: "user",
+            content: "Continuing from the preserved transcript.",
+            createdAt: new Date("2026-09-20T12:00:01.000Z"),
+          },
+        ],
+        ...overrides,
+      },
+    ],
+    inquiries: [],
+    transmissions: [],
+    observedEntries: [],
+    operatorReplies: [],
+  };
 }
 
 beforeAll(async () => {
@@ -106,6 +207,175 @@ afterAll(async () => {
 });
 
 describe("offline sync receipt ownership", () => {
+  it("appends a marked offline continuation to the account's seeded live transcript", async () => {
+    const ownerId = "full-rezz-offline-owner";
+    const { liveEngram, liveConversation, archiveConversation } =
+      await seedLiveFullRezzAccount(ownerId);
+    const archiveBefore = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, archiveConversation.id));
+    expect(archiveBefore).toHaveLength(1534);
+
+    const continuation = liveContinuationPayload(
+      "full-rezz-device",
+      "conversation:local-live-1",
+      "message:local-live-1",
+    );
+    const first = await postAs(ownerId, continuation);
+    expect(first.status).toBe(200);
+    expect(await first.json()).toMatchObject({
+      imported: { conversations: 0, messages: 1 },
+    });
+
+    const retry = await postAs(ownerId, continuation);
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toMatchObject({
+      imported: { conversations: 0, messages: 0 },
+    });
+
+    const liveMessages = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, liveConversation.id));
+    expect(liveMessages).toHaveLength(1535);
+    expect(liveMessages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "user",
+          content: "Continuing from the preserved transcript.",
+        }),
+      ]),
+    );
+    const liveConversations = await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.ownerId, ownerId),
+          eq(conversations.engramId, liveEngram.id),
+        ),
+      );
+    expect(liveConversations).toHaveLength(1);
+
+    const ordinarySameTitle = {
+      ...liveContinuationPayload(
+        "full-rezz-device",
+        "conversation:ordinary-same-title",
+        "message:ordinary-same-title",
+      ).conversations[0]!,
+    };
+    delete ordinarySameTitle.seedKey;
+    const ordinaryResult = await postAs(ownerId, {
+      ...continuation,
+      conversations: [ordinarySameTitle],
+    });
+    expect(ordinaryResult.status).toBe(200);
+    expect(await ordinaryResult.json()).toMatchObject({
+      imported: { conversations: 1, messages: 1 },
+    });
+    const afterOrdinaryConversation = await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.ownerId, ownerId),
+          eq(conversations.engramId, liveEngram.id),
+        ),
+      );
+    expect(afterOrdinaryConversation).toHaveLength(2);
+    expect(afterOrdinaryConversation.map((row) => row.id)).toContain(
+      liveConversation.id,
+    );
+
+    const archiveAfter = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, archiveConversation.id));
+    expect(archiveAfter).toEqual(archiveBefore);
+  });
+
+  it("fails explicitly when a marked canonical continuation is missing", async () => {
+    const ownerId = "missing-full-rezz-owner";
+    const { liveConversation, liveEngram } =
+      await seedLiveFullRezzAccount(ownerId);
+    await db
+      .delete(messages)
+      .where(eq(messages.conversationId, liveConversation.id));
+    await db
+      .delete(conversations)
+      .where(eq(conversations.id, liveConversation.id));
+
+    const response = await postAs(
+      ownerId,
+      liveContinuationPayload(
+        "missing-full-rezz-device",
+        "conversation:missing-live",
+        "message:missing-live",
+      ),
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: expect.stringContaining("could not be found"),
+    });
+    const remaining = await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.ownerId, ownerId),
+          eq(conversations.engramId, liveEngram.id),
+        ),
+      );
+    expect(remaining).toEqual([]);
+    expect(
+      await db
+        .select()
+        .from(mobileOfflineSyncReceiptsTable)
+        .where(eq(mobileOfflineSyncReceiptsTable.ownerId, ownerId)),
+    ).toEqual([]);
+  });
+
+  it("fails explicitly when a marked canonical continuation is archived", async () => {
+    const ownerId = "archived-full-rezz-owner";
+    const { liveConversation, liveEngram } =
+      await seedLiveFullRezzAccount(ownerId);
+    await db
+      .update(conversations)
+      .set({ archivedAt: new Date("2026-09-19T12:00:00.000Z") })
+      .where(eq(conversations.id, liveConversation.id));
+
+    const response = await postAs(
+      ownerId,
+      liveContinuationPayload(
+        "archived-full-rezz-device",
+        "conversation:archived-live",
+        "message:archived-live",
+      ),
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: expect.stringContaining("is archived"),
+    });
+    expect(
+      await db
+        .select()
+        .from(messages)
+        .where(eq(messages.conversationId, liveConversation.id)),
+    ).toHaveLength(1534);
+    expect(
+      await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.ownerId, ownerId),
+            eq(conversations.engramId, liveEngram.id),
+          ),
+        ),
+    ).toHaveLength(1);
+  });
+
   it("does not adopt legacy receipts or history during account bootstrap", async () => {
     const ownerId = "bootstrapped-owner";
     const legacyDeviceId = "legacy-device";

@@ -13,8 +13,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Chip, EmptyState, MonoLabel, ScoreBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useOfflineMode } from "@/lib/offline/mode";
 import {
   getGetEngramQueryKey,
+  getGetEngramStatesQueryKey,
   useGetEngram,
   useGetEngramStates,
 } from "@workspace/api-client-react";
@@ -25,10 +27,19 @@ export default function EnvironmentScreen() {
   const insets = useSafeAreaInsets();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const id = Number(rawId);
+  const offlineActive = useOfflineMode();
+  const modeScope = offlineActive ? "offline-selection" : "online-selection";
   const engram = useGetEngram(id, {
-    query: { enabled: Number.isFinite(id), queryKey: getGetEngramQueryKey(id) },
+    query: {
+      enabled: Number.isFinite(id),
+      queryKey: [...getGetEngramQueryKey(id), modeScope],
+    },
   });
-  const states = useGetEngramStates();
+  const states = useGetEngramStates({
+    query: {
+      queryKey: [...getGetEngramStatesQueryKey(), modeScope],
+    },
+  });
   const live = states.data?.find((item) => item.engramId === id);
 
   if (engram.isLoading || states.isLoading) {

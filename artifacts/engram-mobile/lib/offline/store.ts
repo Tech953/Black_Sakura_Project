@@ -65,6 +65,8 @@ function databaseName(id: string | null = accountId): string {
 }
 
 const FULL_REZZ_SLUG_HINT = "rebecca-full-rezz";
+const LIVE_FULL_REZZ_SLUG_HINT = "rebecca-full-rezz-live";
+const LIVE_FULL_REZZ_SYNC_SEED_KEY = "rebecca-full-rezz-live-v1";
 export const OFFLINE_ARCHIVAL_READ_ONLY_ERROR =
   "This engram is a permanent archival branch preserved for continuity fidelity. It is read-only and cannot be altered.";
 
@@ -166,6 +168,174 @@ async function seedFullRezzArchive(
   });
 }
 
+/**
+ * Create a writable continuation beside the immutable Full Rezz record.
+ *
+ * The transcript is deliberately copied into a distinct engram/conversation:
+ * its original archived rows remain untouched, while new turns can be added
+ * to this continuation. Seed rows are already synced so they never enter the
+ * offline upload outbox as fresh user content.
+ */
+async function seedLiveFullRezzContinuation(
+  opened: SQLite.SQLiteDatabase,
+): Promise<void> {
+  const existing = await opened.getFirstAsync<{ id: number }>(
+    "SELECT id FROM engrams WHERE slug = ?",
+    LIVE_FULL_REZZ_SLUG_HINT,
+  );
+  if (existing) {
+    const alreadyMarked = await opened.getFirstAsync<{ id: number }>(
+      "SELECT id FROM conversations WHERE engramId = ? AND seedKey = ? LIMIT 1",
+      existing.id,
+      LIVE_FULL_REZZ_SYNC_SEED_KEY,
+    );
+    if (alreadyMarked) return;
+
+    // Older app versions created the exact seeded transcript without a sync
+    // discriminator. Upgrade only a unique, canonical transcript copy; a
+    // same-title user-created conversation is never treated as the seed.
+    const [
+      { LIVE_FULL_REZZ_CONVERSATION_TITLE },
+      { FULL_REZZ_BASE_TIMESTAMP_MS, fullRezzTranscript },
+    ] = await Promise.all([
+      import("@workspace/db/seed/full-rezz-live-data"),
+      import("@workspace/db/seed/full-rezz-data"),
+    ]);
+    const candidates = await opened.getAllAsync<{
+      id: number;
+      archivedAt: string | null;
+      seedKey: string | null;
+    }>(
+      `SELECT id, archivedAt, seedKey
+       FROM conversations
+       WHERE engramId = ? AND title = ?
+       ORDER BY id`,
+      existing.id,
+      LIVE_FULL_REZZ_CONVERSATION_TITLE,
+    );
+    const canonical: Array<{ id: number; archivedAt: string | null }> = [];
+    for (const candidate of candidates) {
+      if (candidate.seedKey != null) continue;
+      const messages = await opened.getAllAsync<{
+        role: string;
+        content: string;
+        createdAt: string;
+      }>(
+        `SELECT role, content, createdAt
+         FROM messages
+         WHERE conversationId = ?
+         ORDER BY id`,
+        candidate.id,
+      );
+      const matchesCanonicalPrefix =
+        messages.length >= fullRezzTranscript.length &&
+        fullRezzTranscript.every((expected, index) => {
+          const actual = messages[index];
+          return (
+            actual?.role === expected.role &&
+            actual.content === expected.content &&
+            new Date(actual.createdAt).getTime() ===
+              FULL_REZZ_BASE_TIMESTAMP_MS + index * 1_000
+          );
+        });
+      if (matchesCanonicalPrefix) canonical.push(candidate);
+    }
+    if (canonical.length > 1) {
+      throw new Error(
+        "Multiple local Full Rezz conversations match the seeded continuation.",
+      );
+    }
+    if (canonical[0] && canonical[0].archivedAt == null) {
+      await opened.runAsync(
+        "UPDATE conversations SET seedKey = ? WHERE id = ? AND seedKey IS NULL",
+        LIVE_FULL_REZZ_SYNC_SEED_KEY,
+        canonical[0].id,
+      );
+    }
+    return;
+  }
+
+  const [
+    { buildLiveFullRezzEngram, LIVE_FULL_REZZ_CONVERSATION_TITLE, LIVE_FULL_REZZ_SLUG },
+    { FULL_REZZ_BASE_TIMESTAMP_MS, fullRezzTranscript },
+  ] = await Promise.all([
+    import("@workspace/db/seed/full-rezz-live-data"),
+    import("@workspace/db/seed/full-rezz-data"),
+  ]);
+  const liveEngram = buildLiveFullRezzEngram();
+  if (liveEngram.isArchival === true) {
+    throw new Error("The live Full Rezz continuation must be writable");
+  }
+  const conversationCreatedAt = nowIso();
+
+  await opened.withTransactionAsync(async () => {
+    const raced = await opened.getFirstAsync<{ id: number }>(
+      "SELECT id FROM engrams WHERE slug = ?",
+      LIVE_FULL_REZZ_SLUG,
+    );
+    if (raced) return;
+
+    const insertedEngram = await opened.runAsync(
+      `INSERT INTO engrams
+       (slug, data, currentMood, isChatActive, createdAt, updatedAt)
+       VALUES (?, ?, ?, 0, ?, ?)`,
+      LIVE_FULL_REZZ_SLUG,
+      JSON.stringify(liveEngram),
+      (liveEngram.currentMood as string | null) ?? null,
+      conversationCreatedAt,
+      conversationCreatedAt,
+    );
+    const engramId = insertedEngram.lastInsertRowId;
+    if (!engramId) {
+      throw new Error("Failed to insert mobile live Full Rezz engram");
+    }
+
+    const insertedConversation = await opened.runAsync(
+      `INSERT INTO conversations
+       (title, mode, personaName, customEngram, engramId, createdAt, syncedAt, seedKey)
+       VALUES (?, 'companion', ?, NULL, ?, ?, ?, ?)`,
+      LIVE_FULL_REZZ_CONVERSATION_TITLE,
+      liveEngram.name,
+      engramId,
+      conversationCreatedAt,
+      conversationCreatedAt,
+      LIVE_FULL_REZZ_SYNC_SEED_KEY,
+    );
+    const conversationId = insertedConversation.lastInsertRowId;
+    if (!conversationId) {
+      throw new Error("Failed to insert live Full Rezz conversation");
+    }
+
+    const chunkSize = 100;
+    for (
+      let offset = 0;
+      offset < fullRezzTranscript.length;
+      offset += chunkSize
+    ) {
+      const chunk = fullRezzTranscript.slice(offset, offset + chunkSize);
+      const placeholders = chunk.map(() => "(?, ?, ?, ?, ?)").join(", ");
+      const values = chunk.flatMap((message, index) => {
+        const messageCreatedAt = new Date(
+          FULL_REZZ_BASE_TIMESTAMP_MS + (offset + index) * 1_000,
+        ).toISOString();
+        return [
+          conversationId,
+          message.role,
+          message.content,
+          messageCreatedAt,
+          messageCreatedAt,
+        ];
+      });
+      await opened.runAsync(
+        `INSERT INTO messages
+         (conversationId, role, content, createdAt, syncedAt)
+         VALUES ${placeholders}`,
+        ...values,
+      );
+    }
+  });
+}
+
 export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   // Existing unit tests exercise the SQLite adapter directly, outside the
   // Clerk provider that selects an account in the app. This never runs in a
@@ -229,6 +399,7 @@ async function initializeDb(
       customEngram TEXT,
       engramId INTEGER,
       groupContinuationMode TEXT NOT NULL DEFAULT 'off',
+      seedKey TEXT,
       createdAt TEXT NOT NULL,
       archivedAt TEXT,
       syncVersion INTEGER NOT NULL DEFAULT 0,
@@ -319,7 +490,7 @@ async function initializeDb(
   } catch (error) {
     if (!String(error).toLowerCase().includes("duplicate column")) throw error;
   }
-  for (const column of ["personaName", "customEngram"]) {
+  for (const column of ["personaName", "customEngram", "seedKey"]) {
     try {
       await opened.execAsync(
         `ALTER TABLE conversations ADD COLUMN ${column} TEXT;`,
@@ -438,6 +609,7 @@ async function initializeDb(
     }
   }
   await seedFullRezzArchive(opened);
+  await seedLiveFullRezzContinuation(opened);
   return opened;
 }
 
@@ -562,6 +734,42 @@ export async function getArchivalConversationId(
     engramId,
   );
   return row?.id ?? null;
+}
+
+/** Resolve a branch's local writable continuation without creating a chat. */
+export async function getWritableConversationIdForEngramSlug(
+  slug: string,
+): Promise<number | null> {
+  const d = await getDb();
+  const row = await d.getFirstAsync<{ id: number }>(
+    `SELECT c.id
+     FROM conversations c
+     JOIN engrams e ON e.id = c.engramId
+     WHERE e.slug = ?
+       AND COALESCE(json_extract(e.data, '$.isArchival'), 0) = 0
+       AND c.archivedAt IS NULL
+     ORDER BY c.id
+     LIMIT 1`,
+    slug,
+  );
+  return row?.id ?? null;
+}
+
+/**
+ * Hydrate the canonical read-only transcript from this account's local seed.
+ * The slug lookup intentionally avoids mixing server IDs with SQLite IDs.
+ */
+export async function getArchivalConversationByEngramSlug(
+  slug: string,
+): Promise<Record<string, unknown> | null> {
+  const d = await getDb();
+  const row = await d.getFirstAsync<{ id: number; data: string }>(
+    "SELECT id, data FROM engrams WHERE slug = ?",
+    slug,
+  );
+  if (!row || !archiveFlagFromData(row.data)) return null;
+  const conversationId = await getArchivalConversationId(row.id);
+  return conversationId == null ? null : getConversation(conversationId);
 }
 
 async function assertWritableEngram(id: number): Promise<void> {
@@ -1174,6 +1382,7 @@ interface PendingConversationRow {
   createdAt: string;
   archivedAt: string | null;
   syncVersion: number;
+  seedKey: typeof LIVE_FULL_REZZ_SYNC_SEED_KEY | null;
 }
 
 interface PendingMessageRow {
@@ -1231,7 +1440,8 @@ export async function buildPendingSyncBatch(
   const d = await getDb();
   const conversationRows = await d.getAllAsync<PendingConversationRow>(
     `SELECT c.id, c.title, c.mode, c.personaName, c.customEngram,
-            e.slug AS engramSlug, c.createdAt, c.archivedAt, c.syncVersion
+            e.slug AS engramSlug, c.createdAt, c.archivedAt, c.syncVersion,
+            c.seedKey
      FROM conversations c
      LEFT JOIN engrams e ON e.id = c.engramId
      WHERE (
@@ -1282,6 +1492,7 @@ export async function buildPendingSyncBatch(
       customEngram: row.customEngram,
       createdAt: row.createdAt,
       archivedAt: row.archivedAt,
+      ...(row.seedKey == null ? {} : { seedKey: row.seedKey }),
       messages: messageRows.map((message) => ({
         syncId: `message:${message.id}`,
         role: message.role,

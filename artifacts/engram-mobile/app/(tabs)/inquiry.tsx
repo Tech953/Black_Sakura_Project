@@ -20,6 +20,7 @@ import { useEngram } from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
 import { resolveReplyLanguage } from "@/lib/i18n";
 import { inquiryRequest, type InquiryMode } from "@/lib/mobile-flow-seams";
+import { useOfflineMode } from "@/lib/offline/mode";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetEngramQueryKey,
@@ -38,6 +39,8 @@ export default function InquiryScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { selectedEngramId } = useEngram();
+  const offlineActive = useOfflineMode();
+  const modeScope = offlineActive ? "offline-selection" : "online-selection";
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const engramId = selectedEngramId ?? 0;
@@ -48,10 +51,20 @@ export default function InquiryScreen() {
   const [submitFailed, setSubmitFailed] = useState(false);
 
   const { data: engram } = useGetEngram(engramId, {
-    query: { enabled, queryKey: getGetEngramQueryKey(engramId) },
+    query: {
+      enabled,
+      queryKey: [
+        ...getGetEngramQueryKey(engramId),
+        modeScope,
+      ],
+    },
   });
+  const inquiriesQueryKey = [
+    ...getListEngramInquiriesQueryKey(engramId),
+    modeScope,
+  ] as const;
   const { data: inquiries } = useListEngramInquiries(engramId, {
-    query: { enabled, queryKey: getListEngramInquiriesQueryKey(engramId) },
+    query: { enabled, queryKey: inquiriesQueryKey },
   });
   const create = useCreateEngramInquiry();
 
@@ -72,17 +85,20 @@ export default function InquiryScreen() {
       );
       setQuestion("");
       queryClient.invalidateQueries({
-        queryKey: getListEngramInquiriesQueryKey(engramId),
+        queryKey: inquiriesQueryKey,
       });
       if (mode === "develop") {
         queryClient.invalidateQueries({
-          queryKey: getGetEngramQueryKey(engramId),
+          queryKey: [
+            ...getGetEngramQueryKey(engramId),
+            modeScope,
+          ],
         });
       }
     } catch {
       setSubmitFailed(true);
     }
-  }, [create, enabled, engramId, mode, question, queryClient]);
+  }, [create, enabled, engramId, mode, modeScope, question, queryClient]);
 
   if (!enabled) {
     return (

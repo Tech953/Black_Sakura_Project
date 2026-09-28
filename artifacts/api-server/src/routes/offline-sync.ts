@@ -3,6 +3,14 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@workspace/db";
 import {
+  FULL_REZZ_BASE_TIMESTAMP_MS,
+  fullRezzTranscript,
+} from "@workspace/db/seed/full-rezz-data";
+import {
+  LIVE_FULL_REZZ_CONVERSATION_TITLE,
+  LIVE_FULL_REZZ_SLUG,
+} from "@workspace/db/seed/full-rezz-live-data";
+import {
   conversations,
   engramInquiriesTable,
   engramMessagesTable,
@@ -25,6 +33,8 @@ class OfflineSyncError extends Error {
     this.name = "OfflineSyncError";
   }
 }
+
+const LIVE_FULL_REZZ_SYNC_SEED_KEY = "rebecca-full-rezz-live-v1";
 
 router.post("/mobile/offline-sync", async (req, res) => {
   const ownerId = req.userId;
@@ -145,6 +155,115 @@ router.post("/mobile/offline-sync", async (req, res) => {
         return receipt.remoteId;
       };
 
+      const hasCanonicalFullRezzTranscript = async (
+        conversationId: number,
+      ): Promise<boolean> => {
+        const prefix = await tx
+          .select({
+            role: messages.role,
+            content: messages.content,
+            createdAt: messages.createdAt,
+          })
+          .from(messages)
+          .where(eq(messages.conversationId, conversationId))
+          .orderBy(messages.createdAt, messages.id)
+          .limit(fullRezzTranscript.length);
+        return (
+          prefix.length === fullRezzTranscript.length &&
+          fullRezzTranscript.every((expected, index) => {
+            const actual = prefix[index];
+            return (
+              actual?.role === expected.role &&
+              actual.content === expected.content &&
+              new Date(actual.createdAt).getTime() ===
+                FULL_REZZ_BASE_TIMESTAMP_MS + index * 1_000
+            );
+          })
+        );
+      };
+
+      const resolveLiveFullRezzContinuation = async (
+        conversation: (typeof parsed.data.conversations)[number],
+        engramId: number | null,
+        expectedRemoteId?: number,
+      ) => {
+        if (
+          conversation.seedKey !== LIVE_FULL_REZZ_SYNC_SEED_KEY ||
+          conversation.engramSlug !== LIVE_FULL_REZZ_SLUG ||
+          engramId == null ||
+          conversation.title !== LIVE_FULL_REZZ_CONVERSATION_TITLE ||
+          conversation.mode !== "companion" ||
+          conversation.personaName !== "Rebecca (Full Rezz · Live)" ||
+          conversation.customEngram != null ||
+          conversation.archivedAt != null
+        ) {
+          throw new OfflineSyncError(
+            409,
+            "The Full Rezz continuation sync marker does not match a writable canonical conversation.",
+          );
+        }
+
+        const candidates = await tx
+          .select({
+            id: conversations.id,
+            archivedAt: conversations.archivedAt,
+          })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.ownerId, ownerId),
+              eq(conversations.engramId, engramId),
+              eq(conversations.title, LIVE_FULL_REZZ_CONVERSATION_TITLE),
+            ),
+          )
+          .orderBy(conversations.id);
+        const canonicalCandidates: Array<{
+          id: number;
+          archivedAt: Date | null;
+        }> = [];
+        for (const candidate of candidates) {
+          if (await hasCanonicalFullRezzTranscript(candidate.id)) {
+            canonicalCandidates.push(candidate);
+          }
+        }
+        if (canonicalCandidates.length !== 1) {
+          throw new OfflineSyncError(
+            409,
+            canonicalCandidates.length === 0
+              ? "The account's writable Full Rezz continuation could not be found; no duplicate conversation was created."
+              : "Multiple account conversations match the writable Full Rezz continuation.",
+          );
+        }
+        const canonical = canonicalCandidates[0]!;
+        if (canonical.archivedAt != null) {
+          throw new OfflineSyncError(
+            409,
+            "The writable Full Rezz continuation is archived and cannot receive offline messages.",
+          );
+        }
+        if (expectedRemoteId != null && canonical.id !== expectedRemoteId) {
+          throw new OfflineSyncError(
+            409,
+            "The saved Full Rezz sync mapping no longer targets its canonical conversation.",
+          );
+        }
+
+        const latestSeededMessageAt =
+          FULL_REZZ_BASE_TIMESTAMP_MS + (fullRezzTranscript.length - 1) * 1_000;
+        if (
+          conversation.messages.some(
+            (message) =>
+              new Date(message.createdAt).getTime() <= latestSeededMessageAt,
+          )
+        ) {
+          throw new OfflineSyncError(
+            409,
+            "Only new messages after the preserved Full Rezz transcript can be synchronized.",
+          );
+        }
+        return canonical.id;
+      };
+
       for (const conversation of parsed.data.conversations) {
         const engram = conversation.engramSlug
           ? await resolveEngram(conversation.engramSlug)
@@ -155,45 +274,95 @@ router.post("/mobile/offline-sync", async (req, res) => {
         );
         let remoteConversationId: number;
         if (conversationClaim.isNew) {
-          const [created] = await tx
-            .insert(conversations)
-            .values({
-              ownerId,
-              title: conversation.title ?? "Offline conversation",
-              mode: conversation.mode,
-              personaName: conversation.personaName ?? null,
-              customEngram: conversation.customEngram ?? null,
-              engramId: engram?.id ?? null,
-              createdAt: new Date(conversation.createdAt),
-              archivedAt:
-                conversation.archivedAt == null
-                  ? null
-                  : new Date(conversation.archivedAt),
-            })
-            .returning({ id: conversations.id });
-          remoteConversationId = created!.id;
+          if (conversation.seedKey === LIVE_FULL_REZZ_SYNC_SEED_KEY) {
+            remoteConversationId = await resolveLiveFullRezzContinuation(
+              conversation,
+              engram?.id ?? null,
+            );
+          } else {
+            const [created] = await tx
+              .insert(conversations)
+              .values({
+                ownerId,
+                title: conversation.title ?? "Offline conversation",
+                mode: conversation.mode,
+                personaName: conversation.personaName ?? null,
+                customEngram: conversation.customEngram ?? null,
+                engramId: engram?.id ?? null,
+                createdAt: new Date(conversation.createdAt),
+                archivedAt:
+                  conversation.archivedAt == null
+                    ? null
+                    : new Date(conversation.archivedAt),
+              })
+              .returning({ id: conversations.id });
+            remoteConversationId = created!.id;
+          }
           await setRemoteId(conversationClaim.receipt.id, remoteConversationId);
-          imported.conversations += 1;
+          if (conversation.seedKey !== LIVE_FULL_REZZ_SYNC_SEED_KEY) {
+            imported.conversations += 1;
+          }
         } else {
           remoteConversationId = requireRemoteId(
             conversationClaim.receipt,
             conversation.syncId,
           );
+          if (conversation.seedKey === LIVE_FULL_REZZ_SYNC_SEED_KEY) {
+            await resolveLiveFullRezzContinuation(
+              conversation,
+              engram?.id ?? null,
+              remoteConversationId,
+            );
+          } else if (engram) {
+            const [mappedConversation] = await tx
+              .select({
+                id: conversations.id,
+                engramId: conversations.engramId,
+                title: conversations.title,
+              })
+              .from(conversations)
+              .where(
+                and(
+                  eq(conversations.id, remoteConversationId),
+                  eq(conversations.ownerId, ownerId),
+                ),
+              )
+              .limit(1);
+            if (
+              mappedConversation?.engramId === engram.id &&
+              mappedConversation.title === LIVE_FULL_REZZ_CONVERSATION_TITLE &&
+              (await hasCanonicalFullRezzTranscript(mappedConversation.id))
+            ) {
+              throw new OfflineSyncError(
+                409,
+                "The canonical Full Rezz continuation requires its sync marker.",
+              );
+            }
+          }
           const conversationUpdates: {
             archivedAt?: Date | null;
             personaName?: string | null;
             customEngram?: string | null;
           } = {};
-          if (conversation.archivedAt !== undefined) {
+          if (
+            conversation.seedKey !== LIVE_FULL_REZZ_SYNC_SEED_KEY &&
+            conversation.archivedAt !== undefined
+          ) {
             conversationUpdates.archivedAt =
               conversation.archivedAt == null
                 ? null
                 : new Date(conversation.archivedAt);
           }
-          if (conversation.personaName !== undefined) {
+          if (
+            conversation.seedKey !== LIVE_FULL_REZZ_SYNC_SEED_KEY &&
+            conversation.personaName !== undefined
+          ) {
             conversationUpdates.personaName = conversation.personaName;
           }
-          if (conversation.customEngram !== undefined) {
+          if (
+            conversation.seedKey !== LIVE_FULL_REZZ_SYNC_SEED_KEY &&
+            conversation.customEngram !== undefined
+          ) {
             conversationUpdates.customEngram = conversation.customEngram;
           }
           if (Object.keys(conversationUpdates).length > 0) {
