@@ -17,11 +17,13 @@ The download-page regression also requires an isolated Vite server started with 
 
 For Expo mobile export coverage, the browser path cannot use `expo-file-system` native writes. Route web exports through the existing `Share` fallback and reserve native file generation checks for an Android/iOS device or native test harness. In chat browser checks, archive/restore/delete controls reuse the same accessible labels across rows; scope each action to its row's unique title.
 
-**Why:** The browser regression must exercise the real UI without pretending native file APIs exist on web, and a global accessibility-label selector can act on a different conversation when several rows are visible.
+**Why:** The browser regression must exercise the real UI without pretending native file APIs exist on web. Labels are reused across rows, and titles can repeat or ellipsize.
+
+For current chat selectors, conversation ID is authoritative; never use the visible title as the row key.
 
 Native mobile export paths should verify the produced URI exists and has non-zero size before invoking the platform share sheet; a successful share callback alone does not prove that PDF/DOCX generation completed.
 
-**How to apply:** Keep the native export service injectable so deterministic tests can inspect all four file formats, pair it with a physical-device checklist for share-sheet and Files-provider verification, and select chat row actions by both label and visible row title.
+**How to apply:** Keep the native export service injectable so deterministic tests can inspect all four file formats, pair it with a physical-device checklist for share-sheet and Files-provider verification, and select chat row actions by conversation ID, not title.
 
 Browser exports should use Blob/object-URL downloads rather than native Expo file APIs; CDP tests can intercept `URL.createObjectURL` and anchor clicks to verify filename, MIME type, size, and binary signatures without relying on the host filesystem.
 

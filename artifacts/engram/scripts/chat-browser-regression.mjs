@@ -58,6 +58,8 @@ const realFixtureUserMessage = "Real Clerk export fixture message";
 const realFixtureAssistantMessage = "Real Clerk export fixture reply";
 const realSelectionUserMessage = "Real Clerk selection fixture message";
 const realSelectionAssistantMessage = "Real Clerk selection fixture reply";
+const duplicateConversationTitle =
+  "Browser duplicate conversation title designed to extend beyond the visible row width and be clipped with an ellipsis so row actions stay tied to the intended conversation";
 const chromiumPath =
   process.env.CHROMIUM_PATH ??
   ["/repl/tools/bin/chromium", "chromium", "chromium-browser", "google-chrome"]
@@ -167,6 +169,13 @@ const fixtureScript = String.raw`
   }
   window.__engramChatFixture = {
     get nestedButtonWarnings() { return nestedButtonWarnings; },
+    get openedConversationIds() { return [...openedConversationIds]; },
+    getConversationState(id) {
+      return {
+        archived: archivedIds.has(id),
+        deleted: deletedIds.has(id),
+      };
+    },
   };
   const conversations = new Map([
     [1, {
@@ -205,6 +214,24 @@ const fixtureScript = String.raw`
       engramIds: [1],
       createdAt: "2026-09-05T12:06:00.000Z",
     }],
+    [5, {
+      id: 5,
+      title: ${JSON.stringify(duplicateConversationTitle)},
+      mode: "companion",
+      personaName: "PYRI",
+      engramId: 1,
+      engramIds: [1],
+      createdAt: "2026-09-05T12:07:00.000Z",
+    }],
+    [6, {
+      id: 6,
+      title: ${JSON.stringify(duplicateConversationTitle)},
+      mode: "companion",
+      personaName: "PYRI",
+      engramId: 1,
+      engramIds: [1],
+      createdAt: "2026-09-05T12:08:00.000Z",
+    }],
   ]);
   const messageSets = new Map([
     [1, [
@@ -221,9 +248,16 @@ const fixtureScript = String.raw`
     [4, [
       { id: 6, role: "user", content: "Failed delete room must remain visible", createdAt: "2026-09-05T12:06:00.000Z" },
     ]],
+    [5, [
+      { id: 7, role: "user", content: "Duplicate row A transcript must stay closed", createdAt: "2026-09-05T12:07:00.000Z" },
+    ]],
+    [6, [
+      { id: 8, role: "user", content: "Duplicate row B transcript is selected", createdAt: "2026-09-05T12:08:00.000Z" },
+    ]],
   ]);
   const archivedIds = new Set();
   const deletedIds = new Set();
+  const openedConversationIds = [];
   const response = (body, status = 200) =>
     new Response(JSON.stringify(body), {
       status,
@@ -265,6 +299,7 @@ const fixtureScript = String.raw`
       if (method === "GET") {
         const conversation = currentConversation(id);
         if (!conversation) return response({ error: "Not found" }, 404);
+        openedConversationIds.push(id);
         return response({ ...conversation, messages: messageSets.get(id) ?? [] });
       }
     }
@@ -501,7 +536,9 @@ async function cleanupRealClerkAccount(session) {
   }
 
   if (cleanupProblems.length > 0) {
-    throw new Error("Real Clerk browser check could not fully clean up disposable data and identity");
+    throw new Error(
+      `Real Clerk browser check could not fully clean up: ${cleanupProblems.join(", ")}`,
+    );
   }
 }
 
@@ -620,20 +657,27 @@ try {
     await devtools.call("Page.navigate", { url: `${appUrl}/chat` });
   }
   const conversationTitle = realClerkMode ? exportConversation.title : "Browser Archive Room";
+  const exportConversationId = realClerkMode ? exportConversation.id : 1;
+  const conversationRow = (id) =>
+    `document.querySelector('[data-testid="conversation-row"][data-conversation-id="${id}"]')`;
+  const rowSelectionControl = (id) =>
+    `${conversationRow(id)}?.querySelector('[data-testid="select-conversation"]')`;
+  const rowAction = (ariaLabel, id) =>
+    `${conversationRow(id)}?.querySelector('button[aria-label=${JSON.stringify(ariaLabel)}]')`;
+  const rowIsActive = (id) =>
+    `Boolean(${conversationRow(id)}?.classList.contains("border-primary"))`;
   await waitFor(
-    `Boolean(document.body?.innerText.includes(${JSON.stringify(conversationTitle)}))`,
+    `Boolean(${conversationRow(exportConversationId)})`,
     "chat conversation list",
     15000,
   );
-  const rowAction = (ariaLabel, title) =>
-    `Array.from(document.querySelectorAll('[aria-label="${ariaLabel}"]')).find((node) => node.parentElement?.parentElement?.textContent?.includes(${JSON.stringify(title)}))`;
 
   if (!realClerkMode) {
-    for (const title of ["Browser Archive Room", "Browser Selection Room", "Browser Delete Room", "Browser Failed Delete Room"]) {
-      await waitFor(`Boolean(document.body?.innerText.includes(${JSON.stringify(title)}))`, `${title} list row`);
+    for (const id of [1, 2, 3, 4, 5, 6]) {
+      await waitFor(`Boolean(${conversationRow(id)})`, `conversation row ${id}`);
     }
 
-    const selectionControl = `Array.from(document.querySelectorAll('[role="button"],button')).find((node) => node.textContent.includes("Browser Selection Room"))`;
+    const selectionControl = rowSelectionControl(2);
     if (!(await devtools.evaluate(`(() => {
       const node = ${selectionControl};
       return node?.tagName === "BUTTON" && node.getAttribute("type") === "button";
@@ -642,51 +686,155 @@ try {
     }
     await click(selectionControl, "selection conversation pointer control");
   await waitFor(`Boolean(document.body?.innerText.includes("Selection room hello"))`, "selected conversation transcript");
-  if (!(await devtools.evaluate(`document.body.innerText.includes("Browser Selection Room")`))) {
+  if (!(await devtools.evaluate(rowIsActive(2)))) {
     throw new Error("Selecting a conversation did not show its active title");
   }
 
-  await click(rowAction("Delete conversation", "Browser Delete Room"), "delete inactive conversation");
-  await waitFor(`!document.body?.innerText.includes("Browser Delete Room")`, "deleted conversation removed from list");
+  await click(rowAction("Delete conversation", 3), "delete inactive conversation");
+  await waitFor(`!${conversationRow(3)}`, "deleted conversation removed from list");
   if (!(await devtools.evaluate(`document.body.innerText.includes("Selection room hello")`))) {
     throw new Error("Deleting an inactive conversation opened or replaced the active conversation");
   }
   console.log("Chat conversation controls check: inactive row delete kept selection open");
 
-    await click(rowAction("Delete conversation", "Browser Failed Delete Room"), "failed delete conversation");
+    await click(rowAction("Delete conversation", 4), "failed delete conversation");
     await waitFor(`Boolean(document.body?.innerText.includes("Could not delete conversation"))`, "delete failure toast");
-    if (!(await devtools.evaluate(`document.body.innerText.includes("Browser Failed Delete Room") && document.body.innerText.includes("Selection room hello")`))) {
+    if (!(await devtools.evaluate(`${conversationRow(4)} !== null && document.body.innerText.includes("Selection room hello")`))) {
       throw new Error("Failed deletion changed the conversation list or active conversation");
     }
     console.log("Chat conversation controls check: failed delete showed a destructive toast and preserved state");
 
-  await click(rowAction("Archive conversation", "Browser Archive Room"), "archive inactive conversation");
-  await waitFor(`!document.body?.innerText.includes("Browser Archive Room")`, "archived conversation removed from active list");
+  await click(rowAction("Archive conversation", 1), "archive inactive conversation");
+  await waitFor(`!${conversationRow(1)}`, "archived conversation removed from active list");
   if (!(await devtools.evaluate(`document.body.innerText.includes("Selection room hello")`))) {
     throw new Error("Archiving an inactive conversation opened or replaced the active conversation");
   }
   await click(`document.querySelector('[aria-label="Show archived conversations"]')`, "archived conversation view");
   await waitFor(`Boolean(document.querySelector('[aria-label="Show active conversations"]'))`, "archived conversation view");
-  await waitFor(`Boolean(document.body?.innerText.includes("Browser Archive Room"))`, "archived row");
-  await click(rowAction("Restore conversation", "Browser Archive Room"), "restore inactive conversation");
-  await waitFor(`!document.body?.innerText.includes("Browser Archive Room")`, "restored conversation removed from archived list");
+  await waitFor(`Boolean(${conversationRow(1)})`, "archived row");
+  await click(rowAction("Restore conversation", 1), "restore inactive conversation");
+  await waitFor(`!${conversationRow(1)}`, "restored conversation removed from archived list");
   if (!(await devtools.evaluate(`document.body.innerText.includes("Selection room hello")`))) {
     throw new Error("Restoring an inactive conversation opened or replaced the active conversation");
   }
   await click(`document.querySelector('[aria-label="Show active conversations"]')`, "active conversation view");
-  await waitFor(`Boolean(document.body?.innerText.includes("Browser Archive Room"))`, "restored active-list row");
+  await waitFor(`Boolean(${conversationRow(1)})`, "restored active-list row");
     console.log("Chat conversation controls check: inactive row archive/restore kept selection open");
+
+    const duplicateTitleLayout = await devtools.evaluate(`(() => {
+      const row = ${conversationRow(5)};
+      const title = row?.querySelector('[data-testid="conversation-title"]');
+      // Give the fixture a narrow title viewport regardless of the runner's window size.
+      if (title) title.style.width = "180px";
+      return title ? {
+        text: title.textContent,
+        textOverflow: getComputedStyle(title).textOverflow,
+        visuallyClipped: title.scrollWidth > title.clientWidth,
+        titleWidth: title.clientWidth,
+        titleScrollWidth: title.scrollWidth,
+        rowWidth: row.clientWidth,
+        windowWidth: window.innerWidth,
+        whiteSpace: getComputedStyle(title).whiteSpace,
+      } : null;
+    })()`);
+    if (
+      duplicateTitleLayout?.text !== duplicateConversationTitle ||
+      duplicateTitleLayout.textOverflow !== "ellipsis" ||
+      !duplicateTitleLayout.visuallyClipped
+    ) {
+      throw new Error(
+        `Duplicate-title fixture did not render with a visually truncated title: ${JSON.stringify(duplicateTitleLayout)}`,
+      );
+    }
+
+    const openedBeforeDuplicateSelection = await devtools.evaluate(
+      "window.__engramChatFixture.openedConversationIds.length",
+    );
+    await click(rowSelectionControl(6), "select second conversation with duplicate title");
+    await waitFor(
+      `Boolean(document.body?.innerText.includes("Duplicate row B transcript is selected"))`,
+      "second duplicate-title conversation transcript",
+    );
+    if (
+      !(await devtools.evaluate(rowIsActive(6))) ||
+      (await devtools.evaluate(`document.body.innerText.includes("Duplicate row A transcript must stay closed")`))
+    ) {
+      throw new Error("Selecting a duplicate title opened the wrong conversation");
+    }
+
+    const openIdsAfterSelection = await devtools.evaluate(
+      `window.__engramChatFixture.openedConversationIds.slice(${openedBeforeDuplicateSelection})`,
+    );
+    if (!Array.isArray(openIdsAfterSelection) || openIdsAfterSelection.length === 0 || openIdsAfterSelection.some((id) => id !== 6)) {
+      throw new Error(`Duplicate-title selection opened unexpected conversation IDs: ${JSON.stringify(openIdsAfterSelection)}`);
+    }
+
+    await click(rowAction("Archive conversation", 5), "archive first duplicate-title row");
+    await waitFor(`!${conversationRow(5)} && Boolean(${conversationRow(6)})`, "only first duplicate title archived");
+    const stateAfterArchive = await devtools.evaluate(`({
+      first: window.__engramChatFixture.getConversationState(5),
+      second: window.__engramChatFixture.getConversationState(6),
+    })`);
+    if (
+      !stateAfterArchive.first.archived ||
+      stateAfterArchive.first.deleted ||
+      stateAfterArchive.second.archived ||
+      stateAfterArchive.second.deleted ||
+      !(await devtools.evaluate(rowIsActive(6))) ||
+      !(await devtools.evaluate(`document.body.innerText.includes("Duplicate row B transcript is selected")`))
+    ) {
+      throw new Error("Archiving a duplicate-title row changed the wrong conversation");
+    }
+
+    await click(`document.querySelector('[aria-label="Show archived conversations"]')`, "open duplicate-title archived rows");
+    await waitFor(`Boolean(${conversationRow(5)}) && !${conversationRow(6)}`, "first duplicate title in archived list");
+    await click(rowAction("Restore conversation", 5), "restore first duplicate-title row");
+    await waitFor(`!${conversationRow(5)}`, "duplicate-title row restored");
+    await click(`document.querySelector('[aria-label="Show active conversations"]')`, "return to duplicate-title active rows");
+    await waitFor(`Boolean(${conversationRow(5)}) && Boolean(${conversationRow(6)})`, "both duplicate-title rows active");
+    const stateAfterRestore = await devtools.evaluate(`({
+      first: window.__engramChatFixture.getConversationState(5),
+      second: window.__engramChatFixture.getConversationState(6),
+    })`);
+    if (
+      stateAfterRestore.first.archived ||
+      stateAfterRestore.first.deleted ||
+      stateAfterRestore.second.archived ||
+      stateAfterRestore.second.deleted ||
+      !(await devtools.evaluate(rowIsActive(6))) ||
+      !(await devtools.evaluate(`document.body.innerText.includes("Duplicate row B transcript is selected")`))
+    ) {
+      throw new Error("Restoring a duplicate-title row changed the wrong conversation");
+    }
+
+    await click(rowAction("Delete conversation", 5), "delete first duplicate-title row");
+    await waitFor(`!${conversationRow(5)} && Boolean(${conversationRow(6)})`, "only first duplicate title deleted");
+    const stateAfterDelete = await devtools.evaluate(`({
+      first: window.__engramChatFixture.getConversationState(5),
+      second: window.__engramChatFixture.getConversationState(6),
+    })`);
+    if (
+      !stateAfterDelete.first.deleted ||
+      stateAfterDelete.first.archived ||
+      stateAfterDelete.second.deleted ||
+      stateAfterDelete.second.archived ||
+      !(await devtools.evaluate(rowIsActive(6))) ||
+      !(await devtools.evaluate(`document.body.innerText.includes("Duplicate row B transcript is selected")`))
+    ) {
+      throw new Error("Deleting a duplicate-title row changed the wrong conversation");
+    }
+    console.log("Chat conversation controls check: duplicate-title selection/archive/restore/delete used conversation IDs");
   } else {
     for (const conversation of realConversations) {
       await waitFor(
-        `Boolean(document.body?.innerText.includes(${JSON.stringify(conversation.title)}))`,
-        `${conversation.title} list row`,
+        `Boolean(${conversationRow(conversation.id)})`,
+        `conversation row ${conversation.id}`,
         15000,
       );
     }
 
     await click(
-      `Array.from(document.querySelectorAll('[role="button"],button')).find((node) => node.textContent.includes(${JSON.stringify(selectionConversation.title)}))`,
+      rowSelectionControl(selectionConversation.id),
       "real conversation selection",
     );
     await waitFor(
@@ -694,7 +842,7 @@ try {
       "selected real conversation transcript",
       15000,
     );
-    if (!(await devtools.evaluate(`document.body.innerText.includes(${JSON.stringify(selectionConversation.title)})`))) {
+    if (!(await devtools.evaluate(rowIsActive(selectionConversation.id)))) {
       throw new Error("Selecting a real conversation did not show its active title");
     }
     await assertRealUiRequest(
@@ -713,11 +861,11 @@ try {
     }
 
     await click(
-      rowAction("Delete conversation", deleteConversation.title),
+      rowAction("Delete conversation", deleteConversation.id),
       "delete inactive real conversation",
     );
     await waitFor(
-      `!document.body?.innerText.includes(${JSON.stringify(deleteConversation.title)})`,
+      `!${conversationRow(deleteConversation.id)}`,
       "deleted real conversation removed from list",
     );
     await assertRealUiRequest(
@@ -737,11 +885,11 @@ try {
     }
 
     await click(
-      rowAction("Archive conversation", exportConversation.title),
+      rowAction("Archive conversation", exportConversation.id),
       "archive inactive real conversation",
     );
     await waitFor(
-      `!document.body?.innerText.includes(${JSON.stringify(exportConversation.title)})`,
+      `!${conversationRow(exportConversation.id)}`,
       "archived real conversation removed from active list",
     );
     await assertRealUiRequest(
@@ -763,15 +911,15 @@ try {
       "real archived conversation view",
     );
     await waitFor(
-      `Boolean(document.body?.innerText.includes(${JSON.stringify(exportConversation.title)}))`,
+      `Boolean(${conversationRow(exportConversation.id)})`,
       "archived real conversation row",
     );
     await click(
-      rowAction("Restore conversation", exportConversation.title),
+      rowAction("Restore conversation", exportConversation.id),
       "restore inactive real conversation",
     );
     await waitFor(
-      `!document.body?.innerText.includes(${JSON.stringify(exportConversation.title)})`,
+      `!${conversationRow(exportConversation.id)}`,
       "restored real conversation removed from archived list",
     );
     await assertRealUiRequest(
@@ -789,16 +937,17 @@ try {
     }
     await click(`document.querySelector('[aria-label="Show active conversations"]')`, "real active conversation view");
     await waitFor(
-      `Boolean(document.body?.innerText.includes(${JSON.stringify(exportConversation.title)}))`,
+      `Boolean(${conversationRow(exportConversation.id)})`,
       "restored real active-list row",
     );
     console.log("Chat conversation controls check: real inactive-row selection/archive/restore/delete verified");
   }
 
   await click(
-    `Array.from(document.querySelectorAll('[role="button"],button')).find((node) => node.textContent.includes(${JSON.stringify(conversationTitle)}))`,
+    rowSelectionControl(exportConversationId),
     "conversation",
   );
+  await waitFor(`Boolean(${conversationRow(exportConversationId)})`, "export conversation row");
   if (!realClerkMode) {
     await waitFor(`Boolean(document.body?.innerText.includes("Human hello"))`, "conversation transcript");
   } else {
@@ -833,12 +982,12 @@ try {
   }
 
   await waitFor(
-    `Boolean(${rowAction("Archive conversation", conversationTitle)})`,
+    `Boolean(${rowAction("Archive conversation", exportConversationId)})`,
     "archive control",
   );
   console.log("Chat archive/export check: archive state=active -> archived");
   await click(
-    rowAction("Archive conversation", conversationTitle),
+    rowAction("Archive conversation", exportConversationId),
     "archive conversation",
   );
   await waitFor(`document.querySelector('textarea')?.disabled === true`, "archived read-only composer");
@@ -863,11 +1012,11 @@ try {
   await waitFor(`Boolean(document.querySelector('[aria-label="Show active conversations"]'))`, "archived conversation view");
   await waitFor(`Array.from(document.querySelectorAll("h2")).some((node) => node.textContent.includes("Archived conversations"))`, "archived list heading");
   await waitFor(
-    `document.body?.textContent?.includes(${JSON.stringify(conversationTitle)}) === true`,
+    `Boolean(${conversationRow(exportConversationId)})`,
     "archived conversation list item",
   );
   await click(
-    rowAction("Restore conversation", conversationTitle),
+    rowAction("Restore conversation", exportConversationId),
     "restore conversation",
   );
   await waitFor(`document.querySelector('textarea')?.disabled === false`, "restored composer");

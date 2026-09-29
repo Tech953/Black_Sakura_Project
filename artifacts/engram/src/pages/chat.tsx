@@ -936,16 +936,19 @@ export default function Chat() {
                 return (
                   <div
                     key={c.id}
+                    data-testid="conversation-row"
+                    data-conversation-id={c.id}
                     className={`w-full text-left px-3 py-2.5 border-l-2 transition-all group flex items-start gap-2 ${activeId === c.id ? "border-primary bg-primary/10" : "border-transparent hover:bg-white/5 hover:border-white/20"}`}
                   >
                     <button
                       type="button"
+                      data-testid="select-conversation"
                       onClick={() => loadConversation(c.id)}
                       className="flex min-w-0 flex-1 items-start gap-2 text-left touch-manipulation"
                     >
                       <span className="text-primary/60 text-sm mt-0.5">{modeGlyph}</span>
                       <span className="min-w-0 flex-1">
-                        <span className={`block font-mono text-xs truncate ${activeId === c.id ? "text-primary" : "text-foreground/80"}`}>{c.title}</span>
+                        <span data-testid="conversation-title" className={`block font-mono text-xs truncate ${activeId === c.id ? "text-primary" : "text-foreground/80"}`}>{c.title}</span>
                         <span className="block font-mono text-[9px] text-muted-foreground/50 uppercase mt-0.5 truncate">
                           {modeLabel}{listEngram?.isArchival ? ` · ${t("common:archivalBadge")}` : ""}
                         </span>
