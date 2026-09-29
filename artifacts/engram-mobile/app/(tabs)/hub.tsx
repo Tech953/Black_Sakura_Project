@@ -15,8 +15,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import type { UseQueryResult } from "@tanstack/react-query";
 
-import { Chip, EmptyState, ScoreBar } from "@/components/ui";
+import { Chip, EmptyState, MonoLabel, ScoreBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { isRtlLanguage } from "@/lib/layout-direction";
 import type { EngramMessage, Simulation } from "@workspace/api-client-react";
 import {
   getListEngramMessagesQueryKey,
@@ -36,7 +37,8 @@ import { cacheHumanMessages } from "@/lib/offline/store";
 import { queryClient } from "@/lib/query-client";
 
 export default function HubScreen() {
-  const { t } = useTranslation("mobile");
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -148,7 +150,13 @@ export default function HubScreen() {
       }
       ListHeaderComponent={
         <View>
-          <Text style={[styles.kicker, { color: colors.primary }]}>
+          <Text
+            style={[
+              styles.kicker,
+              { color: colors.primary },
+              rtl && styles.kickerRtl,
+            ]}
+          >
             {t("hub.kicker")}
           </Text>
           <Text style={[styles.title, { color: colors.foreground }]}>
@@ -165,16 +173,16 @@ export default function HubScreen() {
             ]}
           >
             <View style={styles.cardHeader}>
-              <Text style={[styles.cardLabel, { color: colors.primary }]}>
+              <MonoLabel color={colors.primary} style={styles.cardLabel}>
                 {t("hub.telemetry")}
-              </Text>
-              <Text style={[styles.status, { color: colors.mutedForeground }]}>
+              </MonoLabel>
+              <MonoLabel color={colors.mutedForeground} style={styles.status}>
                 {controls.data?.paused
                   ? t("hub.paused")
                   : controls.data?.quietMode
                     ? t("hub.quiet")
                     : t("hub.live")}
-              </Text>
+              </MonoLabel>
             </View>
             {(states.data ?? []).map((state) => {
               const engram = engramById.get(state.engramId);
@@ -203,9 +211,9 @@ export default function HubScreen() {
             })}
           </View>
 
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          <MonoLabel style={styles.sectionLabel}>
             {t("hub.spaces")}
-          </Text>
+          </MonoLabel>
           <View style={styles.spaceGrid}>
             {(spaces.data ?? []).map((space) => {
               const occupants = (presence.data ?? []).filter(
@@ -234,32 +242,32 @@ export default function HubScreen() {
                   >
                     {space.description}
                   </Text>
-                  <Text style={[styles.occupants, { color: colors.mutedForeground }]}>
+                  <MonoLabel color={colors.mutedForeground} style={styles.occupants}>
                     {occupants.length} {t("hub.occupants")}
-                  </Text>
+                  </MonoLabel>
                 </View>
               );
             })}
           </View>
 
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          <MonoLabel style={styles.sectionLabel}>
             {t("hub.simulations")}
-          </Text>
+          </MonoLabel>
           <SimulationSection
             query={simulations}
             onRetry={() => void simulations.refetch()}
             onOpen={(id) => router.push(`/simulation/${id}`)}
           />
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          <MonoLabel style={styles.sectionLabel}>
             {t(offline ? "hub.humanContactOffline" : "hub.humanContact")}
-          </Text>
+          </MonoLabel>
           <HumanContactSection
             messages={humanMessages.data ?? []}
             engramName={(id) => engramById.get(id)?.name}
           />
-          <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+          <MonoLabel style={styles.sectionLabel}>
             {t("hub.activity")}
-          </Text>
+          </MonoLabel>
         </View>
       }
       renderItem={({ item }) => (
@@ -269,10 +277,13 @@ export default function HubScreen() {
             <Text style={[styles.activityText, { color: colors.foreground }]}>
               {item.summary}
             </Text>
-            <Text style={[styles.activityMeta, { color: colors.mutedForeground }]}>
+            <MonoLabel
+              color={colors.mutedForeground}
+              style={styles.activityMeta}
+            >
               {spaceById.get(item.spaceId)?.name ?? t("hub.unknownSpace")} ·{" "}
               {item.engramId ? engramById.get(item.engramId)?.name ?? `#${item.engramId}` : t("hub.system")}
-            </Text>
+            </MonoLabel>
           </View>
         </View>
       )}
@@ -292,7 +303,8 @@ function HumanContactSection({
   messages: EngramMessage[];
   engramName: (id: number) => string | undefined;
 }) {
-  const { t } = useTranslation("mobile");
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
   const [replyOpenId, setReplyOpenId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<Record<number, string>>({});
@@ -338,23 +350,23 @@ function HumanContactSection({
           >
             <View style={styles.humanContactHeader}>
               <Feather name="message-circle" size={15} color={colors.primary} />
-              <Text style={[styles.humanContactMeta, { color: colors.foreground }]}>
+              <MonoLabel color={colors.foreground} style={styles.humanContactMeta}>
                 {engramName(message.fromEngramId) ?? `#${message.fromEngramId}`}
-              </Text>
-              <Text style={[styles.humanContactMeta, { color: colors.mutedForeground }]}>
+              </MonoLabel>
+              <MonoLabel color={colors.mutedForeground} style={styles.humanContactMeta}>
                 {message.author === "operator"
                   ? t("hub.operatorMessage")
                   : message.isDigest
                     ? t("hub.humanDigest")
                     : t("hub.humanMessage")}
-              </Text>
-              <Text style={[styles.humanContactMeta, { color: colors.mutedForeground }]}>
+              </MonoLabel>
+              <MonoLabel color={colors.mutedForeground} style={styles.humanContactMeta}>
                 {message.id < 0
                   ? t("hub.replyQueued")
                   : message.seen
                     ? ""
                     : "•"}
-              </Text>
+              </MonoLabel>
             </View>
             <Text style={[styles.humanContactText, { color: colors.foreground }]}>
               {message.content}
@@ -370,7 +382,13 @@ function HumanContactSection({
                 ]}
               >
                 <Feather name={isOpen ? "x" : "corner-up-left"} size={14} color={colors.primary} />
-                <Text style={[styles.replyToggleText, { color: colors.primary }]}>
+                <Text
+                  style={[
+                    styles.replyToggleText,
+                    { color: colors.primary },
+                    rtl && styles.replyToggleTextRtl,
+                  ]}
+                >
                   {isOpen ? t("common.cancel") : t("hub.reply")}
                 </Text>
               </Pressable>
@@ -391,6 +409,7 @@ function HumanContactSection({
                   style={[
                     styles.replyInput,
                     { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground },
+                    rtl && styles.replyInputRtl,
                   ]}
                   value={drafts[message.id] ?? ""}
                 />
@@ -411,7 +430,12 @@ function HumanContactSection({
                     },
                   ]}
                 >
-                  <Text style={styles.replyButtonText}>
+                  <Text
+                    style={[
+                      styles.replyButtonText,
+                      rtl && styles.replyToggleTextRtl,
+                    ]}
+                  >
                     {reply.isPending ? t("hub.replySending") : t("hub.reply")}
                   </Text>
                 </Pressable>
@@ -437,6 +461,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 2,
   },
+  kickerRtl: { writingDirection: "ltr", textAlign: "right" },
   title: {
     fontFamily: "Rajdhani_700Bold",
     fontSize: 34,
@@ -454,32 +479,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
   },
-  cardLabel: {
-    fontFamily: "JetBrainsMono_500Medium",
-    fontSize: 11,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-  },
-  status: {
-    fontFamily: "JetBrainsMono_400Regular",
-    fontSize: 10,
-    textTransform: "uppercase",
-  },
+  cardLabel: { flexShrink: 1 },
+  status: { fontSize: 10, flexShrink: 1 },
   telemetryRow: { gap: 8, marginTop: 17 },
   rowMain: { flexDirection: "row", alignItems: "center", gap: 10 },
   symbol: { fontFamily: "Rajdhani_700Bold", fontSize: 24, width: 28 },
   rowTitle: { fontFamily: "Rajdhani_600SemiBold", fontSize: 17 },
   rowMeta: { fontFamily: "Inter_400Regular", fontSize: 11, marginTop: 2 },
   charge: { fontFamily: "JetBrainsMono_500Medium", fontSize: 12 },
-  sectionLabel: {
-    fontFamily: "JetBrainsMono_500Medium",
-    fontSize: 10,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-    marginTop: 26,
-    marginBottom: 10,
-  },
+  sectionLabel: { fontSize: 10, marginTop: 26, marginBottom: 10 },
   simulationSection: { gap: 10 },
   simulationStateCard: {
     minHeight: 76,
@@ -498,45 +509,50 @@ const styles = StyleSheet.create({
   },
   simulationCardHeader: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 10,
   },
-  simulationLabel: {
-    fontFamily: "JetBrainsMono_500Medium",
-    fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
+  simulationLabel: { fontSize: 10, flexShrink: 1 },
   simulationPremise: {
     fontFamily: "Inter_400Regular",
     fontSize: 13,
     lineHeight: 19,
   },
-  simulationProgress: {
-    fontFamily: "JetBrainsMono_400Regular",
-    fontSize: 10,
-  },
+  simulationProgress: { fontSize: 10, flexShrink: 1 },
   simulationAction: {
     fontFamily: "Rajdhani_600SemiBold",
     fontSize: 14,
     letterSpacing: 0.8,
     textTransform: "uppercase",
+    flexShrink: 1,
+  },
+  simulationActionRtl: {
+    fontFamily: undefined,
+    letterSpacing: 0,
+    textTransform: "none",
+    writingDirection: "rtl",
   },
   spaceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  spaceCard: { borderWidth: 1, borderRadius: 8, padding: 12, width: "48.8%" },
+  spaceCard: { borderWidth: 1, borderRadius: 8, padding: 12, width: "48%" },
   spaceName: { fontFamily: "Rajdhani_600SemiBold", fontSize: 16, flex: 1 },
   spaceKind: { fontFamily: "JetBrainsMono_400Regular", fontSize: 9, marginTop: 5, textTransform: "uppercase" },
   spaceDescription: { fontFamily: "Inter_400Regular", fontSize: 11, lineHeight: 16, marginTop: 9 },
-  occupants: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, marginTop: 12 },
+  occupants: { fontSize: 10, marginTop: 12 },
   activityRow: { flexDirection: "row", gap: 10, paddingVertical: 12, borderBottomWidth: 1 },
   activityText: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 18 },
-  activityMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 9, marginTop: 4 },
+  activityMeta: { fontSize: 9, marginTop: 4, flexShrink: 1 },
   emptyActivity: { fontFamily: "Inter_400Regular", fontSize: 13, paddingVertical: 18 },
   humanContactList: { gap: 10 },
   humanContactCard: { borderWidth: 1, borderRadius: 8, padding: 14, gap: 10 },
-  humanContactHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  humanContactMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, flex: 1 },
+  humanContactHeader: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+  },
+  humanContactMeta: { fontSize: 10, flex: 1, flexShrink: 1 },
   humanContactText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 21 },
   replyToggle: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" },
   replyToggleText: {
@@ -544,6 +560,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.6,
     textTransform: "uppercase",
+  },
+  replyToggleTextRtl: {
+    fontFamily: undefined,
+    letterSpacing: 0,
+    textTransform: "none",
+    writingDirection: "rtl",
   },
   replyComposer: { gap: 8 },
   replyInput: {
@@ -556,6 +578,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 13,
   },
+  replyInputRtl: { writingDirection: "rtl", textAlign: "right" },
   replyButton: { borderRadius: 7, paddingVertical: 10, alignItems: "center" },
   replyButtonText: {
     color: "#FFFFFF",
@@ -578,7 +601,8 @@ function SimulationSection({
   onRetry: () => void;
   onOpen: (id: number) => void;
 }) {
-  const { t } = useTranslation("mobile");
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
 
   if (query.isLoading) {
@@ -601,7 +625,13 @@ function SimulationSection({
           {t("hub.simulationsError")}
         </Text>
         <Pressable onPress={onRetry} hitSlop={8}>
-          <Text style={[styles.simulationAction, { color: colors.primary }]}>
+          <Text
+            style={[
+              styles.simulationAction,
+              { color: colors.primary },
+              rtl && styles.simulationActionRtl,
+            ]}
+          >
             {t("hub.simulationsRetry")}
           </Text>
         </Pressable>
@@ -637,9 +667,9 @@ function SimulationSection({
             ]}
           >
             <View style={styles.simulationCardHeader}>
-              <Text style={[styles.simulationLabel, { color: colors.primary }]}>
+              <MonoLabel color={colors.primary} style={styles.simulationLabel}>
                 {t("hub.simulationRun", { id: simulation.id })}
-              </Text>
+              </MonoLabel>
               <Chip
                 label={t(`hub.simulationStatus.${simulation.status}`)}
                 tone={simulation.status === "ended" ? "muted" : "accent"}
@@ -652,13 +682,22 @@ function SimulationSection({
               {simulation.premise}
             </Text>
             <View style={styles.simulationCardHeader}>
-              <Text style={[styles.simulationProgress, { color: colors.mutedForeground }]}>
+              <MonoLabel
+                color={colors.mutedForeground}
+                style={styles.simulationProgress}
+              >
                 {t("hub.simulationProgress", {
                   current: simulation.currentStep,
                   max: simulation.maxSteps,
                 })}
-              </Text>
-              <Text style={[styles.simulationAction, { color: colors.primary }]}>
+              </MonoLabel>
+              <Text
+                style={[
+                  styles.simulationAction,
+                  { color: colors.primary },
+                  rtl && styles.simulationActionRtl,
+                ]}
+              >
                 {t("hub.reviewSimulation")}
               </Text>
             </View>
