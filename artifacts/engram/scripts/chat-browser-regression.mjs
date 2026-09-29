@@ -50,10 +50,14 @@ const debugPort = configuredDebugPort ?? (await findFreePort());
 const downloadsDir = await mkdtemp(join(tmpdir(), "engram-chat-downloads-"));
 const profileDir = await mkdtemp(join(tmpdir(), "engram-chat-profile-"));
 let disposableClerk;
-let realConversationId;
-let realConversationTitle;
+const realConversations = [];
+let exportConversation;
+let selectionConversation;
+let deleteConversation;
 const realFixtureUserMessage = "Real Clerk export fixture message";
 const realFixtureAssistantMessage = "Real Clerk export fixture reply";
+const realSelectionUserMessage = "Real Clerk selection fixture message";
+const realSelectionAssistantMessage = "Real Clerk selection fixture reply";
 const chromiumPath =
   process.env.CHROMIUM_PATH ??
   ["/repl/tools/bin/chromium", "chromium", "chromium-browser", "google-chrome"]
@@ -367,6 +371,81 @@ async function realApi(path, session, init = {}) {
   return response;
 }
 
+async function createRealConversation(label) {
+  const title = `Real Clerk ${label} ${randomUUID().slice(0, 8)}`;
+  const created = JSON.parse(await devtools.evaluate(`(async () => {
+    const token = await window.Clerk.session.getToken();
+    const response = await fetch("/api/openai/conversations", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ title: ${JSON.stringify(title)}, mode: "companion" }),
+    });
+    return JSON.stringify({ status: response.status, body: await response.json() });
+  })()`));
+  if (created.status !== 201 || !Number.isSafeInteger(created.body?.id)) {
+    throw new Error(`Real Clerk conversation creation failed (${created.status})`);
+  }
+  const conversation = {
+    id: created.body.id,
+    title: created.body.title ?? title,
+  };
+  realConversations.push(conversation);
+  return conversation;
+}
+
+async function seedRealConversation(conversation, userContent, assistantContent) {
+  const seeded = JSON.parse(await devtools.evaluate(`(async () => {
+    const token = await window.Clerk.session.getToken();
+    const response = await fetch("/api/openai/conversations/${conversation.id}/messages/fixture", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+        "X-Engram-Browser-Fixture": "chat-archive-export",
+      },
+      body: JSON.stringify({
+        userContent: ${JSON.stringify(userContent)},
+        assistantContent: ${JSON.stringify(assistantContent)},
+      }),
+    });
+    const body = await response.json();
+    return JSON.stringify({ status: response.status, messages: body.messages });
+  })()`));
+  if (
+    seeded.status !== 201 ||
+    !Array.isArray(seeded.messages) ||
+    !seeded.messages.some((message) => message.role === "user" && message.content === userContent) ||
+    !seeded.messages.some((message) => message.role === "assistant" && message.content === assistantContent)
+  ) {
+    throw new Error(`Real Clerk transcript fixture failed (${seeded.status})`);
+  }
+}
+
+async function readRealConversation(id, session) {
+  const response = await realApi(`/api/openai/conversations/${id}`, session);
+  return {
+    response,
+    body: response.ok ? await response.json() : null,
+  };
+}
+
+async function assertRealUiRequest(method, path, label, minimumCount = 1) {
+  const requests = await devtools.evaluate("window.__engramChatRequestAudit ?? []");
+  const count = requests.filter(
+    (request) =>
+      request.method === method &&
+      request.path === path &&
+      request.status >= 200 &&
+      request.status < 300,
+  ).length;
+  if (count < minimumCount) {
+    throw new Error(`Real Clerk UI did not receive a successful API response for ${label}`);
+  }
+}
+
 async function cleanupDisposableAccount(session) {
   const response = await realApi("/api/openai/browser-fixture/cleanup", session, {
     method: "POST",
@@ -374,6 +453,55 @@ async function cleanupDisposableAccount(session) {
   });
   if (!response.ok) {
     throw new Error(`Disposable account cleanup returned HTTP ${response.status}`);
+  }
+}
+
+async function cleanupRealClerkAccount(session) {
+  const cleanupProblems = [];
+
+  // Try per-conversation deletion first, then use the owner-scoped cleanup to
+  // remove bootstrap rows and any conversation created before an assertion.
+  for (const conversation of realConversations) {
+    try {
+      await realApi(`/api/openai/conversations/${conversation.id}`, session, {
+        method: "DELETE",
+      });
+    } catch {
+      // The owner-scoped cleanup below is authoritative.
+    }
+  }
+  try {
+    await cleanupDisposableAccount(session);
+  } catch {
+    cleanupProblems.push("owner-scoped data cleanup");
+  }
+
+  const revoke = async (url) => {
+    try {
+      await fetch(url, { method: "POST", headers: session.clerkHeaders });
+    } catch {
+      // Deleting the user below also invalidates remaining Clerk sessions/tokens.
+    }
+  };
+  if (session.signInTokenId) {
+    await revoke(`https://api.clerk.com/v1/sign_in_tokens/${session.signInTokenId}/revoke`);
+  }
+  if (session.sessionId) {
+    await revoke(`https://api.clerk.com/v1/sessions/${session.sessionId}/revoke`);
+  }
+
+  try {
+    const response = await fetch(`https://api.clerk.com/v1/users/${session.userId}`, {
+      method: "DELETE",
+      headers: session.clerkHeaders,
+    });
+    if (!response.ok && response.status !== 404) cleanupProblems.push("Clerk user deletion");
+  } catch {
+    cleanupProblems.push("Clerk user deletion");
+  }
+
+  if (cleanupProblems.length > 0) {
+    throw new Error("Real Clerk browser check could not fully clean up disposable data and identity");
   }
 }
 
@@ -458,63 +586,48 @@ try {
     if (!parsedAuthState.userMatches || parsedAuthState.status !== 200) {
       throw new Error(`Real Clerk browser session mismatch: ${authState}`);
     }
-    const createdConversation = JSON.parse(await devtools.evaluate(`(async () => {
-      const token = await window.Clerk.session.getToken();
-      const title = "Real Clerk Archive Check " + crypto.randomUUID().slice(0, 8);
-      const response = await fetch("/api/openai/conversations", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + token,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ title, mode: "companion" }),
-      });
-      return JSON.stringify({
-        status: response.status,
-        body: await response.json(),
-      });
-    })()`));
-    if (createdConversation.status !== 201) {
-      throw new Error(`Real Clerk conversation creation failed (${createdConversation.status})`);
-    }
-    realConversationId = createdConversation.body.id;
-    realConversationTitle = createdConversation.body.title;
-    const seededMessage = JSON.parse(await devtools.evaluate(`(async () => {
-      const token = await window.Clerk.session.getToken();
-      const response = await fetch("/api/openai/conversations/${realConversationId}/messages/fixture", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + token,
-          "Content-Type": "application/json",
-          "X-Engram-Browser-Fixture": "chat-archive-export",
-        },
-        body: JSON.stringify({
-          userContent: ${JSON.stringify(realFixtureUserMessage)},
-          assistantContent: ${JSON.stringify(realFixtureAssistantMessage)},
-        }),
-      });
-      const body = await response.json();
-      return JSON.stringify({
-        status: response.status,
-        messages: body.messages,
-      });
-    })()`));
-    if (
-      seededMessage.status !== 201 ||
-      !Array.isArray(seededMessage.messages) ||
-      !seededMessage.messages.some((message) => message.role === "user" && message.content === realFixtureUserMessage) ||
-      !seededMessage.messages.some((message) => message.role === "assistant" && message.content === realFixtureAssistantMessage)
-    ) {
-      throw new Error(`Real Clerk deterministic transcript fixture failed: ${JSON.stringify(seededMessage)}`);
-    }
+    exportConversation = await createRealConversation("Export Check");
+    selectionConversation = await createRealConversation("Selection Check");
+    deleteConversation = await createRealConversation("Delete Check");
+    await seedRealConversation(exportConversation, realFixtureUserMessage, realFixtureAssistantMessage);
+    await seedRealConversation(
+      selectionConversation,
+      realSelectionUserMessage,
+      realSelectionAssistantMessage,
+    );
+    await devtools.call("Page.addScriptToEvaluateOnNewDocument", {
+      source: `(() => {
+        const originalFetch = window.fetch.bind(window);
+        window.__engramChatRequestAudit = [];
+        window.fetch = async (input, init) => {
+          const rawUrl = typeof input === "string" || input instanceof URL ? input.toString() : input.url;
+          const requestUrl = new URL(rawUrl, window.location.href);
+          const method = String(
+            init?.method ?? (input instanceof Request ? input.method : "GET"),
+          ).toUpperCase();
+          const response = await originalFetch(input, init);
+          if (requestUrl.pathname.startsWith("/api/openai/conversations")) {
+            window.__engramChatRequestAudit.push({
+              method,
+              path: requestUrl.pathname,
+              status: response.status,
+            });
+          }
+          return response;
+        };
+      })();`,
+    });
     await devtools.call("Page.navigate", { url: `${appUrl}/chat` });
   }
-  const conversationTitle = realClerkMode ? realConversationTitle : "Browser Archive Room";
+  const conversationTitle = realClerkMode ? exportConversation.title : "Browser Archive Room";
   await waitFor(
     `Boolean(document.body?.innerText.includes(${JSON.stringify(conversationTitle)}))`,
     "chat conversation list",
     15000,
   );
+  const rowAction = (ariaLabel, title) =>
+    `Array.from(document.querySelectorAll('[aria-label="${ariaLabel}"]')).find((node) => node.parentElement?.parentElement?.textContent?.includes(${JSON.stringify(title)}))`;
+
   if (!realClerkMode) {
     for (const title of ["Browser Archive Room", "Browser Selection Room", "Browser Delete Room", "Browser Failed Delete Room"]) {
       await waitFor(`Boolean(document.body?.innerText.includes(${JSON.stringify(title)}))`, `${title} list row`);
@@ -533,8 +646,6 @@ try {
     throw new Error("Selecting a conversation did not show its active title");
   }
 
-  const rowAction = (ariaLabel, title) =>
-    `Array.from(document.querySelectorAll('[aria-label="${ariaLabel}"]')).find((node) => node.parentElement?.parentElement?.textContent?.includes(${JSON.stringify(title)}))`;
   await click(rowAction("Delete conversation", "Browser Delete Room"), "delete inactive conversation");
   await waitFor(`!document.body?.innerText.includes("Browser Delete Room")`, "deleted conversation removed from list");
   if (!(await devtools.evaluate(`document.body.innerText.includes("Selection room hello")`))) {
@@ -565,6 +676,123 @@ try {
   await click(`document.querySelector('[aria-label="Show active conversations"]')`, "active conversation view");
   await waitFor(`Boolean(document.body?.innerText.includes("Browser Archive Room"))`, "restored active-list row");
     console.log("Chat conversation controls check: inactive row archive/restore kept selection open");
+  } else {
+    for (const conversation of realConversations) {
+      await waitFor(
+        `Boolean(document.body?.innerText.includes(${JSON.stringify(conversation.title)}))`,
+        `${conversation.title} list row`,
+        15000,
+      );
+    }
+
+    await click(
+      `Array.from(document.querySelectorAll('[role="button"],button')).find((node) => node.textContent.includes(${JSON.stringify(selectionConversation.title)}))`,
+      "real conversation selection",
+    );
+    await waitFor(
+      `Boolean(document.body?.innerText.includes(${JSON.stringify(realSelectionUserMessage)}))`,
+      "selected real conversation transcript",
+      15000,
+    );
+    if (!(await devtools.evaluate(`document.body.innerText.includes(${JSON.stringify(selectionConversation.title)})`))) {
+      throw new Error("Selecting a real conversation did not show its active title");
+    }
+    await assertRealUiRequest(
+      "GET",
+      `/api/openai/conversations/${selectionConversation.id}`,
+      "conversation selection",
+    );
+    const selectedState = await readRealConversation(selectionConversation.id, disposableClerk);
+    if (
+      selectedState.response.status !== 200 ||
+      !selectedState.body?.messages?.some(
+        (message) => message.role === "user" && message.content === realSelectionUserMessage,
+      )
+    ) {
+      throw new Error("Authenticated API did not return the selected conversation transcript");
+    }
+
+    await click(
+      rowAction("Delete conversation", deleteConversation.title),
+      "delete inactive real conversation",
+    );
+    await waitFor(
+      `!document.body?.innerText.includes(${JSON.stringify(deleteConversation.title)})`,
+      "deleted real conversation removed from list",
+    );
+    await assertRealUiRequest(
+      "DELETE",
+      `/api/openai/conversations/${deleteConversation.id}`,
+      "inactive conversation delete",
+    );
+    const deletedState = await realApi(
+      `/api/openai/conversations/${deleteConversation.id}`,
+      disposableClerk,
+    );
+    if (deletedState.status !== 404) {
+      throw new Error(`Authenticated API returned ${deletedState.status} after inactive conversation delete`);
+    }
+    if (!(await devtools.evaluate(`document.body.innerText.includes(${JSON.stringify(realSelectionUserMessage)})`))) {
+      throw new Error("Deleting an inactive real conversation changed the active transcript");
+    }
+
+    await click(
+      rowAction("Archive conversation", exportConversation.title),
+      "archive inactive real conversation",
+    );
+    await waitFor(
+      `!document.body?.innerText.includes(${JSON.stringify(exportConversation.title)})`,
+      "archived real conversation removed from active list",
+    );
+    await assertRealUiRequest(
+      "PATCH",
+      `/api/openai/conversations/${exportConversation.id}/archive`,
+      "inactive conversation archive",
+    );
+    const archivedState = await readRealConversation(exportConversation.id, disposableClerk);
+    if (archivedState.response.status !== 200 || !archivedState.body?.archivedAt) {
+      throw new Error("Authenticated API did not confirm inactive conversation archive");
+    }
+    if (!(await devtools.evaluate(`document.body.innerText.includes(${JSON.stringify(realSelectionUserMessage)})`))) {
+      throw new Error("Archiving an inactive real conversation changed the active transcript");
+    }
+
+    await click(`document.querySelector('[aria-label="Show archived conversations"]')`, "real archived conversation view");
+    await waitFor(
+      `Boolean(document.querySelector('[aria-label="Show active conversations"]'))`,
+      "real archived conversation view",
+    );
+    await waitFor(
+      `Boolean(document.body?.innerText.includes(${JSON.stringify(exportConversation.title)}))`,
+      "archived real conversation row",
+    );
+    await click(
+      rowAction("Restore conversation", exportConversation.title),
+      "restore inactive real conversation",
+    );
+    await waitFor(
+      `!document.body?.innerText.includes(${JSON.stringify(exportConversation.title)})`,
+      "restored real conversation removed from archived list",
+    );
+    await assertRealUiRequest(
+      "PATCH",
+      `/api/openai/conversations/${exportConversation.id}/archive`,
+      "inactive conversation restore",
+      2,
+    );
+    const restoredState = await readRealConversation(exportConversation.id, disposableClerk);
+    if (restoredState.response.status !== 200 || restoredState.body?.archivedAt) {
+      throw new Error("Authenticated API did not confirm inactive conversation restore");
+    }
+    if (!(await devtools.evaluate(`document.body.innerText.includes(${JSON.stringify(realSelectionUserMessage)})`))) {
+      throw new Error("Restoring an inactive real conversation changed the active transcript");
+    }
+    await click(`document.querySelector('[aria-label="Show active conversations"]')`, "real active conversation view");
+    await waitFor(
+      `Boolean(document.body?.innerText.includes(${JSON.stringify(exportConversation.title)}))`,
+      "restored real active-list row",
+    );
+    console.log("Chat conversation controls check: real inactive-row selection/archive/restore/delete verified");
   }
 
   await click(
@@ -604,16 +832,22 @@ try {
     }
   }
 
-  await waitFor(`Boolean(document.querySelector('[aria-label="Archive conversation"]'))`, "archive control");
+  await waitFor(
+    `Boolean(${rowAction("Archive conversation", conversationTitle)})`,
+    "archive control",
+  );
   console.log("Chat archive/export check: archive state=active -> archived");
-  await click(`document.querySelector('[aria-label="Archive conversation"]')`, "archive conversation");
+  await click(
+    rowAction("Archive conversation", conversationTitle),
+    "archive conversation",
+  );
   await waitFor(`document.querySelector('textarea')?.disabled === true`, "archived read-only composer");
   if (!(await devtools.evaluate(`document.body.innerText.includes("restore it to send")`))) {
     throw new Error("Archived conversation did not show its read-only state");
   }
   if (realClerkMode) {
     const archivedSend = await realApi(
-      `/api/openai/conversations/${realConversationId}/messages`,
+      `/api/openai/conversations/${exportConversation.id}/messages`,
       disposableClerk,
       {
         method: "POST",
@@ -632,7 +866,10 @@ try {
     `document.body?.textContent?.includes(${JSON.stringify(conversationTitle)}) === true`,
     "archived conversation list item",
   );
-  await click(`document.querySelector('[aria-label="Restore conversation"]')`, "restore conversation");
+  await click(
+    rowAction("Restore conversation", conversationTitle),
+    "restore conversation",
+  );
   await waitFor(`document.querySelector('textarea')?.disabled === false`, "restored composer");
   console.log("Chat archive/export check: archive state=archived -> restored");
 
@@ -655,33 +892,13 @@ try {
   console.log("Chat conversation controls check: no nested-button console warnings");
   console.log(`Browser regression passed: ${files.join(", ")}`);
 } finally {
+  let cleanupError;
   if (realClerkMode && disposableClerk) {
-    let cleanupFailed = false;
-    if (realConversationId) {
-      await realApi(`/api/openai/conversations/${realConversationId}`, disposableClerk, {
-        method: "DELETE",
-      }).catch(() => {});
-    }
     try {
-      await cleanupDisposableAccount(disposableClerk);
-    } catch {
-      cleanupFailed = true;
-      console.error("Disposable account cleanup failed");
-    }
-    await fetch(`https://api.clerk.com/v1/sign_in_tokens/${disposableClerk.signInTokenId}/revoke`, {
-      method: "POST",
-      headers: disposableClerk.clerkHeaders,
-    }).catch(() => {});
-    await fetch(`https://api.clerk.com/v1/sessions/${disposableClerk.sessionId}/revoke`, {
-      method: "POST",
-      headers: disposableClerk.clerkHeaders,
-    }).catch(() => {});
-    await fetch(`https://api.clerk.com/v1/users/${disposableClerk.userId}`, {
-      method: "DELETE",
-      headers: disposableClerk.clerkHeaders,
-    }).catch(() => {});
-    if (cleanupFailed) {
-      throw new Error("Real Clerk browser check could not clean up its disposable account");
+      await cleanupRealClerkAccount(disposableClerk);
+    } catch (error) {
+      cleanupError = error;
+      console.error(error instanceof Error ? error.message : "Disposable account cleanup failed");
     }
   }
   devtools.close();
@@ -701,4 +918,5 @@ try {
       }
     }
   }
+  if (cleanupError) throw cleanupError;
 }
