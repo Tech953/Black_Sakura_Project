@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Chip, EmptyState, MonoLabel, ScoreBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { isRtlLanguage } from "@/lib/layout-direction";
 import { useOfflineMode } from "@/lib/offline/mode";
 import {
   getGetEngramQueryKey,
@@ -22,7 +23,8 @@ import {
 } from "@workspace/api-client-react";
 
 export default function EnvironmentScreen() {
-  const { t } = useTranslation("mobile");
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
@@ -81,7 +83,13 @@ export default function EnvironmentScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.kicker, { color: colors.primary }]}>
+        <Text
+          style={[
+            styles.kicker,
+            { color: colors.primary },
+            rtl && styles.kickerRtl,
+          ]}
+        >
           {t("environment.kicker")} // {item.symbol}
         </Text>
         <Text style={[styles.title, { color: colors.foreground }]}>{item.name}</Text>
@@ -104,7 +112,7 @@ export default function EnvironmentScreen() {
             <Metric label={t("environment.topCharge")} value={live?.topCharge ?? 0} colors={colors} />
             <Metric label={t("environment.threshold")} value={live?.initiationThreshold ?? item.initiationThreshold} max={1} colors={colors} />
           </View>
-          <Text style={[styles.status, { color: colors.mutedForeground }]}>
+          <MonoLabel color={colors.mutedForeground} style={styles.status}>
             {live?.inCooldown
               ? t("environment.cooldown")
               : live?.inBackoff
@@ -112,7 +120,7 @@ export default function EnvironmentScreen() {
                 : live?.ready
                   ? t("environment.ready")
                   : t("environment.waiting")}
-          </Text>
+          </MonoLabel>
         </View>
 
         <MonoLabel style={styles.sectionLabel}>{t("environment.anchor")}</MonoLabel>
@@ -174,7 +182,9 @@ function Metric({
 }) {
   return (
     <View style={styles.metric}>
-      <Text style={[styles.meta, { color: colors.mutedForeground }]}>{label}</Text>
+      <MonoLabel color={colors.mutedForeground} style={styles.metricLabel}>
+        {label}
+      </MonoLabel>
       <Text style={[styles.metricValue, { color: colors.foreground }]}>
         {value.toFixed(2)}
       </Text>
@@ -188,15 +198,17 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   content: { padding: 20 },
   kicker: { fontFamily: "JetBrainsMono_500Medium", fontSize: 11, letterSpacing: 2 },
+  kickerRtl: { writingDirection: "ltr", textAlign: "right" },
   title: { fontFamily: "Rajdhani_700Bold", fontSize: 34, marginTop: 4 },
   subtitle: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19, marginTop: 3, marginBottom: 22 },
   card: { borderWidth: 1, borderRadius: 8, padding: 16 },
-  liveLine: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 14 },
-  mood: { fontFamily: "Rajdhani_600SemiBold", fontSize: 18 },
-  metrics: { flexDirection: "row", gap: 12, marginTop: 20 },
-  metric: { flex: 1, gap: 7 },
+  liveLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 14 },
+  mood: { fontFamily: "Rajdhani_600SemiBold", fontSize: 18, flex: 1, flexShrink: 1 },
+  metrics: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 20 },
+  metric: { flex: 1, minWidth: 100, gap: 7 },
+  metricLabel: { fontSize: 10 },
   metricValue: { fontFamily: "JetBrainsMono_500Medium", fontSize: 17 },
-  status: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, marginTop: 16, textTransform: "uppercase" },
+  status: { fontSize: 10, marginTop: 16, flexShrink: 1 },
   sectionLabel: { marginTop: 26, marginBottom: 10 },
   anchorName: { fontFamily: "Rajdhani_600SemiBold", fontSize: 20, marginBottom: 8 },
   body: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 21 },

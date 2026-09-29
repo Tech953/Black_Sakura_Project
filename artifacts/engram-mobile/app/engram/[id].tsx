@@ -340,12 +340,15 @@ export default function EngramDetailScreen() {
             {(beliefs ?? []).slice(0, 5).map((belief) => (
               <View key={belief.id} style={styles.dataRow}>
                 <View style={styles.dataRowTop}>
-                  <Text style={[styles.dataMeta, { color: colors.accent }]}>
+                  <MonoLabel color={colors.accent} style={styles.localizedMeta}>
                     {Math.round(belief.confidence * 100)}% {t("detail.confident")}
-                  </Text>
-                  <Text style={[styles.dataMeta, { color: colors.mutedForeground }]}>
+                  </MonoLabel>
+                  <MonoLabel
+                    color={colors.mutedForeground}
+                    style={styles.localizedMeta}
+                  >
                     {t("detail.revisions", { count: belief.revisionCount })}
-                  </Text>
+                  </MonoLabel>
                 </View>
                 <Text style={[styles.body, { color: colors.foreground }]}>
                   {belief.statement}
@@ -489,7 +492,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  heroBody: { flex: 1, gap: 4 },
+  heroBody: { flex: 1, minWidth: 0, gap: 4 },
   name: {
     fontFamily: "Rajdhani_700Bold",
     fontSize: 26,
@@ -501,6 +504,7 @@ const styles = StyleSheet.create({
   },
   heroChips: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 6,
     marginTop: 6,
   },
@@ -521,8 +525,15 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   dataRow: { gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "rgba(148,163,184,0.14)" },
-  dataRowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  dataRowTop: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 8,
+  },
   dataMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, textTransform: "uppercase" },
+  localizedMeta: { fontSize: 10, flexShrink: 1 },
   emptyData: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 20 },
   driveRow: {
     flexDirection: "row",

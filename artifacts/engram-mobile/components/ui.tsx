@@ -148,6 +148,8 @@ export function PrimaryButton({
   testID?: string;
 }) {
   const colors = useColors();
+  const { i18n } = useTranslation();
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const isOutline = tone === "outline";
   const bg =
     tone === "accent"
@@ -182,13 +184,25 @@ export function PrimaryButton({
         <ActivityIndicator color={fg} size="small" />
       ) : (
         <Text
-          style={{
-            fontFamily: "Rajdhani_600SemiBold",
-            fontSize: 15,
-            letterSpacing: 1,
-            textTransform: "uppercase",
-            color: fg,
-          }}
+          style={[
+            {
+              fontFamily: "Rajdhani_600SemiBold",
+              fontSize: 15,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              textAlign: "center",
+              flexShrink: 1,
+              color: fg,
+            },
+            rtl
+              ? {
+                  fontFamily: undefined,
+                  letterSpacing: 0,
+                  textTransform: "none" as const,
+                  writingDirection: "rtl" as const,
+                }
+              : null,
+          ]}
         >
           {label}
         </Text>
@@ -289,11 +303,12 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   button: {
-    height: 50,
+    minHeight: 50,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   iconButton: {
     width: 44,
