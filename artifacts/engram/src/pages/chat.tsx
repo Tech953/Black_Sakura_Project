@@ -46,6 +46,29 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 type EventTone = "info" | "warn" | "good";
 
+function describeDeleteFailure(error: unknown, t: TFunction): string {
+  const status =
+    typeof error === "object" && error !== null && "status" in error
+      ? (error as { status?: unknown }).status
+      : undefined;
+
+  if (status === 408 || status === 502 || status === 503 || status === 504) {
+    return t("toastDeleteUnavailable");
+  }
+  if (typeof status === "number") {
+    return status >= 400 && status < 500
+      ? t("toastDeleteRejected")
+      : t("toastDeleteUnexpected");
+  }
+  if (
+    error instanceof TypeError ||
+    (error instanceof Error && error.name === "AbortError")
+  ) {
+    return t("toastDeleteUnavailable");
+  }
+  return t("toastDeleteUnexpected");
+}
+
 interface SystemEvent {
   id: string;
   label: string;
@@ -369,8 +392,12 @@ export default function Chat() {
       }
       toast({ title: t("toastConversationDeleted") });
     } catch (error) {
-      const description = error instanceof Error ? error.message : t("toastCouldNotReachApi");
-      toast({ title: t("toastDeleteFailed"), description, variant: "destructive" });
+      console.error("Conversation deletion failed", { conversationId: id, error });
+      toast({
+        title: t("toastDeleteFailed"),
+        description: describeDeleteFailure(error, t),
+        variant: "destructive",
+      });
     }
   }
 

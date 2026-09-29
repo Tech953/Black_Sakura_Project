@@ -159,16 +159,25 @@ const fixtureScript = String.raw`
 (() => {
   const originalFetch = window.fetch.bind(window);
   const nestedButtonWarnings = [];
+  const deleteFailureDiagnostics = [];
   for (const method of ["warn", "error"]) {
     const original = console[method].bind(console);
     console[method] = (...args) => {
       const text = args.map((arg) => typeof arg === "string" ? arg : String(arg)).join(" ");
       if (/nested|descendant|validateDOMNesting/i.test(text)) nestedButtonWarnings.push(text);
+      if (method === "error" && args[0] === "Conversation deletion failed") {
+        const details = args[1];
+        deleteFailureDiagnostics.push({
+          conversationId: details?.conversationId,
+          message: details?.error instanceof Error ? details.error.message : String(details?.error),
+        });
+      }
       original(...args);
     };
   }
   window.__engramChatFixture = {
     get nestedButtonWarnings() { return nestedButtonWarnings; },
+    get deleteFailureDiagnostics() { return [...deleteFailureDiagnostics]; },
     get openedConversationIds() { return [...openedConversationIds]; },
     getConversationState(id) {
       return {
@@ -232,6 +241,33 @@ const fixtureScript = String.raw`
       engramIds: [1],
       createdAt: "2026-09-05T12:08:00.000Z",
     }],
+    [7, {
+      id: 7,
+      title: "Browser Rejected Delete Room",
+      mode: "companion",
+      personaName: "PYRI",
+      engramId: 1,
+      engramIds: [1],
+      createdAt: "2026-09-05T12:09:00.000Z",
+    }],
+    [8, {
+      id: 8,
+      title: "Browser Unexpected Delete Room",
+      mode: "companion",
+      personaName: "PYRI",
+      engramId: 1,
+      engramIds: [1],
+      createdAt: "2026-09-05T12:10:00.000Z",
+    }],
+    [9, {
+      id: 9,
+      title: "Browser Offline Delete Room",
+      mode: "companion",
+      personaName: "PYRI",
+      engramId: 1,
+      engramIds: [1],
+      createdAt: "2026-09-05T12:11:00.000Z",
+    }],
   ]);
   const messageSets = new Map([
     [1, [
@@ -253,6 +289,15 @@ const fixtureScript = String.raw`
     ]],
     [6, [
       { id: 8, role: "user", content: "Duplicate row B transcript is selected", createdAt: "2026-09-05T12:08:00.000Z" },
+    ]],
+    [7, [
+      { id: 9, role: "user", content: "Rejected delete room stays available", createdAt: "2026-09-05T12:09:00.000Z" },
+    ]],
+    [8, [
+      { id: 10, role: "user", content: "Unexpected delete room stays available", createdAt: "2026-09-05T12:10:00.000Z" },
+    ]],
+    [9, [
+      { id: 11, role: "user", content: "Offline delete room stays available", createdAt: "2026-09-05T12:11:00.000Z" },
     ]],
   ]);
   const archivedIds = new Set();
@@ -292,7 +337,10 @@ const fixtureScript = String.raw`
       }
       if (method === "DELETE") {
         if (!currentConversation(id)) return response({ error: "Not found" }, 404);
-        if (id === 4) return response({ error: "Delete service unavailable" }, 503);
+        if (id === 4) return response({ error: "RAW_503_DIAGNOSTIC: delete service unavailable" }, 503);
+        if (id === 7) return response({ error: "RAW_403_DIAGNOSTIC: archival policy code" }, 403);
+        if (id === 8) return response({ error: "RAW_500_DIAGNOSTIC: private server detail" }, 500);
+        if (id === 9) throw new TypeError("RAW_TRANSPORT_DIAGNOSTIC: private connection detail");
         deletedIds.add(id);
         return new Response(null, { status: 204 });
       }
@@ -673,7 +721,7 @@ try {
   );
 
   if (!realClerkMode) {
-    for (const id of [1, 2, 3, 4, 5, 6]) {
+    for (const id of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
       await waitFor(`Boolean(${conversationRow(id)})`, `conversation row ${id}`);
     }
 
@@ -697,12 +745,53 @@ try {
   }
   console.log("Chat conversation controls check: inactive row delete kept selection open");
 
-    await click(rowAction("Delete conversation", 4), "failed delete conversation");
-    await waitFor(`Boolean(document.body?.innerText.includes("Could not delete conversation"))`, "delete failure toast");
-    if (!(await devtools.evaluate(`${conversationRow(4)} !== null && document.body.innerText.includes("Selection room hello")`))) {
-      throw new Error("Failed deletion changed the conversation list or active conversation");
+    const deleteFailureCases = [
+      {
+        id: 4,
+        description: "The service is temporarily unavailable. Check your connection and try again.",
+        rawDetail: "RAW_503_DIAGNOSTIC",
+      },
+      {
+        id: 7,
+        description: "The request was rejected. This conversation may be read-only or no longer available.",
+        rawDetail: "RAW_403_DIAGNOSTIC",
+      },
+      {
+        id: 8,
+        description: "Something went wrong while deleting this conversation. Please try again.",
+        rawDetail: "RAW_500_DIAGNOSTIC",
+      },
+      {
+        id: 9,
+        description: "The service is temporarily unavailable. Check your connection and try again.",
+        rawDetail: "RAW_TRANSPORT_DIAGNOSTIC",
+      },
+    ];
+    for (const failure of deleteFailureCases) {
+      await click(rowAction("Delete conversation", failure.id), `failed delete conversation ${failure.id}`);
+      await waitFor(
+        `Boolean(document.body?.innerText.includes(${JSON.stringify(failure.description)}))`,
+        `localized delete failure guidance for row ${failure.id}`,
+      );
+      const failureState = await devtools.evaluate(`({
+        rowStillPresent: Boolean(${conversationRow(failure.id)}),
+        activeTranscriptStillOpen: document.body.innerText.includes("Selection room hello"),
+        rawDetailVisible: document.body.innerText.includes(${JSON.stringify(failure.rawDetail)}),
+      })`);
+      if (!failureState.rowStillPresent || !failureState.activeTranscriptStillOpen || failureState.rawDetailVisible) {
+        throw new Error(`Delete failure changed row ${failure.id} or exposed its raw error detail`);
+      }
     }
-    console.log("Chat conversation controls check: failed delete showed a destructive toast and preserved state");
+    const deleteFailureDiagnostics = await devtools.evaluate(
+      "window.__engramChatFixture.deleteFailureDiagnostics",
+    );
+    for (const failure of deleteFailureCases) {
+      const diagnostic = deleteFailureDiagnostics.find((entry) => entry.conversationId === failure.id);
+      if (!diagnostic?.message.includes(failure.rawDetail)) {
+        throw new Error(`Delete failure ${failure.id} did not retain raw details in diagnostics`);
+      }
+    }
+    console.log("Chat conversation controls check: delete failures show stable guidance, keep rows retryable, and log raw diagnostics");
 
   await click(rowAction("Archive conversation", 1), "archive inactive conversation");
   await waitFor(`!${conversationRow(1)}`, "archived conversation removed from active list");
