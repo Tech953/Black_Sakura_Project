@@ -15,13 +15,13 @@ The download-page regression also requires an isolated Vite server started with 
 
 **How to apply:** Start the web artifact with `VITE_BROWSER_TEST=true` and a free `PORT`, then pass that URL through `ENGRAM_BROWSER_TEST_URL` instead of changing production auth behavior.
 
-For Expo mobile export coverage, the browser path cannot use `expo-file-system` native writes. Route web exports through the existing `Share` fallback and reserve native file generation checks for an Android/iOS device or native test harness.
+For Expo mobile export coverage, the browser path cannot use `expo-file-system` native writes. Route web exports through the existing `Share` fallback and reserve native file generation checks for an Android/iOS device or native test harness. In chat browser checks, archive/restore/delete controls reuse the same accessible labels across rows; scope each action to its row's unique title.
 
-**Why:** The browser regression must exercise the real UI without pretending native file APIs exist on web, and broad accessibility-label selectors can mutate the wrong history row when several conversations are visible.
+**Why:** The browser regression must exercise the real UI without pretending native file APIs exist on web, and a global accessibility-label selector can act on a different conversation when several rows are visible.
 
 Native mobile export paths should verify the produced URI exists and has non-zero size before invoking the platform share sheet; a successful share callback alone does not prove that PDF/DOCX generation completed.
 
-**How to apply:** Keep the native export service injectable so deterministic tests can inspect all four file formats, and pair it with a physical-device checklist for share-sheet and Files-provider verification.
+**How to apply:** Keep the native export service injectable so deterministic tests can inspect all four file formats, pair it with a physical-device checklist for share-sheet and Files-provider verification, and select chat row actions by both label and visible row title.
 
 Browser exports should use Blob/object-URL downloads rather than native Expo file APIs; CDP tests can intercept `URL.createObjectURL` and anchor clicks to verify filename, MIME type, size, and binary signatures without relying on the host filesystem.
 
@@ -104,3 +104,9 @@ Real Clerk browser checks must clean up through an authenticated, development-on
 **Why:** Authentication bootstrap copies account-owned personality, spaces, engrams, and related rows into the development database, so repeated release checks otherwise accumulate disposable data.
 
 **How to apply:** Keep cleanup owner-derived on the server, reject the reserved system owner, perform the deletion transactionally, and make the browser `finally` path fail without printing credentials or private row data if cleanup cannot complete.
+
+After the owner-scoped cleanup endpoint succeeds, make no further authenticated API calls for that test account; authentication middleware can bootstrap owner data before route handling and recreate rows during a verification request.
+
+**Why:** A post-cleanup GET can silently recreate the account's bootstrap copies even though the cleanup itself succeeded.
+
+**How to apply:** Delete known test conversations and call owner-scoped cleanup last among application API requests, then revoke Clerk tokens/session and delete the temporary user without querying the API again.
