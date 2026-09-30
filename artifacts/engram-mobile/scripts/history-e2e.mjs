@@ -161,6 +161,13 @@ const browserMock = String.raw`(() => {
     createdAt: "2026-09-10T12:00:00.000Z",
     updatedAt: "2026-09-10T12:00:00.000Z",
   };
+  const alternateEngram = {
+    ...engram,
+    id: 2,
+    slug: "e2e-alternate-persona",
+    name: "Alternate E2E Persona",
+    title: "Alternate browser regression persona",
+  };
   const messages = {
     101: [
       { id: 1, conversationId: 101, role: "user", content: "Current transcript", createdAt: "2026-09-10T12:00:00.000Z" },
@@ -197,7 +204,7 @@ const browserMock = String.raw`(() => {
     {
       id: 702,
       engramId: 1,
-      participantEngramIds: [1],
+      participantEngramIds: [1, 2],
       spaceId: 7,
       premise: "Browser empty simulation premise",
       status: "proposed",
@@ -367,7 +374,7 @@ const browserMock = String.raw`(() => {
     if (path === "/api/hub/activity" && method === "GET") return emptyList("activity");
     if (path === "/api/simulations" && method === "GET") {
       if (!hubEnvironmentE2E.simulationMode) return emptyList("simulations");
-      hubEnvironmentE2E.simulationRequests.push({ path, method });
+      hubEnvironmentE2E.simulationRequests.push({ path, method, search: url.search });
       if (hubEnvironmentE2E.holdSimulationList) {
         hubEnvironmentE2E.holdSimulationList = false;
         return new Promise((resolve) => {
@@ -411,11 +418,16 @@ const browserMock = String.raw`(() => {
     if (path === "/api/hub/controls" && method === "GET") {
       return response({ paused: false, quietMode: false });
     }
-    if (path.endsWith("/api/engrams") && method === "GET") return response([engram]);
+    if (path.endsWith("/api/engrams") && method === "GET") {
+      return response([engram, alternateEngram]);
+    }
     if (path.endsWith("/api/engrams/999") && method === "GET") {
       return response({ error: "not found" }, 404);
     }
     if (path.endsWith("/api/engrams/1") && method === "GET") return response(engram);
+    if (path.endsWith("/api/engrams/2") && method === "GET") {
+      return response(alternateEngram);
+    }
     if (path.endsWith("/api/engrams/1/activate") && method === "POST") return response(engram);
     if (path.endsWith("/api/openai/conversations") && method === "POST") {
       return response(conversations.get(101), 201);
@@ -617,6 +629,72 @@ async function runSimulationReviewRegression(client, cdpPort, appUrl) {
     `document.body.innerText.includes("Browser simulation premise")`,
     "Hub simulation card",
   );
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector('[data-testid="hub-simulation-status-running"]')) &&
+      Boolean(document.querySelector('[data-testid="hub-simulation-engram-2"]'))`,
+    "local simulation status and participant filters",
+  );
+  const simulationListRequestCount = await client.evaluate(
+    `window.__hubEnvironmentE2E.simulationRequests.filter(({ path }) => path === "/api/simulations").length`,
+  );
+
+  await clickTestId(client, "hub-simulation-status-running");
+  await waitForValue(
+    client,
+    `document.body.innerText.includes("Browser failed-read simulation premise") &&
+      !document.body.innerText.includes("Browser simulation premise") &&
+      !document.body.innerText.includes("Browser empty simulation premise")`,
+    "running status filter",
+  );
+  await clickTestId(client, "hub-simulation-status-ended");
+  await waitForValue(
+    client,
+    `document.body.innerText.includes("Browser simulation premise") &&
+      !document.body.innerText.includes("Browser empty simulation premise") &&
+      !document.body.innerText.includes("Browser failed-read simulation premise")`,
+    "ended status filter",
+  );
+  await clickTestId(client, "hub-simulation-status-paused");
+  await waitForValue(
+    client,
+    `document.body.innerText.includes("No simulation runs match the paused status filter.")`,
+    "status-filtered empty results explanation",
+  );
+  await clickTestId(client, "hub-simulation-status-ended");
+  await clickTestId(client, "hub-simulation-engram-2");
+  await waitForValue(
+    client,
+    `document.body.innerText.includes("No simulation runs match the ended status filter and include Alternate E2E Persona.")`,
+    "combined status and participant-filter empty explanation",
+  );
+  await clickTestId(client, "hub-simulation-status-all");
+  await waitForValue(
+    client,
+    `document.body.innerText.includes("Browser empty simulation premise") &&
+      !document.body.innerText.includes("Browser simulation premise") &&
+      !document.body.innerText.includes("Browser failed-read simulation premise")`,
+    "participant filter includes a shared-run participant",
+  );
+  const filtersStayedLocal = await client.evaluate(
+    `(() => {
+      const requests = window.__hubEnvironmentE2E.simulationRequests.filter(({ path }) => path === "/api/simulations");
+      return requests.length === ${simulationListRequestCount} &&
+        requests.every(({ search }) => search === "") &&
+        window.__hubEnvironmentE2E.simulationMutations.length === 0;
+    })()`,
+  );
+  if (!filtersStayedLocal) {
+    throw new Error("Simulation filters made a server-filtered or mutating request");
+  }
+  await clickTestId(client, "hub-simulation-filters-clear");
+  await waitForValue(
+    client,
+    `document.body.innerText.includes("Browser simulation premise") &&
+      document.body.innerText.includes("Browser empty simulation premise") &&
+      document.body.innerText.includes("Browser failed-read simulation premise")`,
+    "cleared simulation filters",
+  );
 
   await clickVisibleText(client, "Browser simulation premise");
   await waitForValue(
@@ -695,7 +773,7 @@ async function runSimulationReviewRegression(client, cdpPort, appUrl) {
   }
   await assertSimulationDetailIsReadOnly(client, 703);
   console.log(
-    "Mobile simulation browser regression passed: Hub/detail loading, readable run data, empty run, failed read, and read-only details.",
+    "Mobile simulation browser regression passed: local status/participant filters, filter-specific empty states, Hub/detail loading, readable run data, empty run, failed read, and read-only details.",
   );
   return client;
 }
