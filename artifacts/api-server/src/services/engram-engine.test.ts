@@ -734,9 +734,12 @@ describe("runTick — human contact digest", () => {
 
 // --- commons conversation -----------------------------------------------------
 describe("runTick — commons turn-taking", () => {
-  it("records one engram-to-engram turn when >=2 converse-capable engrams share the commons", async () => {
+  it("delivers to the selected recipient without blocking an ordinary mention of a third peer", async () => {
     const now = Date.now();
-    // Two engrams that will NOT cross their own transmission threshold (low pressure),
+    generateConversationTurn.mockResolvedValueOnce(
+      "Rebecca, I agree with Mara's earlier point.",
+    );
+    // These engrams will NOT cross their own transmission threshold (low pressure),
     // so the only thing that fires this tick is the commons conversation turn.
     h.state.engrams = [
       makeEngram({
@@ -749,6 +752,13 @@ describe("runTick — commons turn-taking", () => {
       makeEngram({
         id: 2,
         name: "Rebecca",
+        lastTickAt: new Date(now - 100_000),
+        driveState: { order: 0 },
+        initiationThreshold: 0.9,
+      }),
+      makeEngram({
+        id: 3,
+        name: "Mara",
         lastTickAt: new Date(now - 100_000),
         driveState: { order: 0 },
         initiationThreshold: 0.9,
@@ -766,6 +776,7 @@ describe("runTick — commons turn-taking", () => {
     h.state.presence = [
       { engramId: 1, spaceId: 7, status: "active" },
       { engramId: 2, spaceId: 7, status: "active" },
+      { engramId: 3, spaceId: 7, status: "active" },
     ];
 
     await runTick();
@@ -775,6 +786,7 @@ describe("runTick — commons turn-taking", () => {
     expect(messageInserts[0].channel).toBe("engram");
     expect(messageInserts[0].status).toBe("delivered");
     expect(messageInserts[0].spaceId).toBe(7);
+    expect(messageInserts[0].content).toBe("Rebecca, I agree with Mara's earlier point.");
     expect(messageInserts[0].toEngramId).toBe(2);
     // The speaker is the least-recently-spoken (tie → first in list).
     expect(messageInserts[0].fromEngramId).toBe(1);
@@ -785,6 +797,73 @@ describe("runTick — commons turn-taking", () => {
     expect(activityInserts[0].kind).toBe("converse");
     expect(activityInserts[0].summary).toContain("Arezo");
     expect(activityInserts[0].summary).toContain("Rebecca");
+  });
+
+  it("blocks and audits a turn addressed to the wrong peer in a three-engram Commons", async () => {
+    generateConversationTurn.mockResolvedValueOnce(
+      "Mara, I think we should take this conversation in another direction.",
+    );
+    const now = Date.now();
+    h.state.engrams = [
+      makeEngram({
+        id: 1,
+        name: "Arezo",
+        lastTickAt: new Date(now - 100_000),
+        driveState: { order: 0 },
+        initiationThreshold: 0.9,
+      }),
+      makeEngram({
+        id: 2,
+        name: "Rebecca",
+        lastTickAt: new Date(now - 100_000),
+        driveState: { order: 0 },
+        initiationThreshold: 0.9,
+      }),
+      makeEngram({
+        id: 3,
+        name: "Mara",
+        lastTickAt: new Date(now - 100_000),
+        driveState: { order: 0 },
+        initiationThreshold: 0.9,
+      }),
+    ];
+    h.state.spaces = [
+      {
+        id: 7,
+        kind: "commons",
+        name: "The Commons",
+        actionScope: "converse",
+        allowsInitiative: true,
+      },
+    ];
+    h.state.presence = [
+      { engramId: 1, spaceId: 7, status: "active" },
+      { engramId: 2, spaceId: 7, status: "active" },
+      { engramId: 3, spaceId: 7, status: "active" },
+    ];
+
+    await runTick();
+
+    const messageInserts = h.state.inserts.filter((r) => r.__table === h.engramMessagesTable);
+    expect(messageInserts).toHaveLength(1);
+    expect(messageInserts[0]).toMatchObject({
+      fromEngramId: 1,
+      toEngramId: 2,
+      spaceId: 7,
+      status: "blocked",
+      content: "Mara, I think we should take this conversation in another direction.",
+      reason: expect.stringMatching(/Mara.*Rebecca/i),
+    });
+
+    const activityInserts = h.state.inserts.filter((r) => r.__table === h.hubActivityLogTable);
+    expect(activityInserts).toHaveLength(1);
+    expect(activityInserts[0]).toMatchObject({
+      kind: "converse",
+      engramId: 1,
+    });
+    expect(activityInserts[0].summary).toContain("refused");
+    expect(activityInserts[0].summary).toContain("Rebecca");
+    expect(activityInserts[0].summary).toMatch(/Mara.*Rebecca/i);
   });
 
   it("blocks and audits coercive output even when generation is hostile", async () => {

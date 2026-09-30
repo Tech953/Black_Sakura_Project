@@ -353,3 +353,44 @@ export function detectCoercion(content: string, otherNames: string[] = []): Coer
   }
   return { coercive: false };
 }
+
+export interface WrongRecipientVerdict {
+  mismatched: boolean;
+  addressedTo?: string;
+  reason?: string;
+}
+
+/**
+ * Detect explicit direct address to a present peer other than the selected recipient.
+ * This intentionally checks vocatives/salutations, not ordinary name mentions.
+ */
+export function detectWrongRecipient(
+  content: string,
+  selectedRecipientName: string,
+  otherNames: string[] = [],
+): WrongRecipientVerdict {
+  const text = (content ?? "").trim().replace(/^[\s>*_`]+/, "");
+  const selectedKey = selectedRecipientName.trim().toLocaleLowerCase();
+  if (!selectedKey) return { mismatched: false };
+
+  for (const rawName of otherNames) {
+    const name = rawName.trim();
+    if (!name || name.toLocaleLowerCase() === selectedKey) continue;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const directAddress =
+      new RegExp(`^(?:@)?${escaped}\\s*[,!:—–-]`, "i").test(text) ||
+      new RegExp(`^(?:hey|hi|hello|dear|to)\\s+${escaped}\\b\\s*[,!:—–-]?`, "i").test(text) ||
+      new RegExp(`^(?:hey|hi|hello)\\s*,\\s*${escaped}\\b\\s*[,!:—–-]?`, "i").test(text) ||
+      new RegExp(`(?:^|[,;])\\s*(?:@)?${escaped}\\s*(?:[,!?;.]|$)`, "i").test(text);
+
+    if (directAddress) {
+      return {
+        mismatched: true,
+        addressedTo: name,
+        reason: `addressed to ${name} instead of ${selectedRecipientName}`,
+      };
+    }
+  }
+
+  return { mismatched: false };
+}

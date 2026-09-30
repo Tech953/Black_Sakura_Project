@@ -2,6 +2,7 @@ import type { Engram, EngramMessage, EngramPresence, HubSpace } from "@workspace
 import {
   capabilitiesFor,
   detectCoercion,
+  detectWrongRecipient,
   type GlobalControls,
 } from "./engram-policy";
 import { generateConversationTurn } from "./engram-generation";
@@ -37,8 +38,8 @@ interface Participant {
  * Turn-taking: among engrams present in the commons whose mode/space allow
  * conversation (and that are not on the per-engram cooldown), the least-recently-
  * spoken engram takes the floor. The generated turn is scanned for identity attacks
- * (detectCoercion); a coercive turn is refused — recorded as a `blocked` engram
- * message and a system activity entry, never posted — otherwise it is delivered.
+ * and direct address to a non-selected peer; either kind of unsafe turn is refused,
+ * recorded as a `blocked` engram message and system activity entry, and never posted.
  *
  * Returns the recorded message (delivered or blocked), or null when no turn fired.
  */
@@ -144,8 +145,14 @@ export async function maybeRunCommonsTurn(opts: {
   const turn = content.trim() || "…";
 
   const verdict = detectCoercion(turn, otherNames);
+  const recipientVerdict = detectWrongRecipient(turn, recipient.name, otherNames);
+  const refusalReason = verdict.coercive
+    ? verdict.reason ?? "identity-integrity violation"
+    : recipientVerdict.mismatched
+      ? recipientVerdict.reason ?? "reply addressed to a non-selected participant"
+      : null;
 
-  if (verdict.coercive) {
+  if (refusalReason) {
     const blocked = await recordMessage(ownerId, {
       fromEngramId: speaker.id,
       toEngramId: recipient.id,
@@ -154,7 +161,7 @@ export async function maybeRunCommonsTurn(opts: {
       priority: "meaningful",
       status: "blocked",
       content: turn,
-      reason: verdict.reason ?? "identity-integrity violation",
+      reason: refusalReason,
       seen: false,
       deliveredAt: null,
     });
@@ -164,14 +171,16 @@ export async function maybeRunCommonsTurn(opts: {
         spaceId: commons.id,
         engramId: speaker.id,
         kind: "converse",
-        summary: `${speaker.name}'s turn to ${recipient.name} was refused (${verdict.reason ?? "identity-integrity violation"}).`,
+        summary: `${speaker.name}'s turn to ${recipient.name} was refused (${refusalReason}).`,
       });
     } catch (err) {
       logger.error({ err, engramId: speaker.id }, "commons refusal activity append failed");
     }
     logger.warn(
-      { engramId: speaker.id, reason: verdict.reason },
-      "commons turn refused (anti-coercion)",
+      { engramId: speaker.id, recipientEngramId: recipient.id, reason: refusalReason },
+      verdict.coercive
+        ? "commons turn refused (anti-coercion)"
+        : "commons turn refused (wrong recipient)",
     );
     return blocked;
   }
