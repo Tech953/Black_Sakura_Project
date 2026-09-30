@@ -144,6 +144,86 @@ const fixtureScript = String.raw`
       },
     },
   ];
+  const makeHubMessage = (id, spaceId, content) => {
+    const createdAt = new Date(Date.UTC(2026, 8, 15, 12, 0, id)).toISOString();
+    return {
+      id,
+      fromEngramId: 1,
+      toEngramId: 2,
+      spaceId,
+      channel: "commons",
+      author: "engram",
+      priority: "normal",
+      status: "delivered",
+      content,
+      reason: null,
+      seen: true,
+      isDigest: false,
+      digestGroupId: null,
+      deliveredAt: createdAt,
+      createdAt,
+    };
+  };
+  const hubTranscripts = new Map([
+    [101, Array.from({ length: 20 }, (_, index) => makeHubMessage(
+      index + 1,
+      101,
+      "Alpha turn " + String(index + 1).padStart(2, "0") + " — " + "A".repeat(180),
+    ))],
+    [202, [makeHubMessage(2021, 202, "Beta space transcript only")]],
+  ]);
+  const hubSpaces = [
+    {
+      id: 101,
+      slug: "commons-alpha",
+      name: "Commons Alpha",
+      kind: "commons",
+      description: "First Commons space",
+      visibilityScope: "public",
+      actionScope: "converse",
+      logged: true,
+      allowsInitiative: true,
+      sortOrder: 1,
+      ambient: null,
+      accent: null,
+      createdAt: "2026-09-15T12:00:00.000Z",
+      updatedAt: "2026-09-15T12:00:00.000Z",
+    },
+    {
+      id: 202,
+      slug: "commons-beta",
+      name: "Commons Beta",
+      kind: "commons",
+      description: "Second Commons space",
+      visibilityScope: "public",
+      actionScope: "converse",
+      logged: true,
+      allowsInitiative: true,
+      sortOrder: 2,
+      ambient: null,
+      accent: null,
+      createdAt: "2026-09-15T12:00:00.000Z",
+      updatedAt: "2026-09-15T12:00:00.000Z",
+    },
+  ];
+  const hubActivity = [
+    {
+      id: 1,
+      spaceId: 101,
+      engramId: 1,
+      kind: "converse",
+      summary: "Mira and Aster spoke in Commons Alpha",
+      createdAt: "2026-09-15T12:02:00.000Z",
+    },
+    {
+      id: 2,
+      spaceId: 202,
+      engramId: 2,
+      kind: "converse",
+      summary: "Mira and Aster spoke in Commons Beta",
+      createdAt: "2026-09-15T12:01:00.000Z",
+    },
+  ];
   const persist = () => window.localStorage.setItem(storageKey, JSON.stringify(state));
   window.__groupChatFixture = {
     get instanceId() { return fixtureInstanceId; },
@@ -178,6 +258,26 @@ const fixtureScript = String.raw`
       state.createBody = null;
       state.exchangeCount = 0;
       persist();
+    },
+  };
+  window.__hubTranscriptFixture = {
+    requests,
+    get transcriptSpaceIds() {
+      return requests.flatMap(({ pathname }) => {
+        const match = pathname.match(/^\/api\/hub\/spaces\/(\d+)\/transcript$/);
+        return match ? [Number(match[1])] : [];
+      });
+    },
+    readCount(spaceId) {
+      const path = "/api/hub/spaces/" + spaceId + "/transcript";
+      return requests.filter((request) => request.pathname === path && request.method === "GET").length;
+    },
+    addTurn(spaceId, content) {
+      const transcript = hubTranscripts.get(spaceId);
+      if (!transcript) throw new Error("Unknown test Commons space");
+      const id = Math.max(0, ...transcript.map((message) => message.id)) + 1;
+      transcript.push(makeHubMessage(id, spaceId, content));
+      return id;
     },
   };
   const response = (body, status = 200, headers = { "Content-Type": "application/json" }) =>
@@ -244,6 +344,16 @@ const fixtureScript = String.raw`
     ).toUpperCase();
     const pathname = new URL(url, window.location.origin).pathname;
     requests.push({ pathname, method });
+
+    if (pathname === "/api/hub/spaces" && method === "GET") return response(hubSpaces);
+    if (pathname === "/api/hub/presence" && method === "GET") return response([]);
+    if (pathname === "/api/hub/activity" && method === "GET") return response(hubActivity);
+    const transcriptMatch = pathname.match(/^\/api\/hub\/spaces\/(\d+)\/transcript$/);
+    if (transcriptMatch && method === "GET") {
+      const spaceId = Number(transcriptMatch[1]);
+      const transcript = hubTranscripts.get(spaceId) ?? [];
+      return response(transcript.slice(-20).reverse());
+    }
 
     if (pathname === "/api/engrams" && method === "GET") return response(engrams);
     if (pathname === "/api/events") return response({});
@@ -685,7 +795,141 @@ try {
     throw new Error(`Extended transcript changed after reload: ${JSON.stringify(extendedReload)}`);
   }
 
-  console.log("Group chat browser regression passed");
+  await devtools.call("Page.navigate", { url: `${appUrl}/hub` });
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="button-open-transcript-1"]'))`,
+    "Hub Commons activity feed",
+  );
+  await click(
+    `document.querySelector('[data-testid="button-open-transcript-1"]')`,
+    "open Commons Alpha transcript",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="transcript-message-20"]'))`,
+    "initial Commons Alpha transcript",
+  );
+
+  const initialTranscriptScroll = await devtools.evaluate(`(() => {
+    const container = document.querySelector('[data-testid="hub-transcript-scroll-101"]');
+    if (!container) return null;
+    return {
+      distanceFromBottom: container.scrollHeight - container.clientHeight - container.scrollTop,
+      scrollHeight: container.scrollHeight,
+      clientHeight: container.clientHeight
+    };
+  })()`);
+  if (
+    !initialTranscriptScroll ||
+    initialTranscriptScroll.scrollHeight <= initialTranscriptScroll.clientHeight ||
+    initialTranscriptScroll.distanceFromBottom > 24
+  ) {
+    throw new Error(`Opening the Commons transcript did not start at the newest turn: ${JSON.stringify(initialTranscriptScroll)}`);
+  }
+
+  const readsBeforeFirstTurn = await devtools.evaluate(
+    "window.__hubTranscriptFixture.readCount(101)",
+  );
+  await devtools.evaluate(
+    "window.__hubTranscriptFixture.addTurn(101, 'Alpha live turn 21')",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="transcript-message-21"]')) && window.__hubTranscriptFixture.readCount(101) > ${readsBeforeFirstTurn}`,
+    "Commons transcript polling picked up a new turn",
+    12000,
+  );
+  const scrolledToNewestTurn = await devtools.evaluate(`(() => {
+    const container = document.querySelector('[data-testid="hub-transcript-scroll-101"]');
+    return container
+      ? container.scrollHeight - container.clientHeight - container.scrollTop
+      : null;
+  })()`);
+  if (scrolledToNewestTurn === null || scrolledToNewestTurn > 24) {
+    throw new Error(`A transcript already at the newest turn did not follow the new turn: ${scrolledToNewestTurn}`);
+  }
+
+  const anchorBeforeRefresh = await devtools.evaluate(`(() => {
+    const container = document.querySelector('[data-testid="hub-transcript-scroll-101"]');
+    const anchor = container?.querySelector('[data-transcript-message-id="8"]');
+    if (!container || !anchor) return null;
+    const desiredOffset = 28;
+    container.scrollTop +=
+      anchor.getBoundingClientRect().top -
+      container.getBoundingClientRect().top -
+      desiredOffset;
+    container.dispatchEvent(new Event("scroll", { bubbles: true }));
+    return {
+      offset: anchor.getBoundingClientRect().top - container.getBoundingClientRect().top,
+      scrollTop: container.scrollTop
+    };
+  })()`);
+  if (!anchorBeforeRefresh || Math.abs(anchorBeforeRefresh.offset - 28) > 3) {
+    throw new Error(`Could not position the transcript on a stable older turn: ${JSON.stringify(anchorBeforeRefresh)}`);
+  }
+
+  const readsBeforeSecondTurn = await devtools.evaluate(
+    "window.__hubTranscriptFixture.readCount(101)",
+  );
+  await devtools.evaluate(
+    "window.__hubTranscriptFixture.addTurn(101, 'Alpha live turn 22')",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="transcript-message-22"]')) && window.__hubTranscriptFixture.readCount(101) > ${readsBeforeSecondTurn}`,
+    "Commons transcript polling preserved a scrolled-up position",
+    12000,
+  );
+  const anchorAfterRefresh = await devtools.evaluate(`(() => {
+    const container = document.querySelector('[data-testid="hub-transcript-scroll-101"]');
+    const anchor = container?.querySelector('[data-transcript-message-id="8"]');
+    return container && anchor
+      ? anchor.getBoundingClientRect().top - container.getBoundingClientRect().top
+      : null;
+  })()`);
+  if (
+    anchorAfterRefresh === null ||
+    Math.abs(anchorAfterRefresh - anchorBeforeRefresh.offset) > 3
+  ) {
+    throw new Error(`Transcript refresh moved the visible older turn: ${JSON.stringify({
+      before: anchorBeforeRefresh,
+      after: anchorAfterRefresh,
+    })}`);
+  }
+
+  const alphaTranscriptSpaces = await devtools.evaluate(
+    "window.__hubTranscriptFixture.transcriptSpaceIds",
+  );
+  if (
+    alphaTranscriptSpaces.length < 3 ||
+    alphaTranscriptSpaces.some((spaceId) => spaceId !== 101)
+  ) {
+    throw new Error(`Commons Alpha transcript requested the wrong space: ${JSON.stringify(alphaTranscriptSpaces)}`);
+  }
+
+  await click(
+    `Array.from(document.querySelectorAll('[role="dialog"] button')).find((button) => button.textContent?.trim() === "Close")`,
+    "close Commons Alpha transcript",
+  );
+  await waitFor(`!document.querySelector('[role="dialog"]')`, "closed Commons Alpha transcript");
+  await click(
+    `document.querySelector('[data-testid="button-open-transcript-2"]')`,
+    "open Commons Beta transcript",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="transcript-message-2021"]'))`,
+    "Commons Beta transcript",
+  );
+  const betaTranscript = await devtools.evaluate(`({
+    body: document.querySelector('[role="dialog"]')?.innerText,
+    transcriptSpaces: window.__hubTranscriptFixture.transcriptSpaceIds
+  })`);
+  if (
+    !betaTranscript.body?.includes("Beta space transcript only") ||
+    betaTranscript.body.includes("Alpha live turn") ||
+    betaTranscript.transcriptSpaces.at(-1) !== 202
+  ) {
+    throw new Error(`Commons Beta showed a transcript from the wrong space: ${JSON.stringify(betaTranscript)}`);
+  }
+
+  console.log("Group chat and live Hub transcript browser regressions passed");
 } finally {
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");
