@@ -224,6 +224,10 @@ const fixtureScript = String.raw`
       createdAt: "2026-09-15T12:01:00.000Z",
     },
   ];
+  const hubTranscriptScenarioKey = "__hub_transcript_browser_scenario__";
+  const hubTranscriptScenario =
+    window.localStorage.getItem(hubTranscriptScenarioKey) ?? "hold-first";
+  let releaseHeldTranscriptResponse = null;
   const persist = () => window.localStorage.setItem(storageKey, JSON.stringify(state));
   window.__groupChatFixture = {
     get instanceId() { return fixtureInstanceId; },
@@ -271,6 +275,16 @@ const fixtureScript = String.raw`
     readCount(spaceId) {
       const path = "/api/hub/spaces/" + spaceId + "/transcript";
       return requests.filter((request) => request.pathname === path && request.method === "GET").length;
+    },
+    setScenario(scenario) {
+      window.localStorage.setItem(hubTranscriptScenarioKey, scenario);
+    },
+    releaseHeldTranscript() {
+      const release = releaseHeldTranscriptResponse;
+      releaseHeldTranscriptResponse = null;
+      if (!release) return false;
+      release(response(hubTranscripts.get(101).slice(-20).reverse()));
+      return true;
     },
     addTurn(spaceId, content) {
       const transcript = hubTranscripts.get(spaceId);
@@ -352,6 +366,24 @@ const fixtureScript = String.raw`
     if (transcriptMatch && method === "GET") {
       const spaceId = Number(transcriptMatch[1]);
       const transcript = hubTranscripts.get(spaceId) ?? [];
+      const readCount = requests.filter(
+        (request) => request.pathname === pathname && request.method === "GET",
+      ).length;
+      if (
+        spaceId === 101 &&
+        hubTranscriptScenario === "hold-first" &&
+        readCount === 1
+      ) {
+        return new Promise((resolve) => {
+          releaseHeldTranscriptResponse = resolve;
+        });
+      }
+      if (spaceId === 101 && hubTranscriptScenario === "empty") {
+        return response([]);
+      }
+      if (spaceId === 101 && hubTranscriptScenario === "foreign") {
+        return response({ error: "Space not found" }, 404);
+      }
       return response(transcript.slice(-20).reverse());
     }
 
@@ -512,6 +544,15 @@ async function labeledMessageVisible(label, content) {
     if (node.textContent?.trim() !== ${JSON.stringify(label)}) return false;
     return node.parentElement?.textContent?.includes(${JSON.stringify(content)}) === true;
   }))()`);
+}
+
+async function hubActivitySnapshot() {
+  return devtools.evaluate(`Array.from(
+    document.querySelectorAll('[data-testid^="activity-"]'),
+  ).map((row) => ({
+    id: row.getAttribute("data-testid"),
+    text: row.innerText,
+  }))`);
 }
 
 async function reloadFixtureDocument(label) {
@@ -800,14 +841,48 @@ try {
     `Boolean(document.querySelector('[data-testid="button-open-transcript-1"]'))`,
     "Hub Commons activity feed",
   );
+  const feedBeforeTranscript = await hubActivitySnapshot();
   await click(
     `document.querySelector('[data-testid="button-open-transcript-1"]')`,
     "open Commons Alpha transcript",
   );
   await waitFor(
-    `Boolean(document.querySelector('[data-testid="transcript-message-20"]'))`,
-    "initial Commons Alpha transcript",
+    `document.querySelector('[data-testid="hub-transcript-scroll-101"]')?.getAttribute("aria-busy") === "true"`,
+    "Commons transcript loading state",
   );
+  const feedWhileLoading = await hubActivitySnapshot();
+  if (JSON.stringify(feedWhileLoading) !== JSON.stringify(feedBeforeTranscript)) {
+    throw new Error(`Opening the transcript changed the Hub activity feed: ${JSON.stringify({
+      before: feedBeforeTranscript,
+      duringLoading: feedWhileLoading,
+    })}`);
+  }
+
+  const releasedInitialTranscript = await devtools.evaluate(
+    "window.__hubTranscriptFixture.releaseHeldTranscript()",
+  );
+  if (!releasedInitialTranscript) {
+    throw new Error("The pending Commons transcript fixture response was not available to release");
+  }
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="transcript-message-20"]'))`,
+    "populated Commons Alpha transcript",
+  );
+  const populatedLabels = await devtools.evaluate(
+    `document.querySelector('[data-testid="transcript-message-1"]')?.innerText ?? null`,
+  );
+  const feedAfterPopulatedTranscript = await hubActivitySnapshot();
+  if (
+    !populatedLabels?.includes("Mira") ||
+    !populatedLabels.includes("Aster") ||
+    JSON.stringify(feedAfterPopulatedTranscript) !== JSON.stringify(feedBeforeTranscript)
+  ) {
+    throw new Error(`The populated transcript lost speaker labels or changed the activity feed: ${JSON.stringify({
+      labels: populatedLabels,
+      feedBefore: feedBeforeTranscript,
+      feedAfter: feedAfterPopulatedTranscript,
+    })}`);
+  }
 
   const initialTranscriptScroll = await devtools.evaluate(`(() => {
     const container = document.querySelector('[data-testid="hub-transcript-scroll-101"]');
@@ -929,7 +1004,65 @@ try {
     throw new Error(`Commons Beta showed a transcript from the wrong space: ${JSON.stringify(betaTranscript)}`);
   }
 
-  console.log("Group chat and live Hub transcript browser regressions passed");
+  await devtools.evaluate('window.__hubTranscriptFixture.setScenario("empty")');
+  await reloadFixtureDocument("empty Commons transcript fixture");
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="button-open-transcript-1"]'))`,
+    "Hub activity feed for empty transcript",
+  );
+  const feedBeforeEmptyTranscript = await hubActivitySnapshot();
+  await click(
+    `document.querySelector('[data-testid="button-open-transcript-1"]')`,
+    "open empty Commons transcript",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="hub-transcript-empty-101"]'))`,
+    "empty Commons transcript state",
+  );
+  const feedAfterEmptyTranscript = await hubActivitySnapshot();
+  if (JSON.stringify(feedAfterEmptyTranscript) !== JSON.stringify(feedBeforeEmptyTranscript)) {
+    throw new Error(`Opening an empty transcript changed the Hub activity feed: ${JSON.stringify({
+      before: feedBeforeEmptyTranscript,
+      after: feedAfterEmptyTranscript,
+    })}`);
+  }
+
+  await devtools.evaluate('window.__hubTranscriptFixture.setScenario("foreign")');
+  await reloadFixtureDocument("foreign-space Commons transcript fixture");
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="button-open-transcript-1"]'))`,
+    "Hub activity feed for foreign-space failure",
+  );
+  const feedBeforeForeignTranscript = await hubActivitySnapshot();
+  await click(
+    `document.querySelector('[data-testid="button-open-transcript-1"]')`,
+    "open denied Commons transcript",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="hub-transcript-error-101"]'))`,
+    "foreign-space transcript failure state",
+    20000,
+  );
+  const failedTranscriptState = await devtools.evaluate(`({
+    feedRows: Array.from(document.querySelectorAll('[data-testid^="activity-"]')).map((row) => ({
+      id: row.getAttribute("data-testid"),
+      text: row.innerText,
+    })),
+    transcriptReads: window.__hubTranscriptFixture.readCount(101),
+    errorText: document.querySelector('[data-testid="hub-transcript-error-101"]')?.innerText
+  })`);
+  if (
+    failedTranscriptState.transcriptReads < 1 ||
+    !failedTranscriptState.errorText ||
+    JSON.stringify(failedTranscriptState.feedRows) !== JSON.stringify(feedBeforeForeignTranscript)
+  ) {
+    throw new Error(`A denied foreign-space transcript changed the Hub activity feed or hid its error: ${JSON.stringify({
+      before: feedBeforeForeignTranscript,
+      after: failedTranscriptState,
+    })}`);
+  }
+
+  console.log("Group chat and Hub transcript browser regressions passed");
 } finally {
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");

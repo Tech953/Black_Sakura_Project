@@ -583,17 +583,24 @@ function ActivityRow({
             onScroll={handleTranscriptScroll}
             className="max-h-[60vh] overflow-y-auto space-y-3 pr-1"
             data-testid={`hub-transcript-scroll-${entry.spaceId}`}
+            aria-busy={transcriptLoading}
           >
             {transcriptLoading ? (
               Array.from({ length: 3 }).map((_, index) => (
                 <Skeleton key={index} className="h-16 bg-primary/5" />
               ))
             ) : transcriptError && transcript === undefined ? (
-              <p className="font-mono text-xs text-destructive text-center py-8">
+              <p
+                className="font-mono text-xs text-destructive text-center py-8"
+                data-testid={`hub-transcript-error-${entry.spaceId}`}
+              >
                 {t("transcriptUnavailable")}
               </p>
             ) : !orderedTranscript.length ? (
-              <p className="font-mono text-xs text-muted-foreground text-center py-8">
+              <p
+                className="font-mono text-xs text-muted-foreground text-center py-8"
+                data-testid={`hub-transcript-empty-${entry.spaceId}`}
+              >
                 {t("transcriptEmpty")}
               </p>
             ) : (
