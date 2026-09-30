@@ -112,3 +112,9 @@ After the owner-scoped cleanup endpoint succeeds, make no further authenticated 
 **Why:** A post-cleanup GET can silently recreate the account's bootstrap copies even though the cleanup itself succeeded.
 
 **How to apply:** Delete known test conversations and call owner-scoped cleanup last among application API requests, then revoke Clerk tokens/session and delete the temporary user without querying the API again.
+
+For transient Radix toasts, wait for the final bounds after changing width or direction; opacity can reach 1 before the slide animation finishes.
+
+**Why:** A toast can still be translated partly beyond the viewport after its opacity appears settled, creating false geometry failures or hiding a real layout issue.
+
+**How to apply:** After the toast copy is present, apply any test-only width constraint, then wait until its bounding box is fully inside the viewport before asserting clipping and overlap.

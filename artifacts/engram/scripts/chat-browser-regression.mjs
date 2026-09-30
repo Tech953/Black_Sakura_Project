@@ -60,6 +60,17 @@ const realSelectionUserMessage = "Real Clerk selection fixture message";
 const realSelectionAssistantMessage = "Real Clerk selection fixture reply";
 const duplicateConversationTitle =
   "Browser duplicate conversation title designed to extend beyond the visible row width and be clipped with an ellipsis so row actions stay tied to the intended conversation";
+const deleteToastLayoutLanguages = ["de", "fr", "ar"];
+const deleteToastLayoutStrings = Object.fromEntries(
+  deleteToastLayoutLanguages.map((language) => {
+    const localePath = new URL(
+      `../../../lib/i18n/src/generated/${language}.json`,
+      import.meta.url,
+    );
+    const locale = JSON.parse(readFileSync(localePath, "utf8"));
+    return [language, locale.chat];
+  }),
+);
 const chromiumPath =
   process.env.CHROMIUM_PATH ??
   ["/repl/tools/bin/chromium", "chromium", "chromium-browser", "google-chrome"]
@@ -724,6 +735,168 @@ try {
     for (const id of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
       await waitFor(`Boolean(${conversationRow(id)})`, `conversation row ${id}`);
     }
+
+    await devtools.call("Emulation.setDeviceMetricsOverride", {
+      width: 900,
+      height: 800,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    for (const language of deleteToastLayoutLanguages) {
+      const expectedStrings = deleteToastLayoutStrings[language];
+      const direction = language === "ar" ? "rtl" : "ltr";
+      await devtools.evaluate(
+        `import("/src/i18n.ts").then(({ setUiLanguage }) => setUiLanguage(${JSON.stringify(language)}))`,
+      );
+      await waitFor(
+        `document.documentElement.lang === ${JSON.stringify(language)} &&
+         document.documentElement.dir === ${JSON.stringify(direction)} &&
+         Boolean(${conversationRow(4)})`,
+        `${language} chat fixture`,
+      );
+
+      await click(
+        rowAction(expectedStrings.deleteConversation, 4),
+        `show ${language} unavailable-delete toast`,
+      );
+      await waitFor(
+        `document.body.innerText.includes(${JSON.stringify(expectedStrings.toastDeleteFailed)}) &&
+         document.body.innerText.includes(${JSON.stringify(expectedStrings.toastDeleteUnavailable)})`,
+        `${language} delete toast content`,
+      );
+      await waitFor(
+        `(() => {
+          const toast = Array.from(document.querySelectorAll('[data-state="open"]'))
+            .find((node) => node.textContent.includes(${JSON.stringify(expectedStrings.toastDeleteFailed)}) &&
+              node.textContent.includes(${JSON.stringify(expectedStrings.toastDeleteUnavailable)}));
+          return Boolean(toast && Number(getComputedStyle(toast).opacity) > 0.99);
+        })()`,
+        `${language} delete toast becomes visible`,
+      );
+      await devtools.evaluate(`(() => {
+        const toast = Array.from(document.querySelectorAll('[data-state="open"]'))
+          .find((node) => node.textContent.includes(${JSON.stringify(expectedStrings.toastDeleteFailed)}) &&
+            node.textContent.includes(${JSON.stringify(expectedStrings.toastDeleteUnavailable)}));
+        toast?.style.setProperty("width", "280px", "important");
+        toast?.style.setProperty("max-width", "280px", "important");
+      })()`);
+      await waitFor(
+        `(() => {
+          const toast = Array.from(document.querySelectorAll('[data-state="open"]'))
+            .find((node) => node.textContent.includes(${JSON.stringify(expectedStrings.toastDeleteFailed)}) &&
+              node.textContent.includes(${JSON.stringify(expectedStrings.toastDeleteUnavailable)}));
+          if (!toast) return false;
+          const rect = toast.getBoundingClientRect();
+          return rect.left >= 0 && rect.top >= 0 &&
+            rect.right <= window.innerWidth + 1 && rect.bottom <= window.innerHeight + 1;
+        })()`,
+        `${language} delete toast settles inside viewport`,
+      );
+
+      const toastLayout = await devtools.evaluate(`(() => {
+        const titleText = ${JSON.stringify(expectedStrings.toastDeleteFailed)};
+        const descriptionText = ${JSON.stringify(expectedStrings.toastDeleteUnavailable)};
+        const toast = Array.from(document.querySelectorAll('[data-state="open"]'))
+          .find((node) => node.textContent.includes(titleText) && node.textContent.includes(descriptionText));
+        const title = toast && Array.from(toast.querySelectorAll("*"))
+          .find((node) => node.childElementCount === 0 && node.textContent === titleText);
+        const description = toast && Array.from(toast.querySelectorAll("*"))
+          .find((node) => node.childElementCount === 0 && node.textContent === descriptionText);
+        const close = toast?.querySelector("[toast-close]");
+        if (!title || !toast || !description) return null;
+
+        const rect = (node) => {
+          const value = node.getBoundingClientRect();
+          return { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
+        };
+        const textRects = (node) => {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          return Array.from(range.getClientRects()).map((value) => ({
+            left: value.left, top: value.top, right: value.right, bottom: value.bottom,
+          }));
+        };
+        const overlaps = (a, b) =>
+          a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        const toastRect = rect(toast);
+        const titleRect = rect(title);
+        const descriptionRect = rect(description);
+        const titleLines = textRects(title);
+        const descriptionLines = textRects(description);
+        const closeRect = close ? rect(close) : null;
+        const allTextLines = [...titleLines, ...descriptionLines];
+        const style = getComputedStyle(toast);
+        return {
+          language: document.documentElement.lang,
+          direction: document.documentElement.dir,
+          title: title.textContent,
+          description: description.textContent,
+          toastVisible: style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0.99,
+          toastBounds: toastRect,
+          viewportBounds: { width: window.innerWidth, height: window.innerHeight },
+          toastWithinViewport: toastRect.left >= 0 && toastRect.top >= 0 &&
+            toastRect.right <= window.innerWidth + 1 && toastRect.bottom <= window.innerHeight + 1,
+          titleVisible: titleLines.length > 0,
+          descriptionVisible: descriptionLines.length > 0,
+          titleWithinToast: titleRect.left >= toastRect.left && titleRect.right <= toastRect.right &&
+            titleRect.top >= toastRect.top && titleRect.bottom <= toastRect.bottom,
+          descriptionWithinToast: descriptionRect.left >= toastRect.left &&
+            descriptionRect.right <= toastRect.right && descriptionRect.top >= toastRect.top &&
+            descriptionRect.bottom <= toastRect.bottom,
+          titleDescriptionOverlap: titleRect.bottom > descriptionRect.top + 1,
+          closeOverlapsText: Boolean(closeRect && allTextLines.some((line) => overlaps(line, closeRect))),
+          titleClipped: title.scrollHeight > title.clientHeight + 1 ||
+            title.scrollWidth > title.clientWidth + 1,
+          descriptionClipped: description.scrollHeight > description.clientHeight + 1 ||
+            description.scrollWidth > description.clientWidth + 1,
+          titleLineCount: titleLines.length,
+          descriptionLineCount: descriptionLines.length,
+        };
+      })()`);
+      if (
+        !toastLayout ||
+        toastLayout.language !== language ||
+        toastLayout.direction !== direction ||
+        !toastLayout.toastVisible ||
+        !toastLayout.toastWithinViewport ||
+        !toastLayout.titleVisible ||
+        !toastLayout.descriptionVisible ||
+        !toastLayout.titleWithinToast ||
+        !toastLayout.descriptionWithinToast ||
+        toastLayout.titleDescriptionOverlap ||
+        toastLayout.closeOverlapsText ||
+        toastLayout.titleClipped ||
+        toastLayout.descriptionClipped ||
+        toastLayout.descriptionLineCount < 2 ||
+        (language === "de" && toastLayout.titleLineCount < 2)
+      ) {
+        throw new Error(
+          `Delete toast layout failed for ${language}: ${JSON.stringify(toastLayout)}`,
+        );
+      }
+      console.log(
+        `Chat delete toast layout check passed: ${language} (${direction}, ${toastLayout.titleLineCount} title line(s))`,
+      );
+      await devtools.evaluate(`(() => {
+        const toast = Array.from(document.querySelectorAll('[data-state="open"]'))
+          .find((node) => node.textContent.includes(${JSON.stringify(expectedStrings.toastDeleteFailed)}) &&
+            node.textContent.includes(${JSON.stringify(expectedStrings.toastDeleteUnavailable)}));
+        toast?.querySelector("[toast-close]")?.click();
+      })()`);
+      await waitFor(
+        `!Array.from(document.querySelectorAll('[data-state="open"]'))
+          .some((node) => node.textContent.includes(${JSON.stringify(expectedStrings.toastDeleteFailed)}))`,
+        `${language} delete toast dismissal`,
+      );
+    }
+    await devtools.call("Emulation.clearDeviceMetricsOverride");
+    await devtools.evaluate(
+      'import("/src/i18n.ts").then(({ setUiLanguage }) => setUiLanguage("en"))',
+    );
+    await waitFor(
+      `document.documentElement.lang === "en" && Boolean(${conversationRow(4)})`,
+      "English chat fixture after locale layout checks",
+    );
 
     const selectionControl = rowSelectionControl(2);
     if (!(await devtools.evaluate(`(() => {
