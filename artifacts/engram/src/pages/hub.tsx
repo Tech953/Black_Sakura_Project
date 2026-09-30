@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useListEngrams,
   useListHubSpaces,
@@ -81,6 +81,61 @@ const ACTIVITY_META: Record<string, { icon: typeof LogIn; color: string }> = {
   simulate: { icon: FlaskConical, color: "text-rose-300" },
   system: { icon: Cpu, color: "text-muted-foreground" },
 };
+
+const TRANSCRIPT_REFRESH_INTERVAL_MS = 5_000;
+const TRANSCRIPT_BOTTOM_THRESHOLD_PX = 24;
+
+type TranscriptScrollSnapshot = {
+  scrollTop: number;
+  atNewestTurn: boolean;
+  anchorMessageId: string | null;
+  anchorOffset: number;
+};
+
+function captureTranscriptScroll(container: HTMLDivElement): TranscriptScrollSnapshot {
+  const containerTop = container.getBoundingClientRect().top;
+  const anchor = Array.from(
+    container.querySelectorAll<HTMLElement>("[data-transcript-message-id]"),
+  ).find((message) => message.getBoundingClientRect().bottom > containerTop + 1);
+
+  return {
+    scrollTop: container.scrollTop,
+    atNewestTurn:
+      container.scrollHeight - container.clientHeight - container.scrollTop <=
+      TRANSCRIPT_BOTTOM_THRESHOLD_PX,
+    anchorMessageId: anchor?.dataset.transcriptMessageId ?? null,
+    anchorOffset: anchor
+      ? anchor.getBoundingClientRect().top - containerTop
+      : 0,
+  };
+}
+
+function restoreTranscriptScroll(
+  container: HTMLDivElement,
+  snapshot: TranscriptScrollSnapshot,
+) {
+  if (snapshot.atNewestTurn) {
+    container.scrollTop = container.scrollHeight;
+    return;
+  }
+
+  const anchor = snapshot.anchorMessageId
+    ? Array.from(
+        container.querySelectorAll<HTMLElement>("[data-transcript-message-id]"),
+      ).find((message) => message.dataset.transcriptMessageId === snapshot.anchorMessageId)
+    : undefined;
+  if (anchor) {
+    const currentOffset =
+      anchor.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    container.scrollTop += currentOffset - snapshot.anchorOffset;
+    return;
+  }
+
+  container.scrollTop = Math.min(
+    snapshot.scrollTop,
+    Math.max(0, container.scrollHeight - container.clientHeight),
+  );
+}
 
 function kindMeta(kind: string) {
   return KIND_META[kind] ?? { icon: Globe, accent: "text-primary" };
@@ -414,11 +469,22 @@ function ActivityRow({
   const meta = ACTIVITY_META[entry.kind] ?? ACTIVITY_META.system;
   const Icon = meta.icon;
   const [open, setOpen] = useState(false);
-  const { data: transcript, isLoading: transcriptLoading, isError: transcriptError } =
+  const transcriptScrollRef = useRef<HTMLDivElement>(null);
+  const transcriptFetchWasInProgress = useRef(false);
+  const pendingTranscriptScroll = useRef<TranscriptScrollSnapshot | null>(null);
+  const hasPositionedTranscript = useRef(false);
+  const {
+    data: transcript,
+    isLoading: transcriptLoading,
+    isError: transcriptError,
+    isFetching: transcriptFetching,
+  } =
     useListHubSpaceTranscript(entry.spaceId, {
       query: {
         enabled: open,
         queryKey: getListHubSpaceTranscriptQueryKey(entry.spaceId),
+        refetchInterval: open ? TRANSCRIPT_REFRESH_INTERVAL_MS : false,
+        refetchIntervalInBackground: false,
       },
     });
   const orderedTranscript = useMemo(
@@ -426,8 +492,63 @@ function ActivityRow({
     [transcript],
   );
 
+  useLayoutEffect(() => {
+    const container = transcriptScrollRef.current;
+    if (!open) {
+      transcriptFetchWasInProgress.current = false;
+      pendingTranscriptScroll.current = null;
+      return;
+    }
+
+    if (
+      transcriptFetching &&
+      !transcriptFetchWasInProgress.current &&
+      transcript !== undefined &&
+      container
+    ) {
+      pendingTranscriptScroll.current = captureTranscriptScroll(container);
+    }
+    transcriptFetchWasInProgress.current = transcriptFetching;
+  }, [open, transcript, transcriptFetching]);
+
+  useLayoutEffect(() => {
+    const container = transcriptScrollRef.current;
+    if (!open || !container || transcriptLoading || transcript === undefined) {
+      return;
+    }
+
+    if (!hasPositionedTranscript.current) {
+      container.scrollTop = container.scrollHeight;
+      hasPositionedTranscript.current = true;
+      pendingTranscriptScroll.current = null;
+      return;
+    }
+
+    const snapshot = pendingTranscriptScroll.current;
+    if (snapshot) {
+      restoreTranscriptScroll(container, snapshot);
+      pendingTranscriptScroll.current = null;
+    }
+  }, [open, transcript, transcriptLoading]);
+
+  function handleTranscriptOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      hasPositionedTranscript.current = false;
+      pendingTranscriptScroll.current = null;
+      transcriptFetchWasInProgress.current = false;
+    }
+    setOpen(nextOpen);
+  }
+
+  function handleTranscriptScroll() {
+    const container = transcriptScrollRef.current;
+    if (container && pendingTranscriptScroll.current) {
+      pendingTranscriptScroll.current = captureTranscriptScroll(container);
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleTranscriptOpenChange}>
       <li className="flex items-start gap-2.5 px-2 py-2 hover:bg-white/5 transition-colors" data-testid={`activity-${entry.id}`}>
         <Icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${meta.color}`} />
         <div className="min-w-0 flex-1">
@@ -457,12 +578,17 @@ function ActivityRow({
               {t("transcriptTitle", { space: spaceName ?? t("fallbackSpace") })}
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+          <div
+            ref={transcriptScrollRef}
+            onScroll={handleTranscriptScroll}
+            className="max-h-[60vh] overflow-y-auto space-y-3 pr-1"
+            data-testid={`hub-transcript-scroll-${entry.spaceId}`}
+          >
             {transcriptLoading ? (
               Array.from({ length: 3 }).map((_, index) => (
                 <Skeleton key={index} className="h-16 bg-primary/5" />
               ))
-            ) : transcriptError ? (
+            ) : transcriptError && transcript === undefined ? (
               <p className="font-mono text-xs text-destructive text-center py-8">
                 {t("transcriptUnavailable")}
               </p>
@@ -477,7 +603,12 @@ function ActivityRow({
                   ? engramById.get(message.toEngramId)
                   : undefined;
                 return (
-                  <div key={message.id} className="border border-border/40 bg-background/30 p-3" data-testid={`transcript-message-${message.id}`}>
+                  <div
+                    key={message.id}
+                    className="border border-border/40 bg-background/30 p-3"
+                    data-testid={`transcript-message-${message.id}`}
+                    data-transcript-message-id={message.id}
+                  >
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-display text-sm text-foreground">
                         {speaker?.name ?? t("fallbackEngram")}
@@ -498,6 +629,11 @@ function ActivityRow({
                   </div>
                 );
               })
+            )}
+            {transcriptError && transcript !== undefined && (
+              <p className="font-mono text-xs text-destructive text-center py-2" role="status">
+                {t("transcriptUnavailable")}
+              </p>
             )}
           </div>
         </DialogContent>
