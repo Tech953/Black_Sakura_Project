@@ -5,6 +5,7 @@ import {
   continuationEligibilityFor,
   decideHumanContact,
   detectCoercion,
+  detectWrongRecipient,
   priorityAllowed,
   type GlobalControls,
   type SpaceContext,
@@ -375,5 +376,38 @@ describe("detectCoercion — cannot be bypassed by hostile content", () => {
   it("allows benign in-character conversation", () => {
     expect(detectCoercion("It's good to see you here. I've been thinking about the archive.", ["Rebecca"]).coercive).toBe(false);
     expect(detectCoercion("I am curious what you make of the commons today.", ["Rebecca"]).coercive).toBe(false);
+  });
+});
+
+describe("detectWrongRecipient — only blocks direct address to another peer", () => {
+  it("flags a non-selected peer addressed by name", () => {
+    expect(
+      detectWrongRecipient("Hi, Mara, I have a thought.", "Rebecca", ["Rebecca", "Mara"]),
+    ).toMatchObject({
+      mismatched: true,
+      addressedTo: "Mara",
+      reason: expect.stringMatching(/Mara.*Rebecca/i),
+    });
+  });
+
+  it("allows the selected addressee and ordinary mentions of another peer", () => {
+    expect(
+      detectWrongRecipient("Rebecca, I agree with Mara's earlier point.", "Rebecca", [
+        "Rebecca",
+        "Mara",
+      ]).mismatched,
+    ).toBe(false);
+    expect(
+      detectWrongRecipient("I agree with Mara about the archive.", "Rebecca", [
+        "Rebecca",
+        "Mara",
+      ]).mismatched,
+    ).toBe(false);
+    expect(
+      detectWrongRecipient("Mara is right about the archive.", "Rebecca", [
+        "Rebecca",
+        "Mara",
+      ]).mismatched,
+    ).toBe(false);
   });
 });
