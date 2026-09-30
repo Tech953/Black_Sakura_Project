@@ -6,6 +6,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -255,6 +256,7 @@ export default function HubScreen() {
           </MonoLabel>
           <SimulationSection
             query={simulations}
+            engrams={(engrams.data ?? []).map(({ id, name }) => ({ id, name }))}
             onRetry={() => void simulations.refetch()}
             onOpen={(id) => router.push(`/simulation/${id}`)}
           />
@@ -501,6 +503,50 @@ const styles = StyleSheet.create({
   },
   simulationStateRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   simulationStateText: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18, flex: 1 },
+  simulationFilters: { gap: 12, marginBottom: 2 },
+  simulationFilterHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  simulationFilterGroup: { gap: 6 },
+  simulationFilterLabel: { fontSize: 9, letterSpacing: 0.7 },
+  simulationFilterOptions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingRight: 16,
+  },
+  simulationFilterOptionsRtl: { flexDirection: "row-reverse" },
+  simulationFilterChip: {
+    minHeight: 32,
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  simulationFilterChipText: { fontFamily: "Inter_500Medium", fontSize: 11 },
+  simulationClearFilters: {
+    fontFamily: "Rajdhani_600SemiBold",
+    fontSize: 13,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  simulationClearFiltersRtl: {
+    fontFamily: "Inter_500Medium",
+    letterSpacing: 0,
+    textTransform: "none",
+    writingDirection: "rtl",
+  },
+  simulationNoMatches: {
+    minHeight: 58,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    justifyContent: "center",
+  },
   simulationCard: {
     borderWidth: 1,
     borderRadius: 8,
@@ -591,19 +637,55 @@ const styles = StyleSheet.create({
 });
 
 type SimulationQuery = UseQueryResult<Simulation[]>;
+type SimulationEngramOption = { id: number; name: string };
+type SimulationStatusFilter = "all" | Simulation["status"];
+
+const SIMULATION_STATUS_FILTERS: SimulationStatusFilter[] = [
+  "all",
+  "proposed",
+  "running",
+  "paused",
+  "ended",
+];
 
 function SimulationSection({
   query,
+  engrams,
   onRetry,
   onOpen,
 }: {
   query: SimulationQuery;
+  engrams: SimulationEngramOption[];
   onRetry: () => void;
   onOpen: (id: number) => void;
 }) {
   const { t, i18n } = useTranslation("mobile");
   const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
+  const [statusFilter, setStatusFilter] = useState<SimulationStatusFilter>("all");
+  const [engramFilterId, setEngramFilterId] = useState<number | null>(null);
+
+  const hasActiveFilters = statusFilter !== "all" || engramFilterId !== null;
+  const selectedEngram = engrams.find((engram) => engram.id === engramFilterId);
+  const hasEngramFilter = engramFilterId !== null;
+  const selectedEngramName =
+    selectedEngram?.name ??
+    (hasEngramFilter ? t("hub.simulationUnknownEngram") : "");
+  const filteredSimulations = useMemo(
+    () =>
+      (query.data ?? []).filter((simulation) => {
+        const matchesStatus =
+          statusFilter === "all" || simulation.status === statusFilter;
+        const participantIds =
+          simulation.participantEngramIds?.length > 0
+            ? simulation.participantEngramIds
+            : [simulation.engramId];
+        const matchesEngram =
+          engramFilterId === null || participantIds.includes(engramFilterId);
+        return matchesStatus && matchesEngram;
+      }),
+    [engramFilterId, query.data, statusFilter],
+  );
 
   if (query.isLoading) {
     return (
@@ -649,62 +731,222 @@ function SimulationSection({
 
   return (
     <View style={styles.simulationSection}>
-      {query.data.map((simulation) => {
-        const progress = simulation.maxSteps
-          ? simulation.currentStep / simulation.maxSteps
-          : 0;
-        return (
-          <Pressable
-            key={simulation.id}
-            onPress={() => onOpen(simulation.id)}
-            style={({ pressed }) => [
-              styles.simulationCard,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                opacity: pressed ? 0.78 : 1,
-              },
-            ]}
-          >
-            <View style={styles.simulationCardHeader}>
-              <MonoLabel color={colors.primary} style={styles.simulationLabel}>
-                {t("hub.simulationRun", { id: simulation.id })}
-              </MonoLabel>
-              <Chip
-                label={t(`hub.simulationStatus.${simulation.status}`)}
-                tone={simulation.status === "ended" ? "muted" : "accent"}
-              />
-            </View>
-            <Text
-              numberOfLines={2}
-              style={[styles.simulationPremise, { color: colors.foreground }]}
+      <View style={styles.simulationFilters}>
+        <View style={styles.simulationFilterHeader}>
+          <MonoLabel color={colors.mutedForeground} style={styles.simulationFilterLabel}>
+            {t("hub.simulationFilters")}
+          </MonoLabel>
+          {hasActiveFilters ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setStatusFilter("all");
+                setEngramFilterId(null);
+              }}
+              testID="hub-simulation-filters-clear"
+              hitSlop={8}
             >
-              {simulation.premise}
-            </Text>
-            <View style={styles.simulationCardHeader}>
-              <MonoLabel
-                color={colors.mutedForeground}
-                style={styles.simulationProgress}
-              >
-                {t("hub.simulationProgress", {
-                  current: simulation.currentStep,
-                  max: simulation.maxSteps,
-                })}
-              </MonoLabel>
               <Text
                 style={[
-                  styles.simulationAction,
+                  styles.simulationClearFilters,
                   { color: colors.primary },
-                  rtl && styles.simulationActionRtl,
+                  rtl && styles.simulationClearFiltersRtl,
                 ]}
               >
-                {t("hub.reviewSimulation")}
+                {t("hub.simulationClearFilters")}
               </Text>
-            </View>
-            <ScoreBar value={progress} color={colors.violet} />
-          </Pressable>
-        );
-      })}
+            </Pressable>
+          ) : null}
+        </View>
+
+        <View style={styles.simulationFilterGroup}>
+          <MonoLabel color={colors.mutedForeground} style={styles.simulationFilterLabel}>
+            {t("hub.simulationStatusFilter")}
+          </MonoLabel>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.simulationFilterOptions,
+              rtl && styles.simulationFilterOptionsRtl,
+            ]}
+          >
+            {SIMULATION_STATUS_FILTERS.map((status) => {
+              const selected = statusFilter === status;
+              const label =
+                status === "all"
+                  ? t("hub.simulationFilterAll")
+                  : t(`hub.simulationStatus.${status}`);
+              return (
+                <Pressable
+                  key={status}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("hub.simulationStatusFilterChoice", {
+                    status: label,
+                  })}
+                  accessibilityState={{ selected }}
+                  onPress={() => setStatusFilter(status)}
+                  testID={`hub-simulation-status-${status}`}
+                  style={[
+                    styles.simulationFilterChip,
+                    {
+                      backgroundColor: selected ? colors.primary : colors.card,
+                      borderColor: selected ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.simulationFilterChipText,
+                      { color: selected ? colors.primaryForeground : colors.mutedForeground },
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        <View style={styles.simulationFilterGroup}>
+          <MonoLabel color={colors.mutedForeground} style={styles.simulationFilterLabel}>
+            {t("hub.simulationEngramFilter")}
+          </MonoLabel>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.simulationFilterOptions,
+              rtl && styles.simulationFilterOptionsRtl,
+            ]}
+          >
+            {[
+              { id: null, name: t("hub.simulationAllEngrams") },
+              ...engrams.map(({ id, name }) => ({ id, name })),
+            ].map((engram) => {
+              const selected = engramFilterId === engram.id;
+              const testId =
+                engram.id === null
+                  ? "hub-simulation-engram-all"
+                  : `hub-simulation-engram-${engram.id}`;
+              return (
+                <Pressable
+                  key={testId}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("hub.simulationEngramFilterChoice", {
+                    engram: engram.name,
+                  })}
+                  accessibilityState={{ selected }}
+                  onPress={() => setEngramFilterId(engram.id)}
+                  testID={testId}
+                  style={[
+                    styles.simulationFilterChip,
+                    {
+                      backgroundColor: selected ? colors.primary : colors.card,
+                      borderColor: selected ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.simulationFilterChipText,
+                      { color: selected ? colors.primaryForeground : colors.mutedForeground },
+                    ]}
+                  >
+                    {engram.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+
+      {filteredSimulations.length === 0 ? (
+        <View
+          style={[
+            styles.simulationNoMatches,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.simulationStateText, { color: colors.mutedForeground }]}>
+            {statusFilter !== "all" && hasEngramFilter
+              ? t("hub.simulationNoCombinedMatches", {
+                  status: t(`hub.simulationStatus.${statusFilter}`),
+                  engram: selectedEngramName,
+                })
+              : statusFilter !== "all"
+                ? t("hub.simulationNoStatusMatches", {
+                    status: t(`hub.simulationStatus.${statusFilter}`),
+                  })
+                : hasEngramFilter
+                  ? t("hub.simulationNoEngramMatches", {
+                      engram: selectedEngramName,
+                    })
+                  : t("hub.noSimulations")}
+          </Text>
+        </View>
+      ) : (
+        filteredSimulations.map((simulation) => {
+          const progress = simulation.maxSteps
+            ? simulation.currentStep / simulation.maxSteps
+            : 0;
+          return (
+            <Pressable
+              key={simulation.id}
+              onPress={() => onOpen(simulation.id)}
+              style={({ pressed }) => [
+                styles.simulationCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.78 : 1,
+                },
+              ]}
+            >
+              <View style={styles.simulationCardHeader}>
+                <MonoLabel color={colors.primary} style={styles.simulationLabel}>
+                  {t("hub.simulationRun", { id: simulation.id })}
+                </MonoLabel>
+                <Chip
+                  label={t(`hub.simulationStatus.${simulation.status}`)}
+                  tone={simulation.status === "ended" ? "muted" : "accent"}
+                />
+              </View>
+              <Text
+                numberOfLines={2}
+                style={[styles.simulationPremise, { color: colors.foreground }]}
+              >
+                {simulation.premise}
+              </Text>
+              <View style={styles.simulationCardHeader}>
+                <MonoLabel
+                  color={colors.mutedForeground}
+                  style={styles.simulationProgress}
+                >
+                  {t("hub.simulationProgress", {
+                    current: simulation.currentStep,
+                    max: simulation.maxSteps,
+                  })}
+                </MonoLabel>
+                <Text
+                  style={[
+                    styles.simulationAction,
+                    { color: colors.primary },
+                    rtl && styles.simulationActionRtl,
+                  ]}
+                >
+                  {t("hub.reviewSimulation")}
+                </Text>
+              </View>
+              <ScoreBar value={progress} color={colors.violet} />
+            </Pressable>
+          );
+        })
+      )}
     </View>
   );
 }
