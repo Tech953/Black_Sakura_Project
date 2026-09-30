@@ -124,6 +124,7 @@ const port = configuredWebPort ?? (await findFreePort());
 const appUrl = process.env.ENGRAM_BROWSER_TEST_URL ?? `http://127.0.0.1:${port}`;
 const scripts = [
   ["test:browser:chat", "chat"],
+  ["test:browser:group-chat", "Commons transcript and group chat"],
   ["test:browser:simulations", "simulations"],
   ["test:browser:analytics", "Analytics"],
   ["test:browser:download", "download metadata"],
