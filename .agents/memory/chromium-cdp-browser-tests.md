@@ -118,3 +118,9 @@ For transient Radix toasts, wait for the final bounds after changing width or di
 **Why:** A toast can still be translated partly beyond the viewport after its opacity appears settled, creating false geometry failures or hiding a real layout issue.
 
 **How to apply:** After the toast copy is present, apply any test-only width constraint, then wait until its bounding box is fully inside the viewport before asserting clipping and overlap.
+
+For CDP fixtures injected through `window.eval(atob(...))`, keep non-ASCII fixture source escaped as `\uXXXX` or explicitly decode base64 as UTF-8; `atob` returns a Latin-1 string.
+
+**Why:** Literal Unicode in the base64-injected source is decoded as mojibake even though the outer Node script and the rendered application use UTF-8.
+
+**How to apply:** Use Unicode escapes inside injected fixture code, then assert the intended characters from the host-side browser regression.
