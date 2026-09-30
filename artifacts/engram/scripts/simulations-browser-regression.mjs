@@ -27,6 +27,7 @@ class DevTools {
   #socket;
   #nextId = 1;
   #pending = new Map();
+  #consoleErrors = [];
 
   async connect() {
     for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -42,6 +43,20 @@ class DevTools {
         });
         this.#socket.addEventListener("message", (event) => {
           const message = JSON.parse(event.data);
+          if (
+            message.method === "Runtime.consoleAPICalled" &&
+            message.params?.type === "error"
+          ) {
+            const details = (message.params.args ?? [])
+              .map((argument) => argument.value ?? argument.description ?? "")
+              .join(" ");
+            this.#consoleErrors.push(details || "Browser console error");
+          } else if (message.method === "Runtime.exceptionThrown") {
+            const details = message.params?.exceptionDetails;
+            this.#consoleErrors.push(
+              details?.exception?.description ?? details?.text ?? "Browser exception",
+            );
+          }
           const pending = this.#pending.get(message.id);
           if (!pending) return;
           this.#pending.delete(message.id);
@@ -87,6 +102,10 @@ class DevTools {
   close() {
     this.#socket?.close();
   }
+
+  consoleErrors() {
+    return [...this.#consoleErrors];
+  }
 }
 
 const devtools = new DevTools();
@@ -123,6 +142,24 @@ const fixtureScript = String.raw`
       isArchival: false
     }
   ];
+  const rawSimulationNarrative =
+    "\n\t first line \u2003\n\n  second line\t" +
+    "\u27e1/[]\u2014%# ".repeat(40) +
+    " trailing narrative beyond the excerpt";
+  const normalizedSimulationExcerpt = rawSimulationNarrative
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
+  const simulationActivity = {
+    id: 901,
+    spaceId: 5,
+    engramId: 1,
+    kind: "simulate",
+    summary:
+      "Scenario Guide advanced a simulation (step 2/5): " +
+      normalizedSimulationExcerpt,
+    createdAt: "2026-09-12T12:06:00.000Z"
+  };
   const mediaAsset = {
     id: 501,
     engramId: 1,
@@ -287,6 +324,10 @@ const fixtureScript = String.raw`
       return response({ paused: false, quietMode: false });
     }
     if (pathname === "/api/hub/spaces" && method === "GET") return response([]);
+    if (pathname === "/api/hub/presence" && method === "GET") return response([]);
+    if (pathname === "/api/hub/activity" && method === "GET") {
+      return response([simulationActivity]);
+    }
     if (pathname === "/api/engrams/messages" && method === "GET") return response([]);
     if (pathname === "/api/events") return response({});
     if (pathname === "/api/engrams/1/world-model" && method === "GET") {
@@ -546,7 +587,130 @@ try {
     throw new Error(`Deleted media source state was not explained: ${recentCardText}`);
   }
 
-  console.log("Simulation and media-memory browser regressions passed");
+  const hubConsoleErrorStart = devtools.consoleErrors().length;
+  await devtools.call("Page.navigate", { url: `${appUrl}/hub` });
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="activity-901"]'))`,
+    "simulation activity row in the Hub",
+  );
+  await devtools.evaluate(
+    `document.querySelector('[data-testid="activity-901"]')?.scrollIntoView({ block: "center" })`,
+  );
+  const activityLayout = await devtools.evaluate(`(() => {
+    const row = document.querySelector('[data-testid="activity-901"]');
+    const icon = row?.querySelector("svg");
+    const summary = row?.querySelector("p");
+    const timestamp = row?.querySelector("span");
+    if (!row || !icon || !summary || !timestamp) return null;
+    const rowRect = row.getBoundingClientRect();
+    const summaryRect = summary.getBoundingClientRect();
+    const iconRect = icon.getBoundingClientRect();
+    const timestampRect = timestamp.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(summary);
+    const summaryLineCount = range.getClientRects().length;
+    const isVisible = (node, rect) => {
+      const style = getComputedStyle(node);
+      return rect.width > 0 && rect.height > 0 &&
+        style.display !== "none" && style.visibility !== "hidden" &&
+        Number(style.opacity) > 0;
+    };
+    return {
+      iconClasses: Array.from(icon.classList),
+      iconVisible: isVisible(icon, iconRect),
+      summaryText: summary.textContent ?? "",
+      summaryVisible: isVisible(summary, summaryRect),
+      summaryLineCount,
+      summaryClientWidth: summary.clientWidth,
+      summaryScrollWidth: summary.scrollWidth,
+      summaryClientHeight: summary.clientHeight,
+      summaryScrollHeight: summary.scrollHeight,
+      summaryBounds: {
+        left: summaryRect.left,
+        right: summaryRect.right,
+        top: summaryRect.top,
+        bottom: summaryRect.bottom
+      },
+      timestampVisible: isVisible(timestamp, timestampRect),
+      rowClientWidth: row.clientWidth,
+      rowScrollWidth: row.scrollWidth,
+      rowBounds: {
+        left: rowRect.left,
+        right: rowRect.right,
+        top: rowRect.top,
+        bottom: rowRect.bottom
+      },
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight
+    };
+  })()`);
+  if (!activityLayout) {
+    throw new Error("Hub simulation activity row did not render its icon and metadata");
+  }
+  const simulationSummaryPrefix =
+    "Scenario Guide advanced a simulation (step 2/5): ";
+  if (!activityLayout.iconClasses.includes("lucide-flask-conical")) {
+    throw new Error(
+      `Hub simulation activity did not use the FlaskConical icon: ${JSON.stringify(activityLayout.iconClasses)}`,
+    );
+  }
+  if (!activityLayout.iconClasses.includes("text-rose-300")) {
+    throw new Error("Hub simulation activity icon lost its simulation color");
+  }
+  if (!activityLayout.summaryText.startsWith(simulationSummaryPrefix)) {
+    throw new Error(
+      `Hub hid the engram identity or simulation step metadata: ${activityLayout.summaryText}`,
+    );
+  }
+  const visibleExcerpt = activityLayout.summaryText.slice(simulationSummaryPrefix.length);
+  if (
+    visibleExcerpt.length !== 180 ||
+    !visibleExcerpt.startsWith("first line second line") ||
+    !visibleExcerpt.includes("⟡/[]—%#") ||
+    /[\r\n\t]/.test(activityLayout.summaryText)
+  ) {
+    throw new Error(
+      `Hub simulation narrative was not rendered as a bounded, normalized excerpt: ${activityLayout.summaryText}`,
+    );
+  }
+  if (
+    !activityLayout.iconVisible ||
+    !activityLayout.summaryVisible ||
+    !activityLayout.timestampVisible
+  ) {
+    throw new Error(`Hub simulation activity metadata was hidden: ${JSON.stringify(activityLayout)}`);
+  }
+  if (activityLayout.summaryLineCount < 2) {
+    throw new Error("Long Hub simulation narrative did not wrap onto multiple lines");
+  }
+  if (
+    activityLayout.rowScrollWidth > activityLayout.rowClientWidth + 1 ||
+    activityLayout.summaryScrollWidth > activityLayout.summaryClientWidth + 1 ||
+    activityLayout.summaryScrollHeight > activityLayout.summaryClientHeight + 1
+  ) {
+    throw new Error(`Hub simulation activity text overflows its row: ${JSON.stringify(activityLayout)}`);
+  }
+  if (
+    activityLayout.rowBounds.left < 0 ||
+    activityLayout.rowBounds.right > activityLayout.viewportWidth + 1 ||
+    activityLayout.summaryBounds.left < 0 ||
+    activityLayout.summaryBounds.right > activityLayout.viewportWidth + 1 ||
+    activityLayout.summaryBounds.top < 0 ||
+    activityLayout.summaryBounds.bottom > activityLayout.viewportHeight + 1
+  ) {
+    throw new Error(`Hub simulation activity text is clipped by the viewport: ${JSON.stringify(activityLayout)}`);
+  }
+  const hubPageErrors = await devtools.evaluate(
+    "window.__simulationBrowserErrors ?? []",
+  );
+  const hubConsoleErrors = devtools.consoleErrors().slice(hubConsoleErrorStart);
+  if (hubPageErrors.length || hubConsoleErrors.length) {
+    throw new Error(
+      `Hub activity browser errors: ${JSON.stringify({ page: hubPageErrors, console: hubConsoleErrors })}`,
+    );
+  }
+
+  console.log("Simulation, Hub activity layout, and media-memory browser regressions passed");
 } finally {
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");
