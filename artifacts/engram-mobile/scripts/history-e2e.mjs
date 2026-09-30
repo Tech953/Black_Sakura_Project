@@ -175,8 +175,102 @@ const browserMock = String.raw`(() => {
     [101, { id: 101, title: "Current transcript", mode: "companion", engramId: 1, engramIds: [1], groupContinuationMode: "off", createdAt: "2026-09-10T12:00:00.000Z", archivedAt: null }],
     [102, { id: 102, title: "Hydrated history", mode: "companion", engramId: 1, engramIds: [1], groupContinuationMode: "off", createdAt: "2026-09-10T12:01:00.000Z", archivedAt: null }],
   ]);
+  const simulationRuns = [
+    {
+      id: 701,
+      engramId: 1,
+      participantEngramIds: [1],
+      spaceId: 7,
+      premise: "Browser simulation premise",
+      status: "ended",
+      currentStep: 2,
+      maxSteps: 4,
+      stepCooldownSeconds: 60,
+      lastSteppedAt: "2026-09-10T12:04:00.000Z",
+      exitSummary: "Browser simulation exit summary.",
+      startedAt: "2026-09-10T12:00:00.000Z",
+      pausedAt: null,
+      endedAt: "2026-09-10T12:04:00.000Z",
+      createdAt: "2026-09-10T12:00:00.000Z",
+      updatedAt: "2026-09-10T12:04:00.000Z",
+    },
+    {
+      id: 702,
+      engramId: 1,
+      participantEngramIds: [1],
+      spaceId: 7,
+      premise: "Browser empty simulation premise",
+      status: "proposed",
+      currentStep: 0,
+      maxSteps: 3,
+      stepCooldownSeconds: 60,
+      lastSteppedAt: null,
+      exitSummary: null,
+      startedAt: null,
+      pausedAt: null,
+      endedAt: null,
+      createdAt: "2026-09-10T12:05:00.000Z",
+      updatedAt: "2026-09-10T12:05:00.000Z",
+    },
+    {
+      id: 703,
+      engramId: 1,
+      participantEngramIds: [1],
+      spaceId: 7,
+      premise: "Browser failed-read simulation premise",
+      status: "running",
+      currentStep: 1,
+      maxSteps: 4,
+      stepCooldownSeconds: 60,
+      lastSteppedAt: "2026-09-10T12:06:00.000Z",
+      exitSummary: null,
+      startedAt: "2026-09-10T12:05:00.000Z",
+      pausedAt: null,
+      endedAt: null,
+      createdAt: "2026-09-10T12:05:00.000Z",
+      updatedAt: "2026-09-10T12:06:00.000Z",
+    },
+  ];
+  const simulationStepsById = {
+    701: [
+      {
+        id: 9701,
+        simulationId: 701,
+        stepNumber: 1,
+        speakerEngramId: 1,
+        narrative: "Browser simulated step one narrative.",
+        worldModelEntryId: null,
+        createdAt: "2026-09-10T12:02:00.000Z",
+      },
+      {
+        id: 9702,
+        simulationId: 701,
+        stepNumber: 2,
+        speakerEngramId: 1,
+        narrative: "Browser simulated step two narrative.",
+        worldModelEntryId: null,
+        createdAt: "2026-09-10T12:04:00.000Z",
+      },
+    ],
+    702: [],
+  };
   window.__historyE2E = { conversations, messages, shares: [], downloads: [], archiveRequests: [], requests: [] };
-  window.__hubEnvironmentE2E = { emptyResponses: [] };
+  const hubEnvironmentE2E = {
+    emptyResponses: [],
+    simulationMode: new URLSearchParams(window.location.search).get("e2e-fixture") === "simulations",
+    simulationRequests: [],
+    simulationMutations: [],
+    holdSimulationList: false,
+    holdSimulationSteps: false,
+    pendingSimulationList: null,
+    releaseSimulationList: null,
+    releaseSimulationSteps: {},
+  };
+  if (hubEnvironmentE2E.simulationMode) {
+    hubEnvironmentE2E.holdSimulationList = true;
+    hubEnvironmentE2E.holdSimulationSteps = true;
+  }
+  window.__hubEnvironmentE2E = hubEnvironmentE2E;
   const nativeExportFiles = new Map();
   window.__historyE2E.nativeExport = { attempts: 0, shares: [], deleted: [], files: nativeExportFiles };
   window.__engramNativeChatExportE2E = {
@@ -271,7 +365,42 @@ const browserMock = String.raw`(() => {
     if (path === "/api/hub/spaces" && method === "GET") return emptyList("spaces");
     if (path === "/api/hub/presence" && method === "GET") return emptyList("presence");
     if (path === "/api/hub/activity" && method === "GET") return emptyList("activity");
-    if (path === "/api/simulations" && method === "GET") return emptyList("simulations");
+    if (path === "/api/simulations" && method === "GET") {
+      if (!hubEnvironmentE2E.simulationMode) return emptyList("simulations");
+      hubEnvironmentE2E.simulationRequests.push({ path, method });
+      if (hubEnvironmentE2E.holdSimulationList) {
+        hubEnvironmentE2E.holdSimulationList = false;
+        return new Promise((resolve) => {
+          hubEnvironmentE2E.pendingSimulationList = () => {
+            hubEnvironmentE2E.pendingSimulationList = null;
+            resolve(response(simulationRuns));
+          };
+        });
+      }
+      return response(simulationRuns);
+    }
+    const simulationSteps = path.match(/^\/api\/simulations\/(\d+)\/steps$/);
+    if (simulationSteps && method === "GET") {
+      const simulationId = Number(simulationSteps[1]);
+      hubEnvironmentE2E.simulationRequests.push({ path, method });
+      if (simulationId === 701 && hubEnvironmentE2E.holdSimulationSteps) {
+        hubEnvironmentE2E.holdSimulationSteps = false;
+        return new Promise((resolve) => {
+          hubEnvironmentE2E.releaseSimulationSteps[simulationId] = () => {
+            delete hubEnvironmentE2E.releaseSimulationSteps[simulationId];
+            resolve(response(simulationStepsById[simulationId]));
+          };
+        });
+      }
+      if (simulationId === 703) {
+        return response({ error: "Fixture simulation read failed" }, 503);
+      }
+      return response(simulationStepsById[simulationId] ?? []);
+    }
+    if (path.startsWith("/api/simulations") && method !== "GET") {
+      hubEnvironmentE2E.simulationMutations.push({ path, method });
+      return response({ error: "Simulation detail is read-only" }, 405);
+    }
     if (path === "/api/messages" && method === "GET") return emptyList("humanMessages");
     if (path === "/api/memories" && method === "GET") return emptyList("memories");
     if (path === "/api/beliefs" && method === "GET") return emptyList("beliefs");
@@ -412,7 +541,166 @@ async function clickVisibleBackControl(client) {
   }
 }
 
-async function runHubEnvironmentRegression(client, appUrl) {
+async function navigateAndReconnect(client, cdpPort, appUrl, url) {
+  await client.call("Page.navigate", { url });
+  client.close();
+
+  const started = Date.now();
+  let target;
+  while (Date.now() - started < 15_000) {
+    const targets = await getJson(`http://127.0.0.1:${cdpPort}/json/list`);
+    target = targets.find((item) => item.type === "page" && item.url.startsWith(appUrl));
+    if (target?.webSocketDebuggerUrl) break;
+    await wait(100);
+  }
+  if (!target?.webSocketDebuggerUrl) {
+    throw new Error(`Chromium did not expose the app page after navigating to ${url}`);
+  }
+
+  const reconnected = cdpClient(target.webSocketDebuggerUrl);
+  await reconnected.call("Page.enable");
+  await reconnected.call("Runtime.enable");
+  return reconnected;
+}
+
+async function assertSimulationDetailIsReadOnly(client, runId) {
+  const snapshot = JSON.parse(await client.evaluate(`JSON.stringify({
+    mutationRequests: window.__historyE2E.requests.filter(({ path, method }) =>
+      path.startsWith("/api/simulations") && method !== "GET"
+    ),
+    mutationControls: [...document.querySelectorAll("button,[role='button'],[role='menuitem']")]
+      .filter((node) => node.getClientRects().length > 0)
+      .map((node) => [
+        node.getAttribute("aria-label"),
+        node.getAttribute("title"),
+        node.textContent
+      ].filter(Boolean).join(" ").trim())
+      .filter((label) => label.split(/[^a-z]+/i).some((word) =>
+        ["start", "pause", "resume", "end", "stop", "delete", "restart", "launch"].includes(word.toLowerCase())
+      ))
+  })`));
+
+  if (snapshot.mutationRequests.length || snapshot.mutationControls.length) {
+    throw new Error(
+      `Simulation ${runId} detail exposed mutation behavior: ${JSON.stringify(snapshot)}`,
+    );
+  }
+}
+
+async function runSimulationReviewRegression(client, cdpPort, appUrl) {
+  client = await navigateAndReconnect(
+    client,
+    cdpPort,
+    appUrl,
+    `${appUrl}/?e2e-fixture=simulations`,
+  );
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
+    "authenticated simulation fixture home",
+  );
+  await clickVisibleText(client, "Hub");
+  await waitForValue(
+    client,
+    `document.body.innerText.includes("Loading quarantined simulation runs…")`,
+    "Hub simulation loading state",
+  );
+  const releasedList = await client.evaluate(`(() => {
+    const release = window.__hubEnvironmentE2E.pendingSimulationList;
+    if (!release) return false;
+    release();
+    return true;
+  })()`);
+  if (!releasedList) throw new Error("Hub simulation list fixture was not waiting for release");
+  await waitForValue(
+    client,
+    `document.body.innerText.includes("Browser simulation premise")`,
+    "Hub simulation card",
+  );
+
+  await clickVisibleText(client, "Browser simulation premise");
+  await waitForValue(
+    client,
+    `(() => {
+      const loading = document.querySelector('[role="progressbar"]');
+      return location.pathname.includes("/simulation/701") &&
+        Boolean(loading && loading.getClientRects().length > 0);
+    })()`,
+    "simulation detail loading state",
+  );
+  const releasedSteps = await client.evaluate(`(() => {
+    const release = window.__hubEnvironmentE2E.releaseSimulationSteps[701];
+    if (!release) return false;
+    release();
+    return true;
+  })()`);
+  if (!releasedSteps) throw new Error("Simulation step fixture was not waiting for release");
+
+  await waitForValue(
+    client,
+    `(() => {
+      const text = document.body.innerText.toLowerCase();
+      return location.pathname.includes("/simulation/701") &&
+        text.includes("browser simulation premise") &&
+        text.includes("bounded progress") &&
+        text.includes("step 2 of 4") &&
+        text.includes("simulated steps") &&
+        text.includes("browser simulated step one narrative") &&
+        text.includes("browser simulated step two narrative") &&
+        text.includes("e2e persona") &&
+        text.includes("browser simulation exit summary");
+    })()`,
+    "simulation premise, progress, steps, speaker, and exit summary",
+  );
+  await assertSimulationDetailIsReadOnly(client, 701);
+
+  await client.evaluate("history.back()");
+  await waitForValue(
+    client,
+    `!location.pathname.includes("/simulation/") && document.body.innerText.includes("Browser empty simulation premise")`,
+    "return to Hub simulation list",
+  );
+  await clickVisibleText(client, "Browser empty simulation premise");
+  await waitForValue(
+    client,
+    `location.pathname.includes("/simulation/702") &&
+      document.body.innerText.includes("No simulated steps have been recorded yet.") &&
+      document.body.innerText.includes("No exit summary is available until this run ends.")`,
+    "empty simulation run and empty exit summary",
+  );
+  await assertSimulationDetailIsReadOnly(client, 702);
+
+  await client.evaluate("history.back()");
+  await waitForValue(
+    client,
+    `!location.pathname.includes("/simulation/") && document.body.innerText.includes("Browser failed-read simulation premise")`,
+    "return to Hub before opening failed-read run",
+  );
+  await clickVisibleText(client, "Browser failed-read simulation premise");
+  await waitForValue(
+    client,
+    `location.pathname.includes("/simulation/703") &&
+      document.body.innerText.includes("Simulation unavailable") &&
+      document.body.innerText.includes("This run could not be loaded from the ENGRAM core.") &&
+      document.body.innerText.includes("Retry")`,
+    "failed simulation read state",
+  );
+  const failedReadRequested = await client.evaluate(
+    `window.__hubEnvironmentE2E.simulationRequests.some(({ path, method }) =>
+      path === "/api/simulations/703/steps" && method === "GET"
+    )`,
+  );
+  if (!failedReadRequested) {
+    throw new Error("Simulation unavailable state was not driven by the failed steps read");
+  }
+  await assertSimulationDetailIsReadOnly(client, 703);
+  console.log(
+    "Mobile simulation browser regression passed: Hub/detail loading, readable run data, empty run, failed read, and read-only details.",
+  );
+  return client;
+}
+
+async function runHubEnvironmentRegression(client, appUrl, cdpPort) {
   await waitForValue(
     client,
     `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
@@ -468,7 +756,12 @@ async function runHubEnvironmentRegression(client, appUrl) {
     "return from Environment to the same detail screen",
   );
 
-  await client.call("Page.navigate", { url: `${appUrl}/engram/environment?id=999` });
+  client = await navigateAndReconnect(
+    client,
+    cdpPort,
+    appUrl,
+    `${appUrl}/engram/environment?id=999`,
+  );
   await waitForValue(
     client,
     `location.pathname.includes("/engram/environment") && document.body.innerText.toLowerCase().includes("environment unavailable") && document.body.innerText.toLowerCase().includes("could not load this engram's live environment.")`,
@@ -480,9 +773,11 @@ async function runHubEnvironmentRegression(client, appUrl) {
   if (!unavailableRequests) {
     throw new Error("Unavailable Environment did not use the deterministic missing-engram response");
   }
+  client = await runSimulationReviewRegression(client, cdpPort, appUrl);
   console.log(
     "Mobile Hub/Environment browser regression passed: empty Hub sections, empty Memory/Beliefs, detail → Environment → detail, and unavailable Environment.",
   );
+  return client;
 }
 
 const processes = [];
@@ -574,7 +869,7 @@ try {
   await client.call("Page.navigate", { url: `${appUrl}/` });
 
   if (scenario === "hub-environment") {
-    await runHubEnvironmentRegression(client, appUrl);
+    client = await runHubEnvironmentRegression(client, appUrl, cdpPort);
   } else {
   await waitForValue(client, `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`, "signed-in engram card");
   await clickTestId(client, "engram-card-1");
