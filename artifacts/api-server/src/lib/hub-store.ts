@@ -6,7 +6,7 @@ import {
   engramsTable,
 } from "@workspace/db/schema";
 import type { HubSpace, EngramPresence, HubActivity, HubActivityKind } from "@workspace/db";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { statusForSpace, describeMovement } from "./hub";
 
 const ACTIVITY_DEFAULT_LIMIT = 50;
@@ -69,9 +69,14 @@ export async function loadActivity(
     .select({ activity: hubActivityLogTable })
     .from(hubActivityLogTable)
     .innerJoin(hubSpacesTable, eq(hubActivityLogTable.spaceId, hubSpacesTable.id))
+    .leftJoin(engramsTable, eq(hubActivityLogTable.engramId, engramsTable.id))
     .where(
       and(
         eq(hubSpacesTable.ownerId, ownerId),
+        or(
+          isNull(hubActivityLogTable.engramId),
+          eq(engramsTable.ownerId, ownerId),
+        ),
         ...(opts.spaceId === undefined ? [] : [eq(hubActivityLogTable.spaceId, opts.spaceId)]),
       ),
     )

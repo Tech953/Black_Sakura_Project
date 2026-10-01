@@ -191,6 +191,147 @@ describe("PUT /hub/controls", () => {
   });
 });
 
+describe("GET /hub/spaces", () => {
+  it("lists only spaces owned by the authenticated owner", async () => {
+    const foreignSpaceId = await insertSpace(FOREIGN_OWNER_ID, "Private Foreign Commons");
+
+    const foreignOnlyResponse = await fetch(`${base}/hub/spaces`);
+    expect(foreignOnlyResponse.status).toBe(200);
+    expect(await foreignOnlyResponse.json()).toEqual([]);
+
+    const ownedSpaceId = await insertSpace(OWNER_ID, "Owner Commons");
+    const response = await fetch(`${base}/hub/spaces`);
+    const body = (await response.json()) as Array<{ id: number; name: string; description: string }>;
+
+    expect(response.status).toBe(200);
+    expect(body).toHaveLength(1);
+    expect(body[0]).toMatchObject({ id: ownedSpaceId, name: "Owner Commons" });
+    expect(body.map((space) => space.id)).not.toContain(foreignSpaceId);
+    expect(JSON.stringify(body)).not.toContain("Private Foreign Commons");
+  });
+});
+
+describe("GET /hub/presence", () => {
+  it("does not reveal foreign occupants or presence rows in another owner's space", async () => {
+    const ownedEngramId = await insertEngram(OWNER_ID);
+    const ownedEngramInForeignSpaceId = await insertEngram(OWNER_ID);
+    const foreignEngramId = await insertEngram(FOREIGN_OWNER_ID);
+    const ownedSpaceId = await insertSpace(OWNER_ID, "Owner Commons");
+    const foreignSpaceId = await insertSpace(FOREIGN_OWNER_ID, "Private Foreign Commons");
+    const enteredAt = new Date("2026-09-13T12:00:00.000Z");
+
+    await db.insert(engramPresenceTable).values([
+      {
+        engramId: foreignEngramId,
+        spaceId: ownedSpaceId,
+        status: "active",
+        note: "foreign occupant secret",
+        enteredAt,
+        updatedAt: enteredAt,
+      },
+      {
+        engramId: ownedEngramInForeignSpaceId,
+        spaceId: foreignSpaceId,
+        status: "active",
+        note: "owner occupant in foreign space",
+        enteredAt,
+        updatedAt: enteredAt,
+      },
+    ]);
+
+    const foreignOnlyResponse = await fetch(`${base}/hub/presence`);
+    expect(foreignOnlyResponse.status).toBe(200);
+    expect(await foreignOnlyResponse.json()).toEqual([]);
+
+    await db.insert(engramPresenceTable).values({
+      engramId: ownedEngramId,
+      spaceId: ownedSpaceId,
+      status: "active",
+      note: "owned occupant",
+      enteredAt,
+      updatedAt: enteredAt,
+    });
+
+    const response = await fetch(`${base}/hub/presence`);
+    const body = (await response.json()) as Array<{
+      engramId: number;
+      spaceId: number;
+      note: string | null;
+    }>;
+
+    expect(response.status).toBe(200);
+    expect(body).toHaveLength(1);
+    expect(body[0]).toMatchObject({
+      engramId: ownedEngramId,
+      spaceId: ownedSpaceId,
+      note: "owned occupant",
+    });
+    expect(JSON.stringify(body)).not.toContain("foreign occupant secret");
+    expect(JSON.stringify(body)).not.toContain("owner occupant in foreign space");
+    expect(body.map((row) => row.engramId)).not.toContain(foreignEngramId);
+  });
+});
+
+describe("GET /hub/activity", () => {
+  it("returns only summaries attached to owned spaces and engrams", async () => {
+    const ownedEngramId = await insertEngram(OWNER_ID);
+    const foreignEngramId = await insertEngram(FOREIGN_OWNER_ID);
+    const ownedSpaceId = await insertSpace(OWNER_ID, "Owner Commons");
+    const foreignSpaceId = await insertSpace(FOREIGN_OWNER_ID, "Private Foreign Commons");
+
+    await db.insert(hubActivityLogTable).values([
+      {
+        spaceId: ownedSpaceId,
+        engramId: foreignEngramId,
+        kind: "enter",
+        summary: "Foreign engram activity secret",
+      },
+      {
+        spaceId: foreignSpaceId,
+        engramId: foreignEngramId,
+        kind: "enter",
+        summary: "Foreign space activity secret",
+      },
+    ]);
+
+    const foreignOnlyResponse = await fetch(`${base}/hub/activity`);
+    expect(foreignOnlyResponse.status).toBe(200);
+    expect(await foreignOnlyResponse.json()).toEqual([]);
+
+    await db.insert(hubActivityLogTable).values([
+      {
+        spaceId: ownedSpaceId,
+        engramId: ownedEngramId,
+        kind: "enter",
+        summary: "Owned activity summary",
+      },
+      {
+        spaceId: ownedSpaceId,
+        engramId: null,
+        kind: "system",
+        summary: "Owned system activity summary",
+      },
+    ]);
+
+    const response = await fetch(`${base}/hub/activity`);
+    const body = (await response.json()) as Array<{ summary: string }>;
+
+    expect(response.status).toBe(200);
+    expect(body.map((row) => row.summary).sort()).toEqual([
+      "Owned activity summary",
+      "Owned system activity summary",
+    ]);
+    expect(JSON.stringify(body)).not.toContain("Foreign engram activity secret");
+    expect(JSON.stringify(body)).not.toContain("Foreign space activity secret");
+
+    const foreignSpaceResponse = await fetch(`${base}/hub/activity?spaceId=${foreignSpaceId}`);
+    expect(foreignSpaceResponse.status).toBe(404);
+    const foreignSpaceBody = await foreignSpaceResponse.json();
+    expect(foreignSpaceBody).toEqual({ error: "Space not found" });
+    expect(JSON.stringify(foreignSpaceBody)).not.toContain("Foreign space activity secret");
+  });
+});
+
 describe("PUT /hub/presence/:engramId", () => {
   it("moves an owned engram and serializes timestamps as ISO strings", async () => {
     const engramId = await insertEngram();
@@ -468,9 +609,13 @@ describe("GET /hub/spaces/:spaceId/transcript", () => {
   it("returns the recent owned Commons transcript in chronological API order", async () => {
     const speakerId = await insertEngram();
     const recipientId = await insertEngram();
+    const foreignSpeakerId = await insertEngram(FOREIGN_OWNER_ID);
+    const foreignRecipientId = await insertEngram(FOREIGN_OWNER_ID);
     const spaceId = await insertSpace();
     const firstAt = new Date("2026-09-13T12:00:00.000Z");
     const secondAt = new Date("2026-09-13T12:01:00.000Z");
+    const foreignAt = new Date("2026-09-13T12:02:00.000Z");
+    const foreignRecipientAt = new Date("2026-09-13T12:03:00.000Z");
     await insertMessage({
       fromEngramId: speakerId,
       toEngramId: recipientId,
@@ -485,11 +630,27 @@ describe("GET /hub/spaces/:spaceId/transcript", () => {
       content: "Second turn",
       createdAt: secondAt,
     });
+    await insertMessage({
+      fromEngramId: foreignSpeakerId,
+      toEngramId: null,
+      spaceId,
+      content: "Foreign participant transcript secret",
+      createdAt: foreignAt,
+    });
+    await insertMessage({
+      fromEngramId: speakerId,
+      toEngramId: foreignRecipientId,
+      spaceId,
+      content: "Foreign recipient transcript secret",
+      createdAt: foreignRecipientAt,
+    });
 
     const response = await fetch(`${base}/hub/spaces/${spaceId}/transcript`);
+    const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject([
+    expect(body).toHaveLength(2);
+    expect(body).toMatchObject([
       {
         fromEngramId: recipientId,
         toEngramId: speakerId,
@@ -503,27 +664,27 @@ describe("GET /hub/spaces/:spaceId/transcript", () => {
         createdAt: firstAt.toISOString(),
       },
     ]);
+    expect(JSON.stringify(body)).not.toContain("Foreign participant transcript secret");
+    expect(JSON.stringify(body)).not.toContain("Foreign recipient transcript secret");
   });
 
   it("does not open a transcript for another owner's space", async () => {
-    const foreignSpace = await db
-      .insert(hubSpacesTable)
-      .values({
-        ownerId: "another-owner",
-        slug: `foreign-space-${Date.now()}-${Math.random()}`,
-        name: "Foreign Commons",
-        kind: "commons",
-        description: "A foreign space",
-        visibilityScope: "public",
-        actionScope: "converse",
-        logged: true,
-        allowsInitiative: true,
-      })
-      .returning({ id: hubSpacesTable.id });
+    const foreignSpeakerId = await insertEngram(FOREIGN_OWNER_ID);
+    const foreignSpaceId = await insertSpace(FOREIGN_OWNER_ID, "Private Foreign Commons");
+    await insertMessage({
+      fromEngramId: foreignSpeakerId,
+      toEngramId: null,
+      spaceId: foreignSpaceId,
+      content: "Foreign Commons transcript secret",
+      createdAt: new Date("2026-09-13T12:00:00.000Z"),
+    });
 
-    const response = await fetch(`${base}/hub/spaces/${foreignSpace[0].id}/transcript`);
+    const response = await fetch(`${base}/hub/spaces/${foreignSpaceId}/transcript`);
+    const body = await response.json();
 
     expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "Space not found" });
+    expect(body).toEqual({ error: "Space not found" });
+    expect(JSON.stringify(body)).not.toContain("Private Foreign Commons");
+    expect(JSON.stringify(body)).not.toContain("Foreign Commons transcript secret");
   });
 });
