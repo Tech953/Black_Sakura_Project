@@ -795,8 +795,9 @@ describe("runTick — commons turn-taking", () => {
     const activityInserts = h.state.inserts.filter((r) => r.__table === h.hubActivityLogTable);
     expect(activityInserts).toHaveLength(1);
     expect(activityInserts[0].kind).toBe("converse");
-    expect(activityInserts[0].summary).toContain("Arezo");
-    expect(activityInserts[0].summary).toContain("Rebecca");
+    expect(activityInserts[0].spaceId).toBe(7);
+    expect(activityInserts[0].engramId).toBe(1);
+    expect(activityInserts[0].summary).toBe("Arezo spoke to Rebecca in The Commons.");
   });
 
   it("blocks and audits a turn addressed to the wrong peer in a three-engram Commons", async () => {
