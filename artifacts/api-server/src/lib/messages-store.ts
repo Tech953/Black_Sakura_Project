@@ -61,7 +61,8 @@ export async function loadMessages(
 /**
  * Load recent engram-channel messages that occurred inside one space, newest first.
  * Used by the commons turn-taking logic to derive per-engram "last spoke" times and
- * to build the short transcript fed into the next conversation turn.
+ * to build the short transcript fed into the next conversation turn. Both the
+ * sender and any recipient must belong to the requested owner.
  */
 export async function loadSpaceMessages(
   ownerId: string,
@@ -77,6 +78,16 @@ export async function loadSpaceMessages(
         eq(engramsTable.ownerId, ownerId),
         eq(engramMessagesTable.spaceId, spaceId),
         eq(engramMessagesTable.channel, "engram"),
+        or(
+          isNull(engramMessagesTable.toEngramId),
+          inArray(
+            engramMessagesTable.toEngramId,
+            db
+              .select({ id: engramsTable.id })
+              .from(engramsTable)
+              .where(eq(engramsTable.ownerId, ownerId)),
+          ),
+        ),
       ),
     )
     .orderBy(desc(engramMessagesTable.createdAt))
