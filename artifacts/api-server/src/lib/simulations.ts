@@ -13,6 +13,7 @@ import {
 import { summarizeWorldModel } from "./world-model";
 import { loadRecentWorldModel } from "./world-model-store";
 import { appendActivity, loadPresenceForEngram, loadSpaceById } from "./hub-store";
+import { normalizeHubActivityExcerpt } from "./hub-activity-summary";
 import { loadControls } from "./controls-store";
 import {
   appendSimulationStep,
@@ -36,16 +37,13 @@ export const SIMULATION_MAX_STEPS_CAP = 10;
  */
 export const SIMULATION_STEP_CONFIDENCE = 0.5;
 
-/** Maximum narrative text copied into a single Hub activity summary. */
-export const SIMULATION_ACTIVITY_EXCERPT_MAX = 180;
-
 export function formatSimulationActivitySummary(
   engramName: string,
   step: number,
   maxSteps: number,
   narrative: string,
 ): string {
-  const excerpt = narrative.replace(/\s+/g, " ").trim().slice(0, SIMULATION_ACTIVITY_EXCERPT_MAX);
+  const excerpt = normalizeHubActivityExcerpt(narrative);
   return `${engramName} advanced a simulation (step ${step}/${maxSteps}): ${excerpt}`;
 }
 
@@ -253,7 +251,7 @@ async function proposeSimulation(
       spaceId: chamber.id,
       engramId: engram.id,
       kind: "simulate",
-      summary: `${engram.name} opened a simulation: "${premise.slice(0, 80)}".`,
+      summary: `${engram.name} opened a simulation: "${normalizeHubActivityExcerpt(premise)}".`,
     });
   } catch (err) {
     logger.error({ err, engramId: engram.id }, "simulation create activity append failed");
@@ -336,7 +334,7 @@ export async function openOperatorSimulation(opts: {
       spaceId: chamber.id,
       engramId: engram.id,
       kind: "simulate",
-      summary: `Operator opened a simulation for ${engram.name}: "${premise.slice(0, 80)}".`,
+      summary: `Operator opened a simulation for ${engram.name}: "${normalizeHubActivityExcerpt(premise)}".`,
     });
   } catch (err) {
     logger.error({ err, engramId: engram.id }, "operator simulation activity append failed");
