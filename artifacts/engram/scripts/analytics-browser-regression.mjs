@@ -442,6 +442,23 @@ try {
     12000,
   );
   const unavailablePressure = await devtools.evaluate(`({
+    warning: document.querySelector('[data-testid="pressure-live-status"]')?.textContent?.trim(),
+    warningDirection: (() => {
+      const warning = document.querySelector('[data-testid="pressure-live-status"]');
+      return warning ? getComputedStyle(warning).direction : null;
+    })(),
+    warningFitsViewport: (() => {
+      const warning = document.querySelector('[data-testid="pressure-live-status"]');
+      const bounds = warning?.getBoundingClientRect();
+      return Boolean(
+        warning && bounds &&
+        bounds.width > 0 &&
+        bounds.height > 0 &&
+        bounds.left >= 0 &&
+        bounds.right <= window.innerWidth &&
+        warning.scrollWidth <= warning.clientWidth + 1
+      );
+    })(),
     cardCount: document.querySelectorAll('[data-testid^="pressure-roster-item-"]').length,
     names: ["Charging Guide", "Ready Scout", "Cooldown Keeper", "Paused Watcher"].map((name, index) =>
       document.querySelector('[data-testid="pressure-roster-item-' + (index + 1) + '"]')
@@ -460,6 +477,10 @@ try {
   })`);
   const persistedThresholdValues = ["— / 0.70 · —%", "— / 1.10 · —%", "— / 0.90 · —%", "— / 0.60 · —%"];
   if (
+    unavailablePressure.warning !== analyticsTranslations.pressureLiveStale ||
+    unavailablePressure.warningDirection !== (testLanguage === "ar" ? "rtl" : "ltr") ||
+    !unavailablePressure.warningFitsViewport ||
+    unavailablePressure.warning.length > 48 ||
     unavailablePressure.cardCount !== 4 ||
     unavailablePressure.names.some((visible) => !visible) ||
     unavailablePressure.statuses.some((status) => status !== analyticsTranslations.statusPaused) ||
@@ -609,12 +630,16 @@ try {
     return {
       panelTitle: panel?.querySelector("h3")?.textContent?.trim(),
       warning: warning?.textContent?.trim(),
+      warningDirection: warning ? getComputedStyle(warning).direction : null,
       warningFitsPanel: Boolean(
         panelBounds && warningBounds &&
         warningBounds.width > 0 &&
         warningBounds.height > 0 &&
         warningBounds.left >= panelBounds.left - 1 &&
-        warningBounds.right <= panelBounds.right + 1
+        warningBounds.right <= panelBounds.right + 1 &&
+        warningBounds.left >= 0 &&
+        warningBounds.right <= window.innerWidth &&
+        warning.scrollWidth <= warning.clientWidth + 1
       ),
       cooldownBadgeVisible: Boolean(panel?.querySelector('[data-testid="badge-cooldown"]')),
       charge: panel?.querySelector('[data-testid="live-drive-charge-rest"]')?.textContent?.trim(),
@@ -627,6 +652,8 @@ try {
   if (
     staleEnvironmentState.panelTitle !== environmentTranslations.liveState ||
     !staleEnvironmentState.warning?.includes(environmentTranslations.liveStateStale) ||
+    staleEnvironmentState.warningDirection !== (testLanguage === "ar" ? "rtl" : "ltr") ||
+    staleEnvironmentState.warning.length > 48 ||
     !staleEnvironmentState.warningFitsPanel ||
     !staleEnvironmentState.cooldownBadgeVisible ||
     staleEnvironmentState.charge !== "0.72" ||
