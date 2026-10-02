@@ -94,51 +94,69 @@ const devtools = new DevTools();
 const fixtureScript = String.raw`
 (() => {
   const originalFetch = window.fetch.bind(window);
+  const makeEngram = (id, name, symbol, title, isChatActive, driveId, driveLabel) => ({
+    id,
+    slug: "fixture-" + id,
+    name,
+    title,
+    symbol,
+    origin: "Browser regression fixture",
+    voiceProfile: {
+      speechStyle: "clear",
+      formatting: "plain",
+      vocabulary: ["signal"],
+      sampleLines: ["A fixture line."],
+      narrationStyle: "first-person"
+    },
+    emotionalBaseline: {
+      valence: 0.1,
+      arousal: 0.2,
+      volatility: 0.1,
+      mood: "steady"
+    },
+    environmentAnchor: {
+      name: "Fixture Environment",
+      description: "A browser-test environment.",
+      locations: ["fixture room"],
+      items: ["fixture console"],
+      ambient: "quiet"
+    },
+    memorySeed: {
+      relationship: "A test persona.",
+      facts: [],
+      summary: "An isolated browser fixture."
+    },
+    guardrails: { framing: "Stay in the fixture.", boundaries: [] },
+    drives: [{
+      id: driveId,
+      label: driveLabel,
+      description: "A fixture drive.",
+      weight: 1,
+      baseRate: 0.01
+    }],
+    focusThemes: ["focus-" + id],
+    autonomyEnabled: true,
+    tickCadenceSeconds: 60,
+    initiationThreshold: 0.8,
+    driveState: { [driveId]: 0.4 },
+    currentMood: "steady",
+    lastTickAt: "2026-09-13T12:00:00.000Z",
+    lastTransmissionAt: null,
+    backoffUntil: null,
+    isChatActive,
+    mode: "companion",
+    humanContactEnabled: true,
+    simulationEnabled: true,
+    artifactGenerationEnabled: true,
+    isArchival: false,
+    createdAt: "2026-09-13T12:00:00.000Z",
+    updatedAt: "2026-09-13T12:00:00.000Z"
+  });
   const engrams = [
-    {
-      id: 1,
-      name: "Charging Guide",
-      symbol: "◇",
-      title: "Charging fixture",
-      mode: "companion",
-      isChatActive: false,
-      isArchival: false,
-      autonomyEnabled: true,
-      initiationThreshold: 0.8
-    },
-    {
-      id: 2,
-      name: "Ready Scout",
-      symbol: "◆",
-      title: "Ready fixture",
-      mode: "companion",
-      isChatActive: true,
-      isArchival: false,
-      autonomyEnabled: true,
-      initiationThreshold: 0.8
-    },
-    {
-      id: 3,
-      name: "Cooldown Keeper",
-      symbol: "○",
-      title: "Cooldown fixture",
-      mode: "companion",
-      isChatActive: false,
-      isArchival: false,
-      autonomyEnabled: true,
-      initiationThreshold: 0.8
-    },
-    {
-      id: 4,
-      name: "Paused Watcher",
-      symbol: "△",
-      title: "Paused fixture",
-      mode: "companion",
-      isChatActive: false,
-      isArchival: false,
-      autonomyEnabled: true,
-      initiationThreshold: 0.8
-    }
+    makeEngram(1, "Charging Guide", "◇", "Charging fixture", false, "focus", "Focus"),
+    makeEngram(2, "Ready Scout", "◆", "Ready fixture", true, "signal", "Signal"),
+    makeEngram(3, "Cooldown Keeper", "○", "Cooldown fixture", false, "rest", "Rest"),
+    makeEngram(4, "Paused Watcher", "△", "Paused fixture", false, "guard", "Guard")
   ];
   const state = (engramId, overrides = {}) => ({
     engramId,
@@ -180,6 +198,7 @@ const fixtureScript = String.raw`
     });
   window.__analyticsBrowserFixture = {
     pageToken: String(Date.now()) + "-" + String(Math.random()),
+    configUpdateRequests: [],
     setStateVersion(version) { stateVersion = version; },
     setStateFailure(value) { stateRequestsFailing = value; },
     getStateVersion() { return stateVersion; }
@@ -195,7 +214,18 @@ const fixtureScript = String.raw`
       if (stateRequestsFailing) return response({ error: "fixture unavailable" }, 503);
       return response(states[stateVersion]);
     }
-    if (pathname === "/api/engrams/1/transmissions" && method === "GET") return response([]);
+    if (/^\/api\/engrams\/\d+\/transmissions$/.test(pathname) && method === "GET") {
+      return response([]);
+    }
+    if (/^\/api\/engrams\/\d+$/.test(pathname) && method === "PATCH") {
+      const id = Number(pathname.split("/").at(-1));
+      const body = JSON.parse(init.body ?? "{}");
+      window.__analyticsBrowserFixture.configUpdateRequests.push({ id, body });
+      const index = engrams.findIndex((engram) => engram.id === id);
+      if (index < 0) return response({ error: "fixture engram not found" }, 404);
+      engrams[index] = { ...engrams[index], ...body };
+      return response(engrams[index]);
+    }
     if (pathname === "/api/stats" && method === "GET") {
       return response({
         totalMemories: 0,
@@ -224,7 +254,15 @@ async function waitFor(expression, label, timeout = 10000) {
     if (await devtools.evaluate(expression)) return;
     await delay(100);
   }
-  throw new Error(`Timed out waiting for ${label}`);
+  const diagnostics = await devtools.evaluate(`({
+    url: window.location.href,
+    focusThemes: document.querySelector('[data-testid="input-focus-themes"]')?.value ?? null,
+    selectedEngrams: Array.from(document.querySelectorAll('[data-testid^="button-select-engram-"]'))
+      .filter((element) => element.classList.contains("bg-primary/10"))
+      .map((element) => element.getAttribute("data-testid")),
+    bodyTail: document.body?.innerText.slice(-500)
+  })`);
+  throw new Error(`Timed out waiting for ${label}. Browser state: ${JSON.stringify(diagnostics)}`);
 }
 
 function statusText(id) {
@@ -327,6 +365,83 @@ try {
     throw new Error(`Pressure refresh reloaded the page: ${JSON.stringify(refreshed)}`);
   }
 
+  await clickTestId("button-open-environment-3");
+  await waitFor(
+    `window.location.pathname === "/environment" &&
+      window.location.search === "?engramId=3"`,
+    "Environment route and roster query",
+  );
+  await waitFor(
+    `document.querySelector('[data-testid="input-focus-themes"]')?.value === "focus-3" &&
+      document.querySelector('[data-testid="button-select-engram-3"]')?.classList.contains("bg-primary/10")`,
+    "roster handoff selecting the requested environment",
+  );
+  const environmentSelection = await devtools.evaluate(`({
+    targetSelected: document.querySelector('[data-testid="button-select-engram-3"]')?.classList.contains("bg-primary/10"),
+    firstSelected: document.querySelector('[data-testid="button-select-engram-1"]')?.classList.contains("bg-primary/10"),
+    activeSelected: document.querySelector('[data-testid="button-select-engram-2"]')?.classList.contains("bg-primary/10"),
+    controls: ["switch-autonomy", "button-commit-config", "button-tick", "button-transmit"]
+      .map((id) => Boolean(document.querySelector('[data-testid="' + id + '"]')))
+  })`);
+  if (
+    !environmentSelection.targetSelected ||
+    environmentSelection.firstSelected ||
+    environmentSelection.activeSelected ||
+    environmentSelection.controls.some((present) => !present)
+  ) {
+    throw new Error(
+      `Environment did not preserve the roster selection or controls: ${JSON.stringify(environmentSelection)}`,
+    );
+  }
+
+  await clickTestId("switch-autonomy");
+  await waitFor(
+    `document.querySelector('[data-testid="switch-autonomy"]')?.getAttribute("aria-checked") === "false"`,
+    "Environment autonomy control responding after handoff",
+  );
+  await clickTestId("button-commit-config");
+  await waitFor(
+    "window.__analyticsBrowserFixture.configUpdateRequests.length === 1",
+    "Environment config commit",
+  );
+  const configUpdate = await devtools.evaluate(
+    "window.__analyticsBrowserFixture.configUpdateRequests[0]",
+  );
+  if (configUpdate.id !== 3 || configUpdate.body.autonomyEnabled !== false) {
+    throw new Error(
+      `Environment committed the wrong roster selection: ${JSON.stringify(configUpdate)}`,
+    );
+  }
+
+  await devtools.evaluate(`(() => {
+    window.__analyticsBrowserFixture.setStateVersion(0);
+    window.history.back();
+  })()`);
+  await waitFor(
+    `window.location.pathname === "/analytics" &&
+      document.querySelectorAll('[data-testid^="pressure-roster-item-"]').length === 4`,
+    "returning to Analytics after the environment handoff",
+  );
+  await waitFor(
+    `document.querySelector('[data-testid="pressure-roster-item-1"]')?.textContent?.includes("0.40 / 0.80 · 50%")`,
+    "Analytics pressure polling after returning from Environment",
+    12000,
+  );
+  const returnedAnalytics = await devtools.evaluate(`({
+    pageToken: window.__analyticsBrowserFixture.pageToken,
+    navigationType: performance.getEntriesByType("navigation")[0]?.type,
+    pressureStatus: ${statusText(1)}
+  })`);
+  if (
+    returnedAnalytics.pageToken !== initialToken ||
+    returnedAnalytics.navigationType !== "navigate" ||
+    returnedAnalytics.pressureStatus !== "Charging"
+  ) {
+    throw new Error(
+      `Analytics did not remain usable after the handoff: ${JSON.stringify(returnedAnalytics)}`,
+    );
+  }
+
   console.log("Analytics pressure browser regression passed");
 } finally {
   devtools.close();
@@ -351,4 +466,36 @@ async function waitForText(text, label) {
     `document.body?.innerText.toLowerCase().includes(${JSON.stringify(text.toLowerCase())})`,
     label,
   );
+}
+
+async function clickTestId(testId) {
+  const selector = JSON.stringify(`[data-testid="${testId}"]`);
+  const point = await devtools.evaluate(`(() => {
+    const element = document.querySelector(${selector});
+    if (!element) return null;
+    element.scrollIntoView({ block: "center", inline: "center" });
+    const bounds = element.getBoundingClientRect();
+    return { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 };
+  })()`);
+  if (!point) throw new Error(`Cannot click missing test target: ${testId}`);
+
+  await devtools.call("Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x: point.x,
+    y: point.y,
+  });
+  await devtools.call("Input.dispatchMouseEvent", {
+    type: "mousePressed",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    clickCount: 1,
+  });
+  await devtools.call("Input.dispatchMouseEvent", {
+    type: "mouseReleased",
+    x: point.x,
+    y: point.y,
+    button: "left",
+    clickCount: 1,
+  });
 }
