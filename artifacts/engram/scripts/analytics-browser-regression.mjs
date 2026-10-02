@@ -16,6 +16,13 @@ const localeFile = testLanguage === "ar"
   : "../../../lib/i18n/src/en/analytics.json";
 const localeResources = JSON.parse(await readFile(new URL(localeFile, import.meta.url), "utf8"));
 const analyticsTranslations = localeResources.analytics ?? localeResources;
+const environmentLocaleFile = testLanguage === "ar"
+  ? "../../../lib/i18n/src/generated/ar.json"
+  : "../../../lib/i18n/src/en/environment.json";
+const environmentLocaleResources = JSON.parse(
+  await readFile(new URL(environmentLocaleFile, import.meta.url), "utf8"),
+);
+const environmentTranslations = environmentLocaleResources.environment ?? environmentLocaleResources;
 const expectedStatuses = [
   analyticsTranslations.statusCharging,
   analyticsTranslations.statusReady,
@@ -576,6 +583,86 @@ try {
     throw new Error(
       `Environment did not preserve the roster selection or controls: ${JSON.stringify(environmentSelection)}`,
     );
+  }
+
+  await waitFor(
+    `document.querySelector('[data-testid="live-state-panel"]') &&
+      !document.querySelector('[data-testid="live-state-status"]') &&
+      document.querySelector('[data-testid="badge-cooldown"]') &&
+      document.querySelector('[data-testid="live-drive-charge-rest"]')?.textContent?.trim() === "0.72" &&
+      document.querySelector('[data-testid="live-drive-progress-rest"]')?.style.width === "80%"`,
+    "Environment live-state panel with cached drive values",
+    12000,
+  );
+  const environmentToken = await devtools.evaluate("window.__analyticsBrowserFixture.pageToken");
+  await devtools.evaluate("window.__analyticsBrowserFixture.setStateFailure(true)");
+  await waitFor(
+    `document.querySelector('[data-testid="live-state-status"]')?.textContent?.includes(${JSON.stringify(environmentTranslations.liveStateStale)})`,
+    "Environment stale live-state warning",
+    20000,
+  );
+  const staleEnvironmentState = await devtools.evaluate(`(() => {
+    const panel = document.querySelector('[data-testid="live-state-panel"]');
+    const warning = document.querySelector('[data-testid="live-state-status"]');
+    const panelBounds = panel?.getBoundingClientRect();
+    const warningBounds = warning?.getBoundingClientRect();
+    return {
+      panelTitle: panel?.querySelector("h3")?.textContent?.trim(),
+      warning: warning?.textContent?.trim(),
+      warningFitsPanel: Boolean(
+        panelBounds && warningBounds &&
+        warningBounds.width > 0 &&
+        warningBounds.height > 0 &&
+        warningBounds.left >= panelBounds.left - 1 &&
+        warningBounds.right <= panelBounds.right + 1
+      ),
+      cooldownBadgeVisible: Boolean(panel?.querySelector('[data-testid="badge-cooldown"]')),
+      charge: panel?.querySelector('[data-testid="live-drive-charge-rest"]')?.textContent?.trim(),
+      progress: panel?.querySelector('[data-testid="live-drive-progress-rest"]')?.style.width,
+      tickAvailable: Boolean(panel?.querySelector('[data-testid="button-tick"]')),
+      transmitAvailable: Boolean(panel?.querySelector('[data-testid="button-transmit"]')),
+      pageToken: window.__analyticsBrowserFixture.pageToken
+    };
+  })()`);
+  if (
+    staleEnvironmentState.panelTitle !== environmentTranslations.liveState ||
+    !staleEnvironmentState.warning?.includes(environmentTranslations.liveStateStale) ||
+    !staleEnvironmentState.warningFitsPanel ||
+    !staleEnvironmentState.cooldownBadgeVisible ||
+    staleEnvironmentState.charge !== "0.72" ||
+    staleEnvironmentState.progress !== "80%" ||
+    !staleEnvironmentState.tickAvailable ||
+    !staleEnvironmentState.transmitAvailable ||
+    staleEnvironmentState.pageToken !== environmentToken
+  ) {
+    throw new Error(`Environment lost readable cached live state during polling failure: ${JSON.stringify(staleEnvironmentState)}`);
+  }
+
+  await devtools.evaluate("window.__analyticsBrowserFixture.setStateFailure(false)");
+  await waitFor(
+    `!document.querySelector('[data-testid="live-state-status"]') &&
+      document.querySelector('[data-testid="live-drive-charge-rest"]')?.textContent?.trim() === "0.72" &&
+      document.querySelector('[data-testid="live-drive-progress-rest"]')?.style.width === "80%"`,
+    "Environment live-state recovery",
+    12000,
+  );
+  const recoveredEnvironmentState = await devtools.evaluate(`({
+    warningPresent: Boolean(document.querySelector('[data-testid="live-state-status"]')),
+    cooldownBadgeVisible: Boolean(document.querySelector('[data-testid="live-state-panel"] [data-testid="badge-cooldown"]')),
+    charge: document.querySelector('[data-testid="live-drive-charge-rest"]')?.textContent?.trim(),
+    progress: document.querySelector('[data-testid="live-drive-progress-rest"]')?.style.width,
+    pageToken: window.__analyticsBrowserFixture.pageToken,
+    navigationType: performance.getEntriesByType("navigation")[0]?.type
+  })`);
+  if (
+    recoveredEnvironmentState.warningPresent ||
+    !recoveredEnvironmentState.cooldownBadgeVisible ||
+    recoveredEnvironmentState.charge !== "0.72" ||
+    recoveredEnvironmentState.progress !== "80%" ||
+    recoveredEnvironmentState.pageToken !== environmentToken ||
+    recoveredEnvironmentState.navigationType !== "navigate"
+  ) {
+    throw new Error(`Environment did not clear stale warning without reloading: ${JSON.stringify(recoveredEnvironmentState)}`);
   }
 
   await clickTestId("switch-autonomy");
