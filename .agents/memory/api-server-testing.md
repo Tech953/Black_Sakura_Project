@@ -22,3 +22,11 @@ The `@workspace/api-server` artifact is unit-tested with **vitest** (`pnpm --fil
 **Why:** the original PYRI prompt omitted this block entirely; the test suite exists specifically to stop that gap from reopening as new modes/personas are added.
 
 **A forced engine tick bypasses cadence only, not the initiation threshold** — useful to know when writing/maintaining engine tests.
+
+## Disposable local PostgreSQL
+
+When a real PostgreSQL cluster is needed for local concurrency checks, the Nix-provided PostgreSQL binaries can run an isolated temporary cluster. Set `unix_socket_directories` to an existing path such as `/tmp`; the default `/run/postgresql` directory is absent in this runner.
+
+**Why:** without that override, PostgreSQL exits while creating its socket lock file even when its TCP listener is configured correctly.
+
+**How to apply:** use a temporary cluster, a non-default loopback port, and a test-only database URL. Do not substitute the ambient development database URL for a disposable target.
