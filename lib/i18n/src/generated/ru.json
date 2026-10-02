@@ -32,7 +32,7 @@
       "timingDesc": "Восприимчив ли пользователь сейчас?",
       "noveltyDesc": "Это уже показывалось раньше?"
     },
-    "openEnvironment": "Open environment",
+    "openEnvironment": "Открыть окружение",
     "pressureLiveStale": "Live pressure is stale",
     "pressureLiveUnavailable": "Live pressure unavailable"
   },

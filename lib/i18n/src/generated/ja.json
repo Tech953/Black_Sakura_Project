@@ -32,7 +32,7 @@
       "timingDesc": "ユーザーは今受け入れやすいか？",
       "noveltyDesc": "これは以前に提示されたことがあるか？"
     },
-    "openEnvironment": "Open environment",
+    "openEnvironment": "環境を開く",
     "pressureLiveStale": "Live pressure is stale",
     "pressureLiveUnavailable": "Live pressure unavailable"
   },
