@@ -6,7 +6,7 @@ import {
   engramsTable,
 } from "@workspace/db/schema";
 import type { HubSpace, EngramPresence, HubActivity, HubActivityKind } from "@workspace/db";
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, or } from "drizzle-orm";
 import { statusForSpace, describeMovement } from "./hub";
 
 const ACTIVITY_DEFAULT_LIMIT = 50;
@@ -55,6 +55,41 @@ export async function loadPresenceForEngram(
       ),
     );
   return row?.presence;
+}
+
+export type HubPresenceOwnershipFinding = {
+  presenceId: number;
+  engramId: number;
+  engramOwnerId: string | null;
+  spaceId: number;
+  spaceOwnerId: string | null;
+};
+
+/**
+ * Read-only integrity scan for presence rows whose engram and space have
+ * different owners. Left joins also make orphaned parent rows visible if
+ * foreign-key enforcement was bypassed during a manual repair or import.
+ */
+export async function findHubPresenceOwnershipIssues(): Promise<HubPresenceOwnershipFinding[]> {
+  return db
+    .select({
+      presenceId: engramPresenceTable.id,
+      engramId: engramPresenceTable.engramId,
+      engramOwnerId: engramsTable.ownerId,
+      spaceId: engramPresenceTable.spaceId,
+      spaceOwnerId: hubSpacesTable.ownerId,
+    })
+    .from(engramPresenceTable)
+    .leftJoin(engramsTable, eq(engramPresenceTable.engramId, engramsTable.id))
+    .leftJoin(hubSpacesTable, eq(engramPresenceTable.spaceId, hubSpacesTable.id))
+    .where(
+      or(
+        isNull(engramsTable.id),
+        isNull(hubSpacesTable.id),
+        ne(engramsTable.ownerId, hubSpacesTable.ownerId),
+      ),
+    )
+    .orderBy(asc(engramPresenceTable.id));
 }
 
 export async function loadActivity(
