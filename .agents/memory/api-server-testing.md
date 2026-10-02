@@ -14,6 +14,10 @@ The `@workspace/api-server` artifact is unit-tested with **vitest** (`pnpm --fil
 **Why:** parallel embedded Postgres startup intermittently starves initialization hooks and app workflows, producing unrelated timeouts and false queue failures during release-gate runs.
 **How to apply:** parallelism inside a suite is fine only when that suite explicitly owns and isolates its database; do not re-enable file-level parallelism globally.
 
+**Drizzle-wrapped PGlite errors keep PostgreSQL constraint details in the cause chain.** The outer query error may show only SQL and parameters.
+**Why:** checking only the top-level message can fail to prove a test reached the intended database constraint.
+**How to apply:** when asserting a real DB failure in a route test, inspect the nested `cause` errors for the constraint name or database code.
+
 **API tests must not inherit cloud model availability.** Vitest setup supplies a loopback-only LLM sentinel when no provider is configured, while tests that cover unavailable generation explicitly clear provider variables and mock generation calls.
 **Why:** `llm.ts` intentionally fails during production module loading without an endpoint, and an injected Replit integration can otherwise turn a fail-closed artifact test into a real, slow media request.
 **How to apply:** keep provider setup in the API test harness, not production configuration; use explicit generation mocks for artifact-worker tests and retain the no-provider assertion against the stable fail-closed message.
