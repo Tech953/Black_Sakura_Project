@@ -17,7 +17,7 @@ import {
   hubSpacesTable,
 } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { movePresence } from "./hub-store";
+import { findHubPresenceOwnershipIssues, movePresence } from "./hub-store";
 
 const OWNER_ID = "hub-store-movement-owner";
 const FOREIGN_OWNER_ID = "hub-store-foreign-owner";
@@ -109,6 +109,14 @@ async function presenceRows() {
     .select()
     .from(engramPresenceTable)
     .orderBy(engramPresenceTable.id);
+}
+
+async function insertPresence(engramId: number, spaceId: number) {
+  const [row] = await db
+    .insert(engramPresenceTable)
+    .values({ engramId, spaceId })
+    .returning();
+  return row;
 }
 
 describe("movePresence — first placement and same-space updates", () => {
@@ -350,5 +358,61 @@ describe("movePresence — ownership boundaries", () => {
 
     expect(await presenceRows()).toEqual(beforePresence);
     expect(await activityRows()).toEqual(beforeActivity);
+  });
+});
+
+describe("findHubPresenceOwnershipIssues", () => {
+  it("returns no findings for a valid same-owner presence row without mutating it", async () => {
+    const engram = await insertEngram();
+    const space = await insertSpace({
+      slug: "diagnostic-owned-space",
+      name: "Owned Space",
+      logged: true,
+      allowsInitiative: true,
+    });
+    await insertPresence(engram.id, space.id);
+    const before = await presenceRows();
+
+    await expect(findHubPresenceOwnershipIssues()).resolves.toEqual([]);
+    expect(await presenceRows()).toEqual(before);
+  });
+
+  it("reports both owner-mismatch directions and their IDs without mutating rows", async () => {
+    const ownedEngram = await insertEngram("Owned");
+    const foreignEngram = await insertEngram("Foreign", FOREIGN_OWNER_ID);
+    const ownedSpace = await insertSpace({
+      slug: "diagnostic-owned-space",
+      name: "Owned Space",
+      logged: true,
+      allowsInitiative: true,
+    });
+    const foreignSpace = await insertSpace({
+      slug: "diagnostic-foreign-space",
+      name: "Foreign Space",
+      logged: true,
+      allowsInitiative: true,
+      ownerId: FOREIGN_OWNER_ID,
+    });
+    const ownedEngramInForeignSpace = await insertPresence(ownedEngram.id, foreignSpace.id);
+    const foreignEngramInOwnedSpace = await insertPresence(foreignEngram.id, ownedSpace.id);
+    const before = await presenceRows();
+
+    await expect(findHubPresenceOwnershipIssues()).resolves.toEqual([
+      {
+        presenceId: ownedEngramInForeignSpace.id,
+        engramId: ownedEngram.id,
+        engramOwnerId: OWNER_ID,
+        spaceId: foreignSpace.id,
+        spaceOwnerId: FOREIGN_OWNER_ID,
+      },
+      {
+        presenceId: foreignEngramInOwnedSpace.id,
+        engramId: foreignEngram.id,
+        engramOwnerId: FOREIGN_OWNER_ID,
+        spaceId: ownedSpace.id,
+        spaceOwnerId: OWNER_ID,
+      },
+    ]);
+    expect(await presenceRows()).toEqual(before);
   });
 });
