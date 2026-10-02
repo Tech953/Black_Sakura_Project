@@ -616,7 +616,12 @@
     "developmentAppliedDesc": "{{name}} ने अपना परिवेश बदला।",
     "probeAnswered": "प्रोब का उत्तर मिला",
     "probeAnsweredDesc": "{{name}} ने जवाब दिया।",
-    "inquiryFailed": "पूछताछ विफल"
+    "inquiryFailed": "पूछताछ विफल",
+    "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+    "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+    "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+    "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+    "retryInquiry": "Retry inquiry"
   },
   "journal": {
     "title": "चिंतनशील जर्नल",
@@ -807,7 +812,12 @@
       "developPlaceholder": "… के प्रति और जिज्ञासु बनो",
       "history": "इतिहास",
       "noInquiries": "अभी कोई पूछताछ नहीं।",
-      "configDelta": "config delta"
+      "configDelta": "config delta",
+      "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+      "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+      "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+      "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+      "retryInquiry": "Retry inquiry"
     },
     "hub": {
       "kicker": "ENGRAM // HUB",

@@ -21,6 +21,17 @@ import { useTranslation } from "react-i18next";
 import { resolveReplyLanguage } from "@/i18n";
 
 type Kind = (typeof EngramInquiryInputKind)[keyof typeof EngramInquiryInputKind];
+type InquiryFailureCode = "INQUIRY_GENERATION_FAILED" | "INQUIRY_PERSISTENCE_FAILED";
+
+function inquiryFailureCode(error: unknown): InquiryFailureCode | null {
+  if (!error || typeof error !== "object" || !("data" in error)) return null;
+  const data = (error as { data?: unknown }).data;
+  if (!data || typeof data !== "object" || !("code" in data)) return null;
+  const code = (data as { code?: unknown }).code;
+  return code === "INQUIRY_GENERATION_FAILED" || code === "INQUIRY_PERSISTENCE_FAILED"
+    ? code
+    : null;
+}
 
 const MODES: { id: Kind; labelKey: string; icon: typeof Search; descKey: string; placeholderKey: string }[] = [
   {
@@ -159,6 +170,10 @@ export default function Inquiry() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [kind, setKind] = useState<Kind>(EngramInquiryInputKind.probe);
   const [question, setQuestion] = useState("");
+  const [submitFailure, setSubmitFailure] = useState<{
+    code: InquiryFailureCode | null;
+    kind: Kind;
+  } | null>(null);
 
   const selected = useMemo(
     () => (engrams ?? []).find((e) => e.id === selectedId) ?? null,
@@ -183,6 +198,8 @@ export default function Inquiry() {
     // the client aligned with the server guard instead of submitting a request
     // that will always return 403.
     if (!selected || selected.isArchival || !question.trim()) return;
+    setSubmitFailure(null);
+    const submittedKind = kind;
     create.mutate(
       { id: selected.id, data: { kind, question: question.trim(), language: resolveReplyLanguage() } },
       {
@@ -195,7 +212,9 @@ export default function Inquiry() {
             description: kind === "develop" ? t("developmentAppliedDesc", { name: selected.name }) : t("probeAnsweredDesc", { name: selected.name }),
           });
         },
-        onError: () => toast({ title: t("inquiryFailed"), variant: "destructive" }),
+        onError: (error) => {
+          setSubmitFailure({ code: inquiryFailureCode(error), kind: submittedKind });
+        },
       },
     );
   }
@@ -238,7 +257,11 @@ export default function Inquiry() {
           return (
             <button
               key={e.id}
-              onClick={() => setSelectedId(e.id)}
+              disabled={create.isPending}
+              onClick={() => {
+                setSubmitFailure(null);
+                setSelectedId(e.id);
+              }}
               data-testid={`button-select-engram-${e.id}`}
               className={`flex items-center gap-3 px-4 py-2.5 border transition-all ${
                 isSel
@@ -270,7 +293,11 @@ export default function Inquiry() {
                   return (
                     <button
                       key={m.id}
-                      onClick={() => setKind(m.id)}
+                      onClick={() => {
+                        setSubmitFailure(null);
+                        setKind(m.id);
+                      }}
+                      disabled={create.isPending}
                       data-testid={`button-mode-${m.id}`}
                       className={`flex flex-col items-start gap-1 px-3 py-2.5 border transition-all text-left ${
                         isSel
@@ -294,7 +321,11 @@ export default function Inquiry() {
                 </label>
                 <Textarea
                   value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
+                  onChange={(e) => {
+                    setSubmitFailure(null);
+                    setQuestion(e.target.value);
+                  }}
+                  disabled={create.isPending}
                   placeholder={t(modeInfo.placeholderKey)}
                   className="mt-1 font-sans text-sm border-border/50 bg-background/50 min-h-32"
                   data-testid="input-question"
@@ -312,6 +343,35 @@ export default function Inquiry() {
                   ? kind === "develop" ? t("reflecting") : t("asking")
                   : kind === "develop" ? t("developName", { name: selected.name }) : t("probeName", { name: selected.name })}
               </Button>
+              {submitFailure && (
+                <div
+                  role="alert"
+                  className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm"
+                  data-testid="inquiry-submit-error"
+                >
+                  <p>
+                    {submitFailure.code === "INQUIRY_GENERATION_FAILED"
+                      ? t("generationFailureMessage")
+                      : submitFailure.code === "INQUIRY_PERSISTENCE_FAILED"
+                        ? submitFailure.kind === "develop"
+                          ? t("developPersistenceFailureMessage")
+                          : t("probePersistenceFailureMessage")
+                        : t("unconfirmedFailureMessage")}
+                  </p>
+                  {submitFailure.code && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSubmit}
+                      disabled={create.isPending}
+                      data-testid="button-retry-inquiry"
+                    >
+                      {t("retryInquiry")}
+                    </Button>
+                  )}
+                </div>
+              )}
               {kind === "develop" && (
                 <p className="font-mono text-[9px] text-muted-foreground/50 leading-snug">
                   {t("developmentNote")}

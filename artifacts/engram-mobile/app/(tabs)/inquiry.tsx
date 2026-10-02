@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -32,6 +32,17 @@ import {
 
 
 type Mode = InquiryMode;
+type InquiryFailureCode = "INQUIRY_GENERATION_FAILED" | "INQUIRY_PERSISTENCE_FAILED";
+
+function inquiryFailureCode(error: unknown): InquiryFailureCode | null {
+  if (!error || typeof error !== "object" || !("data" in error)) return null;
+  const data = (error as { data?: unknown }).data;
+  if (!data || typeof data !== "object" || !("code" in data)) return null;
+  const code = (data as { code?: unknown }).code;
+  return code === "INQUIRY_GENERATION_FAILED" || code === "INQUIRY_PERSISTENCE_FAILED"
+    ? code
+    : null;
+}
 
 export default function InquiryScreen() {
   const { t } = useTranslation("mobile");
@@ -48,7 +59,10 @@ export default function InquiryScreen() {
 
   const [mode, setMode] = useState<Mode>("probe");
   const [question, setQuestion] = useState("");
-  const [submitFailed, setSubmitFailed] = useState(false);
+  const [submitFailure, setSubmitFailure] = useState<{
+    code: InquiryFailureCode | null;
+    mode: Mode;
+  } | null>(null);
 
   const { data: engram } = useGetEngram(engramId, {
     query: {
@@ -68,9 +82,14 @@ export default function InquiryScreen() {
   });
   const create = useCreateEngramInquiry();
 
+  useEffect(() => {
+    setSubmitFailure(null);
+  }, [engramId]);
+
   const onSubmit = useCallback(async () => {
     if (!enabled || question.trim().length === 0) return;
-    setSubmitFailed(false);
+    setSubmitFailure(null);
+    const submittedMode = mode;
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
@@ -95,8 +114,8 @@ export default function InquiryScreen() {
           ],
         });
       }
-    } catch {
-      setSubmitFailed(true);
+    } catch (error) {
+      setSubmitFailure({ code: inquiryFailureCode(error), mode: submittedMode });
     }
   }, [create, enabled, engramId, mode, modeScope, question, queryClient]);
 
@@ -139,7 +158,11 @@ export default function InquiryScreen() {
               <Pressable
                 key={m}
                 testID={`mode-${m}`}
-                onPress={() => setMode(m)}
+                onPress={() => {
+                  setSubmitFailure(null);
+                  setMode(m);
+                }}
+                disabled={create.isPending}
                 style={[
                   styles.modeChip,
                   {
@@ -180,7 +203,11 @@ export default function InquiryScreen() {
         <TextInput
           testID="inquiry-input"
           value={question}
-          onChangeText={setQuestion}
+          onChangeText={(value) => {
+            setSubmitFailure(null);
+            setQuestion(value);
+          }}
+          editable={!create.isPending}
           placeholder={
             mode === "probe"
               ? t("inquiry.probePlaceholder")
@@ -210,7 +237,7 @@ export default function InquiryScreen() {
           style={{ marginTop: 14 }}
         />
 
-        {submitFailed ? (
+        {submitFailure ? (
           <View
             style={[
               styles.errorCard,
@@ -218,15 +245,23 @@ export default function InquiryScreen() {
             ]}
           >
             <Text style={[styles.errorText, { color: colors.destructive }]}>
-              {t("errors.message")}
+              {submitFailure.code === "INQUIRY_GENERATION_FAILED"
+                ? t("inquiry.generationFailureMessage")
+                : submitFailure.code === "INQUIRY_PERSISTENCE_FAILED"
+                  ? submitFailure.mode === "develop"
+                    ? t("inquiry.developPersistenceFailureMessage")
+                    : t("inquiry.probePersistenceFailureMessage")
+                  : t("inquiry.unconfirmedFailureMessage")}
             </Text>
-            <PrimaryButton
-              label={t("errors.tryAgain")}
-              tone="outline"
-              onPress={onSubmit}
-              disabled={create.isPending}
-              style={{ marginTop: 10, height: 42 }}
-            />
+            {submitFailure.code ? (
+              <PrimaryButton
+                label={t("inquiry.retryInquiry")}
+                tone="outline"
+                onPress={onSubmit}
+                disabled={create.isPending}
+                style={{ marginTop: 10, height: 42 }}
+              />
+            ) : null}
           </View>
         ) : null}
 

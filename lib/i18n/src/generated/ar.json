@@ -616,7 +616,12 @@
     "developmentAppliedDesc": "{{name}} أعادت تشكيل بيئتها.",
     "probeAnswered": "تمت الإجابة على الاستكشاف",
     "probeAnsweredDesc": "{{name}} استجابت.",
-    "inquiryFailed": "فشل الاستعلام"
+    "inquiryFailed": "فشل الاستعلام",
+    "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+    "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+    "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+    "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+    "retryInquiry": "Retry inquiry"
   },
   "journal": {
     "title": "سجل تأملي",
@@ -807,7 +812,12 @@
       "developPlaceholder": "كن أكثر فضولًا بشأن…",
       "history": "السجل",
       "noInquiries": "لا توجد استفسارات بعد.",
-      "configDelta": "فرق الإعداد"
+      "configDelta": "فرق الإعداد",
+      "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+      "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+      "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+      "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+      "retryInquiry": "Retry inquiry"
     },
     "hub": {
       "kicker": "ENGRAM // HUB",

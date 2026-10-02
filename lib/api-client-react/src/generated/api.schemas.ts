@@ -960,6 +960,20 @@ export interface EngramInquiry {
   createdAt: string;
 }
 
+export type EngramInquiryErrorCode = typeof EngramInquiryErrorCode[keyof typeof EngramInquiryErrorCode];
+
+
+export const EngramInquiryErrorCode = {
+  INQUIRY_GENERATION_FAILED: 'INQUIRY_GENERATION_FAILED',
+  INQUIRY_PERSISTENCE_FAILED: 'INQUIRY_PERSISTENCE_FAILED',
+} as const;
+
+export interface EngramInquiryError {
+  error: string;
+  code: EngramInquiryErrorCode;
+  message: string;
+}
+
 export type EngramInquiryInputKind = typeof EngramInquiryInputKind[keyof typeof EngramInquiryInputKind];
 
 

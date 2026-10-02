@@ -616,7 +616,12 @@
     "developmentAppliedDesc": "{{name}}は自らの環境を作り変えた。",
     "probeAnswered": "Probeが応答しました",
     "probeAnsweredDesc": "{{name}}が応答しました。",
-    "inquiryFailed": "問い合わせに失敗しました"
+    "inquiryFailed": "問い合わせに失敗しました",
+    "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+    "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+    "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+    "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+    "retryInquiry": "Retry inquiry"
   },
   "journal": {
     "title": "内省ジャーナル",
@@ -807,7 +812,12 @@
       "developPlaceholder": "…にもっと好奇心を持って",
       "history": "履歴",
       "noInquiries": "まだ問い合わせはありません。",
-      "configDelta": "config delta"
+      "configDelta": "config delta",
+      "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+      "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+      "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+      "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+      "retryInquiry": "Retry inquiry"
     },
     "hub": {
       "kicker": "ENGRAM // HUB",

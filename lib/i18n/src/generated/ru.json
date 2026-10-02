@@ -616,7 +616,12 @@
     "developmentAppliedDesc": "{{name}} перестроила свою среду.",
     "probeAnswered": "Ответ на зонд получен",
     "probeAnsweredDesc": "{{name}} ответила.",
-    "inquiryFailed": "Запрос не удался"
+    "inquiryFailed": "Запрос не удался",
+    "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+    "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+    "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+    "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+    "retryInquiry": "Retry inquiry"
   },
   "journal": {
     "title": "РЕФЛЕКСИВНЫЙ ЖУРНАЛ",
@@ -807,7 +812,12 @@
       "developPlaceholder": "Стань более любопытным к…",
       "history": "История",
       "noInquiries": "Запросов пока нет.",
-      "configDelta": "дельта конфига"
+      "configDelta": "дельта конфига",
+      "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+      "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+      "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+      "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+      "retryInquiry": "Retry inquiry"
     },
     "hub": {
       "kicker": "ENGRAM // HUB",
