@@ -138,22 +138,37 @@ export default function Analytics() {
                       <div className="flex min-w-0 items-center gap-2.5">
                         <span className="text-xl leading-none" aria-hidden="true">{engram.symbol}</span>
                         <div className="min-w-0">
-                          <div className="truncate font-mono text-xs uppercase tracking-wider text-foreground/90">{engram.name}</div>
-                          <div className="truncate font-mono text-[9px] uppercase text-muted-foreground/50">{topDrive?.label ?? t("pressureUnavailable")}</div>
+                          <div
+                            className="truncate font-mono text-xs uppercase tracking-wider text-foreground/90"
+                            data-testid={`pressure-name-${engram.id}`}
+                            dir="auto"
+                          >
+                            {engram.name}
+                          </div>
+                          <div className="truncate font-mono text-[9px] uppercase text-muted-foreground/50" dir="auto">
+                            {topDrive?.label ?? t("pressureUnavailable")}
+                          </div>
                         </div>
                       </div>
                       <Badge
                         variant="outline"
                         className={`font-mono text-[8px] uppercase ${statusStyle.badge}`}
                         data-testid={`pressure-status-${engram.id}`}
+                        dir="auto"
                       >
                         {t(statusStyle.label)}
                       </Badge>
                     </div>
                     <div className="mt-3 space-y-1.5">
                       <div className="flex items-center justify-between font-mono text-[10px]">
-                        <span className="uppercase tracking-wider text-muted-foreground/60">{t("pressure")}</span>
-                        <span className="tabular-nums text-foreground/70" data-testid={`pressure-value-${engram.id}`}>
+                        <span
+                          className="uppercase tracking-wider text-muted-foreground/60"
+                          data-testid={`pressure-label-${engram.id}`}
+                          dir="auto"
+                        >
+                          {t("pressure")}
+                        </span>
+                        <span className="tabular-nums text-foreground/70" data-testid={`pressure-value-${engram.id}`} dir="ltr">
                           {live && percent !== null
                             ? `${live.topCharge.toFixed(2)} / ${threshold.toFixed(2)} · ${percent}%`
                             : `— / ${threshold.toFixed(2)} · —%`}
@@ -179,7 +194,7 @@ export default function Analytics() {
                       className="mt-3 flex min-h-8 items-center justify-center gap-1.5 border border-primary/25 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-primary/80 transition-colors hover:border-primary/60 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <SlidersHorizontal className="h-3 w-3" aria-hidden="true" />
-                      {t("openEnvironment")}
+                      <span dir="auto">{t("openEnvironment")}</span>
                     </Link>
                   </div>
                 );

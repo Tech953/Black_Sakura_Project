@@ -54,22 +54,28 @@ async function stopServer() {
 
 try {
   await waitForServer();
-  const result = spawn(
-    process.execPath,
-    [fileURLToPath(new URL("./analytics-browser-regression.mjs", import.meta.url))],
-    {
-      env: {
-        ...process.env,
-        ENGRAM_BROWSER_TEST_URL: appUrl,
-        ENGRAM_BROWSER_DEBUG_PORT: String(debugPort),
+  for (const language of ["en", "ar"]) {
+    const result = spawn(
+      process.execPath,
+      [fileURLToPath(new URL("./analytics-browser-regression.mjs", import.meta.url))],
+      {
+        env: {
+          ...process.env,
+          ENGRAM_BROWSER_TEST_URL: appUrl,
+          ENGRAM_BROWSER_DEBUG_PORT: String(debugPort),
+          ENGRAM_BROWSER_TEST_LANGUAGE: language,
+        },
+        stdio: "inherit",
       },
-      stdio: "inherit",
-    },
-  );
-  const exitCode = await new Promise((resolve) => {
-    result.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
-  });
-  process.exitCode = exitCode;
+    );
+    const exitCode = await new Promise((resolve) => {
+      result.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
+    });
+    if (exitCode !== 0) {
+      process.exitCode = exitCode;
+      break;
+    }
+  }
 } finally {
   await stopServer();
 }
