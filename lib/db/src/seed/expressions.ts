@@ -1,7 +1,7 @@
 import { expressionsTable, type InsertExpression } from "../schema";
 import type { AppDatabase } from "../index";
 
-const expressions: InsertExpression[] = [
+export const expressionSeeds: InsertExpression[] = [
   { glyph: "^.^", name: "Pleased", family: "Joy", eyes: "^ ^", mouth: ".", gesture: null, valence: "Positive", arousal: "Medium", intimacy: 0, cognitiveRole: "reward-signal", notes: "Happy / pleased — a positive reward signal" },
   { glyph: "^_^", name: "Content", family: "Joy", eyes: "^ ^", mouth: "_", gesture: null, valence: "Positive", arousal: "Low", intimacy: 0, cognitiveRole: "reward-signal", notes: "Calm contentment / satisfaction at rest" },
   { glyph: "\\(^.^)/", name: "Elated", family: "Joy", eyes: "^ ^", mouth: ".", gesture: "\\( )/", valence: "Positive", arousal: "High", intimacy: 0, cognitiveRole: "reward-signal", notes: "Cheering / waving — high-arousal celebration" },
@@ -41,8 +41,8 @@ export async function seedExpressions(
 ): Promise<{ inserted: number; total: number }> {
   const result = await db
     .insert(expressionsTable)
-    .values(expressions)
+    .values(expressionSeeds)
     .onConflictDoNothing({ target: expressionsTable.glyph })
     .returning({ glyph: expressionsTable.glyph });
-  return { inserted: result.length, total: expressions.length };
+  return { inserted: result.length, total: expressionSeeds.length };
 }

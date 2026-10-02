@@ -1,11 +1,33 @@
 import { describe, it, expect } from "vitest";
 import type { Engram } from "@workspace/db";
+import { expressionSeeds } from "@workspace/db/seed/expressions";
 import {
   buildExpressionSection,
   buildEngramSystemPrompt,
   buildSystemPrompt,
+  NEUTRAL_EXPRESSION_ROLES,
+  normalizeExpressionRole,
   type ExpressionRow,
 } from "./prompts";
+
+const EXPECTED_PROMPTABLE_SEED_ROLES = new Set([
+  "alarm",
+  "attention",
+  "baseline",
+  "bonding",
+  "conflict-monitor",
+  "distress",
+  "error-signal",
+  "fatigue",
+  "incentive",
+  "orienting",
+  "overload",
+  "reward-signal",
+  "salience-spike",
+  "social-signal",
+  "surrender",
+]);
+const EXPECTED_STORED_ONLY_SEED_ROLES = new Set(["attachment"]);
 
 function makeExpression(overrides: Partial<ExpressionRow>): ExpressionRow {
   return {
@@ -77,6 +99,49 @@ function makeEngram(overrides: Partial<Engram> = {}): Engram {
 }
 
 describe("buildExpressionSection — intimacy sanitization", () => {
+  it("requires an explicit prompt-safety decision for every seeded cognitive role", () => {
+    const missingRoleGlyphs = expressionSeeds
+      .filter(({ cognitiveRole }) => !cognitiveRole?.trim())
+      .map(({ glyph }) => glyph);
+    expect(missingRoleGlyphs).toEqual([]);
+
+    const seededRoles = new Set(
+      expressionSeeds.map(({ cognitiveRole }) => cognitiveRole!),
+    );
+    const expectedRoles = new Set([
+      ...EXPECTED_PROMPTABLE_SEED_ROLES,
+      ...EXPECTED_STORED_ONLY_SEED_ROLES,
+    ]);
+    expect([...seededRoles].sort()).toEqual([...expectedRoles].sort());
+
+    for (const role of EXPECTED_PROMPTABLE_SEED_ROLES) {
+      expect(NEUTRAL_EXPRESSION_ROLES.has(role)).toBe(true);
+      expect(normalizeExpressionRole(role)).toBe(role);
+    }
+
+    for (const role of EXPECTED_STORED_ONLY_SEED_ROLES) {
+      expect(NEUTRAL_EXPRESSION_ROLES.has(role)).toBe(false);
+      expect(normalizeExpressionRole(role)).toBeNull();
+      const rows = expressionSeeds.filter((row) => row.cognitiveRole === role);
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.every((row) => (row.intimacy ?? 0) > 1)).toBe(true);
+
+      const storedRows = rows as ExpressionRow[];
+      const section = buildExpressionSection("companion", storedRows);
+      for (const row of rows) {
+        expect(section).not.toContain(row.glyph);
+      }
+
+      // Role policy remains independently protective if an intimate role is
+      // ever attached to a low-intimacy row.
+      const lowIntimacySection = buildExpressionSection("companion", [
+        { ...rows[0], intimacy: 1 } as ExpressionRow,
+      ]);
+      expect(lowIntimacySection).toContain(rows[0].glyph);
+      expect(lowIntimacySection).not.toContain(`signal: ${role}`);
+    }
+  });
+
   it("excludes high-intimacy glyphs from the prompt vocabulary", () => {
     const expressions = [
       makeExpression({ glyph: "^_^", name: "warmth", intimacy: 0 }),
