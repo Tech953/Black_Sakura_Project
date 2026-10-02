@@ -94,7 +94,7 @@ const devtools = new DevTools();
 const fixtureScript = String.raw`
 (() => {
   const originalFetch = window.fetch.bind(window);
-  const makeEngram = (id, name, symbol, title, isChatActive, driveId, driveLabel) => ({
+  const makeEngram = (id, name, symbol, title, isChatActive, driveId, driveLabel, initiationThreshold) => ({
     id,
     slug: "fixture-" + id,
     name,
@@ -137,7 +137,7 @@ const fixtureScript = String.raw`
     focusThemes: ["focus-" + id],
     autonomyEnabled: true,
     tickCadenceSeconds: 60,
-    initiationThreshold: 0.8,
+    initiationThreshold,
     driveState: { [driveId]: 0.4 },
     currentMood: "steady",
     lastTickAt: "2026-09-13T12:00:00.000Z",
@@ -153,10 +153,10 @@ const fixtureScript = String.raw`
     updatedAt: "2026-09-13T12:00:00.000Z"
   });
   const engrams = [
-    makeEngram(1, "Charging Guide", "◇", "Charging fixture", false, "focus", "Focus"),
-    makeEngram(2, "Ready Scout", "◆", "Ready fixture", true, "signal", "Signal"),
-    makeEngram(3, "Cooldown Keeper", "○", "Cooldown fixture", false, "rest", "Rest"),
-    makeEngram(4, "Paused Watcher", "△", "Paused fixture", false, "guard", "Guard")
+    makeEngram(1, "Charging Guide", "◇", "Charging fixture", false, "focus", "Focus", 0.7),
+    makeEngram(2, "Ready Scout", "◆", "Ready fixture", true, "signal", "Signal", 1.1),
+    makeEngram(3, "Cooldown Keeper", "○", "Cooldown fixture", false, "rest", "Rest", 0.9),
+    makeEngram(4, "Paused Watcher", "△", "Paused fixture", false, "guard", "Guard", 0.6)
   ];
   const state = (engramId, overrides = {}) => ({
     engramId,
@@ -334,17 +334,71 @@ try {
     "Analytics stale pressure warning",
     12000,
   );
-  const stalePressure = await devtools.evaluate(
-    `document.querySelector('[data-testid="pressure-roster-item-1"]')?.textContent?.includes("0.40 / 0.80 · 50%")`,
-  );
-  if (!stalePressure) throw new Error("Analytics hid the last pressure value while showing stale state");
+  const unavailablePressure = await devtools.evaluate(`({
+    cardCount: document.querySelectorAll('[data-testid^="pressure-roster-item-"]').length,
+    names: ["Charging Guide", "Ready Scout", "Cooldown Keeper", "Paused Watcher"].map((name, index) =>
+      document.querySelector('[data-testid="pressure-roster-item-' + (index + 1) + '"]')
+        ?.textContent?.includes(name) ?? false
+    ),
+    statuses: [${[1, 2, 3, 4].map((id) => statusText(id)).join(", ")}],
+    unavailableLabels: [1, 2, 3, 4].map((id) =>
+      document.querySelector('[data-testid="pressure-roster-item-' + id + '"]')
+        ?.textContent?.includes("No live pressure") ?? false
+    ),
+    values: [1, 2, 3, 4].map((id) =>
+      document.querySelector('[data-testid="pressure-value-' + id + '"]')?.textContent?.trim()
+    ),
+    progressBars: document.querySelectorAll('[data-testid^="pressure-roster-item-"] [role="progressbar"]').length,
+    pageToken: window.__analyticsBrowserFixture.pageToken
+  })`);
+  const persistedThresholdValues = ["— / 0.70 · —%", "— / 1.10 · —%", "— / 0.90 · —%", "— / 0.60 · —%"];
+  if (
+    unavailablePressure.cardCount !== 4 ||
+    unavailablePressure.names.some((visible) => !visible) ||
+    unavailablePressure.statuses.some((status) => status !== "Paused") ||
+    unavailablePressure.unavailableLabels.some((visible) => !visible) ||
+    JSON.stringify(unavailablePressure.values) !== JSON.stringify(persistedThresholdValues) ||
+    unavailablePressure.progressBars !== 0 ||
+    unavailablePressure.pageToken !== initialToken
+  ) {
+    throw new Error(`Analytics pressure failure state was not safely degraded: ${JSON.stringify(unavailablePressure)}`);
+  }
 
   await devtools.evaluate("window.__analyticsBrowserFixture.setStateFailure(false)");
   await waitFor(
-    "!document.querySelector('[data-testid=\"pressure-live-status\"]')",
+    `!document.querySelector('[data-testid="pressure-live-status"]') &&
+      document.querySelector('[data-testid="pressure-value-1"]')?.textContent?.includes("0.40 / 0.80 · 50%") &&
+      document.querySelector('[data-testid="pressure-roster-item-1"] [role="progressbar"]')?.getAttribute("aria-valuenow") === "50"`,
     "Analytics stale pressure recovery",
     12000,
   );
+  const recoveredPressure = await devtools.evaluate(`({
+    values: [1, 2, 3, 4].map((id) =>
+      document.querySelector('[data-testid="pressure-value-' + id + '"]')?.textContent?.trim()
+    ),
+    statuses: [${[1, 2, 3, 4].map((id) => statusText(id)).join(", ")}],
+    progress: [1, 2, 3, 4].map((id) =>
+      document.querySelector('[data-testid="pressure-roster-item-' + id + '"] [role="progressbar"]')
+        ?.getAttribute("aria-valuenow")
+    ),
+    pageToken: window.__analyticsBrowserFixture.pageToken,
+    navigationType: performance.getEntriesByType("navigation")[0]?.type
+  })`);
+  const expectedRecoveredValues = [
+    "0.40 / 0.80 · 50%",
+    "0.95 / 0.80 · 100%",
+    "0.72 / 0.80 · 90%",
+    "0.10 / 0.80 · 13%",
+  ];
+  if (
+    JSON.stringify(recoveredPressure.values) !== JSON.stringify(expectedRecoveredValues) ||
+    JSON.stringify(recoveredPressure.statuses) !== JSON.stringify(["Charging", "Ready", "Cooldown", "Paused"]) ||
+    JSON.stringify(recoveredPressure.progress) !== JSON.stringify(["50", "100", "90", "13"]) ||
+    recoveredPressure.pageToken !== initialToken ||
+    recoveredPressure.navigationType !== "navigate"
+  ) {
+    throw new Error(`Analytics did not restore live pressure without a reload: ${JSON.stringify(recoveredPressure)}`);
+  }
 
   await devtools.evaluate("window.__analyticsBrowserFixture.setStateVersion(1)");
   await waitFor(

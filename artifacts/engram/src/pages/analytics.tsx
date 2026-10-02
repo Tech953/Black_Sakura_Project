@@ -42,7 +42,9 @@ export default function Analytics() {
     },
   });
 
-  const liveById = new Map((liveStates ?? []).map((state) => [state.engramId, state]));
+  const liveById = new Map(
+    (liveStatesError ? [] : liveStates ?? []).map((state) => [state.engramId, state]),
+  );
   const rosterLoading = engramsLoading || statesLoading;
 
   return (
@@ -116,8 +118,9 @@ export default function Analytics() {
               {engrams.map((engram) => {
                 const live = liveById.get(engram.id);
                 const threshold = live?.initiationThreshold ?? engram.initiationThreshold;
-                const topCharge = live?.topCharge ?? 0;
-                const percent = Math.min(100, Math.round((topCharge / Math.max(0.01, threshold)) * 100));
+                const percent = live
+                  ? Math.min(100, Math.round((live.topCharge / Math.max(0.01, threshold)) * 100))
+                  : null;
                 const topDrive = live?.drives.reduce(
                   (best, drive) => (!best || drive.charge > best.charge ? drive : best),
                   live.drives[0],
@@ -150,20 +153,24 @@ export default function Analytics() {
                     <div className="mt-3 space-y-1.5">
                       <div className="flex items-center justify-between font-mono text-[10px]">
                         <span className="uppercase tracking-wider text-muted-foreground/60">{t("pressure")}</span>
-                        <span className="tabular-nums text-foreground/70">
-                          {topCharge.toFixed(2)} / {threshold.toFixed(2)} · {percent}%
+                        <span className="tabular-nums text-foreground/70" data-testid={`pressure-value-${engram.id}`}>
+                          {live && percent !== null
+                            ? `${live.topCharge.toFixed(2)} / ${threshold.toFixed(2)} · ${percent}%`
+                            : `— / ${threshold.toFixed(2)} · —%`}
                         </span>
                       </div>
-                      <div
-                        className="h-1.5 overflow-hidden bg-secondary"
-                        role="progressbar"
-                        aria-label={t("pressureProgressLabel", { name: engram.name })}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={percent}
-                      >
-                        <div className={`h-full transition-all ${status === "ready" ? "bg-rose-400/80" : "bg-primary/60"}`} style={{ width: `${percent}%` }} />
-                      </div>
+                      {live && percent !== null && (
+                        <div
+                          className="h-1.5 overflow-hidden bg-secondary"
+                          role="progressbar"
+                          aria-label={t("pressureProgressLabel", { name: engram.name })}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={percent}
+                        >
+                          <div className={`h-full transition-all ${status === "ready" ? "bg-rose-400/80" : "bg-primary/60"}`} style={{ width: `${percent}%` }} />
+                        </div>
+                      )}
                     </div>
                     <Link
                       href={`/environment?engramId=${engram.id}`}
