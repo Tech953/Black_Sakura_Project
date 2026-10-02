@@ -24,6 +24,7 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { subscribe, type EngramEvent } from "../lib/events";
 import hubRouter from "./hub";
+import eventsRouter from "./events";
 
 const OWNER_ID = "hub-route-movement-owner";
 const FOREIGN_OWNER_ID = "hub-route-foreign-owner";
@@ -50,6 +51,7 @@ beforeAll(async () => {
     next();
   });
   app.use(hubRouter);
+  app.use(eventsRouter);
   await new Promise<void>((resolve) => {
     server = app.listen(0, () => resolve());
   });
@@ -144,6 +146,73 @@ async function insertMessage(args: {
     })
     .returning();
   return row;
+}
+
+function createSseFrameReader(reader: ReadableStreamDefaultReader<Uint8Array>) {
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  return async (): Promise<string | null> => {
+    while (true) {
+      const frameEnd = buffer.indexOf("\n\n");
+      if (frameEnd >= 0) {
+        const frame = buffer.slice(0, frameEnd);
+        buffer = buffer.slice(frameEnd + 2);
+        return frame;
+      }
+
+      const chunk = await reader.read();
+      if (chunk.done) {
+        buffer += decoder.decode();
+        if (buffer.length === 0) return null;
+        const frame = buffer;
+        buffer = "";
+        return frame;
+      }
+      buffer += decoder.decode(chunk.value, { stream: true });
+    }
+  };
+}
+
+async function readSseFrameWithin(
+  readFrame: () => Promise<string | null>,
+  description: string,
+  timeoutMs = 5_000,
+): Promise<string> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const frame = await Promise.race([
+      readFrame(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Timed out waiting for SSE ${description}`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+    if (frame == null) throw new Error(`SSE stream ended before ${description}`);
+    return frame;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function expectNoSseFrame(
+  readFrame: () => Promise<string | null>,
+  quietMs: number,
+): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const nextFrame = readFrame()
+    .then((frame) => ({ kind: "frame" as const, frame }))
+    .catch((error: unknown) => ({ kind: "error" as const, error }));
+  const result = await Promise.race([
+    nextFrame,
+    new Promise<{ kind: "quiet" }>((resolve) => {
+      timer = setTimeout(() => resolve({ kind: "quiet" }), quietMs);
+    }),
+  ]);
+  if (timer) clearTimeout(timer);
+  expect(result).toEqual({ kind: "quiet" });
 }
 
 describe("PUT /hub/controls", () => {
@@ -447,6 +516,121 @@ describe("PUT /hub/presence/:engramId", () => {
       enteredAt: finalPresence[0]!.enteredAt.toISOString(),
       updatedAt: finalPresence[0]!.updatedAt.toISOString(),
     }).toMatchObject(lastEventPresence);
+  });
+
+  it("streams both concurrent committed moves over SSE in activity order without duplicates or stale presence", async () => {
+    const engramId = await insertEngram();
+    const unrelatedEngramId = await insertEngram();
+    const spaceA = await insertSpace(OWNER_ID, "SSE Route A");
+    const spaceB = await insertSpace(OWNER_ID, "SSE Route B");
+    const unrelatedSpace = await insertSpace(OWNER_ID, "Not Subscribed");
+    const controller = new AbortController();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+
+    try {
+      const streamResponse = await fetch(`${base}/events?engramId=${engramId}`, {
+        signal: controller.signal,
+      });
+      expect(streamResponse.status).toBe(200);
+      expect(streamResponse.headers.get("content-type")).toContain("text/event-stream");
+      if (!streamResponse.body) throw new Error("SSE response has no body");
+      reader = streamResponse.body.getReader();
+      const readFrame = createSseFrameReader(reader);
+
+      expect(await readSseFrameWithin(readFrame, "retry directive")).toBe("retry: 3000");
+      expect(await readSseFrameWithin(readFrame, "connection comment")).toBe(": connected");
+
+      // The stream is scoped to one engram: a same-owner move for another
+      // engram must not leak into these SSE frames.
+      const unrelatedResponse = await fetch(
+        `${base}/hub/presence/${unrelatedEngramId}`,
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ spaceId: unrelatedSpace, note: "not subscribed" }),
+        },
+      );
+      expect(unrelatedResponse.status).toBe(200);
+      await unrelatedResponse.json();
+
+      const responses = await Promise.all([
+        fetch(`${base}/hub/presence/${engramId}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ spaceId: spaceA, note: "SSE route A" }),
+        }),
+        fetch(`${base}/hub/presence/${engramId}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ spaceId: spaceB, note: "SSE route B" }),
+        }),
+      ]);
+      expect(responses.map((response) => response.status)).toEqual([200, 200]);
+
+      const bodies = (await Promise.all(responses.map((response) => response.json()))) as Array<{
+        id: number;
+        engramId: number;
+        spaceId: number;
+        status: string;
+        note: string | null;
+        enteredAt: string;
+        updatedAt: string;
+      }>;
+      const events: EngramEvent[] = [];
+      for (let index = 0; index < 2; index += 1) {
+        const frame = await readSseFrameWithin(readFrame, `presence event ${index + 1}`);
+        expect(frame.startsWith("data: ")).toBe(true);
+        events.push(JSON.parse(frame.slice("data: ".length)) as EngramEvent);
+      }
+      await expectNoSseFrame(readFrame, 100);
+
+      const activities = await db
+        .select()
+        .from(hubActivityLogTable)
+        .where(eq(hubActivityLogTable.engramId, engramId))
+        .orderBy(hubActivityLogTable.id);
+      expect(activities).toHaveLength(2);
+      expect(events).toHaveLength(2);
+      expect(events.map((event) => event.type)).toEqual([
+        "presence.changed",
+        "presence.changed",
+      ]);
+      expect(events.map((event) => event.engramId)).toEqual([engramId, engramId]);
+
+      const eventPayloads = events.map((event) => {
+        const data = event.data as {
+          presence: (typeof bodies)[number];
+          spaceName: string;
+          engramName: string;
+        };
+        return { event, ...data };
+      });
+      expect(eventPayloads.map(({ presence }) => presence.spaceId)).toEqual(
+        activities.map((activity) => activity.spaceId),
+      );
+      expect(new Set(eventPayloads.map(({ presence }) => presence.spaceId)).size).toBe(2);
+
+      for (const { event, presence, spaceName, engramName } of eventPayloads) {
+        expect(event.ownerId).toBe(OWNER_ID);
+        expect(event.ts).toBe(new Date(event.ts).toISOString());
+        expect(presence.enteredAt).toBe(new Date(presence.enteredAt).toISOString());
+        expect(presence.updatedAt).toBe(new Date(presence.updatedAt).toISOString());
+        expect(spaceName).toBe(presence.spaceId === spaceA ? "SSE Route A" : "SSE Route B");
+        expect(engramName).toBe("Route Test Engram");
+        expect(bodies).toContainEqual(presence);
+      }
+
+      const currentResponse = await fetch(`${base}/hub/presence`);
+      expect(currentResponse.status).toBe(200);
+      const currentPresence = (await currentResponse.json()) as Array<
+        (typeof bodies)[number]
+      >;
+      const finalPresence = currentPresence.find((presence) => presence.engramId === engramId);
+      expect(finalPresence).toEqual(eventPayloads[1]!.presence);
+    } finally {
+      controller.abort();
+      await reader?.cancel().catch(() => undefined);
+    }
   });
 
   it("returns a stable failure when activity logging fails without changing Hub reads", async () => {
