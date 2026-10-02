@@ -29,6 +29,7 @@ import {
   runTick,
   forceTransmission,
   COOLDOWN_MS,
+  getValidTimestampMs,
   projectDriveState,
 } from "../services/engram-engine";
 import {
@@ -458,6 +459,7 @@ router.get("/engrams/state", async (req, res) => {
     // Display-only projection: keep the persisted engine state untouched while
     // showing pressure accrued since the last persisted tick.
     const driveState = projectDriveState(e, now);
+    const lastTickAtMs = getValidTimestampMs(e.lastTickAt);
     const drives = e.drives.map((d) => {
       const pressure = typeof driveState[d.id] === "number" ? driveState[d.id] : 0;
       return { id: d.id, label: d.label, pressure, weight: d.weight, charge: pressure * d.weight };
@@ -477,7 +479,7 @@ router.get("/engrams/state", async (req, res) => {
       currentMood: e.currentMood,
       initiationThreshold: e.initiationThreshold,
       tickCadenceSeconds: e.tickCadenceSeconds,
-      lastTickAt: e.lastTickAt ? new Date(e.lastTickAt).toISOString() : null,
+      lastTickAt: lastTickAtMs === null ? null : new Date(lastTickAtMs).toISOString(),
       lastTransmissionAt: e.lastTransmissionAt ? new Date(e.lastTransmissionAt).toISOString() : null,
       backoffUntil: inBackoff ? new Date(backoffUntilMs).toISOString() : null,
       inBackoff,

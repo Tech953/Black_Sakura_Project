@@ -1896,6 +1896,46 @@ describe("live engram state", () => {
     expect(engram.driveState).toEqual({ order: 0.2 });
   });
 
+  it("returns finite stored pressure and a null tick time for an invalid persisted timestamp", async () => {
+    const invalidLastTickAt = new Date("not-a-timestamp");
+    const engram = seedEngram({
+      lastTickAt: invalidLastTickAt,
+      driveState: { order: 0.37 },
+      drives: [
+        {
+          id: "order",
+          label: "Order",
+          description: "tidiness",
+          weight: 1,
+          baseRate: 0.001,
+        },
+      ],
+    });
+    const before = structuredClone(engram);
+
+    const states = await loadStates();
+    const state = states.find((item) => item.engramId === engram.id);
+
+    expect(state).toBeDefined();
+    if (!state) throw new Error("Invalid-timestamp engram was omitted from live state");
+    expect(state.lastTickAt).toBeNull();
+    expect(state.topCharge).toBe(0.37);
+    expect(state.drives).toEqual([
+      expect.objectContaining({
+        id: "order",
+        pressure: 0.37,
+        charge: 0.37,
+      }),
+    ]);
+    expect(
+      [state.topCharge, ...state.drives.flatMap((drive) => [drive.pressure, drive.charge])]
+        .every((value) => Number.isFinite(value)),
+    ).toBe(true);
+    expect(engram).toEqual(before);
+    expect(Number.isNaN(invalidLastTickAt.getTime())).toBe(true);
+    expect(h.updateCalls).toHaveLength(0);
+  });
+
   it("returns live drive state only for the authenticated owner's engrams", async () => {
     const now = Date.now();
     const ownerLastTickAt = new Date(now - 100_000);

@@ -239,6 +239,23 @@ describe("projectDriveState — read-only live pressure projection", () => {
     expect(engram).toEqual(before);
   });
 
+  it("preserves stored pressure and does not mutate the engram when the tick timestamp is invalid", () => {
+    const now = 1_000_000_000_000;
+    const engram = makeEngram({
+      lastTickAt: new Date("not-a-timestamp"),
+      driveState: { order: 0.37 },
+      drives: [{ id: "order", label: "Order", description: "", weight: 1, baseRate: 0.001 }],
+    });
+    const before = structuredClone(engram);
+
+    const projected = projectDriveState(engram, now);
+
+    expect(projected.order).toBe(0.37);
+    expect(Number.isFinite(projected.order)).toBe(true);
+    expect(engram).toEqual(before);
+    expect(Number.isNaN(engram.lastTickAt?.getTime())).toBe(true);
+  });
+
   it("caps projected elapsed time and pressure without mutating the engram", () => {
     const now = 1_000_000_000_000;
     const driveState = { order: 0.2 };
