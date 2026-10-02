@@ -26,3 +26,18 @@ sacrificing catalog fidelity.
 **How to apply:** any future change to how expressions feed the LLM must go through the
 sanitizing path in the chat prompt builder — do not pass `notes` or `intimacy > 1` glyphs
 to the model.
+
+**Role validation boundary:** keep the canonical neutral-role values in a DB-free shared
+module consumed by both database validation and `engram-core` prompt filtering. Ordinary
+insert/update schemas accept only neutral roles or null; the curated seed schema also
+accepts the single stored-only `attachment` role so the catalog remains faithful without
+making that role writable through future management paths.
+
+**Why:** `engram-core` also runs in the mobile offline client, so importing a database
+schema module into prompt code would pull persistence concerns into a shared runtime.
+Separately, the seed's `attachment` row is intentionally retained for catalog fidelity
+but must remain unavailable to ordinary writes and prompt metadata.
+
+**How to apply:** add new role values once in the DB-free registry, then decide explicitly
+whether each is promptable or seed-only. Reuse the registry in Zod schemas and prompt
+filtering; do not copy its role lists into API routes or scripts.

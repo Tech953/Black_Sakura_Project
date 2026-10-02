@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.3",
+    "@workspace/expression-role-policy": "workspace:*",
     "@workspace/rebecca-source-registry": "workspace:*",
     "drizzle-orm": "catalog:",
     "drizzle-zod": "^0.8.3",

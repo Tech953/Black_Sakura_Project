@@ -1,7 +1,11 @@
-import { expressionsTable, type InsertExpression } from "../schema";
+import {
+  expressionsTable,
+  seedExpressionSchema,
+  type SeedExpression,
+} from "../schema";
 import type { AppDatabase } from "../index";
 
-export const expressionSeeds: InsertExpression[] = [
+export const expressionSeeds: SeedExpression[] = [
   { glyph: "^.^", name: "Pleased", family: "Joy", eyes: "^ ^", mouth: ".", gesture: null, valence: "Positive", arousal: "Medium", intimacy: 0, cognitiveRole: "reward-signal", notes: "Happy / pleased — a positive reward signal" },
   { glyph: "^_^", name: "Content", family: "Joy", eyes: "^ ^", mouth: "_", gesture: null, valence: "Positive", arousal: "Low", intimacy: 0, cognitiveRole: "reward-signal", notes: "Calm contentment / satisfaction at rest" },
   { glyph: "\\(^.^)/", name: "Elated", family: "Joy", eyes: "^ ^", mouth: ".", gesture: "\\( )/", valence: "Positive", arousal: "High", intimacy: 0, cognitiveRole: "reward-signal", notes: "Cheering / waving — high-arousal celebration" },
@@ -39,10 +43,13 @@ export const expressionSeeds: InsertExpression[] = [
 export async function seedExpressions(
   db: AppDatabase,
 ): Promise<{ inserted: number; total: number }> {
+  const validatedSeeds = expressionSeeds.map((seed) =>
+    seedExpressionSchema.parse(seed),
+  );
   const result = await db
     .insert(expressionsTable)
-    .values(expressionSeeds)
+    .values(validatedSeeds)
     .onConflictDoNothing({ target: expressionsTable.glyph })
     .returning({ glyph: expressionsTable.glyph });
-  return { inserted: result.length, total: expressionSeeds.length };
+  return { inserted: result.length, total: validatedSeeds.length };
 }

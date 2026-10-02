@@ -27,7 +27,7 @@
 - [Engram engine restart safety](engram-engine-restart-safety.md) — why every autonomy guard in the engine must be DB-backed, not in-memory.
 - [Archival engram branches (Full Rezz)](archival-engram-branch.md) — original is read-only forever; the user-approved interactive continuation stays a separate writable branch.
 - [Engram authoring (seed data)](engram-authoring.md) — non-obvious couplings when adding a new engram to the seed.
-- [Expression layer safety boundary](expression-layer-safety.md) — how PYRI's QUERTY micro-expression vocabulary is kept safe when fed to the chat model.
+- [Expression layer safety boundary](expression-layer-safety.md) — neutral roles use one DB-free policy; `attachment` stays seed-only, and intimate rows/notes never reach prompts.
 - [Persona source authority](persona-source-authority.md) — curated persona evidence needs exact trusted source keys, prompt-ranked authority, and a write-reserved seed namespace.
 - [i18n architecture](i18n-architecture.md) — English JSONs are the only authored source; regenerate locales after string changes; reply-language allowlist; mobile async hydration; no mobile RTL.
 - [Mobile web and preview authentication](mobile-web-and-preview-auth.md) — Expo web needs wa-sqlite wasm asset handling, and preview API calls need a Clerk bearer fallback plus honest HTTP errors.
