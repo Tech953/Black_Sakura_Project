@@ -91,7 +91,8 @@ export default function Environment() {
   const { toast } = useToast();
 
   const requestedEngramId = useMemo(() => {
-    const query = location.split("?")[1]?.split("#")[0] ?? "";
+    const routeQuery = location.split("?")[1]?.split("#")[0] ?? "";
+    const query = routeQuery || window.location.search.slice(1);
     const id = Number(new URLSearchParams(query).get("engramId"));
     return Number.isSafeInteger(id) && id > 0 ? id : null;
   }, [location]);
