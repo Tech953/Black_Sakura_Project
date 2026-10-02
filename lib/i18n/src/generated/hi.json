@@ -33,8 +33,8 @@
       "noveltyDesc": "क्या यह पहले दिखाया गया है?"
     },
     "openEnvironment": "पर्यावरण खोलें",
-    "pressureLiveStale": "Live pressure is stale",
-    "pressureLiveUnavailable": "Live pressure unavailable"
+    "pressureLiveStale": "लाइव दबाव डेटा पुराना है",
+    "pressureLiveUnavailable": "लाइव दबाव डेटा उपलब्ध नहीं है"
   },
   "beliefs": {
     "title": "विश्वास रजिस्ट्री",
@@ -462,8 +462,8 @@
     "markSeen": "देखा चिह्नित करें",
     "awaitingFirstTransmission": "पहले ट्रांसमिशन की प्रतीक्षा",
     "awaitingFirstTransmissionHint": "pressure threshold पार होने पर वह संपर्क करेगी",
-    "liveStateStale": "Stale live data",
-    "liveStateUnavailable": "Live data unavailable"
+    "liveStateStale": "लाइव डेटा पुराना है",
+    "liveStateUnavailable": "लाइव डेटा उपलब्ध नहीं है"
   },
   "evolution": {
     "title": "इवोल्यूशन लॉग",

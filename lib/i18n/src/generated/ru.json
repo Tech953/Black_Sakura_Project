@@ -33,8 +33,8 @@
       "noveltyDesc": "Это уже показывалось раньше?"
     },
     "openEnvironment": "Открыть окружение",
-    "pressureLiveStale": "Live pressure is stale",
-    "pressureLiveUnavailable": "Live pressure unavailable"
+    "pressureLiveStale": "Давление в реальном времени устарело",
+    "pressureLiveUnavailable": "Давление в реальном времени недоступно"
   },
   "beliefs": {
     "title": "РЕЕСТР УБЕЖДЕНИЙ",
@@ -462,8 +462,8 @@
     "markSeen": "Отметить просмотренным",
     "awaitingFirstTransmission": "Ожидание первой передачи",
     "awaitingFirstTransmissionHint": "Она выйдет на связь, когда давление превысит порог",
-    "liveStateStale": "Stale live data",
-    "liveStateUnavailable": "Live data unavailable"
+    "liveStateStale": "Данные в реальном времени устарели",
+    "liveStateUnavailable": "Данные в реальном времени недоступны"
   },
   "evolution": {
     "title": "ЖУРНАЛ ЭВОЛЮЦИИ",

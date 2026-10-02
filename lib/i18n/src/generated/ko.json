@@ -33,8 +33,8 @@
       "noveltyDesc": "이전에 이미 표시된 적이 있는가?"
     },
     "openEnvironment": "환경 열기",
-    "pressureLiveStale": "Live pressure is stale",
-    "pressureLiveUnavailable": "Live pressure unavailable"
+    "pressureLiveStale": "실시간 압력 데이터가 오래되었습니다",
+    "pressureLiveUnavailable": "실시간 압력 데이터를 사용할 수 없습니다"
   },
   "beliefs": {
     "title": "신념 등록부",
@@ -462,8 +462,8 @@
     "markSeen": "읽음 처리",
     "awaitingFirstTransmission": "첫 전송 대기 중",
     "awaitingFirstTransmissionHint": "압력이 임계값을 넘으면 연락할 거예요",
-    "liveStateStale": "Stale live data",
-    "liveStateUnavailable": "Live data unavailable"
+    "liveStateStale": "실시간 데이터가 오래되었습니다",
+    "liveStateUnavailable": "실시간 데이터를 사용할 수 없습니다"
   },
   "evolution": {
     "title": "진화 로그",

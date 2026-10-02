@@ -33,8 +33,8 @@
       "noveltyDesc": "Isso já foi exibido antes?"
     },
     "openEnvironment": "Abrir ambiente",
-    "pressureLiveStale": "Live pressure is stale",
-    "pressureLiveUnavailable": "Live pressure unavailable"
+    "pressureLiveStale": "Pressão em tempo real desatualizada",
+    "pressureLiveUnavailable": "Pressão em tempo real indisponível"
   },
   "beliefs": {
     "title": "REGISTRO DE CRENÇAS",
@@ -462,8 +462,8 @@
     "markSeen": "Marcar como visto",
     "awaitingFirstTransmission": "Aguardando primeira transmissão",
     "awaitingFirstTransmissionHint": "Ela entrará em contato quando a pressão cruzar o limite",
-    "liveStateStale": "Stale live data",
-    "liveStateUnavailable": "Live data unavailable"
+    "liveStateStale": "Dados em tempo real desatualizados",
+    "liveStateUnavailable": "Dados em tempo real indisponíveis"
   },
   "evolution": {
     "title": "REGISTRO DE EVOLUÇÃO",
