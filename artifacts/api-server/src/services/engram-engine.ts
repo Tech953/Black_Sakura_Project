@@ -67,6 +67,13 @@ export interface DriveCharge {
   charge: number; // pressure * weight
 }
 
+/** Return null for absent or unparsable timestamps instead of allowing NaN to escape. */
+export function getValidTimestampMs(value: Date | string | null | undefined): number | null {
+  if (value == null) return null;
+  const timestamp = value instanceof Date ? value.getTime() : Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
 /**
  * Project pressure for display without persisting it or consuming engine jitter.
  * The engine's stochastic accrual remains the source of truth for initiation; this
@@ -74,8 +81,9 @@ export interface DriveCharge {
  * persisted ticks.
  */
 export function projectDriveState(engram: Engram, now: number): DriveState {
-  const last = engram.lastTickAt ? new Date(engram.lastTickAt).getTime() : now;
-  const elapsedSec = clamp((now - last) / 1000, 0, MAX_ELAPSED_SEC);
+  const last = getValidTimestampMs(engram.lastTickAt);
+  // A missing or corrupt timestamp cannot define elapsed time, so preserve stored pressure.
+  const elapsedSec = last === null ? 0 : clamp((now - last) / 1000, 0, MAX_ELAPSED_SEC);
   const state: DriveState = { ...(engram.driveState ?? {}) };
 
   for (const drive of engram.drives) {
