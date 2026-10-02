@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { rmSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -7,6 +7,21 @@ import { setTimeout as delay } from "node:timers/promises";
 
 const appUrl = process.env.ENGRAM_BROWSER_TEST_URL ?? "http://127.0.0.1:5188";
 const debugPort = Number(process.env.ENGRAM_BROWSER_DEBUG_PORT ?? 9231);
+const testLanguage = process.env.ENGRAM_BROWSER_TEST_LANGUAGE ?? "en";
+if (!["en", "ar"].includes(testLanguage)) {
+  throw new Error(`Unsupported Analytics browser test language: ${testLanguage}`);
+}
+const localeFile = testLanguage === "ar"
+  ? "../../../lib/i18n/src/generated/ar.json"
+  : "../../../lib/i18n/src/en/analytics.json";
+const localeResources = JSON.parse(await readFile(new URL(localeFile, import.meta.url), "utf8"));
+const analyticsTranslations = localeResources.analytics ?? localeResources;
+const expectedStatuses = [
+  analyticsTranslations.statusCharging,
+  analyticsTranslations.statusReady,
+  analyticsTranslations.statusCooldown,
+  analyticsTranslations.statusPaused,
+];
 const profileDir = await mkdtemp(join(tmpdir(), "engram-analytics-profile-"));
 
 const chrome = spawn(
@@ -93,6 +108,7 @@ const devtools = new DevTools();
 
 const fixtureScript = String.raw`
 (() => {
+  localStorage.setItem("engram.uiLang", ${JSON.stringify(testLanguage)});
   const originalFetch = window.fetch.bind(window);
   const makeEngram = (id, name, symbol, title, isChatActive, driveId, driveLabel, initiationThreshold) => ({
     id,
@@ -283,6 +299,11 @@ try {
     "document.querySelectorAll('[data-testid^=\"pressure-roster-item-\"]').length === 4",
     "all pressure roster cards",
   );
+  await waitFor(
+    `document.documentElement.lang === ${JSON.stringify(testLanguage)} &&
+      document.documentElement.dir === ${JSON.stringify(testLanguage === "ar" ? "rtl" : "ltr")}`,
+    "selected Analytics locale and text direction",
+  );
   await waitForText("Charging Guide", "charging engram");
   await waitForText("Ready Scout", "ready engram");
   await waitForText("Cooldown Keeper", "cooldown engram");
@@ -291,7 +312,7 @@ try {
   const statuses = await devtools.evaluate(
     `[${[1, 2, 3, 4].map((id) => statusText(id)).join(", ")}]`,
   );
-  if (!["Charging", "Ready", "Cooldown", "Paused"].every((label, index) => statuses[index] === label)) {
+  if (!expectedStatuses.every((label, index) => statuses[index] === label)) {
     throw new Error(`Unexpected pressure status precedence: ${JSON.stringify(statuses)}`);
   }
 
@@ -327,10 +348,89 @@ try {
   if (narrowStatusCount !== 4) {
     throw new Error(`Narrow Analytics view hid pressure status chips: ${narrowStatusCount}`);
   }
+  const narrowPressureCards = await devtools.evaluate(`({
+    lang: document.documentElement.lang,
+    direction: document.documentElement.dir,
+    width: window.innerWidth,
+    cards: [1, 2, 3, 4].map((id) => {
+      const card = document.querySelector('[data-testid="pressure-roster-item-' + id + '"]');
+      const name = document.querySelector('[data-testid="pressure-name-' + id + '"]');
+      const status = document.querySelector('[data-testid="pressure-status-' + id + '"]');
+      const label = document.querySelector('[data-testid="pressure-label-' + id + '"]');
+      const value = document.querySelector('[data-testid="pressure-value-' + id + '"]');
+      const action = document.querySelector('[data-testid="button-open-environment-' + id + '"]');
+      const cardBounds = card?.getBoundingClientRect();
+      const fits = (element) => {
+        if (!element || !cardBounds) return false;
+        const bounds = element.getBoundingClientRect();
+        return bounds.width > 0 &&
+          bounds.height > 0 &&
+          bounds.left >= cardBounds.left - 1 &&
+          bounds.right <= cardBounds.right + 1 &&
+          element.scrollWidth <= element.clientWidth + 1 &&
+          element.scrollHeight <= element.clientHeight + 1;
+      };
+      const nameBounds = name?.getBoundingClientRect();
+      const statusBounds = status?.getBoundingClientRect();
+      return {
+        name: name?.textContent?.trim(),
+        status: status?.textContent?.trim(),
+        label: label?.textContent?.trim(),
+        value: value?.textContent?.trim(),
+        progress: card?.querySelector('[role="progressbar"]')?.getAttribute("aria-valuenow"),
+        actionText: action?.innerText?.trim(),
+        actionLabel: action?.getAttribute("aria-label"),
+        actionHref: action?.getAttribute("href"),
+        nameFits: fits(name),
+        statusFits: fits(status),
+        labelFits: fits(label),
+        valueFits: fits(value),
+        actionFits: fits(action),
+        nameAndStatusDoNotOverlap: Boolean(
+          nameBounds && statusBounds &&
+          (nameBounds.right <= statusBounds.left + 1 || statusBounds.right <= nameBounds.left + 1)
+        ),
+        valueDirection: value?.getAttribute("dir")
+      };
+    })
+  })`);
+  const expectedNames = ["Charging Guide", "Ready Scout", "Cooldown Keeper", "Paused Watcher"];
+  const expectedValues = [
+    "0.40 / 0.80 · 50%",
+    "0.95 / 0.80 · 100%",
+    "0.72 / 0.80 · 90%",
+    "0.10 / 0.80 · 13%",
+  ];
+  const expectedProgress = ["50", "100", "90", "13"];
+  if (
+    narrowPressureCards.lang !== testLanguage ||
+    narrowPressureCards.direction !== (testLanguage === "ar" ? "rtl" : "ltr") ||
+    narrowPressureCards.width !== 390 ||
+    narrowPressureCards.cards.length !== 4 ||
+    narrowPressureCards.cards.some((card, index) =>
+      card.name !== expectedNames[index] ||
+      card.status !== expectedStatuses[index] ||
+      card.label !== analyticsTranslations.pressure ||
+      card.value !== expectedValues[index] ||
+      card.progress !== expectedProgress[index] ||
+      card.actionText !== analyticsTranslations.openEnvironment.toUpperCase() ||
+      card.actionLabel !== analyticsTranslations.openEnvironment ||
+      card.actionHref !== `/environment?engramId=${index + 1}` ||
+      !card.nameFits ||
+      !card.statusFits ||
+      !card.labelFits ||
+      !card.valueFits ||
+      !card.actionFits ||
+      !card.nameAndStatusDoNotOverlap ||
+      card.valueDirection !== "ltr"
+    )
+  ) {
+    throw new Error(`Narrow Analytics pressure cards were unreadable or misassociated: ${JSON.stringify(narrowPressureCards)}`);
+  }
 
   await devtools.evaluate("window.__analyticsBrowserFixture.setStateFailure(true)");
   await waitFor(
-    `document.querySelector('[data-testid="pressure-live-status"]')?.textContent?.toLowerCase().includes("stale")`,
+    `document.querySelector('[data-testid="pressure-live-status"]')?.textContent?.includes(${JSON.stringify(analyticsTranslations.pressureLiveStale)})`,
     "Analytics stale pressure warning",
     12000,
   );
@@ -343,7 +443,7 @@ try {
     statuses: [${[1, 2, 3, 4].map((id) => statusText(id)).join(", ")}],
     unavailableLabels: [1, 2, 3, 4].map((id) =>
       document.querySelector('[data-testid="pressure-roster-item-' + id + '"]')
-        ?.textContent?.includes("No live pressure") ?? false
+        ?.textContent?.includes(${JSON.stringify(analyticsTranslations.pressureUnavailable)}) ?? false
     ),
     values: [1, 2, 3, 4].map((id) =>
       document.querySelector('[data-testid="pressure-value-' + id + '"]')?.textContent?.trim()
@@ -355,7 +455,7 @@ try {
   if (
     unavailablePressure.cardCount !== 4 ||
     unavailablePressure.names.some((visible) => !visible) ||
-    unavailablePressure.statuses.some((status) => status !== "Paused") ||
+    unavailablePressure.statuses.some((status) => status !== analyticsTranslations.statusPaused) ||
     unavailablePressure.unavailableLabels.some((visible) => !visible) ||
     JSON.stringify(unavailablePressure.values) !== JSON.stringify(persistedThresholdValues) ||
     unavailablePressure.progressBars !== 0 ||
@@ -392,7 +492,7 @@ try {
   ];
   if (
     JSON.stringify(recoveredPressure.values) !== JSON.stringify(expectedRecoveredValues) ||
-    JSON.stringify(recoveredPressure.statuses) !== JSON.stringify(["Charging", "Ready", "Cooldown", "Paused"]) ||
+    JSON.stringify(recoveredPressure.statuses) !== JSON.stringify(expectedStatuses) ||
     JSON.stringify(recoveredPressure.progress) !== JSON.stringify(["50", "100", "90", "13"]) ||
     recoveredPressure.pageToken !== initialToken ||
     recoveredPressure.navigationType !== "navigate"
@@ -407,13 +507,43 @@ try {
     12000,
   );
   const refreshed = await devtools.evaluate(`({
-    status: ${statusText(1)},
-    progress: document.querySelector('[data-testid="pressure-roster-item-1"] [role="progressbar"]')?.getAttribute("aria-valuenow"),
+    values: [1, 2, 3, 4].map((id) =>
+      document.querySelector('[data-testid="pressure-value-' + id + '"]')?.textContent?.trim()
+    ),
+    statuses: [${[1, 2, 3, 4].map((id) => statusText(id)).join(", ")}],
+    progress: [1, 2, 3, 4].map((id) =>
+      document.querySelector('[data-testid="pressure-roster-item-' + id + '"] [role="progressbar"]')
+        ?.getAttribute("aria-valuenow")
+    ),
+    names: [1, 2, 3, 4].map((id) =>
+      document.querySelector('[data-testid="pressure-name-' + id + '"]')?.textContent?.trim()
+    ),
+    actions: [1, 2, 3, 4].map((id) =>
+      document.querySelector('[data-testid="button-open-environment-' + id + '"]')?.getAttribute("href")
+    ),
     pageToken: window.__analyticsBrowserFixture.pageToken,
     navigationType: performance.getEntriesByType("navigation")[0]?.type
   })`);
-  if (refreshed.status !== "Ready" || refreshed.progress !== "83") {
-    throw new Error(`Polling refresh did not update the charging card: ${JSON.stringify(refreshed)}`);
+  const expectedPolledValues = [
+    "0.66 / 0.80 · 83%",
+    "0.95 / 0.80 · 100%",
+    "0.72 / 0.80 · 90%",
+    "0.10 / 0.80 · 13%",
+  ];
+  const expectedPolledStatuses = [
+    analyticsTranslations.statusReady,
+    analyticsTranslations.statusReady,
+    analyticsTranslations.statusCooldown,
+    analyticsTranslations.statusPaused,
+  ];
+  if (
+    JSON.stringify(refreshed.values) !== JSON.stringify(expectedPolledValues) ||
+    JSON.stringify(refreshed.statuses) !== JSON.stringify(expectedPolledStatuses) ||
+    JSON.stringify(refreshed.progress) !== JSON.stringify(["83", "100", "90", "13"]) ||
+    JSON.stringify(refreshed.names) !== JSON.stringify(expectedNames) ||
+    JSON.stringify(refreshed.actions) !== JSON.stringify([1, 2, 3, 4].map((id) => `/environment?engramId=${id}`))
+  ) {
+    throw new Error(`Polling refresh changed the wrong Analytics card: ${JSON.stringify(refreshed)}`);
   }
   if (refreshed.pageToken !== initialToken || refreshed.navigationType !== "navigate") {
     throw new Error(`Pressure refresh reloaded the page: ${JSON.stringify(refreshed)}`);
@@ -496,7 +626,7 @@ try {
     );
   }
 
-  console.log("Analytics pressure browser regression passed");
+  console.log(`Analytics pressure browser regression passed (${testLanguage})`);
 } finally {
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");
