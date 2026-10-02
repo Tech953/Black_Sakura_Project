@@ -47,7 +47,7 @@ beforeAll(async () => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    (req as typeof req & { userId: string }).userId = OWNER_ID;
+    (req as typeof req & { userId: string }).userId = req.header("x-test-owner") ?? OWNER_ID;
     next();
   });
   app.use(hubRouter);
@@ -68,13 +68,13 @@ afterAll(async () => {
   await closeDb();
 });
 
-async function insertEngram(ownerId = OWNER_ID) {
+async function insertEngram(ownerId = OWNER_ID, name = "Route Test Engram") {
   const [row] = await db
     .insert(engramsTable)
     .values({
       ownerId,
       slug: `route-movement-${Date.now()}-${Math.random()}`,
-      name: "Route Test Engram",
+      name,
       title: "Movement route test",
       symbol: "R",
       origin: "Hub route test",
@@ -630,6 +630,174 @@ describe("PUT /hub/presence/:engramId", () => {
     } finally {
       controller.abort();
       await reader?.cancel().catch(() => undefined);
+    }
+  });
+
+  it("keeps concurrent movement payloads private to each owner's direct and SSE subscribers", async () => {
+    const ownerEngramId = await insertEngram(OWNER_ID, "Owner A Engram");
+    const foreignEngramId = await insertEngram(FOREIGN_OWNER_ID, "Owner B Engram");
+    const ownerSpaceId = await insertSpace(OWNER_ID, "Owner A Private Space");
+    const foreignSpaceId = await insertSpace(FOREIGN_OWNER_ID, "Owner B Private Space");
+    const ownerController = new AbortController();
+    const foreignController = new AbortController();
+    const deniedController = new AbortController();
+    const ownerEvents: EngramEvent[] = [];
+    const foreignEvents: EngramEvent[] = [];
+    const unsubscribeOwner = subscribe(
+      { ownerId: OWNER_ID, engramId: ownerEngramId },
+      (event) => ownerEvents.push(event),
+    );
+    const unsubscribeForeign = subscribe(
+      { ownerId: FOREIGN_OWNER_ID, engramId: foreignEngramId },
+      (event) => foreignEvents.push(event),
+    );
+    let ownerReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let foreignReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+
+    try {
+      const deniedResponse = await fetch(`${base}/events?engramId=${ownerEngramId}`, {
+        headers: { "x-test-owner": FOREIGN_OWNER_ID },
+        signal: deniedController.signal,
+      });
+      expect(deniedResponse.status).toBe(404);
+      expect(await deniedResponse.json()).toEqual({ error: "Engram not found" });
+
+      const [ownerStream, foreignStream] = await Promise.all([
+        fetch(`${base}/events?engramId=${ownerEngramId}`, {
+          headers: { "x-test-owner": OWNER_ID },
+          signal: ownerController.signal,
+        }),
+        fetch(`${base}/events?engramId=${foreignEngramId}`, {
+          headers: { "x-test-owner": FOREIGN_OWNER_ID },
+          signal: foreignController.signal,
+        }),
+      ]);
+      expect([ownerStream.status, foreignStream.status]).toEqual([200, 200]);
+      if (!ownerStream.body || !foreignStream.body) {
+        throw new Error("An owner SSE response has no body");
+      }
+      ownerReader = ownerStream.body.getReader();
+      foreignReader = foreignStream.body.getReader();
+      const readOwnerFrame = createSseFrameReader(ownerReader);
+      const readForeignFrame = createSseFrameReader(foreignReader);
+
+      expect(await readSseFrameWithin(readOwnerFrame, "owner A retry directive")).toBe(
+        "retry: 3000",
+      );
+      expect(await readSseFrameWithin(readOwnerFrame, "owner A connection comment")).toBe(
+        ": connected",
+      );
+      expect(await readSseFrameWithin(readForeignFrame, "owner B retry directive")).toBe(
+        "retry: 3000",
+      );
+      expect(await readSseFrameWithin(readForeignFrame, "owner B connection comment")).toBe(
+        ": connected",
+      );
+
+      const [ownerMoveResponse, foreignMoveResponse] = await Promise.all([
+        fetch(`${base}/hub/presence/${ownerEngramId}`, {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            "x-test-owner": OWNER_ID,
+          },
+          body: JSON.stringify({ spaceId: ownerSpaceId, note: "owner-a-private-presence" }),
+        }),
+        fetch(`${base}/hub/presence/${foreignEngramId}`, {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            "x-test-owner": FOREIGN_OWNER_ID,
+          },
+          body: JSON.stringify({ spaceId: foreignSpaceId, note: "owner-b-private-presence" }),
+        }),
+      ]);
+      expect([ownerMoveResponse.status, foreignMoveResponse.status]).toEqual([200, 200]);
+
+      type PresenceBody = {
+        id: number;
+        engramId: number;
+        spaceId: number;
+        status: string;
+        note: string | null;
+        enteredAt: string;
+        updatedAt: string;
+      };
+      const ownerMove = (await ownerMoveResponse.json()) as PresenceBody;
+      const foreignMove = (await foreignMoveResponse.json()) as PresenceBody;
+      const readEvent = async (
+        readFrame: () => Promise<string | null>,
+        description: string,
+      ): Promise<EngramEvent> => {
+        const frame = await readSseFrameWithin(readFrame, description);
+        expect(frame.startsWith("data: ")).toBe(true);
+        return JSON.parse(frame.slice("data: ".length)) as EngramEvent;
+      };
+      const [ownerSseEvent, foreignSseEvent] = await Promise.all([
+        readEvent(readOwnerFrame, "owner A movement event"),
+        readEvent(readForeignFrame, "owner B movement event"),
+      ]);
+      await Promise.all([
+        expectNoSseFrame(readOwnerFrame, 100),
+        expectNoSseFrame(readForeignFrame, 100),
+      ]);
+
+      expect(ownerEvents).toHaveLength(1);
+      expect(foreignEvents).toHaveLength(1);
+      expect(ownerEvents[0]).toEqual(ownerSseEvent);
+      expect(foreignEvents[0]).toEqual(foreignSseEvent);
+
+      const ownerData = ownerSseEvent.data as {
+        presence: PresenceBody;
+        spaceName: string;
+        engramName: string;
+      };
+      const foreignData = foreignSseEvent.data as {
+        presence: PresenceBody;
+        spaceName: string;
+        engramName: string;
+      };
+      expect(ownerSseEvent).toMatchObject({
+        type: "presence.changed",
+        ownerId: OWNER_ID,
+        engramId: ownerEngramId,
+      });
+      expect(ownerData).toEqual({
+        presence: ownerMove,
+        spaceName: "Owner A Private Space",
+        engramName: "Owner A Engram",
+      });
+      expect(foreignSseEvent).toMatchObject({
+        type: "presence.changed",
+        ownerId: FOREIGN_OWNER_ID,
+        engramId: foreignEngramId,
+      });
+      expect(foreignData).toEqual({
+        presence: foreignMove,
+        spaceName: "Owner B Private Space",
+        engramName: "Owner B Engram",
+      });
+
+      const serializedOwnerEvent = JSON.stringify(ownerSseEvent);
+      const serializedForeignEvent = JSON.stringify(foreignSseEvent);
+      expect(serializedOwnerEvent).not.toContain(FOREIGN_OWNER_ID);
+      expect(serializedOwnerEvent).not.toContain("Owner B Engram");
+      expect(serializedOwnerEvent).not.toContain("Owner B Private Space");
+      expect(serializedOwnerEvent).not.toContain("owner-b-private-presence");
+      expect(serializedOwnerEvent).not.toContain(JSON.stringify(foreignMove));
+      expect(serializedForeignEvent).not.toContain(OWNER_ID);
+      expect(serializedForeignEvent).not.toContain("Owner A Engram");
+      expect(serializedForeignEvent).not.toContain("Owner A Private Space");
+      expect(serializedForeignEvent).not.toContain("owner-a-private-presence");
+      expect(serializedForeignEvent).not.toContain(JSON.stringify(ownerMove));
+    } finally {
+      unsubscribeOwner();
+      unsubscribeForeign();
+      ownerController.abort();
+      foreignController.abort();
+      deniedController.abort();
+      await ownerReader?.cancel().catch(() => undefined);
+      await foreignReader?.cancel().catch(() => undefined);
     }
   });
 

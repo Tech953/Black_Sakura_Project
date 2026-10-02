@@ -88,4 +88,92 @@ describe("publishEvent + subscribe", () => {
     publishEvent({ type: "controls.changed", data: { paused: false } });
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps presence payloads private between owners even when engram scopes collide", () => {
+    const ownerA = "movement-owner-a";
+    const ownerB = "movement-owner-b";
+    const sharedEngramId = 41;
+    const eventsForA: EngramEvent[] = [];
+    const eventsForB: EngramEvent[] = [];
+    const unsubscribeA = subscribe(
+      { ownerId: ownerA, engramId: sharedEngramId },
+      (event) => eventsForA.push(event),
+    );
+    const unsubscribeB = subscribe(
+      { ownerId: ownerB, engramId: sharedEngramId },
+      (event) => eventsForB.push(event),
+    );
+
+    try {
+      publishEvent({
+        type: "presence.changed",
+        ownerId: ownerA,
+        engramId: sharedEngramId,
+        data: {
+          engramName: "Owner A Engram",
+          spaceName: "Owner A Private Space",
+          presence: {
+            id: 1,
+            engramId: sharedEngramId,
+            spaceId: 101,
+            status: "active",
+            note: "owner-a-only-presence",
+            enteredAt: "2026-09-01T12:00:00.000Z",
+            updatedAt: "2026-09-01T12:00:00.000Z",
+          },
+        },
+      });
+      publishEvent({
+        type: "presence.changed",
+        ownerId: ownerB,
+        engramId: sharedEngramId,
+        data: {
+          engramName: "Owner B Engram",
+          spaceName: "Owner B Private Space",
+          presence: {
+            id: 2,
+            engramId: sharedEngramId,
+            spaceId: 202,
+            status: "active",
+            note: "owner-b-only-presence",
+            enteredAt: "2026-09-02T12:00:00.000Z",
+            updatedAt: "2026-09-02T12:00:00.000Z",
+          },
+        },
+      });
+    } finally {
+      unsubscribeA();
+      unsubscribeB();
+    }
+
+    expect(eventsForA).toHaveLength(1);
+    expect(eventsForA[0]).toMatchObject({
+      ownerId: ownerA,
+      engramId: sharedEngramId,
+      data: {
+        engramName: "Owner A Engram",
+        spaceName: "Owner A Private Space",
+        presence: { note: "owner-a-only-presence", spaceId: 101 },
+      },
+    });
+    expect(eventsForB).toHaveLength(1);
+    expect(eventsForB[0]).toMatchObject({
+      ownerId: ownerB,
+      engramId: sharedEngramId,
+      data: {
+        engramName: "Owner B Engram",
+        spaceName: "Owner B Private Space",
+        presence: { note: "owner-b-only-presence", spaceId: 202 },
+      },
+    });
+
+    const serializedA = JSON.stringify(eventsForA);
+    const serializedB = JSON.stringify(eventsForB);
+    expect(serializedA).not.toContain("Owner B Engram");
+    expect(serializedA).not.toContain("Owner B Private Space");
+    expect(serializedA).not.toContain("owner-b-only-presence");
+    expect(serializedB).not.toContain("Owner A Engram");
+    expect(serializedB).not.toContain("Owner A Private Space");
+    expect(serializedB).not.toContain("owner-a-only-presence");
+  });
 });
