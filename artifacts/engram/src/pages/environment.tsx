@@ -390,7 +390,7 @@ export default function Environment() {
 
           {/* ---- Live state + controls ---- */}
           <div className="space-y-4">
-            <Card className="bg-card/40 border-border/50 backdrop-blur-sm">
+            <Card className="bg-card/40 border-border/50 backdrop-blur-sm" data-testid="live-state-panel">
               <CardContent className="p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-primary">
@@ -472,12 +472,16 @@ export default function Environment() {
                       <div key={d.id} className="space-y-1">
                         <div className="flex justify-between font-mono text-[10px]">
                           <span className="text-muted-foreground/70 uppercase">{d.label}</span>
-                          <span className={`tabular-nums ${hot ? "text-rose-400" : "text-foreground/60"}`} title={t("pressureWeightTitle", { pressure: pressure.toFixed(2), weight: d.weight.toFixed(2) })}>
+                          <span className={`tabular-nums ${hot ? "text-rose-400" : "text-foreground/60"}`} title={t("pressureWeightTitle", { pressure: pressure.toFixed(2), weight: d.weight.toFixed(2) })} data-testid={`live-drive-charge-${d.id}`}>
                             {charge.toFixed(2)}
                           </span>
                         </div>
                         <div className="h-1.5 bg-secondary overflow-hidden">
-                          <div className={`h-full transition-all ${hot ? "bg-rose-400/70" : "bg-primary/60"}`} style={{ width: `${pct}%` }} />
+                          <div
+                            className={`h-full transition-all ${hot ? "bg-rose-400/70" : "bg-primary/60"}`}
+                            style={{ width: `${pct}%` }}
+                            data-testid={`live-drive-progress-${d.id}`}
+                          />
                         </div>
                       </div>
                     );
