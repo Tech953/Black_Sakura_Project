@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -11,6 +13,14 @@ import { fileURLToPath } from "node:url";
 const { hasPg, testSchema } = vi.hoisted(() => {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
+    if (process.env.ENGRAM_REQUIRE_HUB_CONCURRENCY_PG === "1") {
+      throw new Error(
+        "Hub concurrency checks require DATABASE_URL; PostgreSQL was explicitly required for this run.",
+      );
+    }
+    process.stderr.write(
+      "[Hub concurrency] PostgreSQL checks skipped: DATABASE_URL is not set (2 tests will be reported as skipped).\n",
+    );
     process.env.ENGRAM_DB_DRIVER = "pglite";
     delete process.env.PGLITE_DATA_DIR;
     return { hasPg: false, testSchema: "" };
@@ -44,38 +54,35 @@ const migrationsFolder = path.resolve(
   "../../../../lib/db/drizzle",
 );
 const OWNER_ID = "hub-concurrency-test-owner";
+let temporaryMigrationsRoot: string | undefined;
 
 beforeAll(async () => {
   if (!hasPg) return;
   await db.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS "${testSchema}"`));
+
+  // Generated migrations qualify foreign-key targets with public.*. Rewrite a
+  // temporary copy so every table and reference stays inside this disposable
+  // schema, including when the PostgreSQL target starts empty in CI.
+  temporaryMigrationsRoot = await mkdtemp(
+    path.join(os.tmpdir(), "hub-concurrency-migrations-"),
+  );
+  const isolatedMigrationsFolder = path.join(temporaryMigrationsRoot, "drizzle");
+  await cp(migrationsFolder, isolatedMigrationsFolder, { recursive: true });
+  for (const entry of await readdir(isolatedMigrationsFolder)) {
+    if (!entry.endsWith(".sql")) continue;
+    const migrationPath = path.join(isolatedMigrationsFolder, entry);
+    const migration = await readFile(migrationPath, "utf8");
+    await writeFile(
+      migrationPath,
+      migration.replaceAll('"public".', `"${testSchema}".`),
+    );
+  }
+
   await migrate(db, {
-    migrationsFolder,
+    migrationsFolder: isolatedMigrationsFolder,
     migrationsSchema: testSchema,
     migrationsTable: "__drizzle_migrations",
   });
-  // The app migrations target public.* because the production database uses
-  // the public schema. Repoint only this throwaway schema's Hub FKs so the
-  // fixture parents stay isolated from every real public row.
-  await db.execute(
-    sql.raw(`
-      ALTER TABLE "${testSchema}"."engram_presence"
-        DROP CONSTRAINT IF EXISTS "engram_presence_engram_id_engrams_id_fk",
-        DROP CONSTRAINT IF EXISTS "engram_presence_space_id_hub_spaces_id_fk";
-      ALTER TABLE "${testSchema}"."engram_presence"
-        ADD CONSTRAINT "engram_presence_engram_id_engrams_id_fk"
-          FOREIGN KEY ("engram_id") REFERENCES "${testSchema}"."engrams"("id") ON DELETE cascade,
-        ADD CONSTRAINT "engram_presence_space_id_hub_spaces_id_fk"
-          FOREIGN KEY ("space_id") REFERENCES "${testSchema}"."hub_spaces"("id");
-      ALTER TABLE "${testSchema}"."hub_activity_log"
-        DROP CONSTRAINT IF EXISTS "hub_activity_log_engram_id_engrams_id_fk",
-        DROP CONSTRAINT IF EXISTS "hub_activity_log_space_id_hub_spaces_id_fk";
-      ALTER TABLE "${testSchema}"."hub_activity_log"
-        ADD CONSTRAINT "hub_activity_log_engram_id_engrams_id_fk"
-          FOREIGN KEY ("engram_id") REFERENCES "${testSchema}"."engrams"("id") ON DELETE cascade,
-        ADD CONSTRAINT "hub_activity_log_space_id_hub_spaces_id_fk"
-          FOREIGN KEY ("space_id") REFERENCES "${testSchema}"."hub_spaces"("id") ON DELETE cascade;
-    `),
-  );
 });
 
 beforeEach(async () => {
@@ -89,6 +96,9 @@ beforeEach(async () => {
 afterAll(async () => {
   if (hasPg) {
     await db.execute(sql.raw(`DROP SCHEMA IF EXISTS "${testSchema}" CASCADE`));
+  }
+  if (temporaryMigrationsRoot) {
+    await rm(temporaryMigrationsRoot, { recursive: true, force: true });
   }
   await closeDb();
 });

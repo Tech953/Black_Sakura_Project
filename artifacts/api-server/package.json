@@ -8,6 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test": "vitest run",
+    "test:hub-concurrency-pg": "node -e \"if (!process.env.DATABASE_URL) { console.error('DATABASE_URL is required for real Hub concurrency checks.'); process.exit(1); }\" && vitest run src/lib/hub-store.concurrency.pg.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "upload:desktop-storage": "node ./scripts/upload-desktop-storage.mjs"
   },

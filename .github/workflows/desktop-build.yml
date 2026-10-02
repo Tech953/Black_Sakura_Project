@@ -724,6 +724,20 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: engram_concurrency_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d engram_concurrency_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -754,12 +768,15 @@ jobs:
         run: pnpm run typecheck:libs
 
       - name: Run API suite with configured provider environment
+        env:
+          ENGRAM_DB_DRIVER: pglite
         run: pnpm --filter @workspace/api-server run test
 
       - name: Run API suite without cloud provider variables
         shell: bash
         env:
           API_TEST_NO_CLOUD_PROVIDER: "1"
+          ENGRAM_DB_DRIVER: pglite
         run: |
           set -euo pipefail
           env -u GENERATION_BASE_URL \
@@ -769,6 +786,12 @@ jobs:
             -u AI_INTEGRATIONS_OPENAI_BASE_URL \
             -u AI_INTEGRATIONS_OPENAI_API_KEY \
             pnpm --filter @workspace/api-server run test
+
+      - name: Run Hub concurrency checks against disposable PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/engram_concurrency_test
+          ENGRAM_REQUIRE_HUB_CONCURRENCY_PG: "1"
+        run: pnpm --filter @workspace/api-server run test:hub-concurrency-pg
 
       - name: Build API server bundle
         run: pnpm --filter @workspace/api-server run build
