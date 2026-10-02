@@ -32,7 +32,7 @@
       "timingDesc": "Ist der Nutzer gerade aufnahmebereit?",
       "noveltyDesc": "Wurde das schon zuvor angezeigt?"
     },
-    "openEnvironment": "Open environment",
+    "openEnvironment": "Umgebung öffnen",
     "pressureLiveStale": "Live pressure is stale",
     "pressureLiveUnavailable": "Live pressure unavailable"
   },

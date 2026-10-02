@@ -32,7 +32,7 @@
       "timingDesc": "¿El usuario está receptivo ahora mismo?",
       "noveltyDesc": "¿Ya se mostró esto antes?"
     },
-    "openEnvironment": "Open environment",
+    "openEnvironment": "Abrir entorno",
     "pressureLiveStale": "Live pressure is stale",
     "pressureLiveUnavailable": "Live pressure unavailable"
   },

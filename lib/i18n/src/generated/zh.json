@@ -32,7 +32,7 @@
       "timingDesc": "用户此刻是否适合接收？",
       "noveltyDesc": "这之前是否已呈现过？"
     },
-    "openEnvironment": "Open environment",
+    "openEnvironment": "打开环境",
     "pressureLiveStale": "Live pressure is stale",
     "pressureLiveUnavailable": "Live pressure unavailable"
   },
