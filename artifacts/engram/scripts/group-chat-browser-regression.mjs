@@ -224,6 +224,18 @@ const fixtureScript = String.raw`
       createdAt: "2026-09-15T12:01:00.000Z",
     },
   ];
+  let hubPresence = [
+    {
+      id: 1,
+      engramId: 1,
+      spaceId: 101,
+      status: "active",
+      note: null,
+      enteredAt: "2026-09-15T12:00:00.000Z",
+      updatedAt: "2026-09-15T12:00:00.000Z",
+    },
+  ];
+  const hubMoveRequests = [];
   const hubTranscriptScenarioKey = "__hub_transcript_browser_scenario__";
   const hubTranscriptScenario =
     window.localStorage.getItem(hubTranscriptScenarioKey) ?? "hold-first";
@@ -294,6 +306,12 @@ const fixtureScript = String.raw`
       return id;
     },
   };
+  window.__hubMoveFixture = {
+    moveRequests: hubMoveRequests,
+    get presence() {
+      return hubPresence;
+    },
+  };
   const response = (body, status = 200, headers = { "Content-Type": "application/json" }) =>
     new Response(JSON.stringify(body), { status, headers });
   const currentConversation = () => ({
@@ -360,7 +378,35 @@ const fixtureScript = String.raw`
     requests.push({ pathname, method });
 
     if (pathname === "/api/hub/spaces" && method === "GET") return response(hubSpaces);
-    if (pathname === "/api/hub/presence" && method === "GET") return response([]);
+    if (pathname === "/api/hub/presence" && method === "GET") return response(hubPresence);
+    const moveMatch = pathname.match(/^\/api\/hub\/presence\/(\d+)$/);
+    if (moveMatch && method === "PUT") {
+      const moveRequest = {
+        engramId: Number(moveMatch[1]),
+        data: JSON.parse(init.body || "{}"),
+      };
+      hubMoveRequests.push(moveRequest);
+      if (hubMoveRequests.length === 1) {
+        return response({ error: "Could not record this move." }, 500);
+      }
+      const previous = hubPresence.find((entry) => entry.engramId === moveRequest.engramId);
+      const updated = {
+        id: previous?.id ?? 99,
+        engramId: moveRequest.engramId,
+        spaceId: moveRequest.data.spaceId,
+        status: "active",
+        note: moveRequest.data.note ?? null,
+        enteredAt:
+          previous?.spaceId === moveRequest.data.spaceId
+            ? previous.enteredAt
+            : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      hubPresence = hubPresence
+        .filter((entry) => entry.engramId !== moveRequest.engramId)
+        .concat(updated);
+      return response(updated);
+    }
     if (pathname === "/api/hub/activity" && method === "GET") return response(hubActivity);
     const transcriptMatch = pathname.match(/^\/api\/hub\/spaces\/(\d+)\/transcript$/);
     if (transcriptMatch && method === "GET") {
@@ -841,6 +887,107 @@ try {
     `Boolean(document.querySelector('[data-testid="button-open-transcript-1"]'))`,
     "Hub Commons activity feed",
   );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="card-space-commons-alpha"] [data-testid="occupant-1"]'))`,
+    "Mira's last confirmed location",
+  );
+  await click(
+    `document.querySelector('[data-testid="button-relocate"]')`,
+    "open Hub move dialog",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="select-move-engram"]'))`,
+    "Hub move dialog",
+  );
+  await click(
+    `document.querySelector('[data-testid="select-move-engram"]')`,
+    "open engram selector",
+  );
+  await waitFor(
+    `Array.from(document.querySelectorAll('[role="option"]')).some((option) => option.textContent?.includes("Mira"))`,
+    "Mira move option",
+  );
+  await click(
+    `Array.from(document.querySelectorAll('[role="option"]')).find((option) => option.textContent?.includes("Mira"))`,
+    "select Mira",
+  );
+  await click(
+    `document.querySelector('[data-testid="select-move-space"]')`,
+    "open destination selector",
+  );
+  await waitFor(
+    `Array.from(document.querySelectorAll('[role="option"]')).some((option) => option.textContent?.includes("Commons Beta"))`,
+    "Commons Beta destination",
+  );
+  await click(
+    `Array.from(document.querySelectorAll('[role="option"]')).find((option) => option.textContent?.includes("Commons Beta"))`,
+    "select Commons Beta",
+  );
+  await fill(
+    `document.querySelector('[data-testid="input-move-note"]')`,
+    "browser retry note",
+    "Hub move note",
+  );
+  await click(
+    `document.querySelector('[data-testid="button-confirm-move"]')`,
+    "submit Hub move",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="hub-move-error"]')) && window.__hubMoveFixture.moveRequests.length === 1`,
+    "retryable Hub move failure",
+  );
+  const failedMoveState = await devtools.evaluate(`({
+    error: document.querySelector('[data-testid="hub-move-error"]')?.innerText,
+    alphaHasMira: Boolean(document.querySelector('[data-testid="card-space-commons-alpha"] [data-testid="occupant-1"]')),
+    betaHasMira: Boolean(document.querySelector('[data-testid="card-space-commons-beta"] [data-testid="occupant-1"]')),
+    presence: window.__hubMoveFixture.presence
+  })`);
+  if (
+    !failedMoveState.error?.includes("last confirmed location") ||
+    !failedMoveState.alphaHasMira ||
+    failedMoveState.betaHasMira ||
+    failedMoveState.presence[0]?.spaceId !== 101
+  ) {
+    throw new Error(`Failed Hub move changed the confirmed location or hid its explanation: ${JSON.stringify(failedMoveState)}`);
+  }
+  await click(
+    `document.querySelector('[data-testid="button-retry-move"]')`,
+    "retry Hub move",
+  );
+  await waitFor(
+    `window.__hubMoveFixture.moveRequests.length === 2 &&
+      window.__hubMoveFixture.presence[0]?.spaceId === 202 &&
+      Boolean(document.querySelector('[data-testid="card-space-commons-beta"] [data-testid="occupant-1"]')) &&
+      !document.querySelector('[role="dialog"]')`,
+    "successful Hub move retry",
+  );
+  const retriedMoveState = await devtools.evaluate(`({
+    requests: window.__hubMoveFixture.moveRequests,
+    alphaHasMira: Boolean(document.querySelector('[data-testid="card-space-commons-alpha"] [data-testid="occupant-1"]')),
+    betaHasMira: Boolean(document.querySelector('[data-testid="card-space-commons-beta"] [data-testid="occupant-1"]'))
+  })`);
+  if (
+    JSON.stringify(retriedMoveState.requests[0]) !== JSON.stringify(retriedMoveState.requests[1]) ||
+    retriedMoveState.alphaHasMira ||
+    !retriedMoveState.betaHasMira
+  ) {
+    throw new Error(`Hub retry changed its request or failed to show the confirmed destination: ${JSON.stringify(retriedMoveState)}`);
+  }
+  await click(
+    `document.querySelector('[data-testid="button-relocate"]')`,
+    "reopen Hub move dialog after success",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="select-move-engram"]'))`,
+    "reopened Hub move dialog",
+  );
+  if (await devtools.evaluate(`Boolean(document.querySelector('[data-testid="hub-move-error"]'))`)) {
+    throw new Error("A successful Hub move left the previous failure message visible");
+  }
+  await devtools.call("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape" });
+  await devtools.call("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape" });
+  await waitFor(`!document.querySelector('[role="dialog"]')`, "closed reopened Hub move dialog");
+
   const feedBeforeTranscript = await hubActivitySnapshot();
   await click(
     `document.querySelector('[data-testid="button-open-transcript-1"]')`,

@@ -13,6 +13,7 @@ import {
   type EngramPresence,
   type HubActivityEntry,
   type Engram,
+  type MovePresenceInput,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,6 +51,7 @@ import {
   Cpu,
   EyeOff,
   MoveRight,
+  RotateCw,
   Activity,
   MessageCircle,
 } from "lucide-react";
@@ -84,6 +86,11 @@ const ACTIVITY_META: Record<string, { icon: typeof LogIn; color: string }> = {
 
 const TRANSCRIPT_REFRESH_INTERVAL_MS = 5_000;
 const TRANSCRIPT_BOTTOM_THRESHOLD_PX = 24;
+
+type MovePresenceRequest = {
+  engramId: number;
+  data: MovePresenceInput;
+};
 
 type TranscriptScrollSnapshot = {
   scrollTop: number;
@@ -175,6 +182,7 @@ export default function Hub() {
   const [moveEngramId, setMoveEngramId] = useState<string>("");
   const [moveSpaceId, setMoveSpaceId] = useState<string>("");
   const [moveNote, setMoveNote] = useState("");
+  const [failedMove, setFailedMove] = useState<MovePresenceRequest | null>(null);
 
   const engramById = useMemo(() => {
     const m = new Map<number, Engram>();
@@ -197,25 +205,38 @@ export default function Hub() {
     [spaces],
   );
 
+  function submitMove(request: MovePresenceRequest, retrying = false) {
+    if (!retrying) setFailedMove(null);
+    move.mutate(request, {
+      onSuccess: () => {
+        setFailedMove(null);
+        queryClient.invalidateQueries({ queryKey: getListHubPresenceQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getListHubActivityQueryKey() });
+        const eName = engramById.get(request.engramId)?.name ?? t("fallbackEngram");
+        const sName =
+          (spaces ?? []).find((space) => space.id === request.data.spaceId)?.name ??
+          t("fallbackSpace");
+        toast({
+          title: t("toastPresenceUpdatedTitle"),
+          description: t("toastPresenceUpdatedDescription", { engram: eName, space: sName }),
+        });
+        setOpen(false);
+        setMoveNote("");
+      },
+      onError: () => setFailedMove(request),
+    });
+  }
+
   function handleMove() {
     const engramId = Number(moveEngramId);
     const spaceId = Number(moveSpaceId);
     if (!engramId || !spaceId) return;
-    move.mutate(
-      { engramId, data: { spaceId, note: moveNote.trim() || undefined } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getListHubPresenceQueryKey() });
-          queryClient.invalidateQueries({ queryKey: getListHubActivityQueryKey() });
-          const eName = engramById.get(engramId)?.name ?? t("fallbackEngram");
-          const sName = (spaces ?? []).find((s) => s.id === spaceId)?.name ?? t("fallbackSpace");
-          toast({ title: t("toastPresenceUpdatedTitle"), description: t("toastPresenceUpdatedDescription", { engram: eName, space: sName }) });
-          setOpen(false);
-          setMoveNote("");
-        },
-        onError: () => toast({ title: t("toastMoveFailed"), variant: "destructive" }),
-      },
-    );
+    submitMove({ engramId, data: { spaceId, note: moveNote.trim() || undefined } });
+  }
+
+  function handleRetryMove() {
+    if (!failedMove || move.isPending) return;
+    submitMove(failedMove, true);
   }
 
   const loading = engramsLoading || spacesLoading || presenceLoading;
@@ -260,7 +281,14 @@ export default function Hub() {
             <div className="space-y-4 mt-2">
               <div className="space-y-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("engramLabel")}</span>
-                <Select value={moveEngramId} onValueChange={setMoveEngramId}>
+                <Select
+                  value={moveEngramId}
+                  disabled={move.isPending}
+                  onValueChange={(value) => {
+                    setMoveEngramId(value);
+                    setFailedMove(null);
+                  }}
+                >
                   <SelectTrigger className="font-mono text-sm border-border/50 bg-background/50" data-testid="select-move-engram">
                     <SelectValue placeholder={t("chooseEngram")} />
                   </SelectTrigger>
@@ -275,7 +303,14 @@ export default function Hub() {
               </div>
               <div className="space-y-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("destinationSpaceLabel")}</span>
-                <Select value={moveSpaceId} onValueChange={setMoveSpaceId}>
+                <Select
+                  value={moveSpaceId}
+                  disabled={move.isPending}
+                  onValueChange={(value) => {
+                    setMoveSpaceId(value);
+                    setFailedMove(null);
+                  }}
+                >
                   <SelectTrigger className="font-mono text-sm border-border/50 bg-background/50" data-testid="select-move-space">
                     <SelectValue placeholder={t("chooseSpace")} />
                   </SelectTrigger>
@@ -293,12 +328,44 @@ export default function Hub() {
                 <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{t("noteOptionalLabel")}</span>
                 <Input
                   value={moveNote}
-                  onChange={(e) => setMoveNote(e.target.value)}
+                  disabled={move.isPending}
+                  onChange={(e) => {
+                    setMoveNote(e.target.value);
+                    setFailedMove(null);
+                  }}
                   placeholder={t("notePlaceholder")}
                   className="font-mono text-sm border-border/50 bg-background/50"
                   data-testid="input-move-note"
                 />
               </div>
+              {failedMove && (
+                <div
+                  role="alert"
+                  className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3"
+                  data-testid="hub-move-error"
+                >
+                  <div>
+                    <p className="font-mono text-xs font-semibold text-destructive">
+                      {t("toastMoveFailed")}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t("moveFailureDetails")}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRetryMove}
+                    disabled={move.isPending}
+                    className="font-mono text-[10px] uppercase tracking-wider"
+                    data-testid="button-retry-move"
+                  >
+                    <RotateCw className="mr-2 h-3 w-3" />
+                    {move.isPending ? t("retryingMove") : t("retryMove")}
+                  </Button>
+                </div>
+              )}
               <Button
                 onClick={handleMove}
                 disabled={move.isPending || !moveEngramId || !moveSpaceId}
