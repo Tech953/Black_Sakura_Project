@@ -24,6 +24,7 @@ import {
   CreateEngramInquiryBody,
   ConfirmEngramCsvImportBody,
 } from "@workspace/api-zod";
+import type { EngramInquiryError as EngramInquiryErrorContract } from "@workspace/api-zod";
 import {
   runTick,
   forceTransmission,
@@ -55,6 +56,18 @@ const router = Router();
 
 const TRANSMISSION_LIST_CAP = 100;
 const MAX_FACTS = 30;
+const INQUIRY_GENERATION_FAILURE: EngramInquiryErrorContract = {
+  error: "Inquiry generation failed",
+  code: "INQUIRY_GENERATION_FAILED",
+  message:
+    "The model could not generate a response. No inquiry or configuration change was saved.",
+};
+const INQUIRY_PERSISTENCE_FAILURE: EngramInquiryErrorContract = {
+  error: "Inquiry result could not be saved",
+  code: "INQUIRY_PERSISTENCE_FAILED",
+  message:
+    "The generated inquiry result could not be saved. No configuration changes were applied.",
+};
 const csvUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_ENGRAM_CSV_BYTES, files: 1 },
@@ -651,52 +664,73 @@ router.post("/engrams/:id/inquiries", async (req, res) => {
   const { kind, question } = parsedBody.data;
   if (rejectIfArchival(engram, res)) return;
 
-  try {
-    if (kind === "probe") {
-      const response = await generateProbeResponse({
+  if (kind === "probe") {
+    let response: string;
+    try {
+      response = await generateProbeResponse({
         engram,
         question,
         responseLanguageInstruction: responseLanguageInstruction(parsedBody.data.language),
       });
+    } catch (err) {
+      req.log.error({ err }, "Engram inquiry generation failed");
+      res.status(503).json(INQUIRY_GENERATION_FAILURE);
+      return;
+    }
+
+    try {
       const [row] = await db
         .insert(engramInquiriesTable)
         .values({ engramId: engram.id, kind, question, response, configDelta: null })
         .returning();
       res.status(201).json(row);
-      return;
+    } catch (err) {
+      req.log.error({ err }, "Engram inquiry persistence failed");
+      res.status(503).json(INQUIRY_PERSISTENCE_FAILURE);
     }
+    return;
+  }
 
-    // develop: tune the engram within bounded fields.
-    const { response, delta } = await generateDevelopment({
+  // develop: tune the engram within bounded fields.
+  let response: string;
+  let delta: Awaited<ReturnType<typeof generateDevelopment>>["delta"];
+  try {
+    ({ response, delta } = await generateDevelopment({
       engram,
       question,
       responseLanguageInstruction: responseLanguageInstruction(parsedBody.data.language),
-    });
+    }));
+  } catch (err) {
+    req.log.error({ err }, "Engram inquiry generation failed");
+    res.status(503).json(INQUIRY_GENERATION_FAILURE);
+    return;
+  }
 
-    const patch: Partial<typeof engramsTable.$inferInsert> = { updatedAt: new Date() };
-    if (delta.emotionalBaseline) {
-      const merged: EmotionalBaseline = { ...engram.emotionalBaseline, ...delta.emotionalBaseline };
-      patch.emotionalBaseline = merged;
-      if (delta.emotionalBaseline.mood) patch.currentMood = delta.emotionalBaseline.mood;
+  const patch: Partial<typeof engramsTable.$inferInsert> = { updatedAt: new Date() };
+  if (delta.emotionalBaseline) {
+    const merged: EmotionalBaseline = { ...engram.emotionalBaseline, ...delta.emotionalBaseline };
+    patch.emotionalBaseline = merged;
+    if (delta.emotionalBaseline.mood) patch.currentMood = delta.emotionalBaseline.mood;
+  }
+  if (delta.focusThemes) patch.focusThemes = delta.focusThemes;
+  if (delta.driveWeights) {
+    patch.drives = engram.drives.map((d) =>
+      delta.driveWeights && d.id in delta.driveWeights
+        ? { ...d, weight: delta.driveWeights[d.id] }
+        : d,
+    );
+  }
+  if (delta.addFacts && delta.addFacts.length > 0) {
+    const facts = [...engram.memorySeed.facts];
+    for (const f of delta.addFacts) {
+      if (!facts.includes(f)) facts.push(f);
     }
-    if (delta.focusThemes) patch.focusThemes = delta.focusThemes;
-    if (delta.driveWeights) {
-      patch.drives = engram.drives.map((d) =>
-        delta.driveWeights && d.id in delta.driveWeights
-          ? { ...d, weight: delta.driveWeights[d.id] }
-          : d,
-      );
-    }
-    if (delta.addFacts && delta.addFacts.length > 0) {
-      const facts = [...engram.memorySeed.facts];
-      for (const f of delta.addFacts) {
-        if (!facts.includes(f)) facts.push(f);
-      }
-      patch.memorySeed = { ...engram.memorySeed, facts: facts.slice(-MAX_FACTS) };
-    }
-    if (delta.initiationThreshold !== undefined) patch.initiationThreshold = delta.initiationThreshold;
-    if (delta.tickCadenceSeconds !== undefined) patch.tickCadenceSeconds = delta.tickCadenceSeconds;
+    patch.memorySeed = { ...engram.memorySeed, facts: facts.slice(-MAX_FACTS) };
+  }
+  if (delta.initiationThreshold !== undefined) patch.initiationThreshold = delta.initiationThreshold;
+  if (delta.tickCadenceSeconds !== undefined) patch.tickCadenceSeconds = delta.tickCadenceSeconds;
 
+  try {
     const [row] = await db.transaction(async (tx) => {
       if (Object.keys(patch).length > 1) {
         await tx.update(engramsTable).set(patch).where(eq(engramsTable.id, engram.id));
@@ -716,8 +750,8 @@ router.post("/engrams/:id/inquiries", async (req, res) => {
     });
     res.status(201).json(row);
   } catch (err) {
-    req.log.error(err);
-    res.status(503).json({ error: "Generation unavailable" });
+    req.log.error({ err }, "Engram inquiry persistence failed");
+    res.status(503).json(INQUIRY_PERSISTENCE_FAILURE);
   }
 });
 

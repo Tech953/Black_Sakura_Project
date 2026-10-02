@@ -141,6 +141,7 @@ function errorChainText(error: unknown): string {
       code?: unknown;
       constraint?: unknown;
       cause?: unknown;
+      err?: unknown;
     };
     parts.push(
       [details.name, details.message, details.code, details.constraint]
@@ -148,7 +149,7 @@ function errorChainText(error: unknown): string {
         .map(String)
         .join(" "),
     );
-    current = details.cause;
+    current = details.cause ?? details.err;
   }
 
   return parts.join("\n");
@@ -247,7 +248,12 @@ describe("POST /engrams/:id/inquiries with a real PGlite database", () => {
       });
 
       expect(response.status).toBe(503);
-      expect(await response.json()).toEqual({ error: "Generation unavailable" });
+      expect(await response.json()).toEqual({
+        error: "Inquiry result could not be saved",
+        code: "INQUIRY_PERSISTENCE_FAILED",
+        message:
+          "The generated inquiry result could not be saved. No configuration changes were applied.",
+      });
       expect(generationMocks.generateDevelopment).toHaveBeenCalledTimes(1);
       expect(generationMocks.generateDevelopment).toHaveBeenCalledWith(
         expect.objectContaining({ question: failingQuestion }),

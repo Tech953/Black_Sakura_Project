@@ -616,7 +616,12 @@
     "developmentAppliedDesc": "{{name}} remodelou o próprio ambiente.",
     "probeAnswered": "Sondagem respondida",
     "probeAnsweredDesc": "{{name}} respondeu.",
-    "inquiryFailed": "Inquérito falhou"
+    "inquiryFailed": "Inquérito falhou",
+    "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+    "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+    "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+    "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+    "retryInquiry": "Retry inquiry"
   },
   "journal": {
     "title": "DIÁRIO REFLEXIVO",
@@ -807,7 +812,12 @@
       "developPlaceholder": "Torne-se mais curioso sobre…",
       "history": "Histórico",
       "noInquiries": "Ainda não há inquéritos.",
-      "configDelta": "delta de config"
+      "configDelta": "delta de config",
+      "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+      "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+      "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+      "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+      "retryInquiry": "Retry inquiry"
     },
     "hub": {
       "kicker": "ENGRAM // HUB",

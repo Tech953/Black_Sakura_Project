@@ -32,6 +32,7 @@ import type {
   EngramImportConfirmation,
   EngramImportPreview,
   EngramInquiry,
+  EngramInquiryError,
   EngramInquiryInput,
   EngramLiveState,
   EngramMessage,
@@ -3382,7 +3383,7 @@ export const createEngramInquiry = async (id: number,
 
 
 
-export const getCreateEngramInquiryMutationOptions = <TError = ErrorType<OpenaiError>,
+export const getCreateEngramInquiryMutationOptions = <TError = ErrorType<OpenaiError | EngramInquiryError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEngramInquiry>>, TError,{id: number;data: BodyType<EngramInquiryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createEngramInquiry>>, TError,{id: number;data: BodyType<EngramInquiryInput>}, TContext> => {
 
@@ -3411,12 +3412,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateEngramInquiryMutationResult = NonNullable<Awaited<ReturnType<typeof createEngramInquiry>>>
     export type CreateEngramInquiryMutationBody = BodyType<EngramInquiryInput>
-    export type CreateEngramInquiryMutationError = ErrorType<OpenaiError>
+    export type CreateEngramInquiryMutationError = ErrorType<OpenaiError | EngramInquiryError>
 
     /**
  * @summary Submit a probe or develop inquiry to an engram
  */
-export const useCreateEngramInquiry = <TError = ErrorType<OpenaiError>,
+export const useCreateEngramInquiry = <TError = ErrorType<OpenaiError | EngramInquiryError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEngramInquiry>>, TError,{id: number;data: BodyType<EngramInquiryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createEngramInquiry>>,

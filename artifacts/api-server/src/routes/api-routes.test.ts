@@ -2440,6 +2440,29 @@ describe("inquiry routes", () => {
     expect(stored.initiationThreshold).toBe(0.6);
   });
 
+  it("returns a coded generation failure before writing an inquiry or tuning", async () => {
+    const engram = seedEngram();
+    const before = structuredClone(engram);
+    h.llmState.throwOnCreate = true;
+
+    const res = await fetch(`${base}/api/engrams/${engram.id}/inquiries`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "develop", question: "Change with unavailable generation." }),
+    });
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({
+      error: "Inquiry generation failed",
+      code: "INQUIRY_GENERATION_FAILED",
+      message:
+        "The model could not generate a response. No inquiry or configuration change was saved.",
+    });
+    expect(h.store.engramsTable).toEqual([before]);
+    expect(h.store.engramInquiriesTable).toEqual([]);
+    expect(h.updateCalls).toHaveLength(0);
+  });
+
   it("develop applies ONLY the sanitized delta (clamps, drops unknown fields/drives)", async () => {
     const engram = seedEngram();
     // The model proposes out-of-range values, an unknown drive, an unknown valid
@@ -2585,6 +2608,12 @@ describe("inquiry routes", () => {
     });
 
     expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({
+      error: "Inquiry result could not be saved",
+      code: "INQUIRY_PERSISTENCE_FAILED",
+      message:
+        "The generated inquiry result could not be saved. No configuration changes were applied.",
+    });
     expect(h.store.engramsTable).toEqual([before]);
     expect(h.store.engramInquiriesTable).toEqual([]);
   });
@@ -2605,6 +2634,12 @@ describe("inquiry routes", () => {
     });
 
     expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({
+      error: "Inquiry result could not be saved",
+      code: "INQUIRY_PERSISTENCE_FAILED",
+      message:
+        "The generated inquiry result could not be saved. No configuration changes were applied.",
+    });
     expect(h.store.engramsTable).toEqual([before]);
     expect(h.store.engramInquiriesTable).toEqual([]);
   });

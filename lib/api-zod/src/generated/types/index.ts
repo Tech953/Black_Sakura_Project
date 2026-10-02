@@ -37,6 +37,8 @@ export * from './engramImportSourceSummary';
 export * from './engramImportWarning';
 export * from './engramInquiry';
 export * from './engramInquiryConfigDelta';
+export * from './engramInquiryError';
+export * from './engramInquiryErrorCode';
 export * from './engramInquiryInput';
 export * from './engramInquiryInputKind';
 export * from './engramLiveState';

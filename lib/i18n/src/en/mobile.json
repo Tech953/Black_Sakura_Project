@@ -89,7 +89,12 @@
     "developPlaceholder": "Become more curious about…",
     "history": "History",
     "noInquiries": "No inquiries yet.",
-    "configDelta": "config delta"
+    "configDelta": "config delta",
+    "generationFailureMessage": "The model could not complete this inquiry. Nothing was saved. You can safely retry.",
+    "developPersistenceFailureMessage": "The generated tuning was not saved. No configuration change was applied. You can safely retry.",
+    "probePersistenceFailureMessage": "The generated response was not saved. No configuration change was applied. You can safely retry.",
+    "unconfirmedFailureMessage": "We could not confirm whether this inquiry was saved. Check the inquiry history before trying again.",
+    "retryInquiry": "Retry inquiry"
   },
   "hub": {
     "kicker": "ENGRAM // HUB",
