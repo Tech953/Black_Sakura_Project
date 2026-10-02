@@ -4,6 +4,9 @@
   "files": [],
   "references": [
     {
+      "path": "./lib/expression-role-policy"
+    },
+    {
       "path": "./lib/rebecca-source-registry"
     },
     {

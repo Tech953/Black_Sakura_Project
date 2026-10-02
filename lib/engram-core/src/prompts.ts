@@ -1,4 +1,10 @@
 import type { Engram } from "@workspace/db";
+import {
+  NEUTRAL_EXPRESSION_ROLES,
+  normalizeExpressionRole,
+} from "@workspace/expression-role-policy";
+
+export { NEUTRAL_EXPRESSION_ROLES, normalizeExpressionRole };
 
 export interface ExpressionRow {
   glyph: string;
@@ -8,35 +14,6 @@ export interface ExpressionRow {
   arousal: string;
   intimacy: number;
   cognitiveRole?: string | null;
-}
-
-/**
- * Cognitive roles are database text, but only these neutral structural labels
- * may cross the prompt boundary. Keep this list aligned with the seeded
- * expression vocabulary; unknown values are treated as untrusted metadata.
- */
-export const NEUTRAL_EXPRESSION_ROLES = new Set([
-  "alarm",
-  "attention",
-  "baseline",
-  "bonding",
-  "conflict-monitor",
-  "distress",
-  "error-signal",
-  "fatigue",
-  "incentive",
-  "orienting",
-  "overload",
-  "rapport",
-  "reward-signal",
-  "salience-spike",
-  "social-signal",
-  "surrender",
-]);
-
-export function normalizeExpressionRole(role?: string | null): string | null {
-  const normalized = role?.trim().toLowerCase();
-  return normalized && NEUTRAL_EXPRESSION_ROLES.has(normalized) ? normalized : null;
 }
 
 export const MODE_EXPRESSION_POLICY: Record<string, string> = {

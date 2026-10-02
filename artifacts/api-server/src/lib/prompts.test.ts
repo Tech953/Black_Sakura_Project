@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import type { Engram } from "@workspace/db";
+import {
+  insertExpressionSchema,
+  seedExpressionSchema,
+  updateExpressionSchema,
+  type Engram,
+} from "@workspace/db";
 import { expressionSeeds } from "@workspace/db/seed/expressions";
 import {
   buildExpressionSection,
@@ -212,6 +217,71 @@ describe("buildExpressionSection — intimacy sanitization", () => {
 
   it("returns empty string when there are no expressions (non-silent)", () => {
     expect(buildExpressionSection("companion", [])).toBe("");
+  });
+});
+
+describe("expression cognitive-role validation", () => {
+  const seed = expressionSeeds[0]!;
+
+  it("accepts neutral roles and null on insert and update", () => {
+    for (const role of ["reward-signal", "rapport", null]) {
+      expect(
+        insertExpressionSchema.safeParse({ ...seed, cognitiveRole: role }).success,
+      ).toBe(true);
+      expect(updateExpressionSchema.safeParse({ cognitiveRole: role }).success).toBe(
+        true,
+      );
+    }
+  });
+
+  it("rejects intimate and free-form roles with a clear error", () => {
+    for (const role of ["attachment", "romantic-intimacy", "free-form"]) {
+      const insertResult = insertExpressionSchema.safeParse({
+        ...seed,
+        cognitiveRole: role,
+      });
+      const updateResult = updateExpressionSchema.safeParse({
+        cognitiveRole: role,
+      });
+
+      expect(insertResult.success).toBe(false);
+      expect(updateResult.success).toBe(false);
+      const insertMessage = insertResult.success
+        ? ""
+        : insertResult.error.issues.find((issue) =>
+            issue.path.includes("cognitiveRole"),
+          )?.message;
+      const updateMessage = updateResult.success
+        ? ""
+        : updateResult.error.issues.find((issue) =>
+            issue.path.includes("cognitiveRole"),
+          )?.message;
+      expect(insertMessage).toContain(
+        "approved neutral expression role or null",
+      );
+      expect(updateMessage).toContain(
+        "approved neutral expression role or null",
+      );
+    }
+  });
+
+  it("validates every curated seed while keeping the stored-only role seed-only", () => {
+    for (const expression of expressionSeeds) {
+      expect(seedExpressionSchema.safeParse(expression).success).toBe(true);
+    }
+
+    expect(
+      seedExpressionSchema.safeParse({
+        ...seed,
+        cognitiveRole: "unreviewed-seed-role",
+      }).success,
+    ).toBe(false);
+    expect(
+      insertExpressionSchema.safeParse({
+        ...seed,
+        cognitiveRole: "attachment",
+      }).success,
+    ).toBe(false);
   });
 });
 

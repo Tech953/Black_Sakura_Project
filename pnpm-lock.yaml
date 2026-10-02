@@ -1038,6 +1038,9 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.5.3
         version: 0.5.3
+      '@workspace/expression-role-policy':
+        specifier: workspace:*
+        version: link:../expression-role-policy
       '@workspace/rebecca-source-registry':
         specifier: workspace:*
         version: link:../rebecca-source-registry
@@ -1069,9 +1072,14 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../db
+      '@workspace/expression-role-policy':
+        specifier: workspace:*
+        version: link:../expression-role-policy
       '@workspace/rebecca-source-registry':
         specifier: workspace:*
         version: link:../rebecca-source-registry
+
+  lib/expression-role-policy: {}
 
   lib/i18n: {}
 
