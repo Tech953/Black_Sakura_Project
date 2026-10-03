@@ -1896,6 +1896,65 @@ describe("live engram state", () => {
     expect(engram.driveState).toEqual({ order: 0.2 });
   });
 
+  it("keeps concurrent live-state reads read-only and returns a stable pressure projection", async () => {
+    const now = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const persistedDriveState = { order: 0.2 };
+    const persistedLastTickAt = new Date(now - 100_000);
+    const persistedUpdatedAt = new Date(now - 5_000);
+    const engram = seedEngram({
+      lastTickAt: persistedLastTickAt,
+      updatedAt: persistedUpdatedAt,
+      driveState: structuredClone(persistedDriveState),
+      drives: [
+        {
+          id: "order",
+          label: "Order",
+          description: "tidiness",
+          weight: 1,
+          baseRate: 0.001,
+        },
+      ],
+    });
+    const storedBeforeReads = structuredClone(engram);
+
+    const responseSets = await Promise.all(
+      Array.from({ length: 8 }, () => loadStates()),
+    );
+    const projections = responseSets.map((states) => {
+      const state = states.find((item) => item.engramId === engram.id);
+      expect(state).toBeDefined();
+      if (!state) throw new Error("Concurrent live-state read omitted the seeded engram");
+      return state;
+    });
+    const expectedPressure = 0.3;
+    for (const state of projections) {
+      expect(state.topCharge).toBeCloseTo(expectedPressure, 8);
+      expect(state.drives).toEqual([
+        expect.objectContaining({
+          id: "order",
+          pressure: expect.closeTo(expectedPressure, 8),
+          charge: expect.closeTo(expectedPressure, 8),
+        }),
+      ]);
+      expect(state.topCharge).toBeGreaterThanOrEqual(0);
+      expect(state.topCharge).toBeLessThanOrEqual(1);
+      expect(
+        state.drives.every((drive) =>
+          drive.pressure >= 0 &&
+          drive.pressure <= 1 &&
+          drive.charge >= 0 &&
+          drive.charge <= 1
+        ),
+      ).toBe(true);
+    }
+    expect(projections.every((state) => state.topCharge === projections[0].topCharge)).toBe(true);
+    expect(engram.driveState).toEqual(storedBeforeReads.driveState);
+    expect(engram.lastTickAt).toEqual(storedBeforeReads.lastTickAt);
+    expect(engram.updatedAt).toEqual(storedBeforeReads.updatedAt);
+    expect(h.updateCalls).toHaveLength(0);
+  });
+
   it("returns finite stored pressure and a null tick time for an invalid persisted timestamp", async () => {
     const invalidLastTickAt = new Date("not-a-timestamp");
     const engram = seedEngram({
