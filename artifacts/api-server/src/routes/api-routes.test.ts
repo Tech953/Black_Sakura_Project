@@ -91,6 +91,7 @@ import { TRUSTED_REBECCA_ADAPTIVE_SOURCES } from "../lib/world-model";
 // --- Minimal app: the real routers under /api, with a req.log shim ------------
 let server: Server;
 let base = "";
+let authenticatedOwnerId = "test-owner";
 const diagnosticLogs: string[] = [];
 let abortAfterAutonomousWrite = false;
 let autonomousWriteAbortTriggered = false;
@@ -99,7 +100,7 @@ function buildApp(): Express {
   const app = express();
   app.use(express.json());
   app.use((req: Request, _res: Response, next: NextFunction) => {
-    (req as Request & { userId: string }).userId = "test-owner";
+    (req as Request & { userId: string }).userId = authenticatedOwnerId;
     (req as Request & { log: unknown }).log = {
       info: (...args: unknown[]) => {
         const message = [...args]
@@ -234,6 +235,7 @@ function seedEngram(overrides: Record<string, unknown> = {}) {
 }
 
 function resetStore() {
+  authenticatedOwnerId = "test-owner";
   for (const t of h.TABLE_NAMES) {
     h.store[t] = [];
     h.seq[t] = 0;
@@ -1860,6 +1862,11 @@ describe("live engram state", () => {
     return parsed.data;
   }
 
+  async function loadStatesAs(ownerId: string) {
+    authenticatedOwnerId = ownerId;
+    return loadStates();
+  }
+
   it("projects pressure since the last tick without writing the stored state", async () => {
     const engram = seedEngram({
       lastTickAt: new Date(Date.now() - 100_000),
@@ -2042,6 +2049,112 @@ describe("live engram state", () => {
     expect(states.some((state) => state.lastTransmissionAt === foreignLastTransmissionAt.toISOString())).toBe(false);
     expect(states.some((state) => state.backoffUntil === foreignBackoffUntil.toISOString())).toBe(false);
     expect(states.flatMap((state) => state.drives).some((drive) => drive.pressure === 0.91 || drive.pressure === 0.83)).toBe(false);
+  });
+
+  it("switches live-state results to the new authenticated owner without retaining prior telemetry", async () => {
+    const now = Date.now();
+    const ownerALastTickAt = new Date(now - 10_000);
+    const ownerALastTransmissionAt = new Date(now - COOLDOWN_MS / 2);
+    const ownerABackoffUntil = new Date(now + 60_000);
+    const ownerBLastTickAt = new Date(now - 20_000);
+    const ownerBLastTransmissionAt = new Date(now - COOLDOWN_MS / 4);
+    const ownerBBackoffUntil = new Date(now + 120_000);
+    const ownerA = seedEngram({
+      ownerId: "account-a",
+      name: "Account A private engram",
+      currentMood: "account-a-only-mood",
+      lastTickAt: ownerALastTickAt,
+      lastTransmissionAt: ownerALastTransmissionAt,
+      backoffUntil: ownerABackoffUntil,
+      driveState: { order: 0.24 },
+      drives: [
+        {
+          id: "order",
+          label: "Order",
+          description: "tidiness",
+          weight: 1,
+          baseRate: 0,
+        },
+      ],
+    });
+    const ownerB = seedEngram({
+      ownerId: "account-b",
+      name: "Account B private engram",
+      currentMood: "account-b-only-mood",
+      lastTickAt: ownerBLastTickAt,
+      lastTransmissionAt: ownerBLastTransmissionAt,
+      backoffUntil: ownerBBackoffUntil,
+      driveState: { order: 0.87 },
+      drives: [
+        {
+          id: "order",
+          label: "Order",
+          description: "tidiness",
+          weight: 1,
+          baseRate: 0,
+        },
+      ],
+    });
+
+    const accountAStates = await loadStatesAs("account-a");
+    expect(accountAStates).toHaveLength(1);
+    expect(accountAStates[0]).toMatchObject({
+      engramId: ownerA.id,
+      currentMood: "account-a-only-mood",
+      lastTickAt: ownerALastTickAt.toISOString(),
+      lastTransmissionAt: ownerALastTransmissionAt.toISOString(),
+      backoffUntil: ownerABackoffUntil.toISOString(),
+      inBackoff: true,
+      cooldownUntil: new Date(
+        ownerALastTransmissionAt.getTime() + COOLDOWN_MS,
+      ).toISOString(),
+      inCooldown: true,
+      topCharge: 0.24,
+      drives: [
+        expect.objectContaining({ id: "order", pressure: 0.24, charge: 0.24 }),
+      ],
+    });
+    expect(accountAStates.some((state) => state.engramId === ownerB.id)).toBe(
+      false,
+    );
+    expect(JSON.stringify(accountAStates)).not.toContain("account-b-only-mood");
+    expect(JSON.stringify(accountAStates)).not.toContain("0.87");
+    expect(JSON.stringify(accountAStates)).not.toContain(
+      ownerBLastTransmissionAt.toISOString(),
+    );
+    expect(JSON.stringify(accountAStates)).not.toContain(
+      ownerBBackoffUntil.toISOString(),
+    );
+
+    const accountBStates = await loadStatesAs("account-b");
+    expect(accountBStates).toHaveLength(1);
+    expect(accountBStates[0]).toMatchObject({
+      engramId: ownerB.id,
+      currentMood: "account-b-only-mood",
+      lastTickAt: ownerBLastTickAt.toISOString(),
+      lastTransmissionAt: ownerBLastTransmissionAt.toISOString(),
+      backoffUntil: ownerBBackoffUntil.toISOString(),
+      inBackoff: true,
+      cooldownUntil: new Date(
+        ownerBLastTransmissionAt.getTime() + COOLDOWN_MS,
+      ).toISOString(),
+      inCooldown: true,
+      topCharge: 0.87,
+      drives: [
+        expect.objectContaining({ id: "order", pressure: 0.87, charge: 0.87 }),
+      ],
+    });
+    expect(accountBStates.some((state) => state.engramId === ownerA.id)).toBe(
+      false,
+    );
+    expect(JSON.stringify(accountBStates)).not.toContain("account-a-only-mood");
+    expect(JSON.stringify(accountBStates)).not.toContain("0.24");
+    expect(JSON.stringify(accountBStates)).not.toContain(
+      ownerALastTransmissionAt.toISOString(),
+    );
+    expect(JSON.stringify(accountBStates)).not.toContain(
+      ownerABackoffUntil.toISOString(),
+    );
   });
 
   it("calculates weighted charges, selects the top charge, and reports readiness at the threshold", async () => {
