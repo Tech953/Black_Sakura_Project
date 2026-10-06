@@ -4,6 +4,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -40,9 +41,12 @@ export default function EnvironmentScreen() {
   const states = useGetEngramStates({
     query: {
       queryKey: [...getGetEngramStatesQueryKey(), modeScope],
+      retry: false,
     },
   });
   const live = states.data?.find((item) => item.engramId === id);
+  const liveAvailable = !states.isError && Boolean(live);
+  const currentLive = liveAvailable ? live : undefined;
 
   if (engram.isLoading || states.isLoading) {
     return (
@@ -98,29 +102,110 @@ export default function EnvironmentScreen() {
         </Text>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <MonoLabel color={colors.primary}>{t("environment.liveState")}</MonoLabel>
-          <View style={styles.liveLine}>
-            <Chip
-              label={live?.autonomyEnabled ? t("environment.autonomyOn") : t("environment.autonomyOff")}
-              tone={live?.autonomyEnabled ? "success" : "muted"}
-            />
-            <Text style={[styles.mood, { color: colors.foreground }]}>
-              {live?.currentMood ?? item.currentMood ?? item.emotionalBaseline.mood}
-            </Text>
+          <View style={styles.liveHeader}>
+            <MonoLabel color={colors.primary}>{t("environment.liveState")}</MonoLabel>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t(
+                liveAvailable
+                  ? "environment.refreshLiveState"
+                  : "environment.retryLiveState",
+              )}
+              disabled={states.isFetching}
+              onPress={() => void states.refetch()}
+              style={({ pressed }) => [
+                styles.refreshAction,
+                pressed && styles.refreshActionPressed,
+                states.isFetching && styles.refreshActionDisabled,
+              ]}
+            >
+              {states.isFetching ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Feather name="refresh-cw" size={13} color={colors.primary} />
+              )}
+              <Text style={[styles.refreshActionText, { color: colors.primary }]}>
+                {t(
+                  liveAvailable
+                    ? "environment.refreshLiveState"
+                    : "environment.retryLiveState",
+                )}
+              </Text>
+            </Pressable>
           </View>
-          <View style={styles.metrics}>
-            <Metric label={t("environment.topCharge")} value={live?.topCharge ?? 0} colors={colors} />
-            <Metric label={t("environment.threshold")} value={live?.initiationThreshold ?? item.initiationThreshold} max={1} colors={colors} />
-          </View>
-          <MonoLabel color={colors.mutedForeground} style={styles.status}>
-            {live?.inCooldown
-              ? t("environment.cooldown")
-              : live?.inBackoff
-                ? t("environment.backoff")
-                : live?.ready
-                  ? t("environment.ready")
-                  : t("environment.waiting")}
-          </MonoLabel>
+          {!currentLive ? (
+            <View
+              accessibilityRole="alert"
+              style={[
+                styles.unavailableNotice,
+                { borderColor: colors.destructive + "66" },
+              ]}
+            >
+              <Feather
+                name="alert-circle"
+                size={16}
+                color={colors.destructive}
+              />
+              <View style={styles.unavailableCopy}>
+                <Text
+                  style={[
+                    styles.unavailableTitle,
+                    { color: colors.destructive },
+                  ]}
+                >
+                  {t("environment.liveUnavailable")}
+                </Text>
+                <Text
+                  style={[
+                    styles.unavailableSubtitle,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  {t("environment.showingSavedDriveValues")}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <>
+              <View style={styles.liveLine}>
+                <Chip
+                  label={
+                    currentLive?.autonomyEnabled
+                      ? t("environment.autonomyOn")
+                      : t("environment.autonomyOff")
+                  }
+                  tone={currentLive?.autonomyEnabled ? "success" : "muted"}
+                />
+                <Text style={[styles.mood, { color: colors.foreground }]}>
+                  {currentLive?.currentMood ??
+                    item.currentMood ??
+                    item.emotionalBaseline.mood}
+                </Text>
+              </View>
+              <View style={styles.metrics}>
+                <Metric
+                  label={t("environment.topCharge")}
+                  value={currentLive.topCharge}
+                  colors={colors}
+                />
+                <Metric
+                  label={t("environment.threshold")}
+                  value={currentLive.initiationThreshold}
+                  max={1}
+                  colors={colors}
+                />
+              </View>
+              <MonoLabel color={colors.mutedForeground} style={styles.status}>
+                {currentLive?.inCooldown
+                  ? t("environment.cooldown")
+                  : currentLive?.inBackoff
+                    ? t("environment.backoff")
+                    : currentLive?.ready
+                      ? t("environment.ready")
+                      : t("environment.waiting")}
+              </MonoLabel>
+            </>
+          )}
         </View>
 
         <MonoLabel style={styles.sectionLabel}>{t("environment.anchor")}</MonoLabel>
@@ -146,7 +231,7 @@ export default function EnvironmentScreen() {
 
         <MonoLabel style={styles.sectionLabel}>{t("environment.drives")}</MonoLabel>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {(live?.drives ?? item.drives.map((drive) => ({
+          {(currentLive?.drives ?? item.drives.map((drive) => ({
             id: drive.id,
             label: drive.label,
             pressure: item.driveState?.[drive.id] ?? 0,
@@ -203,6 +288,15 @@ const styles = StyleSheet.create({
   subtitle: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 19, marginTop: 3, marginBottom: 22 },
   card: { borderWidth: 1, borderRadius: 8, padding: 16 },
   liveLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 14 },
+  liveHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
+  refreshAction: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: 6 },
+  refreshActionPressed: { opacity: 0.65 },
+  refreshActionDisabled: { opacity: 0.6 },
+  refreshActionText: { fontFamily: "Inter_600SemiBold", fontSize: 11 },
+  unavailableNotice: { flexDirection: "row", alignItems: "flex-start", gap: 9, borderWidth: 1, padding: 10, marginTop: 14 },
+  unavailableCopy: { flex: 1, gap: 3 },
+  unavailableTitle: { fontFamily: "JetBrainsMono_500Medium", fontSize: 11 },
+  unavailableSubtitle: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 17 },
   mood: { fontFamily: "Rajdhani_600SemiBold", fontSize: 18, flex: 1, flexShrink: 1 },
   metrics: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 20 },
   metric: { flex: 1, minWidth: 100, gap: 7 },
