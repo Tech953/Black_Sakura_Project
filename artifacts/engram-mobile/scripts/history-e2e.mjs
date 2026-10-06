@@ -124,8 +124,10 @@ const browserMock = String.raw`(() => {
     autonomyEnabled: true,
     isArchival: false,
     emotionalBaseline: { mood: "focused", valence: 0.2, arousal: 0.4, volatility: 0.2 },
-    drives: [],
-    driveState: {},
+    drives: [
+      { id: "connection", label: "Connection", description: "reaching out", weight: 0.5, baseRate: 0.01 },
+    ],
+    driveState: { connection: 0.34 },
     initiationThreshold: 1,
     origin: "Browser regression fixture",
     voiceProfile: {
@@ -272,6 +274,9 @@ const browserMock = String.raw`(() => {
     pendingSimulationList: null,
     releaseSimulationList: null,
     releaseSimulationSteps: {},
+    liveStateRecoveryEnabled: false,
+    failNextLiveStateRead: false,
+    liveStateRequests: 0,
   };
   if (hubEnvironmentE2E.simulationMode) {
     hubEnvironmentE2E.holdSimulationList = true;
@@ -368,7 +373,40 @@ const browserMock = String.raw`(() => {
     if (path.endsWith("/api/mobile/offline-sync")) {
       return response({ syncedIds: [], imported: { conversations: 0, messages: 0, inquiries: 0, transmissions: 0, observedEntries: 0 } });
     }
-    if (path === "/api/engrams/state" && method === "GET") return emptyList("telemetry");
+    if (path === "/api/engrams/state" && method === "GET") {
+      if (!hubEnvironmentE2E.liveStateRecoveryEnabled) return emptyList("telemetry");
+      hubEnvironmentE2E.liveStateRequests += 1;
+      if (hubEnvironmentE2E.failNextLiveStateRead) {
+        hubEnvironmentE2E.failNextLiveStateRead = false;
+        return response({ error: "Fixture live-state read failed" }, 503);
+      }
+      return response([
+        {
+          engramId: 1,
+          autonomyEnabled: true,
+          currentMood: "focused",
+          initiationThreshold: 1,
+          tickCadenceSeconds: 60,
+          lastTickAt: "2026-09-10T12:00:00.000Z",
+          lastTransmissionAt: null,
+          backoffUntil: null,
+          inBackoff: false,
+          cooldownUntil: null,
+          inCooldown: false,
+          topCharge: 0.43,
+          ready: false,
+          drives: [
+            {
+              id: "connection",
+              label: "Connection",
+              pressure: 0.86,
+              weight: 0.5,
+              charge: 0.43,
+            },
+          ],
+        },
+      ]);
+    }
     if (path === "/api/hub/spaces" && method === "GET") return emptyList("spaces");
     if (path === "/api/hub/presence" && method === "GET") return emptyList("presence");
     if (path === "/api/hub/activity" && method === "GET") return emptyList("activity");
@@ -805,6 +843,9 @@ async function runHubEnvironmentRegression(client, appUrl, cdpPort) {
     }
   }
 
+  await client.evaluate(
+    "window.__hubEnvironmentE2E.liveStateRecoveryEnabled = true",
+  );
   await clickVisibleText(client, "Personas");
   await waitForValue(
     client,
@@ -820,8 +861,43 @@ async function runHubEnvironmentRegression(client, appUrl, cdpPort) {
   await clickVisibleText(client, "Open environment");
   await waitForValue(
     client,
-    `location.pathname.includes("/engram/environment") && document.body.innerText.toLowerCase().includes("e2e room")`,
-    "Environment opened from detail",
+    `location.pathname.includes("/engram/environment") &&
+      document.body.innerText.toLowerCase().includes("e2e room") &&
+      document.body.innerText.includes("86%")`,
+    "Environment opened with live drive state",
+  );
+  const liveStateBeforeFailure = await client.evaluate(
+    "window.__hubEnvironmentE2E.liveStateRequests",
+  );
+  if (liveStateBeforeFailure < 1) {
+    throw new Error("Environment did not load a successful live-state response");
+  }
+  await client.evaluate(
+    "window.__hubEnvironmentE2E.failNextLiveStateRead = true",
+  );
+  await clickVisibleText(client, "Refresh live state");
+  await waitForValue(
+    client,
+    `document.body.innerText.includes("Live state unavailable") &&
+      document.body.innerText.includes("Showing saved drive values.") &&
+      document.body.innerText.includes("34%") &&
+      document.body.innerText.includes("Retry live state") &&
+      location.pathname.includes("/engram/environment")`,
+    "stored drive value and unavailable live-state notice after refresh failure",
+  );
+  const failedStateRequest = await client.evaluate(
+    "window.__hubEnvironmentE2E.liveStateRequests === 2",
+  );
+  if (!failedStateRequest) {
+    throw new Error("Live-state unavailable notice was not driven by a failed refresh");
+  }
+  await clickVisibleText(client, "Retry live state");
+  await waitForValue(
+    client,
+    `location.pathname.includes("/engram/environment") &&
+      document.body.innerText.includes("86%") &&
+      !document.body.innerText.includes("Live state unavailable")`,
+    "live state recovered without leaving Environment",
   );
   const environmentText = await client.evaluate("document.body.innerText");
   if (!environmentText.toLowerCase().includes("environment anchor")) {
@@ -853,7 +929,7 @@ async function runHubEnvironmentRegression(client, appUrl, cdpPort) {
   }
   client = await runSimulationReviewRegression(client, cdpPort, appUrl);
   console.log(
-    "Mobile Hub/Environment browser regression passed: empty Hub sections, empty Memory/Beliefs, detail → Environment → detail, and unavailable Environment.",
+    "Mobile Hub/Environment browser regression passed: empty Hub sections, detail → Environment → detail, unavailable Environment, and live-state failure/recovery with saved drive values.",
   );
   return client;
 }
