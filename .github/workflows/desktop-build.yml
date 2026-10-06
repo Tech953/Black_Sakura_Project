@@ -108,6 +108,10 @@ jobs:
         env:
           VERSION: ${{ github.ref_name }}
 
+      - name: Check OpenAPI-generated artifacts are current
+        if: matrix.platform == 'linux'
+        run: pnpm --filter @workspace/api-server run check:openapi
+
       - name: Generate API client + Zod (codegen)
         run: pnpm --filter @workspace/api-spec run codegen
 
@@ -760,6 +764,9 @@ jobs:
         with:
           path: .llama
           key: llama-runtime-linux-x64-b10242-fb13c9fa97a605c6bba16a99b2f54eff6874d58bdbe5b94ece6e358eaa270088
+
+      - name: Check OpenAPI-generated artifacts are current
+        run: pnpm --filter @workspace/api-server run check:openapi
 
       - name: Generate API client + Zod (codegen)
         run: pnpm --filter @workspace/api-spec run codegen

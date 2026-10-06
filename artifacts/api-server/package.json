@@ -7,8 +7,9 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "test": "vitest run",
+    "test": "vitest run && node --test ./scripts/openapi-drift-utils.test.mjs",
     "test:hub-concurrency-pg": "node -e \"if (!process.env.DATABASE_URL) { console.error('DATABASE_URL is required for real Hub concurrency checks.'); process.exit(1); }\" && vitest run src/lib/hub-store.concurrency.pg.test.ts",
+    "check:openapi": "node ./scripts/check-openapi-generated.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "upload:desktop-storage": "node ./scripts/upload-desktop-storage.mjs"
   },
