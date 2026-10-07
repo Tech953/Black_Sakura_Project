@@ -258,6 +258,7 @@ mocks.database = database;
 
 import { offlineHandler } from "./handlers";
 import { buildPendingSyncBatch, cacheHumanMessages, getDb } from "./store";
+import { getOperatorReplyDisplayState } from "../reply-acknowledgement";
 
 const ErrorResponse = z.object({ error: z.string() });
 
@@ -388,6 +389,10 @@ describe("offline handler generated response contracts", () => {
       author: "operator",
       status: "delivered",
       content: "I can hear you.",
+    });
+    expect(getOperatorReplyDisplayState(queued)).toEqual({
+      saved: true,
+      acknowledgement: "pending",
     });
     expect(state.operatorReplies).toHaveLength(1);
     expect(state.operatorReplies[0]).toMatchObject({

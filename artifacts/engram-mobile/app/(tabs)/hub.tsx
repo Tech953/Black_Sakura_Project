@@ -37,6 +37,7 @@ import {
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useOfflineMode } from "@/lib/offline/mode";
 import { cacheHumanMessages } from "@/lib/offline/store";
+import { getOperatorReplyDisplayState } from "@/lib/reply-acknowledgement";
 import { queryClient } from "@/lib/query-client";
 import { e2eAuthBypass, useE2EAuthUserId } from "@/lib/e2e-auth";
 import { getAccountLiveStateQueryKey } from "@/lib/account-query-scope";
@@ -377,6 +378,14 @@ function HumanContactSection({
     <View style={styles.humanContactList}>
       {incoming.map((message) => {
         const isOpen = replyOpenId === message.id;
+        const replyStatus = getOperatorReplyDisplayState(message);
+        const acknowledgementLabelKey =
+          replyStatus?.acknowledgement === "acknowledged"
+            ? ("hub.acknowledgement.acknowledged" as const)
+            : ("hub.acknowledgement.pending" as const);
+        const acknowledgementLabel = replyStatus
+          ? t(acknowledgementLabelKey)
+          : "";
         return (
           <View
             key={message.id}
@@ -408,6 +417,24 @@ function HumanContactSection({
             <Text style={[styles.humanContactText, { color: colors.foreground }]}>
               {message.content}
             </Text>
+            {replyStatus ? (
+              <View
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel={`${t("hub.acknowledgement.saved")}, ${acknowledgementLabel}`}
+                style={styles.replyAcknowledgementRow}
+              >
+                <Chip label={t("hub.acknowledgement.saved")} />
+                <Chip
+                  label={acknowledgementLabel}
+                  tone={
+                    replyStatus.acknowledgement === "acknowledged"
+                      ? "success"
+                      : "accent"
+                  }
+                />
+              </View>
+            ) : null}
             {message.author === "engram" &&
             message.id > 0 &&
             !message.seen ? (
@@ -665,6 +692,7 @@ const styles = StyleSheet.create({
   },
   humanContactMeta: { fontSize: 10, flex: 1, flexShrink: 1 },
   humanContactText: { fontFamily: "Inter_400Regular", fontSize: 14, lineHeight: 21 },
+  replyAcknowledgementRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   replyToggle: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start" },
   replyToggleText: {
     fontFamily: "Rajdhani_600SemiBold",

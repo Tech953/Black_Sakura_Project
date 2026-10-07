@@ -877,6 +877,11 @@
         "running": "running",
         "paused": "paused",
         "ended": "ended"
+      },
+      "acknowledgement": {
+        "saved": "Saved",
+        "pending": "Pending acknowledgement",
+        "acknowledged": "Acknowledged"
       }
     },
     "detail": {
