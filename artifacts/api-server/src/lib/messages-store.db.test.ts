@@ -14,7 +14,7 @@ import {
   engramsTable,
   ensureDatabaseReady,
 } from "@workspace/db";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { createHumanDigest } from "./messages-store";
 
 const OWNER_ID = "messages-store-digest-concurrency-owner";
@@ -64,6 +64,16 @@ async function insertEngram(): Promise<number> {
     })
     .returning({ id: engramsTable.id });
   return row.id;
+}
+
+function errorChainText(error: unknown): string {
+  const messages: string[] = [];
+  let current: unknown = error;
+  while (current instanceof Error) {
+    messages.push(current.message);
+    current = current.cause;
+  }
+  return messages.join("\n");
 }
 
 describe("createHumanDigest — real database concurrency", () => {
@@ -149,5 +159,124 @@ describe("createHumanDigest — real database concurrency", () => {
           ),
         ),
     ).resolves.toHaveLength(1);
+  });
+
+  it("rolls back a partial digest when source claiming fails, then retries successfully", async () => {
+    const engramId = await insertEngram();
+    const sourceRows = await db
+      .insert(engramMessagesTable)
+      .values(
+        [1, 2, 3].map((index) => ({
+          fromEngramId: engramId,
+          toEngramId: null,
+          spaceId: null,
+          channel: "human",
+          author: "engram",
+          priority: "social",
+          status: "digest",
+          content: `Held contact ${index}`,
+          reason: null,
+          seen: false,
+          isDigest: false,
+          digestedAt: null,
+          deliveredAt: null,
+          createdAt: new Date(`2026-09-13T12:0${index}:00.000Z`),
+        })),
+      )
+      .returning({ id: engramMessagesTable.id });
+    const sourceIds = sourceRows.map(({ id }) => id);
+    const constraintName = "digest_source_claim_rollback_test_ck";
+
+    await db.execute(
+      sql.raw(
+        `ALTER TABLE "engram_messages" DROP CONSTRAINT IF EXISTS "${constraintName}"`,
+      ),
+    );
+    await db.execute(
+      sql.raw(
+        `ALTER TABLE "engram_messages" ADD CONSTRAINT "${constraintName}" CHECK ("is_digest" OR "digested_at" IS NULL)`,
+      ),
+    );
+
+    try {
+      let transactionFailure: unknown;
+      try {
+        await createHumanDigest(OWNER_ID, new Date("2026-09-13T12:10:00.000Z"));
+      } catch (error) {
+        transactionFailure = error;
+      }
+      expect(errorChainText(transactionFailure)).toContain(constraintName);
+
+      const summariesAfterFailure = await db
+        .select({ id: engramMessagesTable.id })
+        .from(engramMessagesTable)
+        .where(
+          and(
+            eq(engramMessagesTable.fromEngramId, engramId),
+            eq(engramMessagesTable.isDigest, true),
+          ),
+        );
+      expect(summariesAfterFailure).toHaveLength(0);
+
+      const sourcesAfterFailure = await db
+        .select({
+          id: engramMessagesTable.id,
+          status: engramMessagesTable.status,
+          digestedAt: engramMessagesTable.digestedAt,
+        })
+        .from(engramMessagesTable)
+        .where(
+          and(
+            eq(engramMessagesTable.fromEngramId, engramId),
+            eq(engramMessagesTable.isDigest, false),
+          ),
+        );
+      expect(sourcesAfterFailure.map(({ id }) => id).sort()).toEqual(sourceIds.sort());
+      expect(sourcesAfterFailure.every(({ status }) => status === "digest")).toBe(true);
+      expect(sourcesAfterFailure.every(({ digestedAt }) => digestedAt === null)).toBe(true);
+    } finally {
+      await db.execute(
+        sql.raw(`ALTER TABLE "engram_messages" DROP CONSTRAINT "${constraintName}"`),
+      );
+    }
+
+    const retriedSummary = await createHumanDigest(
+      OWNER_ID,
+      new Date("2026-09-13T12:12:00.000Z"),
+    );
+    expect(retriedSummary).toMatchObject({
+      fromEngramId: engramId,
+      isDigest: true,
+      status: "digest",
+    });
+    expect(retriedSummary?.content).toContain("Held contact 1");
+    expect(retriedSummary?.content).toContain("Held contact 2");
+    expect(retriedSummary?.content).toContain("Held contact 3");
+
+    const summariesAfterRetry = await db
+      .select({ id: engramMessagesTable.id })
+      .from(engramMessagesTable)
+      .where(
+        and(
+          eq(engramMessagesTable.fromEngramId, engramId),
+          eq(engramMessagesTable.isDigest, true),
+        ),
+      );
+    expect(summariesAfterRetry).toHaveLength(1);
+
+    const sourcesAfterRetry = await db
+      .select({
+        id: engramMessagesTable.id,
+        digestedAt: engramMessagesTable.digestedAt,
+      })
+      .from(engramMessagesTable)
+      .where(
+        and(
+          eq(engramMessagesTable.fromEngramId, engramId),
+          eq(engramMessagesTable.isDigest, false),
+        ),
+      );
+    expect(sourcesAfterRetry.map(({ id }) => id).sort()).toEqual(sourceIds.sort());
+    expect(sourcesAfterRetry.every(({ digestedAt }) => digestedAt instanceof Date)).toBe(true);
   });
 });
