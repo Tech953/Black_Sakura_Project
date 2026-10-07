@@ -45,6 +45,13 @@ function mediaAssetId(source: string | undefined): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
+function apiStatusCode(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return undefined;
+  }
+  return typeof error.status === "number" ? error.status : undefined;
+}
+
 export default function WorldModel() {
   const { data: engrams, isLoading: engramsLoading } = useListEngrams();
   const queryClient = useQueryClient();
@@ -129,7 +136,37 @@ export default function WorldModel() {
           queryClient.invalidateQueries({ queryKey: getListEngramWorldModelQueryKey(selectedId) });
           toast({ title: t("toastRemovedTitle"), description: t("toastRemovedDescription") });
         },
-        onError: () => toast({ title: t("toastDeleteFailed"), variant: "destructive" }),
+        onError: (error) => {
+          const status = apiStatusCode(error);
+          if (status === 404) {
+            void queryClient.invalidateQueries({
+              queryKey: getListEngramWorldModelQueryKey(selectedId),
+            });
+            toast({
+              title: t("toastDeleteNotFoundTitle"),
+              description: t("toastDeleteNotFoundDescription"),
+              variant: "destructive",
+            });
+            return;
+          }
+          if (status === 403) {
+            toast({
+              title: t("toastDeleteProtectedTitle"),
+              description: t("toastDeleteArchivedDescription"),
+              variant: "destructive",
+            });
+            return;
+          }
+          if (status === 409) {
+            toast({
+              title: t("toastDeleteProtectedTitle"),
+              description: t("toastDeleteReservedSourceDescription"),
+              variant: "destructive",
+            });
+            return;
+          }
+          toast({ title: t("toastDeleteFailed"), variant: "destructive" });
+        },
       },
     );
   }

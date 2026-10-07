@@ -142,6 +142,16 @@ const fixtureScript = String.raw`
       isArchival: false
     }
   ];
+  const archivalEngram = {
+    id: 3,
+    name: "Archived Guide",
+    symbol: "▣",
+    mode: "simulation",
+    simulationEnabled: false,
+    humanContactEnabled: false,
+    artifactGenerationEnabled: false,
+    isArchival: true
+  };
   const rawSimulationNarrative =
     "\n\t first line \u2003\n\n  second line\t" +
     "\u27e1/[]\u2014%# ".repeat(40) +
@@ -251,8 +261,42 @@ const fixtureScript = String.raw`
       source: "media:502",
       createdAt: "2026-09-12T12:08:00.000Z",
       updatedAt: "2026-09-12T12:08:00.000Z"
+    },
+    {
+      id: 704,
+      engramId: 1,
+      provenance: "remembered",
+      content: "A Rebecca source-authority memory.",
+      confidence: 0.92,
+      scope: "private",
+      source: "seed:rebecca-adaptive:v1:primary-dialogue:edgerunners-dialogue-asr",
+      createdAt: "2026-09-12T12:07:00.000Z",
+      updatedAt: "2026-09-12T12:07:00.000Z"
+    },
+    {
+      id: 706,
+      engramId: 1,
+      provenance: "inferred",
+      content: "This entry was deleted by another operator.",
+      confidence: 0.63,
+      scope: "private",
+      source: "engine",
+      createdAt: "2026-09-12T12:06:00.000Z",
+      updatedAt: "2026-09-12T12:06:00.000Z"
     }
   ];
+  let currentWorldModelEntries = [...worldModelEntries];
+  const archivalWorldModelEntries = [{
+    id: 705,
+    engramId: 3,
+    provenance: "remembered",
+    content: "The archived guide's route remains protected.",
+    confidence: 0.88,
+    scope: "private",
+    source: "engine",
+    createdAt: "2026-09-12T12:05:00.000Z",
+    updatedAt: "2026-09-12T12:05:00.000Z"
+  }];
   const stepSets = new Map([
     [42, [{
       id: 101,
@@ -319,7 +363,13 @@ const fixtureScript = String.raw`
       init.method ?? (typeof input === "string" ? "GET" : input.method ?? "GET")
     ).toUpperCase();
     const pathname = new URL(url, window.location.origin).pathname;
-    if (pathname === "/api/engrams" && method === "GET") return response(engrams);
+    if (pathname === "/api/engrams" && method === "GET") {
+      return response(
+        window.location.pathname === "/world-model"
+          ? [...engrams, archivalEngram]
+          : engrams,
+      );
+    }
     if (pathname === "/api/hub/controls" && method === "GET") {
       return response({ paused: false, quietMode: false });
     }
@@ -331,7 +381,32 @@ const fixtureScript = String.raw`
     if (pathname === "/api/engrams/messages" && method === "GET") return response([]);
     if (pathname === "/api/events") return response({});
     if (pathname === "/api/engrams/1/world-model" && method === "GET") {
-      return response(worldModelEntries);
+      return response(currentWorldModelEntries);
+    }
+    if (pathname === "/api/engrams/3/world-model" && method === "GET") {
+      return response(archivalWorldModelEntries);
+    }
+    const worldModelEntryMatch = pathname.match(
+      /^\/api\/engrams\/(\d+)\/world-model\/(\d+)$/,
+    );
+    if (worldModelEntryMatch && method === "DELETE") {
+      const engramId = Number(worldModelEntryMatch[1]);
+      const entryId = Number(worldModelEntryMatch[2]);
+      if (engramId === 1 && entryId === 704) {
+        return response({
+          error: "Rebecca source-authority memories are seed-managed and cannot be created, changed, or deleted through the API."
+        }, 409);
+      }
+      if (engramId === 3 && entryId === 705) {
+        return response({ error: "Archival engrams are read-only." }, 403);
+      }
+      if (engramId === 1 && entryId === 706) {
+        currentWorldModelEntries = currentWorldModelEntries.filter(
+          (entry) => entry.id !== entryId,
+        );
+        return response({ error: "World-model entry not found" }, 404);
+      }
+      return response({ error: "World-model entry not found" }, 404);
     }
     if (pathname === "/api/media" && method === "GET") {
       return response([mediaAsset, processingMediaAsset, recoveredMediaAsset]);
@@ -556,6 +631,61 @@ try {
   if (nonMediaEntry.includes("MEDIA") || nonMediaEntry.includes("Media")) {
     throw new Error(`Non-media world-model source received a media badge: ${nonMediaEntry}`);
   }
+  await waitFor(
+    "Boolean(document.querySelector('[data-testid=\"card-entry-704\"]'))",
+    "Rebecca source-authority entry",
+  );
+  await click(
+    `document.querySelector('[data-testid="button-delete-entry-704"]')`,
+    "reserved-source delete",
+  );
+  await waitForText(
+    "This memory is managed by Rebecca's source authority and cannot be deleted here.",
+    "reserved-source protection message",
+  );
+  await waitFor(
+    "Boolean(document.querySelector('[data-testid=\"card-entry-704\"]'))",
+    "reserved-source entry remains visible",
+  );
+
+  await click(
+    `document.querySelector('[data-testid="select-engram-3"]')`,
+    "archival engram selector",
+  );
+  await waitForText(
+    "The archived guide's route remains protected.",
+    "archival world-model entry",
+  );
+  await click(
+    `document.querySelector('[data-testid="button-delete-entry-705"]')`,
+    "archival delete",
+  );
+  await waitForText(
+    "This engram is archived. Its world-model entries are read-only.",
+    "archival protection message",
+  );
+  await waitFor(
+    "Boolean(document.querySelector('[data-testid=\"card-entry-705\"]'))",
+    "archived entry remains visible",
+  );
+
+  await click(
+    `document.querySelector('[data-testid="select-engram-1"]')`,
+    "return to active engram",
+  );
+  await waitForText("This entry was deleted by another operator.", "stale world-model entry");
+  await click(
+    `document.querySelector('[data-testid="button-delete-entry-706"]')`,
+    "not-found delete",
+  );
+  await waitForText(
+    "This entry is no longer available. The world model is refreshing.",
+    "not-found protection message",
+  );
+  await waitFor(
+    "!document.querySelector('[data-testid=\"card-entry-706\"]')",
+    "stale entry removed after world-model refresh",
+  );
 
   await click(
     `document.querySelector('[data-testid="link-media-source-701"]')`,
