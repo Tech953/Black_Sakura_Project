@@ -1,4 +1,4 @@
-import { dbHarness as h } from "../test/db-harness";
+import { routeHarness as h } from "../test/db-harness";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@workspace/db", () => ({ db: h.db }));
