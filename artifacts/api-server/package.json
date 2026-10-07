@@ -9,6 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test": "vitest run && node --test ./scripts/openapi-drift-utils.test.mjs",
     "test:hub-concurrency-pg": "node -e \"if (!process.env.DATABASE_URL) { console.error('DATABASE_URL is required for real Hub concurrency checks.'); process.exit(1); }\" && vitest run src/lib/hub-store.concurrency.pg.test.ts",
+    "test:messages-pagination-pg": "node -e \"if (!process.env.ENGRAM_TEST_DATABASE_URL) { console.error('ENGRAM_TEST_DATABASE_URL is required for real message pagination checks.'); process.exit(1); }\" && ENGRAM_REQUIRE_MESSAGES_PAGINATION_PG=1 vitest run src/routes/messages.pagination.pg.test.ts",
     "check:openapi": "node ./scripts/check-openapi-generated.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "upload:desktop-storage": "node ./scripts/upload-desktop-storage.mjs"
