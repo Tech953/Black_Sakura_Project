@@ -800,6 +800,11 @@ jobs:
           ENGRAM_REQUIRE_HUB_CONCURRENCY_PG: "1"
         run: pnpm --filter @workspace/api-server run test:hub-concurrency-pg
 
+      - name: Run message cursor checks against disposable PostgreSQL
+        env:
+          ENGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/engram_concurrency_test
+        run: pnpm --filter @workspace/api-server run test:messages-pagination-pg
+
       - name: Build API server bundle
         run: pnpm --filter @workspace/api-server run build
 
