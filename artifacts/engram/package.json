@@ -14,6 +14,7 @@
     "test:browser:download": "node scripts/download-browser-regression.mjs",
     "test:browser:settings": "node scripts/settings-browser-regression.mjs",
     "test:browser:simulations": "node scripts/run-simulations-browser.mjs",
+    "test:browser:terminal-digest": "node scripts/run-terminal-digest-browser.mjs",
     "test:browser:group-chat": "node scripts/group-chat-browser-regression.mjs"
   },
   "devDependencies": {
