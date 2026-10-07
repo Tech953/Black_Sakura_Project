@@ -34,3 +34,9 @@ Operator replies from offline mode are a separate durable outbox record, not ord
 **Why:** Treating an operator reply as a normal chat row would lose the human-channel audit shape and could let a stale or cross-account message become a reply target.
 
 **How to apply:** Cache authenticated human messages, validate the target locally and again inside the server transaction, preserve the operator audit fields, and expose pending replies until their sync receipt is acknowledged.
+
+An offline sync receipt is not an ENGRAM acknowledgement. The receipt only marks the outbox row as uploaded; `acknowledgedAt` is the separate server timestamp written after the ENGRAM successfully handles the reply. Mobile UI must keep a stored reply pending until that field is present.
+
+**Why:** Clearing a local outbox row after upload can otherwise look like the ENGRAM has read or responded to the user when it has not.
+
+**How to apply:** Derive the pending/acknowledged display only from `acknowledgedAt`. Do not synthesize that timestamp from `syncedAt`, a sync response, or local queue state.
