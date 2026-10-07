@@ -14,6 +14,9 @@ vi.mock("@workspace/db/seed/engram-data", () => ({
 
 let getDb: typeof import("./store").getDb;
 let setOfflineStoreAccount: typeof import("./store").setOfflineStoreAccount;
+let cacheHumanMessages: typeof import("./store").cacheHumanMessages;
+let listCachedHumanMessages: typeof import("./store").listCachedHumanMessages;
+let queueOperatorReply: typeof import("./store").queueOperatorReply;
 let buildPendingSyncBatch: typeof import("./store").buildPendingSyncBatch;
 let markSyncBatchComplete: typeof import("./store").markSyncBatchComplete;
 let markTransmissionsSeen: typeof import("./store").markTransmissionsSeen;
@@ -26,6 +29,9 @@ describe("offline SQLite failure harness", () => {
     ({
       getDb,
       setOfflineStoreAccount,
+      cacheHumanMessages,
+      listCachedHumanMessages,
+      queueOperatorReply,
       buildPendingSyncBatch,
       markSyncBatchComplete,
       markTransmissionsSeen,
@@ -376,6 +382,128 @@ describe("offline SQLite failure harness", () => {
       syncedAt: null,
       syncVersion: 1,
     });
+  });
+
+  it("keeps an operator reply in the local outbox until its batch is acknowledged", async () => {
+    const humanMessages = new Map<number, { id: number; data: string; cachedAt: string }>();
+    const operatorReplies: Array<{
+      id: number;
+      syncId: string;
+      messageId: number;
+      content: string;
+      createdAt: string;
+      syncedAt: string | null;
+    }> = [];
+    const database = {
+      execAsync: vi.fn(async () => {}),
+      withTransactionAsync: vi.fn(async (fn: () => Promise<void>) => fn()),
+      getFirstAsync: vi.fn(async (sql: string, id?: unknown) => {
+        if (sql.includes("slug = ?")) return { id: 999 };
+        if (sql.includes("FROM human_messages")) {
+          return humanMessages.get(Number(id)) ?? null;
+        }
+        return null;
+      }),
+      getAllAsync: vi.fn(async (sql: string) => {
+        if (sql.includes("FROM human_messages")) {
+          return [...humanMessages.values()];
+        }
+        if (sql.includes("FROM operator_replies")) {
+          return operatorReplies.filter((reply) => reply.syncedAt === null);
+        }
+        return [];
+      }),
+      runAsync: vi.fn(async (sql: string, ...args: unknown[]) => {
+        if (sql.includes("INSERT OR REPLACE INTO human_messages")) {
+          const [id, data, cachedAt] = args;
+          humanMessages.set(Number(id), {
+            id: Number(id),
+            data: String(data),
+            cachedAt: String(cachedAt),
+          });
+          return { lastInsertRowId: Number(id), changes: 1 };
+        }
+        if (sql.includes("INSERT INTO operator_replies")) {
+          const [syncId, messageId, content, createdAt] = args;
+          const id = operatorReplies.length + 1;
+          operatorReplies.push({
+            id,
+            syncId: String(syncId),
+            messageId: Number(messageId),
+            content: String(content),
+            createdAt: String(createdAt),
+            syncedAt: null,
+          });
+          return { lastInsertRowId: id, changes: 1 };
+        }
+        if (
+          sql.includes("UPDATE operator_replies") &&
+          sql.includes("SET syncedAt = ?")
+        ) {
+          const [syncedAt, ...syncIds] = args.map(String);
+          let changes = 0;
+          for (const reply of operatorReplies) {
+            if (syncIds.includes(reply.syncId) && reply.syncedAt === null) {
+              reply.syncedAt = syncedAt;
+              changes += 1;
+            }
+          }
+          return { lastInsertRowId: 0, changes };
+        }
+        return { lastInsertRowId: 0, changes: 0 };
+      }),
+    };
+    mocks.openDatabaseAsync.mockResolvedValue(database);
+
+    const source = {
+      id: 41,
+      fromEngramId: 1,
+      toEngramId: null,
+      spaceId: null,
+      channel: "human",
+      author: "engram",
+      priority: "meaningful",
+      status: "delivered",
+      content: "Are you there?",
+      reason: null,
+      seen: false,
+      isDigest: false,
+      digestGroupId: null,
+      deliveredAt: "2026-09-13T12:00:00.000Z",
+      acknowledgedAt: null,
+      createdAt: "2026-09-13T12:00:00.000Z",
+    } as Parameters<typeof cacheHumanMessages>[0][number];
+    await cacheHumanMessages([source]);
+    const localReply = await queueOperatorReply(41, "  I am here.  ");
+    expect(localReply).toMatchObject({
+      author: "operator",
+      content: "I am here.",
+    });
+
+    const queuedBatch = await buildPendingSyncBatch("phone-a");
+    const syncId = queuedBatch.payload.operatorReplies[0]?.syncId;
+    expect(syncId).toMatch(/^operator-reply:/);
+    expect(queuedBatch.localRows.operatorReplyIds).toEqual([syncId]);
+    expect(operatorReplies[0]?.syncedAt).toBeNull();
+    expect(
+      (await listCachedHumanMessages()).some(
+        (message) =>
+          message.author === "operator" && message.content === "I am here.",
+      ),
+    ).toBe(true);
+
+    // The sync coordinator calls this only after the server returns this ID.
+    await markSyncBatchComplete(queuedBatch);
+    expect(operatorReplies[0]?.syncedAt).not.toBeNull();
+    expect((await buildPendingSyncBatch("phone-a")).payload.operatorReplies).toEqual(
+      [],
+    );
+    expect(
+      (await listCachedHumanMessages()).some(
+        (message) =>
+          message.author === "operator" && message.content === "I am here.",
+      ),
+    ).toBe(false);
   });
 
   it("keeps the complete serialized batch below the server body limit", async () => {

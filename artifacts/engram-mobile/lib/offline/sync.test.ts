@@ -94,6 +94,24 @@ const emptyBatch = {
     operatorReplyIds: [],
   },
 };
+const operatorReplySyncId = "operator-reply:phone-a-1";
+const operatorReplyBatch = {
+  payload: {
+    ...emptyBatch.payload,
+    operatorReplies: [
+      {
+        syncId: operatorReplySyncId,
+        messageId: 41,
+        content: "I am here.",
+        createdAt: "2026-09-13T12:00:01.000Z",
+      },
+    ],
+  },
+  localRows: {
+    ...emptyBatch.localRows,
+    operatorReplyIds: [operatorReplySyncId],
+  },
+};
 
 let syncOfflineData: typeof import("./sync").syncOfflineData;
 
@@ -107,7 +125,11 @@ describe("offline reconnect synchronization", () => {
     mocks.listPendingHumanSeenIds.mockResolvedValue([]);
     mocks.markEngramMessagesSeen.mockResolvedValue({ updated: 0 });
     mocks.syncBatchIds.mockImplementation((batch) =>
-      batch === pendingBatch ? ["conversation:7", "message:9"] : [],
+      batch === pendingBatch
+        ? ["conversation:7", "message:9"]
+        : batch === operatorReplyBatch
+          ? [operatorReplySyncId]
+          : [],
     );
     vi.stubGlobal(
       "fetch",
@@ -146,6 +168,53 @@ describe("offline reconnect synchronization", () => {
       pendingBatch.payload,
     );
     expect(mocks.markSyncBatchComplete).toHaveBeenCalledOnce();
+  });
+
+  it("retries the same operator-reply ID after a lost response and completes only after its receipt", async () => {
+    mocks.buildPendingSyncBatch
+      .mockResolvedValueOnce(operatorReplyBatch)
+      .mockResolvedValueOnce(operatorReplyBatch)
+      .mockResolvedValueOnce(emptyBatch);
+    mocks.syncOfflineHistory
+      .mockRejectedValueOnce(new Error("response lost after server commit"))
+      .mockResolvedValueOnce({
+        syncedIds: [operatorReplySyncId],
+        imported: {
+          conversations: 0,
+          messages: 0,
+          inquiries: 0,
+          transmissions: 0,
+          observedEntries: 0,
+          operatorReplies: 0,
+        },
+      });
+
+    await expect(syncOfflineData()).rejects.toThrow(
+      "response lost after server commit",
+    );
+    expect(mocks.markSyncBatchComplete).not.toHaveBeenCalled();
+
+    await expect(syncOfflineData()).resolves.toEqual({
+      syncedRows: 1,
+      batches: 1,
+    });
+
+    expect(mocks.syncOfflineHistory).toHaveBeenCalledTimes(2);
+    expect(mocks.syncOfflineHistory).toHaveBeenNthCalledWith(
+      1,
+      operatorReplyBatch.payload,
+    );
+    expect(mocks.syncOfflineHistory).toHaveBeenNthCalledWith(
+      2,
+      operatorReplyBatch.payload,
+    );
+    expect(mocks.syncOfflineHistory.mock.calls[0]?.[0].operatorReplies).toEqual([
+      expect.objectContaining({ syncId: operatorReplySyncId }),
+    ]);
+    expect(mocks.markSyncBatchComplete).toHaveBeenCalledOnce();
+    expect(mocks.markSyncBatchComplete).toHaveBeenCalledWith(
+      operatorReplyBatch,
+    );
   });
 
   it("reconciles offline human-message reads even when no history rows are pending", async () => {
