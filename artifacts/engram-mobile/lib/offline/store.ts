@@ -1228,7 +1228,7 @@ export async function appendObservedEntry(opts: {
   engramId: number;
   content: string;
   confidence: number;
-  source: string;
+  source?: string | null;
 }): Promise<void> {
   await assertWritableEngram(opts.engramId);
   const d = await getDb();
@@ -1238,7 +1238,7 @@ export async function appendObservedEntry(opts: {
     opts.engramId,
     opts.content,
     opts.confidence,
-    opts.source,
+    opts.source ?? null,
     nowIso(),
   );
 }

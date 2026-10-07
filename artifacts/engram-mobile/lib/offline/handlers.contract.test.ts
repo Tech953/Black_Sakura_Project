@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import type { WorldModelEntry } from "@workspace/api-client-react";
 
 import {
   ActivateEngramResponse,
@@ -14,6 +15,7 @@ import {
   ListEngramInquiriesResponse,
   ListEngramMessagesResponse,
   ListEngramTransmissionsResponse,
+  ListEngramWorldModelResponse,
   ListEngramsResponse,
   MarkTransmissionsSeenBody,
   MarkTransmissionsSeenResponse,
@@ -292,6 +294,23 @@ describe("offline handler generated response contracts", () => {
       ActivateEngramResponse,
     );
     expect(activated.isChatActive).toBe(true);
+  });
+
+  it("accepts a world-model response that omits its optional source", () => {
+    const clientEntry: WorldModelEntry = {
+      id: 42,
+      engramId: 1,
+      provenance: "observed",
+      content: "A memory with no source label.",
+      confidence: 0.9,
+      scope: "private",
+      createdAt: "2026-09-04T12:00:00.000Z",
+      updatedAt: "2026-09-04T12:00:00.000Z",
+    };
+    const [entry] = ListEngramWorldModelResponse.parse([clientEntry]);
+
+    expect(entry).not.toHaveProperty("source");
+    expect(JSON.parse(JSON.stringify(entry))).not.toHaveProperty("source");
   });
 
   it("matches cached human messages and queued operator replies", async () => {
