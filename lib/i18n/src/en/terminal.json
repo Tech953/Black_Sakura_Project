@@ -19,7 +19,11 @@
   "digestSummary": "Periodic Digest",
   "expandDigest": "Inspect source messages",
   "collapseDigest": "Hide source messages",
+  "digestSources_zero": "{{count}} source messages",
   "digestSources_one": "{{count}} source message",
+  "digestSources_two": "{{count}} source messages",
+  "digestSources_few": "{{count}} source messages",
+  "digestSources_many": "{{count}} source messages",
   "digestSources_other": "{{count}} source messages",
   "operatorLabel": "Operator",
   "acknowledgement": {

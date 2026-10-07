@@ -57,7 +57,7 @@
 - [Validation gate reviews cumulative diff](validation-gate-cumulative-diff.md) — mark_task_complete's code-review sees ALL merged work, so it can reject on unrelated pre-existing failures; verify isolation and skip with a reason.
 - [Native release playtest constraints](native-release-playtest.md) — native sign-off needs fresh artifact inspection and real Android/Windows execution; Linux/static checks are only proxies.
 - [Android release packaging](android-release-packaging.md) — release builds need an explicit META-INF collision exclusion for okhttp/jspecify dependency metadata.
-- [Locale generation fallback](locale-generation-fallback.md) — when translation generation cannot authenticate, preserve exact locale key parity with English fallbacks and retry translation later.
+- [Locale generation fallback](locale-generation-fallback.md) — distinguish an unsupported model-list 405 from chat auth failures; preserve key parity when translations are unavailable.
 - [Desktop custom model library](desktop-custom-model-library.md) — content-addressed multi-model storage, legacy migration, transactional switching, and safe active removal.
 - [Web local-server health probe](web-local-server-health-probe.md) — origin-only persisted URL, credential-free health check, and public CORS limited to `/api/healthz`.
 - [Production preview auth readiness](production-preview-auth.md) — probe `/api/healthz`; unauthenticated HTML routes can return Clerk handshake redirects before browser sign-in.

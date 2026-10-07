@@ -9,8 +9,8 @@ When the translation service is unavailable, keep every generated locale structu
 
 **How to apply:** Run the generator first. If it fails before writing a locale, update each generated locale's new key set with English fallbacks, run the locale-key check, and retranslate only those namespaces once the service is healthy.
 
-**Operational note:** A 401 or 405 from the configured translation endpoint is a pre-write failure; treat it as an unavailable service rather than repeatedly retrying the same generation run.
+**Operational note:** A 405 from `models.list()` may mean the provider does not implement model listing; it is not itself proof that chat completions are unavailable. Continue with a scoped chat-completion request. A 401 from the chat request is an actual authentication/configuration failure; the generator writes a locale only after completing its namespace pass, so the failed locale remains unchanged.
 
-**Why:** Repeated retries do not improve the locale output and delay validation, while the English fallback path keeps the product's runtime key tree complete.
+**Why:** Model-list preflight is optional for an OpenAI-compatible chat endpoint, while a rejected chat request cannot generate translations. Repeating an unchanged 401 request does not improve output; the English fallback path keeps runtime key trees complete.
 
-**How to apply:** Confirm the generator failed before writing, apply the fallback keys, and leave retranslation for a later healthy run.
+**How to apply:** After a model-list 405, try one scoped chat translation. If chat returns 401, stop generation, confirm exact key parity, preserve English fallbacks unless the task requires completed translations through another available route, and retry once the provider is healthy.
