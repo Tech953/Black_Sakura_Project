@@ -112,6 +112,112 @@ describe("API test database harness contract", () => {
     expect(first.state.updates).toHaveLength(1);
   });
 
+  it("keeps stores and canonical/compatibility logs isolated during concurrent async writes", async () => {
+    const first = createIsolatedDbHarness();
+    const second = createIsolatedDbHarness();
+    let insertCount = 0;
+    let releaseBothInserts!: () => void;
+    const bothInsertsComplete = new Promise<void>((resolve) => {
+      releaseBothInserts = resolve;
+    });
+    let releaseUpdates!: () => void;
+    const allowUpdates = new Promise<void>((resolve) => {
+      releaseUpdates = resolve;
+    });
+
+    const write = async (
+      harness: ReturnType<typeof createIsolatedDbHarness>,
+      ownerId: string,
+    ) => {
+      const [inserted] = await harness.db
+        .insert(harness.schema.engramsTable)
+        .values({ ownerId, name: `${ownerId}-before` })
+        .returning();
+      if (!inserted) throw new Error(`Missing inserted row for ${ownerId}`);
+
+      insertCount += 1;
+      if (insertCount === 2) releaseBothInserts();
+      await bothInsertsComplete;
+      await allowUpdates;
+
+      const updatedName = `${ownerId}-after`;
+      await harness.db
+        .update(harness.schema.engramsTable)
+        .set({ name: updatedName })
+        .where(harness.drizzle.eq(harness.schema.engramsTable.id, inserted.id))
+        .returning();
+    };
+
+    const concurrentWrites = [
+      write(first, "owner-first"),
+      write(second, "owner-second"),
+    ];
+
+    await bothInsertsComplete;
+    expect(first.store.engramsTable).toHaveLength(1);
+    expect(first.store.engramsTable[0]).toMatchObject({
+      ownerId: "owner-first",
+      name: "owner-first-before",
+    });
+    expect(first.insertCalls).toHaveLength(1);
+    expect(first.insertCalls[0]).toMatchObject({
+      ownerId: "owner-first",
+      name: "owner-first-before",
+      __table: { __table: "engramsTable" },
+    });
+    expect(first.state.inserts).toHaveLength(1);
+    expect(first.state.inserts[0]).toMatchObject({
+      ownerId: "owner-first",
+      name: "owner-first-before",
+      __table: { __table: "engramsTable" },
+    });
+    expect(first.updateCalls).toEqual([]);
+    expect(first.state.updates).toEqual([]);
+
+    expect(second.store.engramsTable).toHaveLength(1);
+    expect(second.store.engramsTable[0]).toMatchObject({
+      ownerId: "owner-second",
+      name: "owner-second-before",
+    });
+    expect(second.insertCalls).toHaveLength(1);
+    expect(second.insertCalls[0]).toMatchObject({
+      ownerId: "owner-second",
+      name: "owner-second-before",
+      __table: { __table: "engramsTable" },
+    });
+    expect(second.state.inserts).toHaveLength(1);
+    expect(second.state.inserts[0]).toMatchObject({
+      ownerId: "owner-second",
+      name: "owner-second-before",
+      __table: { __table: "engramsTable" },
+    });
+    expect(second.updateCalls).toEqual([]);
+    expect(second.state.updates).toEqual([]);
+
+    releaseUpdates();
+    await Promise.all(concurrentWrites);
+
+    expect(first.store.engramsTable).toHaveLength(1);
+    expect(first.store.engramsTable[0]).toMatchObject({
+      ownerId: "owner-first",
+      name: "owner-first-after",
+    });
+    expect(first.updateCalls).toEqual([
+      { table: "engramsTable", patch: { name: "owner-first-after" } },
+    ]);
+    expect(first.state.updates).toEqual([{ name: "owner-first-after" }]);
+
+    expect(second.store.engramsTable).toHaveLength(1);
+    expect(second.store.engramsTable[0]).toMatchObject({
+      ownerId: "owner-second",
+      name: "owner-second-after",
+    });
+    expect(second.updateCalls).toEqual([
+      { table: "engramsTable", patch: { name: "owner-second-after" } },
+    ]);
+    expect(second.state.updates).toEqual([{ name: "owner-second-after" }]);
+  });
+
   it("keeps harness imports ahead of Vitest-hoisted factories", () => {
     for (const testModule of [
       new URL("../routes/api-routes.test.ts", import.meta.url),
