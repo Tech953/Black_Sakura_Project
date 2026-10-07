@@ -505,6 +505,83 @@ describe("runTick — cost guards", () => {
     expect(h.state.messages.find((message) => message.id === 45)?.acknowledgedAt).toBeNull();
   });
 
+  it("keeps an operator reply pending through failure and restart, then acknowledges it once", async () => {
+    const now = Date.now();
+    const replyText = "I will check in after I finish this.";
+    h.generateTransmission.mockRejectedValueOnce(new Error("model unavailable"));
+    h.state.engrams = [
+      makeEngram({
+        lastTickAt: new Date(now - 100_000),
+        initiationThreshold: 0.6,
+        drives: [
+          { id: "connection", label: "Connection", description: "reach", weight: 1, baseRate: 0.01 },
+        ],
+      }),
+    ];
+    h.state.messages = [
+      {
+        id: 46,
+        fromEngramId: 1,
+        channel: "human",
+        author: "operator",
+        content: replyText,
+        acknowledgedAt: null,
+      },
+    ];
+    h.updateCalls.length = 0;
+
+    const failed = await runTick({ ownerId: "test-owner" });
+
+    expect(failed.generated).toBe(0);
+    expect(h.generateTransmission).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ operatorReplies: [replyText] }),
+    );
+    expect(h.state.messages[0]).toMatchObject({
+      id: 46,
+      content: replyText,
+      acknowledgedAt: null,
+    });
+    expect(h.updateCalls.filter(({ table }) => table === "engramMessagesTable")).toHaveLength(0);
+
+    const persistedAfterFailure = h.state.engrams[0];
+    expect(persistedAfterFailure.backoffUntil).toBeInstanceOf(Date);
+    expect(new Date(persistedAfterFailure.backoffUntil as Date).getTime()).toBeGreaterThan(now);
+
+    // Simulate downtime long enough for the persisted backoff and tick cadence to expire.
+    // Reloading the module clears process-local state while the harness-backed DB survives.
+    const restartTime = Date.now();
+    h.state.engrams = [
+      {
+        ...persistedAfterFailure,
+        lastTickAt: new Date(restartTime - 100_000),
+        backoffUntil: new Date(restartTime - 1),
+      },
+    ];
+    vi.resetModules();
+    const restartedEngine = await import("./engram-engine");
+    expect(h.state.messages[0]).toMatchObject({
+      id: 46,
+      content: replyText,
+      acknowledgedAt: null,
+    });
+
+    const retried = await restartedEngine.runTick({ ownerId: "test-owner" });
+
+    expect(retried.generated).toBe(1);
+    expect(h.generateTransmission).toHaveBeenCalledTimes(2);
+    expect(h.generateTransmission).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ operatorReplies: [replyText] }),
+    );
+    expect(h.state.messages[0]).toMatchObject({
+      id: 46,
+      content: replyText,
+      acknowledgedAt: expect.any(Date),
+    });
+    expect(h.updateCalls.filter(({ table }) => table === "engramMessagesTable")).toHaveLength(1);
+  });
+
   it("respects a persisted backoff window after restart (in-memory state is gone)", async () => {
     const now = Date.now();
     h.state.engrams = [
