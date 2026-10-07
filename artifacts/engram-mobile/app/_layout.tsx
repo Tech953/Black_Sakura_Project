@@ -58,7 +58,11 @@ import { offlineHandler } from "@/lib/offline/handlers";
 import { syncOfflineData } from "@/lib/offline/sync";
 import { setOfflineStoreAccount } from "@/lib/offline/store";
 import { queryClient } from "@/lib/query-client";
-import { e2eAuthBypass, e2eAuthUserId } from "@/lib/e2e-auth";
+import { isAccountReadyFor } from "@/lib/account-query-scope";
+import {
+  e2eAuthBypass,
+  useE2EAuthUserId,
+} from "@/lib/e2e-auth";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
@@ -106,15 +110,17 @@ function RootLayoutNav() {
 function AuthenticatedApp() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
-  const [accountReady, setAccountReady] = React.useState(false);
+  const [readyAccountId, setReadyAccountId] = React.useState<string | null>(null);
+  const e2eUserId = useE2EAuthUserId();
   const userId = isSignedIn ? user?.id ?? null : null;
   const effectiveSignedIn = e2eAuthBypass || isSignedIn;
-  const effectiveUserId = e2eAuthBypass ? e2eAuthUserId : userId;
+  const effectiveUserId = e2eAuthBypass ? e2eUserId : userId;
+  const accountReady = isAccountReadyFor(effectiveUserId, readyAccountId);
   const accountTokenDependency = e2eAuthBypass ? null : getToken;
 
   useEffect(() => {
     let active = true;
-    setAccountReady(false);
+    setReadyAccountId(null);
     setAuthTokenGetter(null);
     queryClient.clear();
 
@@ -128,7 +134,7 @@ function AuthenticatedApp() {
         setAuthTokenGetter(
           e2eAuthBypass ? () => "e2e-history-token" : () => getToken(),
         );
-        setAccountReady(true);
+        setReadyAccountId(effectiveUserId);
       })
       .catch((error) => {
         // Fail closed: a store-selection failure must not expose an earlier

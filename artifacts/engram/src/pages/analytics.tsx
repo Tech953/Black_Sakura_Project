@@ -1,5 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { useGetEngramStates, useGetStats, useListEngrams } from "@workspace/api-client-react";
+import { useAccountQueryId } from "@/lib/account-query-scope";
+import {
+  getGetStatsQueryKey,
+  getListEngramsQueryKey,
+  useGetEngramStates,
+  useGetStats,
+  useListEngrams,
+} from "@workspace/api-client-react";
 import type { EngramLiveState } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,16 +36,29 @@ const CUSTOM_TOOLTIP_STYLE = {
 
 export default function Analytics() {
   const { t } = useTranslation("analytics");
-  const { data: stats, isLoading } = useGetStats();
-  const { data: engrams, isLoading: engramsLoading } = useListEngrams();
+  const userId = useAccountQueryId();
+  const accountQueryScope = ["account", userId ?? "signed-out"] as const;
+  const { data: stats, isLoading } = useGetStats({
+    query: {
+      enabled: Boolean(userId),
+      queryKey: [...getGetStatsQueryKey(), ...accountQueryScope],
+    },
+  });
+  const { data: engrams, isLoading: engramsLoading } = useListEngrams({
+    query: {
+      enabled: Boolean(userId),
+      queryKey: [...getListEngramsQueryKey(), ...accountQueryScope],
+    },
+  });
   const {
     data: liveStates,
     isLoading: statesLoading,
     isError: liveStatesError,
   } = useGetEngramStates({
     query: {
+        enabled: Boolean(userId),
       refetchInterval: 4000,
-      queryKey: getGetEngramStatesQueryKey(),
+        queryKey: [...getGetEngramStatesQueryKey(), ...accountQueryScope],
     },
   });
 

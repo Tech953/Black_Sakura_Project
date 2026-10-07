@@ -51,6 +51,10 @@ import Studio from "@/pages/studio";
 import DownloadPage from "@/pages/download";
 import SettingsPage from "@/pages/settings";
 import DesktopUpdateBanner from "@/components/desktop-update-banner";
+import {
+  browserTestMode,
+  useBrowserTestUserId,
+} from "@/lib/account-query-scope";
 
 const queryClient = new QueryClient();
 
@@ -64,8 +68,6 @@ const clerkPubKey = publishableKeyFromHost(
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-const browserTestMode =
-  import.meta.env.DEV && import.meta.env.VITE_BROWSER_TEST === "true";
 
 // Only used by the local Chromium regression harness. The DEV guard above keeps
 // this fixture out of production bundles and real authentication flows.
@@ -296,11 +298,22 @@ function DashboardRoutes() {
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
+  const browserTestUserId = useBrowserTestUserId();
 
   return (
     <ClerkProvider
+      key={browserTestMode ? browserTestUserId : undefined}
       publishableKey={clerkPubKey}
-      initialState={browserTestMode ? browserTestInitialState : undefined}
+      initialState={
+        browserTestMode
+          ? {
+              ...browserTestInitialState,
+              userId: browserTestUserId,
+              sessionId: `browser-test-session-${browserTestUserId}`,
+              sessionClaims: { sub: browserTestUserId },
+            }
+          : undefined
+      }
       proxyUrl={clerkProxyUrl}
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
