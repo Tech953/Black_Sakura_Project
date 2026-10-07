@@ -16,9 +16,11 @@ import { Chip, EmptyState, MonoLabel, ScoreBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { isRtlLanguage } from "@/lib/layout-direction";
 import { useOfflineMode } from "@/lib/offline/mode";
+import { e2eAuthBypass, useE2EAuthUserId } from "@/lib/e2e-auth";
+import { getAccountLiveStateQueryKey } from "@/lib/account-query-scope";
+import { useAuth } from "@clerk/expo";
 import {
   getGetEngramQueryKey,
-  getGetEngramStatesQueryKey,
   useGetEngram,
   useGetEngramStates,
 } from "@workspace/api-client-react";
@@ -30,17 +32,30 @@ export default function EnvironmentScreen() {
   const insets = useSafeAreaInsets();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const id = Number(rawId);
+  const { isSignedIn, userId: clerkUserId } = useAuth();
+  const e2eUserId = useE2EAuthUserId();
+  const accountId = e2eAuthBypass
+    ? e2eUserId
+    : isSignedIn
+      ? clerkUserId ?? null
+      : null;
   const offlineActive = useOfflineMode();
   const modeScope = offlineActive ? "offline-selection" : "online-selection";
   const engram = useGetEngram(id, {
     query: {
-      enabled: Number.isFinite(id),
-      queryKey: [...getGetEngramQueryKey(id), modeScope],
+      enabled: Number.isFinite(id) && Boolean(accountId),
+      queryKey: [
+        ...getGetEngramQueryKey(id),
+        modeScope,
+        "account",
+        accountId ?? "signed-out",
+      ],
     },
   });
   const states = useGetEngramStates({
     query: {
-      queryKey: [...getGetEngramStatesQueryKey(), modeScope],
+      enabled: Boolean(accountId),
+      queryKey: getAccountLiveStateQueryKey(accountId, offlineActive),
       retry: false,
     },
   });

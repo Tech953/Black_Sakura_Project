@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useAuth } from "@clerk/expo";
 import type { UseQueryResult } from "@tanstack/react-query";
 
 import { Chip, EmptyState, MonoLabel, ScoreBar } from "@/components/ui";
@@ -36,6 +37,8 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useOfflineMode } from "@/lib/offline/mode";
 import { cacheHumanMessages } from "@/lib/offline/store";
 import { queryClient } from "@/lib/query-client";
+import { e2eAuthBypass, useE2EAuthUserId } from "@/lib/e2e-auth";
+import { getAccountLiveStateQueryKey } from "@/lib/account-query-scope";
 
 export default function HubScreen() {
   const { t, i18n } = useTranslation("mobile");
@@ -44,8 +47,20 @@ export default function HubScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const offline = useOfflineMode();
+  const { isSignedIn, userId: clerkUserId } = useAuth();
+  const e2eUserId = useE2EAuthUserId();
+  const accountId = e2eAuthBypass
+    ? e2eUserId
+    : isSignedIn
+      ? clerkUserId ?? null
+      : null;
   const engrams = useListEngrams();
-  const states = useGetEngramStates();
+  const states = useGetEngramStates({
+    query: {
+      enabled: Boolean(accountId),
+      queryKey: getAccountLiveStateQueryKey(accountId, offline),
+    },
+  });
   const spaces = useListHubSpaces();
   const presence = useListHubPresence();
   const activity = useListHubActivity({ limit: 12 });

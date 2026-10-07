@@ -212,8 +212,28 @@ const fixtureScript = String.raw`
       state(4, { topCharge: 0.1, inBackoff: true, backoffUntil: "2026-09-13T12:05:00.000Z", drives: [{ id: "guard", label: "Guard", pressure: 0.1, weight: 1, charge: 0.1 }] })
     ]
   ];
+  const statesByOwner = {
+    "browser-test-user": states,
+    "browser-test-owner-b": [[
+      state(1, { topCharge: 0.22, drives: [{ id: "focus", label: "Owner B focus", pressure: 0.31, weight: 1, charge: 0.22 }] }),
+      state(2, { topCharge: 0.24, drives: [{ id: "signal", label: "Owner B signal", pressure: 0.32, weight: 1, charge: 0.24 }] }),
+      state(3, { topCharge: 0.23, drives: [{ id: "rest", label: "Owner B rest", pressure: 0.33, weight: 1, charge: 0.23 }] }),
+      state(4, { topCharge: 0.21, drives: [{ id: "guard", label: "Owner B guard", pressure: 0.30, weight: 1, charge: 0.21 }] })
+    ]],
+    "browser-test-owner-c": [[
+      state(1, { topCharge: 0.32, drives: [{ id: "focus", label: "Owner C focus", pressure: 0.41, weight: 1, charge: 0.32 }] }),
+      state(2, { topCharge: 0.34, drives: [{ id: "signal", label: "Owner C signal", pressure: 0.42, weight: 1, charge: 0.34 }] }),
+      state(3, { topCharge: 0.31, drives: [{ id: "rest", label: "Owner C rest", pressure: 0.43, weight: 1, charge: 0.31 }] }),
+      state(4, { topCharge: 0.30, drives: [{ id: "guard", label: "Owner C guard", pressure: 0.40, weight: 1, charge: 0.30 }] })
+    ]]
+  };
   let stateVersion = 0;
   let stateRequestsFailing = false;
+  let activeOwner = "browser-test-user";
+  let stateRequestCount = 0;
+  let pauseNextStateResponse = false;
+  let pendingStateRelease = null;
+  let pendingStateOwner = null;
   const response = (body, status = 200) =>
     new Response(JSON.stringify(body), {
       status,
@@ -224,7 +244,27 @@ const fixtureScript = String.raw`
     configUpdateRequests: [],
     setStateVersion(version) { stateVersion = version; },
     setStateFailure(value) { stateRequestsFailing = value; },
-    getStateVersion() { return stateVersion; }
+    getStateVersion() { return stateVersion; },
+    getStateRequestCount() { return stateRequestCount; },
+    getPendingStateOwner() { return pendingStateOwner; },
+    pauseNextStateResponse() { pauseNextStateResponse = true; },
+    releaseStateResponse() {
+      if (!pendingStateRelease) return false;
+      const release = pendingStateRelease;
+      pendingStateRelease = null;
+      pendingStateOwner = null;
+      release();
+      return true;
+    },
+    switchAccount(userId) {
+      if (!statesByOwner[userId]) throw new Error("No browser telemetry fixture for " + userId);
+      activeOwner = userId;
+      stateVersion = 0;
+      if (!window.__engramBrowserTest?.switchAccount) {
+        throw new Error("The guarded Clerk account-switch fixture is unavailable");
+      }
+      window.__engramBrowserTest.switchAccount(userId);
+    }
   };
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input.url;
@@ -234,8 +274,18 @@ const fixtureScript = String.raw`
     const pathname = new URL(url, window.location.origin).pathname;
     if (pathname === "/api/engrams" && method === "GET") return response(engrams);
     if (pathname === "/api/engrams/state" && method === "GET") {
+      stateRequestCount += 1;
       if (stateRequestsFailing) return response({ error: "fixture unavailable" }, 503);
-      return response(states[stateVersion]);
+      const ownerStates = statesByOwner[activeOwner];
+      const body = ownerStates?.[stateVersion] ?? ownerStates?.[0] ?? states[0];
+      if (pauseNextStateResponse) {
+        pauseNextStateResponse = false;
+        pendingStateOwner = activeOwner;
+        return new Promise((resolve) => {
+          pendingStateRelease = () => resolve(response(body));
+        });
+      }
+      return response(body);
     }
     if (/^\/api\/engrams\/\d+\/transmissions$/.test(pathname) && method === "GET") {
       return response([]);
@@ -283,6 +333,8 @@ async function waitFor(expression, label, timeout = 10000) {
     selectedEngrams: Array.from(document.querySelectorAll('[data-testid^="button-select-engram-"]'))
       .filter((element) => element.classList.contains("bg-primary/10"))
       .map((element) => element.getAttribute("data-testid")),
+    pressureValues: Array.from(document.querySelectorAll('[data-testid^="pressure-value-"]'))
+      .map((element) => ({ id: element.getAttribute("data-testid"), value: element.textContent?.trim() })),
     bodyTail: document.body?.innerText.slice(-500)
   })`);
   throw new Error(`Timed out waiting for ${label}. Browser state: ${JSON.stringify(diagnostics)}`);
@@ -740,7 +792,65 @@ try {
     );
   }
 
-  console.log(`Analytics pressure browser regression passed (${testLanguage})`);
+  await devtools.evaluate(`(() => {
+    window.__analyticsBrowserFixture.pauseNextStateResponse();
+    window.__analyticsBrowserFixture.switchAccount("browser-test-owner-b");
+  })()`);
+  await waitFor(
+    `window.__analyticsBrowserFixture.getPendingStateOwner() === "browser-test-owner-b"`,
+    "Owner B Analytics state request held",
+  );
+  const pendingAnalyticsSwitch = await devtools.evaluate(`({
+    body: document.body.innerText,
+    oldPressure: document.body.innerText.includes("0.40 / 0.80 · 50%") ||
+      document.body.innerText.includes("0.95 / 0.80 · 100%"),
+    liveValues: document.querySelectorAll('[data-testid^="pressure-value-"]').length
+  })`);
+  if (pendingAnalyticsSwitch.oldPressure || pendingAnalyticsSwitch.liveValues > 0) {
+    throw new Error(
+      `Analytics exposed the previous account while Owner B telemetry was pending: ${JSON.stringify(pendingAnalyticsSwitch)}`,
+    );
+  }
+  await devtools.evaluate("window.__analyticsBrowserFixture.releaseStateResponse()");
+  await waitFor(
+    `document.querySelector('[data-testid="pressure-value-1"]')?.textContent?.includes("0.22 / 0.80 · 27%")`,
+    "Owner B Analytics telemetry",
+  );
+
+  await clickTestId("button-open-environment-3");
+  await waitFor(
+    `window.location.pathname === "/environment" && window.location.search === "?engramId=3"`,
+    "Owner B Environment route",
+  );
+  await waitFor(
+    `document.querySelector('[data-testid="live-drive-charge-rest"]')?.textContent?.trim() === "0.23"`,
+    "Owner B Environment telemetry",
+  );
+
+  await devtools.evaluate(`(() => {
+    window.__analyticsBrowserFixture.pauseNextStateResponse();
+    window.__analyticsBrowserFixture.switchAccount("browser-test-owner-c");
+  })()`);
+  await waitFor(
+    `window.__analyticsBrowserFixture.getPendingStateOwner() === "browser-test-owner-c"`,
+    "Owner C Environment state request held",
+  );
+  const pendingEnvironmentSwitch = await devtools.evaluate(`({
+    oldOwnerLabel: document.body.innerText.includes("Owner B rest"),
+    oldOwnerCharge: document.querySelector('[data-testid="live-drive-charge-rest"]')?.textContent?.trim() === "0.23"
+  })`);
+  if (pendingEnvironmentSwitch.oldOwnerLabel || pendingEnvironmentSwitch.oldOwnerCharge) {
+    throw new Error(
+      `Environment exposed the previous account while Owner C telemetry was pending: ${JSON.stringify(pendingEnvironmentSwitch)}`,
+    );
+  }
+  await devtools.evaluate("window.__analyticsBrowserFixture.releaseStateResponse()");
+  await waitFor(
+    `document.querySelector('[data-testid="live-drive-charge-rest"]')?.textContent?.trim() === "0.31"`,
+    "Owner C Environment telemetry",
+  );
+
+  console.log(`Analytics and Environment account-switch browser regression passed (${testLanguage})`);
 } finally {
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");

@@ -29,7 +29,7 @@ async function reserveEphemeralPort() {
   };
 }
 
-if (!["history", "hub-environment"].includes(scenario)) {
+if (!["history", "hub-environment", "live-state-account-switch"].includes(scenario)) {
   throw new Error(`Unknown browser regression scenario: ${scenario}`);
 }
 
@@ -277,6 +277,9 @@ const browserMock = String.raw`(() => {
     liveStateRecoveryEnabled: false,
     failNextLiveStateRead: false,
     liveStateRequests: 0,
+    activeAccount: "e2e-history-user",
+    holdNextLiveStateRead: false,
+    pendingLiveStateRead: null,
   };
   if (hubEnvironmentE2E.simulationMode) {
     hubEnvironmentE2E.holdSimulationList = true;
@@ -380,8 +383,32 @@ const browserMock = String.raw`(() => {
         hubEnvironmentE2E.failNextLiveStateRead = false;
         return response({ error: "Fixture live-state read failed" }, 503);
       }
-      return response([
-        {
+      const state = hubEnvironmentE2E.activeAccount === "e2e-owner-b"
+        ? {
+            engramId: 1,
+            autonomyEnabled: true,
+            currentMood: "focused",
+            initiationThreshold: 1,
+            tickCadenceSeconds: 60,
+            lastTickAt: "2026-09-10T12:00:00.000Z",
+            lastTransmissionAt: null,
+            backoffUntil: null,
+            inBackoff: false,
+            cooldownUntil: null,
+            inCooldown: false,
+            topCharge: 0.12,
+            ready: false,
+            drives: [
+              {
+                id: "connection",
+                label: "Owner B connection",
+                pressure: 0.24,
+                weight: 0.5,
+                charge: 0.12,
+              },
+            ],
+          }
+        : {
           engramId: 1,
           autonomyEnabled: true,
           currentMood: "focused",
@@ -404,8 +431,17 @@ const browserMock = String.raw`(() => {
               charge: 0.43,
             },
           ],
-        },
-      ]);
+        };
+      if (hubEnvironmentE2E.holdNextLiveStateRead) {
+        hubEnvironmentE2E.holdNextLiveStateRead = false;
+        return new Promise((resolve) => {
+          hubEnvironmentE2E.pendingLiveStateRead = () => {
+            hubEnvironmentE2E.pendingLiveStateRead = null;
+            resolve(response([state]));
+          };
+        });
+      }
+      return response([state]);
     }
     if (path === "/api/hub/spaces" && method === "GET") return emptyList("spaces");
     if (path === "/api/hub/presence" && method === "GET") return emptyList("presence");
@@ -934,6 +970,113 @@ async function runHubEnvironmentRegression(client, appUrl, cdpPort) {
   return client;
 }
 
+async function runLiveStateAccountSwitchRegression(client) {
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
+    "signed-in persona card",
+  );
+  await client.evaluate(
+    "window.__hubEnvironmentE2E.liveStateRecoveryEnabled = true",
+  );
+  await clickTestId(client, "engram-card-1");
+  await waitForValue(
+    client,
+    `location.pathname.includes("/engram/1")`,
+    "persona detail before account switch",
+  );
+  await clickVisibleText(client, "Open environment");
+  await waitForValue(
+    client,
+    `location.pathname.includes("/engram/environment") &&
+      document.body.innerText.includes("86%")`,
+    "Owner A Environment live telemetry",
+  );
+
+  await client.evaluate(`(() => {
+    window.__hubEnvironmentE2E.activeAccount = "e2e-owner-b";
+    window.__hubEnvironmentE2E.holdNextLiveStateRead = true;
+    window.__engramE2EAuth.switchUser("e2e-owner-b");
+  })()`);
+
+  await waitForValue(
+    client,
+    `window.__engramE2EAuth.getUserId() === "e2e-owner-b"`,
+    "Owner B identity selected",
+  );
+
+  const accountBAppSurface = `Boolean(document.querySelector('[data-testid="engram-card-1"]')) ||
+    location.pathname.includes("/engram/1") ||
+    location.pathname.includes("/engram/environment")`;
+  await waitForValue(
+    client,
+    accountBAppSurface,
+    "Owner B app surface ready",
+  );
+
+  const currentPath = await client.evaluate("location.pathname");
+  if (!currentPath.includes("/engram/environment")) {
+    if (!currentPath.includes("/engram/1")) {
+      if (!(await client.evaluate(
+        `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
+      ))) {
+        await clickVisibleText(client, "Personas");
+        await waitForValue(
+          client,
+          `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
+          "Owner B persona list",
+        );
+      }
+      await clickTestId(client, "engram-card-1");
+      await waitForValue(
+        client,
+        `location.pathname.includes("/engram/1")`,
+        "Owner B persona detail",
+      );
+    }
+    await clickVisibleText(client, "Open environment");
+    await waitForValue(
+      client,
+      `location.pathname.includes("/engram/environment")`,
+      "Owner B Environment",
+    );
+  }
+
+  await waitForValue(
+    client,
+    `window.__hubEnvironmentE2E.pendingLiveStateRead !== null`,
+    "Owner B Environment telemetry request held",
+  );
+  const pendingState = await client.evaluate(`JSON.stringify({
+    path: location.pathname,
+    body: document.body.innerText,
+    oldTelemetryVisible: document.body.innerText.includes("86%"),
+    ownerBTelemetryVisible: document.body.innerText.includes("Owner B connection")
+  })`);
+  const pendingSnapshot = JSON.parse(pendingState);
+  if (pendingSnapshot.oldTelemetryVisible || pendingSnapshot.ownerBTelemetryVisible) {
+    throw new Error(
+      `Mobile Environment showed cached telemetry before Owner B's response: ${pendingState}`,
+    );
+  }
+
+  await client.evaluate(
+    "window.__hubEnvironmentE2E.pendingLiveStateRead()",
+  );
+  await waitForValue(
+    client,
+    `location.pathname.includes("/engram/environment") &&
+      document.body.innerText.includes("Owner B connection") &&
+      document.body.innerText.includes("24%") &&
+      !document.body.innerText.includes("86%")`,
+    "Owner B Environment telemetry",
+  );
+  console.log(
+    "Mobile Environment account-switch browser regression passed: Owner A live telemetry stayed hidden until Owner B's response.",
+  );
+  return client;
+}
+
 const processes = [];
 let profileDir;
 let client;
@@ -1024,6 +1167,8 @@ try {
 
   if (scenario === "hub-environment") {
     client = await runHubEnvironmentRegression(client, appUrl, cdpPort);
+  } else if (scenario === "live-state-account-switch") {
+    client = await runLiveStateAccountSwitchRegression(client);
   } else {
   await waitForValue(client, `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`, "signed-in engram card");
   await clickTestId(client, "engram-card-1");

@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle, Radio, Zap, Activity, Gauge, Power, Send, RefreshCw, Eye, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAccountQueryId } from "@/lib/account-query-scope";
 
 type ConfigForm = {
   autonomyEnabled: boolean;
@@ -81,7 +82,14 @@ function providerErrorMessage(error: unknown): string | undefined {
 export default function Environment() {
   const [location] = useLocation();
   const { t } = useTranslation("environment");
-  const { data: engrams, isLoading } = useListEngrams();
+  const userId = useAccountQueryId();
+  const accountQueryScope = ["account", userId ?? "signed-out"] as const;
+  const { data: engrams, isLoading } = useListEngrams({
+    query: {
+      enabled: Boolean(userId),
+      queryKey: [...getListEngramsQueryKey(), ...accountQueryScope],
+    },
+  });
   const update = useUpdateEngramConfig();
   const activate = useActivateEngram();
   const transmit = useTransmitEngram();
@@ -127,14 +135,21 @@ export default function Environment() {
     query: {
       enabled: selectedId !== null,
       refetchInterval: 5000,
-      queryKey: getListEngramTransmissionsQueryKey(selectedId ?? 0),
+      queryKey: [
+        ...getListEngramTransmissionsQueryKey(selectedId ?? 0),
+        ...accountQueryScope,
+      ],
     },
   });
 
   // Poll live autonomy state (per-drive pressure, cooldown, backoff) so the UI
   // reflects the persisted DB state as it charges toward the initiation threshold.
   const { data: liveStates, isError: liveStatesError } = useGetEngramStates({
-    query: { refetchInterval: 4000, queryKey: getGetEngramStatesQueryKey() },
+    query: {
+      enabled: Boolean(userId),
+      refetchInterval: 4000,
+      queryKey: [...getGetEngramStatesQueryKey(), ...accountQueryScope],
+    },
   });
   const liveById = useMemo(() => {
     const map = new Map<number, EngramLiveState>();
