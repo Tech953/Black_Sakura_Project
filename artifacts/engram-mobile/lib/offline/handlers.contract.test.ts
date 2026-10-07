@@ -257,7 +257,7 @@ const database = {
 mocks.database = database;
 
 import { offlineHandler } from "./handlers";
-import { cacheHumanMessages, getDb } from "./store";
+import { buildPendingSyncBatch, cacheHumanMessages, getDb } from "./store";
 
 const ErrorResponse = z.object({ error: z.string() });
 
@@ -389,6 +389,23 @@ describe("offline handler generated response contracts", () => {
       status: "delivered",
       content: "I can hear you.",
     });
+    expect(state.operatorReplies).toHaveLength(1);
+    expect(state.operatorReplies[0]).toMatchObject({
+      syncId: expect.stringMatching(/^operator-reply:/),
+      messageId: 1,
+      content: "I can hear you.",
+      syncedAt: null,
+    });
+    const queuedReply = state.operatorReplies[0]!;
+    const batch = await buildPendingSyncBatch("phone-a");
+    expect(batch.payload.operatorReplies).toEqual([
+      expect.objectContaining({
+        syncId: queuedReply.syncId,
+        messageId: 1,
+        content: "I can hear you.",
+      }),
+    ]);
+    expect(batch.localRows.operatorReplyIds).toEqual([queuedReply.syncId]);
 
     const marked = expectContract(
       await request(

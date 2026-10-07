@@ -3892,6 +3892,9 @@ describe("offline mobile history synchronization", () => {
       syncedIds: ["operator-reply:1"],
       imported: { operatorReplies: 0 },
     });
+    expect(
+      h.store.engramMessagesTable.filter((message) => message.author === "operator"),
+    ).toHaveLength(1);
     expect(h.store.engramMessagesTable).toHaveLength(2);
   });
 
