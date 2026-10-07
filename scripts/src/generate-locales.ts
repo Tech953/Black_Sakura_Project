@@ -49,11 +49,19 @@ function providerStatus(error: unknown): number | undefined {
   return typeof status === "number" ? status : undefined;
 }
 
-async function preflightProvider(): Promise<void> {
+async function preflightProvider(): Promise<boolean> {
   try {
     await client.models.list();
+    return true;
   } catch (error) {
     const status = providerStatus(error);
+    if (status === 405) {
+      console.warn(
+        "Locale translation provider does not support model-list preflight (HTTP 405); " +
+          "continuing, and chat-completion requests will validate the configured endpoint.",
+      );
+      return false;
+    }
     if (status === 401) {
       const credentialMessage = apiKeyConfig
         ? `The configured ${apiKeyConfig} was rejected.`
@@ -175,8 +183,12 @@ async function main() {
   );
   const english = loadEnglish();
   const targets = LANGUAGES.filter((l) => l.code !== "en" && (only.length === 0 || only.includes(l.code)));
-  await preflightProvider();
-  console.log(`Locale translation provider preflight passed for ${targets.length} locale(s).`);
+  const modelListPreflightPassed = await preflightProvider();
+  console.log(
+    modelListPreflightPassed
+      ? `Locale translation provider preflight passed for ${targets.length} locale(s).`
+      : `Model-list preflight unavailable; chat completions will validate generation for ${targets.length} locale(s).`,
+  );
   for (const lang of targets) {
     const outPath = path.join(OUT_DIR, `${lang.code}.json`);
     const existing: Record<string, Tree> = existsSync(outPath)
