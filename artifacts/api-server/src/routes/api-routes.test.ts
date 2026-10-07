@@ -2535,6 +2535,70 @@ describe("engram world-model routes", () => {
     expect(await listResponse.json()).toEqual([]);
   });
 
+  it("returns not found on a repeated delete without changing other world-model entries", async () => {
+    const engram = seedEngram();
+    const otherEngram = seedEngram({ slug: "other-test-persona" });
+    const target = seedWorldModelEntry({
+      engramId: engram.id,
+      content: "This entry is deleted.",
+      source: "operator-note",
+    });
+    const neighbor = seedWorldModelEntry({
+      engramId: engram.id,
+      content: "This neighboring entry must remain.",
+      source: "neighboring-belief",
+    });
+    const unrelated = seedWorldModelEntry({
+      engramId: otherEngram.id,
+      content: "This unrelated belief must remain visible.",
+      source: "unrelated-belief",
+    });
+    const allEntriesBeforeDelete = [target, neighbor, unrelated].map((entry) =>
+      structuredClone(entry),
+    );
+    const allOtherEntries = allEntriesBeforeDelete.filter(
+      (entry) => entry.id !== target.id,
+    );
+    const deleteUrl = `${base}/api/engrams/${engram.id}/world-model/${target.id}`;
+
+    const firstDelete = await fetch(deleteUrl, { method: "DELETE" });
+    expect(firstDelete.status).toBe(204);
+    expect(h.store.engramWorldModelTable).toEqual(allOtherEntries);
+
+    const retryDelete = await fetch(deleteUrl, { method: "DELETE" });
+    expect(retryDelete.status).toBe(404);
+    expect(await retryDelete.json()).toEqual({
+      error: "World-model entry not found",
+    });
+    expect(h.store.engramWorldModelTable).toEqual(allOtherEntries);
+
+    const neighboringEntriesResponse = await fetch(
+      `${base}/api/engrams/${engram.id}/world-model`,
+    );
+    expect(neighboringEntriesResponse.status).toBe(200);
+    const neighboringEntries = ListEngramWorldModelResponse.parse(
+      await neighboringEntriesResponse.json(),
+    );
+    expect(neighboringEntries).toHaveLength(1);
+    expect(neighboringEntries[0]).toMatchObject({
+      id: neighbor.id,
+      content: "This neighboring entry must remain.",
+    });
+
+    const unrelatedEntriesResponse = await fetch(
+      `${base}/api/engrams/${otherEngram.id}/world-model`,
+    );
+    expect(unrelatedEntriesResponse.status).toBe(200);
+    const unrelatedEntries = ListEngramWorldModelResponse.parse(
+      await unrelatedEntriesResponse.json(),
+    );
+    expect(unrelatedEntries).toHaveLength(1);
+    expect(unrelatedEntries[0]).toMatchObject({
+      id: unrelated.id,
+      content: "This unrelated belief must remain visible.",
+    });
+  });
+
   it("cannot discover or delete a world-model entry belonging to another operator", async () => {
     const foreignEngram = seedEngram({ ownerId: "other-owner" });
     const entry = seedWorldModelEntry({
