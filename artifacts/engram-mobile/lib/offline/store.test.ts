@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SyncOfflineHistoryBody } from "../../../../lib/api-zod/src/generated/api";
 
 const mocks = vi.hoisted(() => ({
   openDatabaseAsync: vi.fn(),
@@ -211,6 +212,50 @@ describe("offline SQLite failure harness", () => {
     expect(engramQueries.every((sql) => sql.includes("$.isArchival"))).toBe(
       true,
     );
+  });
+
+  it("keeps a source-less observation in valid retry batches", async () => {
+    const sourceLessRow = {
+      id: 18,
+      engramSlug: "pyri",
+      content: "A synced memory without a source label.",
+      confidence: 0.85,
+      source: null,
+      createdAt: "2026-09-04T12:00:02.000Z",
+    };
+    const database = {
+      execAsync: vi.fn(async () => {}),
+      runAsync: vi.fn(async () => ({ lastInsertRowId: 1, changes: 1 })),
+      getFirstAsync: vi.fn(async (sql: string) =>
+        sql.includes("slug = ?") ? { id: 999 } : null,
+      ),
+      getAllAsync: vi.fn(async (sql: string) => {
+        if (sql.includes("FROM world_model w")) return [sourceLessRow];
+        return [];
+      }),
+    };
+    mocks.openDatabaseAsync.mockResolvedValue(database);
+
+    const firstBatch = await buildPendingSyncBatch("device-1");
+    expect(firstBatch.payload.observedEntries).toEqual([
+      {
+        syncId: "observed:18",
+        engramSlug: "pyri",
+        conversationSyncId: null,
+        content: sourceLessRow.content,
+        confidence: sourceLessRow.confidence,
+        createdAt: sourceLessRow.createdAt,
+      },
+    ]);
+    expect(firstBatch.payload.observedEntries[0]).not.toHaveProperty("source");
+    expect(() => SyncOfflineHistoryBody.parse(firstBatch.payload)).not.toThrow();
+    expect(JSON.stringify(firstBatch.payload)).not.toContain("undefined");
+
+    const retryBatch = await buildPendingSyncBatch("device-1");
+    expect(retryBatch.payload.observedEntries).toEqual(
+      firstBatch.payload.observedEntries,
+    );
+    expect(retryBatch.localRows.observedEntryIds).toEqual([18]);
   });
 
   it("defers observations for conversations omitted by the message budget", async () => {

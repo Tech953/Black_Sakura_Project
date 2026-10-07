@@ -7,6 +7,7 @@ import {
   summarizeWorldModel,
   TRUSTED_REBECCA_ADAPTIVE_SOURCES,
 } from "@workspace/engram-core";
+import { ListEngramWorldModelResponse } from "../../../../lib/api-zod/src/generated/api";
 
 const h = vi.hoisted(() => ({
   openDatabaseAsync: vi.fn(),
@@ -83,7 +84,7 @@ function createDatabase() {
       content: string;
       confidence: number;
       scope: string;
-      source: string;
+      source: string | null;
       createdAt: string;
       syncedAt: string;
     }>,
@@ -97,16 +98,18 @@ function createDatabase() {
         return { lastInsertRowId: 0, changes: 1 };
       }
       if (sql.includes("INSERT INTO world_model")) {
+        const observedInsert = sql.includes("'observed'");
+        const source = args[observedInsert ? 3 : 4];
         state.worldModel.push({
           id: state.worldModel.length + 1,
           engramId: Number(args[0]),
-          provenance: String(args[1]),
-          content: String(args[2]),
-          confidence: Number(args[3]),
+          provenance: observedInsert ? "observed" : String(args[1]),
+          content: String(args[observedInsert ? 1 : 2]),
+          confidence: Number(args[observedInsert ? 2 : 3]),
           scope: "private",
-          source: String(args[4]),
-          createdAt: String(args[5]),
-          syncedAt: String(args[6]),
+          source: source == null ? null : String(source),
+          createdAt: String(args[observedInsert ? 4 : 5]),
+          syncedAt: observedInsert ? null : String(args[6]),
         });
         return { lastInsertRowId: state.worldModel.length, changes: 1 };
       }
@@ -118,6 +121,9 @@ function createDatabase() {
           seedKey === state.liveConversation.seedKey
           ? state.liveConversation
           : null;
+      }
+      if (sql.includes("FROM engrams WHERE id = ?")) {
+        return Number(value) === state.rebecca.id ? state.rebecca : null;
       }
       if (!sql.includes("FROM engrams WHERE slug = ?")) return null;
       if (value === "rebecca") return state.rebecca;
@@ -268,6 +274,70 @@ describe("mobile Rebecca adaptive backfill", () => {
     expect(prompt).toContain("Rebecca source authority (binding");
     expect(prompt.indexOf("PRIMARY DIALOGUE")).toBeLessThan(
       prompt.indexOf("CROSSOVER CONTINUITY"),
+    );
+  });
+
+  it("persists source-less API memories without reserving source lookalikes", async () => {
+    const { database, state } = createDatabase();
+    h.openDatabaseAsync.mockResolvedValue(database);
+    const store = await import("./store");
+    await store.getDb();
+
+    const [responseEntry] = ListEngramWorldModelResponse.parse([
+      {
+        id: 900,
+        engramId: 1,
+        provenance: "observed",
+        content: "A memory without an available source.",
+        confidence: 0.73,
+        scope: "private",
+        createdAt: "2026-09-04T00:00:00.000Z",
+        updatedAt: "2026-09-04T00:00:00.000Z",
+      },
+    ]);
+    expect(responseEntry).not.toHaveProperty("source");
+
+    await store.appendObservedEntry({
+      engramId: responseEntry.engramId,
+      content: responseEntry.content,
+      confidence: responseEntry.confidence,
+      source: responseEntry.source,
+    });
+
+    const persisted = state.worldModel[state.worldModel.length - 1];
+    expect(persisted).toMatchObject({
+      provenance: "observed",
+      content: responseEntry.content,
+      confidence: responseEntry.confidence,
+      source: null,
+      syncedAt: null,
+    });
+    expect(await store.loadRecentWorldModel(1)).toContainEqual(
+      expect.objectContaining({
+        content: responseEntry.content,
+        source: null,
+      }),
+    );
+
+    const canonical = TRUSTED_REBECCA_ADAPTIVE_SOURCES[0];
+    for (const source of [`${canonical}:lookalike`, "undefined"]) {
+      state.worldModel.push({
+        id: state.worldModel.length + 1,
+        engramId: 1,
+        provenance: "observed",
+        content: "Not canonical source authority.",
+        confidence: 1,
+        scope: "private",
+        source,
+        createdAt: "2026-09-04T00:01:00.000Z",
+        syncedAt: null,
+      });
+    }
+
+    const authorityOnly = await store.loadRecentWorldModel(1, 0);
+    expect(authorityOnly).toHaveLength(REBECCA_ADAPTIVE_MEMORY_NODES.length);
+    expect(authorityOnly.map((entry) => entry.source).sort()).toEqual(
+      [...TRUSTED_REBECCA_ADAPTIVE_SOURCES].sort(),
     );
   });
 
