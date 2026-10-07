@@ -142,8 +142,9 @@ export async function markMessagesSeen(ownerId: string, ids: number[]): Promise<
 
 /**
  * Count an engram's human-contact attempts that actually reached the operator
- * (delivered/queued/digest — refusals excluded) within the trailing hour and day.
- * Used by the rate-limit policy; pure decision logic lives in engram-policy.ts.
+ * (delivered/queued/digest source attempts — refusals and generated summaries
+ * excluded) within the trailing hour and day. Used by the rate-limit policy;
+ * pure decision logic lives in engram-policy.ts.
  */
 export async function recentHumanCounts(
   ownerId: string,
@@ -168,6 +169,7 @@ export async function recentHumanCounts(
         ),
         eq(engramMessagesTable.channel, "human"),
         eq(engramMessagesTable.author, "engram"),
+        eq(engramMessagesTable.isDigest, false),
         inArray(engramMessagesTable.status, [...CONTACTED_STATUSES]),
         gte(engramMessagesTable.createdAt, dayAgo),
       ),
