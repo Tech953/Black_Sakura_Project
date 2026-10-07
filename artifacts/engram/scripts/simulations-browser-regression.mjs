@@ -91,7 +91,17 @@ class DevTools {
         returnByValue: true,
       });
     } catch (error) {
-      throw new Error(`${error.message}\nExpression: ${expression.slice(0, 240)}`);
+      if (!error.message?.includes("Inspected target navigated or closed")) {
+        throw new Error(`${error.message}\nExpression: ${expression.slice(0, 240)}`);
+      }
+      this.#socket?.close();
+      this.#socket = undefined;
+      await this.connect();
+      result = await this.call("Runtime.evaluate", {
+        expression,
+        awaitPromise: true,
+        returnByValue: true,
+      });
     }
     if (result.exceptionDetails) {
       throw new Error(result.exceptionDetails.text ?? "Browser evaluation failed");
@@ -365,6 +375,7 @@ const fixtureScript = String.raw`
   const createBodies = [];
   const patchBodies = [];
   const worldModelPatchBodies = [];
+  const fixtureInstanceId = crypto.randomUUID();
   const response = (body, status = 200) =>
     new Response(JSON.stringify(body), {
       status,
@@ -374,7 +385,8 @@ const fixtureScript = String.raw`
   window.__simulationBrowserFixture = {
     patchBodies,
     createBodies,
-    worldModelPatchBodies
+    worldModelPatchBodies,
+    instanceId: fixtureInstanceId
   };
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input.url;
@@ -531,6 +543,8 @@ async function waitFor(expression, label, timeout = 10000) {
     url: location.href,
     title: document.title,
     body: (document.body?.innerText || "").slice(0, 900),
+    readyState: document.readyState,
+    bodyHtml: (document.body?.innerHTML || "").slice(0, 600),
     errors: window.__simulationBrowserErrors ?? []
   })`);
   throw new Error(`Timed out waiting for ${label}: ${state}`);
@@ -556,13 +570,15 @@ async function waitForText(text, label) {
   );
 }
 
-async function reloadAndReconnect() {
-  await devtools.call("Page.reload", { ignoreCache: true });
-  devtools.close();
-  await delay(100);
-  await devtools.connect();
-  await devtools.call("Page.enable");
-  await devtools.call("Runtime.enable");
+async function reloadFixtureDocument(label) {
+  const previousInstance = await devtools.evaluate(
+    "window.__simulationBrowserFixture.instanceId",
+  );
+  await devtools.call("Page.reload");
+  await waitFor(
+    `window.__simulationBrowserFixture?.instanceId && window.__simulationBrowserFixture.instanceId !== ${JSON.stringify(previousInstance)}`,
+    label,
+  );
 }
 
 try {
@@ -730,7 +746,7 @@ try {
   ) {
     throw new Error(`Editing the source-less entry changed its source state: ${JSON.stringify({ editResult, editBody })}`);
   }
-  await reloadAndReconnect();
+  await reloadFixtureDocument("source-less world-model page refresh");
   await waitForText(
     "The eastern passage remains safe after review.",
     "edited source-less entry after refresh",
