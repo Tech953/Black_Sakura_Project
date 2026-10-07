@@ -53,25 +53,38 @@ describe("markMessagesSeen", () => {
 });
 
 describe("recentHumanCounts", () => {
-  it("counts only engram-authored delivered contact inside the rolling windows", async () => {
+  it("counts digest-status source attempts but not generated summaries", async () => {
     const now = new Date("2026-09-12T12:00:00.000Z");
     const at = (minutesAgo: number) =>
       new Date(now.getTime() - minutesAgo * 60 * 1000);
 
     h.state.messages = [
-      { id: 1, fromEngramId: 1, channel: "human", author: "engram", status: "delivered", createdAt: at(15) },
-      { id: 2, fromEngramId: 1, channel: "human", author: "engram", status: "queued", createdAt: at(120) },
-      { id: 3, fromEngramId: 1, channel: "human", author: "engram", status: "digest", createdAt: at(23 * 60) },
-      { id: 4, fromEngramId: 1, channel: "human", author: "engram", status: "blocked", createdAt: at(5) },
-      { id: 5, fromEngramId: 1, channel: "human", author: "engram", status: "delivered", createdAt: at(25 * 60) },
-      { id: 6, fromEngramId: 1, channel: "human", author: "operator", status: "delivered", createdAt: at(5) },
-      { id: 7, fromEngramId: 2, channel: "human", author: "engram", status: "delivered", createdAt: at(5) },
+      { id: 1, fromEngramId: 1, channel: "human", author: "engram", status: "delivered", isDigest: false, createdAt: at(15) },
+      { id: 2, fromEngramId: 1, channel: "human", author: "engram", status: "queued", isDigest: false, createdAt: at(120) },
+      { id: 3, fromEngramId: 1, channel: "human", author: "engram", status: "digest", isDigest: false, createdAt: at(23 * 60) },
+      { id: 4, fromEngramId: 1, channel: "human", author: "engram", status: "blocked", isDigest: false, createdAt: at(5) },
+      { id: 5, fromEngramId: 1, channel: "human", author: "engram", status: "delivered", isDigest: false, createdAt: at(25 * 60) },
+      { id: 6, fromEngramId: 1, channel: "human", author: "operator", status: "delivered", isDigest: false, createdAt: at(5) },
+      { id: 7, fromEngramId: 2, channel: "human", author: "engram", status: "delivered", isDigest: false, createdAt: at(5) },
     ];
 
-    await expect(recentHumanCounts("test-owner", 1, now)).resolves.toEqual({
+    const sourceCounts = await recentHumanCounts("test-owner", 1, now);
+    expect(sourceCounts).toEqual({
       hour: 1,
       day: 3,
     });
+
+    h.state.messages.push({
+      id: 8,
+      fromEngramId: 1,
+      channel: "human",
+      author: "engram",
+      status: "digest",
+      isDigest: true,
+      createdAt: at(15),
+    });
+
+    await expect(recentHumanCounts("test-owner", 1, now)).resolves.toEqual(sourceCounts);
   });
 });
 
