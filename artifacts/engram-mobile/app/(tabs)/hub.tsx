@@ -25,7 +25,6 @@ import {
   getListEngramMessagesQueryKey,
   useGetEngramStates,
   useGetHubControls,
-  useListEngramMessages,
   useListEngrams,
   useListHubActivity,
   useListHubPresence,
@@ -38,6 +37,12 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useOfflineMode } from "@/lib/offline/mode";
 import { cacheHumanMessages } from "@/lib/offline/store";
 import { getOperatorReplyDisplayState } from "@/lib/reply-acknowledgement";
+import { useHubHumanMessageHistory } from "@/lib/hub-message-history";
+import {
+  getHubHistoryControlState,
+  getHubHistoryControlTextKey,
+  getHubHistoryFailureTextKey,
+} from "@/lib/hub-message-pagination";
 import { queryClient } from "@/lib/query-client";
 import { e2eAuthBypass, useE2EAuthUserId } from "@/lib/e2e-auth";
 import { getAccountLiveStateQueryKey } from "@/lib/account-query-scope";
@@ -68,7 +73,8 @@ export default function HubScreen() {
   const activity = useListHubActivity({ limit: 12 });
   const simulations = useListSimulations();
   const controls = useGetHubControls();
-  const humanMessages = useListEngramMessages({ channel: "human", limit: 100 });
+  const humanHistory = useHubHumanMessageHistory(accountId, offline);
+  const humanMessages = humanHistory.query;
   const isLoading =
     offline
       ? humanMessages.isLoading
@@ -100,9 +106,9 @@ export default function HubScreen() {
 
   useEffect(() => {
     if (!offline && humanMessages.data) {
-      void cacheHumanMessages(humanMessages.data).catch(() => {});
+      void cacheHumanMessages(humanHistory.messages).catch(() => {});
     }
-  }, [humanMessages.data, offline]);
+  }, [humanHistory.messages, humanMessages.data, offline]);
 
   const refresh = () => {
     if (offline) {
@@ -281,8 +287,17 @@ export default function HubScreen() {
             {t(offline ? "hub.humanContactOffline" : "hub.humanContact")}
           </MonoLabel>
           <HumanContactSection
-            messages={humanMessages.data ?? []}
+            messages={humanHistory.messages}
             engramName={(id) => engramById.get(id)?.name}
+            olderHistory={{
+              enabled: !offline,
+              historyReady: humanHistory.historyReady,
+              hasOlder: humanHistory.hasOlder,
+              isLoadingOlder: humanHistory.isLoadingOlder,
+              hasError: humanHistory.loadOlderError,
+              loadOlder: humanHistory.loadOlder,
+              markMessageSeen: humanHistory.markMessageSeen,
+            }}
           />
           <MonoLabel style={styles.sectionLabel}>
             {t("hub.activity")}
@@ -318,9 +333,19 @@ export default function HubScreen() {
 function HumanContactSection({
   messages,
   engramName,
+  olderHistory,
 }: {
   messages: EngramMessage[];
   engramName: (id: number) => string | undefined;
+  olderHistory: {
+    enabled: boolean;
+    historyReady: boolean;
+    hasOlder: boolean;
+    isLoadingOlder: boolean;
+    hasError: boolean;
+    loadOlder: () => Promise<void>;
+    markMessageSeen: (messageId: number) => void;
+  };
 }) {
   const { t, i18n } = useTranslation("mobile");
   const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
@@ -333,6 +358,16 @@ function HumanContactSection({
   const markSeen = useMarkEngramMessagesSeen();
   const queryKey = getListEngramMessagesQueryKey({ channel: "human", limit: 100 });
   const incoming = messages;
+  const historyControl = getHubHistoryControlState({
+    enabled: olderHistory.enabled,
+    hasMessages: incoming.length > 0,
+    historyReady: olderHistory.historyReady,
+    hasOlder: olderHistory.hasOlder,
+    isLoading: olderHistory.isLoadingOlder,
+    hasError: olderHistory.hasError,
+  });
+  const historyControlTextKey = getHubHistoryControlTextKey(historyControl);
+  const historyFailureTextKey = getHubHistoryFailureTextKey(historyControl);
 
   const sendReply = async (message: EngramMessage) => {
     const content = drafts[message.id]?.trim() ?? "";
@@ -356,11 +391,7 @@ function HumanContactSection({
       await markSeen.mutateAsync({ data: { ids: [message.id] } });
       // Update only this row in place. Refetching the whole list can hide local
       // operator replies that are still waiting in the offline outbox.
-      queryClient.setQueryData<EngramMessage[]>(queryKey, (current) =>
-        current?.map((row) =>
-          row.id === message.id ? { ...row, seen: true } : row,
-        ),
-      );
+      olderHistory.markMessageSeen(message.id);
     } catch {
       setMarkSeenErrorId(message.id);
     }
@@ -543,6 +574,56 @@ function HumanContactSection({
           </View>
         );
       })}
+      {historyControl === "exhausted" ? (
+        <Text
+          accessibilityRole="text"
+          style={[styles.olderHistoryHint, { color: colors.mutedForeground }]}
+        >
+          {historyControlTextKey ? t(historyControlTextKey) : ""}
+        </Text>
+      ) : historyControlTextKey ? (
+        <View style={styles.olderHistoryFooter}>
+          {historyFailureTextKey ? (
+            <Text
+              accessibilityRole="text"
+              style={[styles.olderHistoryHint, { color: colors.destructive }]}
+            >
+              {t(historyFailureTextKey)}
+            </Text>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t(historyControlTextKey)}
+            accessibilityState={{
+              busy: olderHistory.isLoadingOlder,
+              disabled: olderHistory.isLoadingOlder,
+            }}
+            disabled={olderHistory.isLoadingOlder}
+            onPress={() => void olderHistory.loadOlder()}
+            style={({ pressed }) => [
+              styles.olderHistoryButton,
+              {
+                borderColor: colors.border,
+                flexDirection: rtl ? "row-reverse" : "row",
+                opacity: olderHistory.isLoadingOlder ? 0.6 : pressed ? 0.75 : 1,
+              },
+            ]}
+          >
+            {olderHistory.isLoadingOlder ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather
+                name={historyControl === "retry" ? "refresh-cw" : "chevron-up"}
+                size={14}
+                color={colors.primary}
+              />
+            )}
+            <Text style={[styles.olderHistoryButtonText, { color: colors.primary }]}>
+              {t(historyControlTextKey)}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -683,6 +764,29 @@ const styles = StyleSheet.create({
   activityMeta: { fontSize: 9, marginTop: 4, flexShrink: 1 },
   emptyActivity: { fontFamily: "Inter_400Regular", fontSize: 13, paddingVertical: 18 },
   humanContactList: { gap: 10 },
+  olderHistoryFooter: { alignItems: "center", gap: 8, paddingVertical: 10 },
+  olderHistoryHint: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    lineHeight: 18,
+    paddingVertical: 10,
+    textAlign: "center",
+  },
+  olderHistoryButton: {
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 6,
+    gap: 8,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  olderHistoryButtonText: {
+    fontFamily: "JetBrainsMono_500Medium",
+    fontSize: 11,
+    letterSpacing: 0.4,
+  },
   humanContactCard: { borderWidth: 1, borderRadius: 8, padding: 14, gap: 10 },
   humanContactHeader: {
     flexDirection: "row",

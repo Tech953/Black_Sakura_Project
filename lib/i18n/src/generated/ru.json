@@ -882,7 +882,12 @@
         "saved": "Saved",
         "pending": "Pending acknowledgement",
         "acknowledged": "Acknowledged"
-      }
+      },
+      "loadOlderMessages": "Load older messages",
+      "loadingOlderMessages": "Loading older messages…",
+      "olderMessagesLoadFailed": "Older messages could not be loaded.",
+      "retryOlderMessages": "Retry loading older messages",
+      "noOlderMessages": "You're at the beginning of this history."
     },
     "detail": {
       "fallbackTitle": "Engram",
