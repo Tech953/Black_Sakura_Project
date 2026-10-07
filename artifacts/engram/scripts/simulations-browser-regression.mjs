@@ -263,6 +263,16 @@ const fixtureScript = String.raw`
       updatedAt: "2026-09-12T12:08:00.000Z"
     },
     {
+      id: 707,
+      engramId: 1,
+      provenance: "inferred",
+      content: "The eastern passage stays marked safe.",
+      confidence: 0.73,
+      scope: "shared",
+      createdAt: "2026-09-12T12:07:30.000Z",
+      updatedAt: "2026-09-12T12:07:30.000Z"
+    },
+    {
       id: 704,
       engramId: 1,
       provenance: "remembered",
@@ -285,7 +295,11 @@ const fixtureScript = String.raw`
       updatedAt: "2026-09-12T12:06:00.000Z"
     }
   ];
-  let currentWorldModelEntries = [...worldModelEntries];
+  const worldModelStorageKey = "engram:simulations-browser:world-model-entries";
+  const storedWorldModelEntries = localStorage.getItem(worldModelStorageKey);
+  let currentWorldModelEntries = storedWorldModelEntries
+    ? JSON.parse(storedWorldModelEntries)
+    : [...worldModelEntries];
   const archivalWorldModelEntries = [{
     id: 705,
     engramId: 3,
@@ -350,13 +364,18 @@ const fixtureScript = String.raw`
   let simulations = [simulation];
   const createBodies = [];
   const patchBodies = [];
+  const worldModelPatchBodies = [];
   const response = (body, status = 200) =>
     new Response(JSON.stringify(body), {
       status,
       headers: { "Content-Type": "application/json" }
     });
   const currentSimulation = () => ({ ...simulation });
-  window.__simulationBrowserFixture = { patchBodies, createBodies };
+  window.__simulationBrowserFixture = {
+    patchBodies,
+    createBodies,
+    worldModelPatchBodies
+  };
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input.url;
     const method = String(
@@ -389,6 +408,31 @@ const fixtureScript = String.raw`
     const worldModelEntryMatch = pathname.match(
       /^\/api\/engrams\/(\d+)\/world-model\/(\d+)$/,
     );
+    if (worldModelEntryMatch && method === "PATCH") {
+      const engramId = Number(worldModelEntryMatch[1]);
+      const entryId = Number(worldModelEntryMatch[2]);
+      const body = JSON.parse(init.body ?? "{}");
+      worldModelPatchBodies.push({ engramId, entryId, body });
+      const existing = currentWorldModelEntries.find(
+        (entry) => entry.id === entryId && entry.engramId === engramId,
+      );
+      if (!existing) {
+        return response({ error: "World-model entry not found" }, 404);
+      }
+      const updated = {
+        ...existing,
+        ...body,
+        updatedAt: "2026-09-12T12:20:00.000Z"
+      };
+      currentWorldModelEntries = currentWorldModelEntries.map((entry) =>
+        entry.id === entryId && entry.engramId === engramId ? updated : entry,
+      );
+      localStorage.setItem(
+        worldModelStorageKey,
+        JSON.stringify(currentWorldModelEntries),
+      );
+      return response(updated);
+    }
     if (worldModelEntryMatch && method === "DELETE") {
       const engramId = Number(worldModelEntryMatch[1]);
       const entryId = Number(worldModelEntryMatch[2]);
@@ -512,6 +556,15 @@ async function waitForText(text, label) {
   );
 }
 
+async function reloadAndReconnect() {
+  await devtools.call("Page.reload", { ignoreCache: true });
+  devtools.close();
+  await delay(100);
+  await devtools.connect();
+  await devtools.call("Page.enable");
+  await devtools.call("Runtime.enable");
+}
+
 try {
   await devtools.connect();
   await devtools.call("Page.enable");
@@ -630,6 +683,81 @@ try {
   );
   if (nonMediaEntry.includes("MEDIA") || nonMediaEntry.includes("Media")) {
     throw new Error(`Non-media world-model source received a media badge: ${nonMediaEntry}`);
+  }
+  await waitFor(
+    "Boolean(document.querySelector('[data-testid=\"card-entry-707\"]'))",
+    "source-less world-model entry",
+  );
+  const sourceLessDisplay = await devtools.evaluate(`(() => {
+    const card = document.querySelector('[data-testid="card-entry-707"]');
+    return {
+      text: card?.innerText ?? "",
+      hasMediaBadge: Boolean(document.querySelector('[data-testid="media-source-707"]')),
+      hasMediaLink: Boolean(document.querySelector('[data-testid="link-media-source-707"]'))
+    };
+  })()`);
+  if (
+    !sourceLessDisplay.text.includes("The eastern passage stays marked safe.") ||
+    !sourceLessDisplay.text.toUpperCase().includes("INFERRED") ||
+    !sourceLessDisplay.text.toUpperCase().includes("SHARED") ||
+    !sourceLessDisplay.text.includes("73%") ||
+    sourceLessDisplay.text.includes("undefined") ||
+    sourceLessDisplay.text.includes("null") ||
+    sourceLessDisplay.hasMediaBadge ||
+    sourceLessDisplay.hasMediaLink
+  ) {
+    throw new Error(`Source-less world-model entry rendered incorrectly: ${JSON.stringify(sourceLessDisplay)}`);
+  }
+  const editResult = await devtools.evaluate(`window.fetch(
+    "/api/engrams/1/world-model/707",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: "The eastern passage remains safe after review.",
+        confidence: 0.79
+      })
+    }
+  ).then(async (response) => ({ status: response.status, entry: await response.json() }))`);
+  const editBody = await devtools.evaluate(
+    "window.__simulationBrowserFixture.worldModelPatchBodies.at(-1)",
+  );
+  if (
+    editResult?.status !== 200 ||
+    editResult.entry?.content !== "The eastern passage remains safe after review." ||
+    Object.hasOwn(editResult.entry ?? {}, "source") ||
+    Object.hasOwn(editBody?.body ?? {}, "source")
+  ) {
+    throw new Error(`Editing the source-less entry changed its source state: ${JSON.stringify({ editResult, editBody })}`);
+  }
+  await reloadAndReconnect();
+  await waitForText(
+    "The eastern passage remains safe after review.",
+    "edited source-less entry after refresh",
+  );
+  const refreshedSourceLessState = await devtools.evaluate(`window.fetch(
+    "/api/engrams/1/world-model"
+  ).then((response) => response.json()).then((entries) => {
+    const entry = entries.find((candidate) => candidate.id === 707);
+    const card = document.querySelector('[data-testid="card-entry-707"]');
+    return {
+      entry,
+      text: card?.innerText ?? "",
+      hasMediaBadge: Boolean(document.querySelector('[data-testid="media-source-707"]')),
+      hasMediaLink: Boolean(document.querySelector('[data-testid="link-media-source-707"]'))
+    };
+  })`);
+  if (
+    !refreshedSourceLessState.entry ||
+    Object.hasOwn(refreshedSourceLessState.entry, "source") ||
+    refreshedSourceLessState.entry.content !== "The eastern passage remains safe after review." ||
+    !refreshedSourceLessState.text.includes("The eastern passage remains safe after review.") ||
+    refreshedSourceLessState.text.includes("undefined") ||
+    refreshedSourceLessState.text.includes("null") ||
+    refreshedSourceLessState.hasMediaBadge ||
+    refreshedSourceLessState.hasMediaLink
+  ) {
+    throw new Error(`Refreshing the edited source-less entry changed its source state: ${JSON.stringify(refreshedSourceLessState)}`);
   }
   await waitFor(
     "Boolean(document.querySelector('[data-testid=\"card-entry-704\"]'))",
