@@ -31,6 +31,7 @@ import {
   useListHubPresence,
   useListHubSpaces,
   useListSimulations,
+  useMarkEngramMessagesSeen,
   useReplyToEngramMessage,
 } from "@workspace/api-client-react";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -326,7 +327,9 @@ function HumanContactSection({
   const [replyOpenId, setReplyOpenId] = useState<number | null>(null);
   const [drafts, setDrafts] = useState<Record<number, string>>({});
   const [replyErrorId, setReplyErrorId] = useState<number | null>(null);
+  const [markSeenErrorId, setMarkSeenErrorId] = useState<number | null>(null);
   const reply = useReplyToEngramMessage();
+  const markSeen = useMarkEngramMessagesSeen();
   const queryKey = getListEngramMessagesQueryKey({ channel: "human", limit: 100 });
   const incoming = messages;
 
@@ -342,6 +345,23 @@ function HumanContactSection({
     } catch {
       // The composer remains open so the operator can retry without losing text.
       setReplyErrorId(message.id);
+    }
+  };
+
+  const markRead = async (message: EngramMessage) => {
+    if (message.seen || message.id <= 0 || markSeen.isPending) return;
+    try {
+      setMarkSeenErrorId(null);
+      await markSeen.mutateAsync({ data: { ids: [message.id] } });
+      // Update only this row in place. Refetching the whole list can hide local
+      // operator replies that are still waiting in the offline outbox.
+      queryClient.setQueryData<EngramMessage[]>(queryKey, (current) =>
+        current?.map((row) =>
+          row.id === message.id ? { ...row, seen: true } : row,
+        ),
+      );
+    } catch {
+      setMarkSeenErrorId(message.id);
     }
   };
 
@@ -388,6 +408,36 @@ function HumanContactSection({
             <Text style={[styles.humanContactText, { color: colors.foreground }]}>
               {message.content}
             </Text>
+            {message.author === "engram" &&
+            message.id > 0 &&
+            !message.seen ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("hub.markRead")}
+                disabled={markSeen.isPending}
+                onPress={() => void markRead(message)}
+                style={({ pressed }) => [
+                  styles.replyToggle,
+                  { opacity: markSeen.isPending ? 0.45 : pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Feather name="check-circle" size={14} color={colors.primary} />
+                <Text
+                  style={[
+                    styles.replyToggleText,
+                    { color: colors.primary },
+                    rtl && styles.replyToggleTextRtl,
+                  ]}
+                >
+                  {t("hub.markRead")}
+                </Text>
+              </Pressable>
+            ) : null}
+            {markSeenErrorId === message.id ? (
+              <Text style={[styles.markReadError, { color: colors.destructive }]}>
+                {t("hub.markReadFailed")}
+              </Text>
+            ) : null}
             {message.author === "engram" ? (
               <Pressable
                 accessibilityRole="button"
@@ -649,6 +699,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   replyError: { fontFamily: "Inter_400Regular", fontSize: 12 },
+  markReadError: { fontFamily: "Inter_400Regular", fontSize: 12 },
 });
 
 type SimulationQuery = UseQueryResult<Simulation[]>;

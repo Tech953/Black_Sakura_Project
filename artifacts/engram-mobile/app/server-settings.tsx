@@ -189,7 +189,7 @@ export default function ServerSettingsScreen() {
       setOfflineMsg(t("settings.syncingHistory"));
       try {
         const result = await syncOfflineData();
-        queryClient.clear();
+        if (result.blockedRows === undefined) queryClient.clear();
         const syncMessage =
           result.blockedMessage ??
           (result.syncedRows > 0

@@ -5,9 +5,12 @@ const mocks = vi.hoisted(() => ({
   storageSet: vi.fn(),
   setBaseUrl: vi.fn(),
   syncOfflineHistory: vi.fn(),
+  markEngramMessagesSeen: vi.fn(),
   resolveServerUrl: vi.fn(),
   buildPendingSyncBatch: vi.fn(),
   markSyncBatchComplete: vi.fn(),
+  listPendingHumanSeenIds: vi.fn(),
+  markHumanMessagesSeenSynced: vi.fn(),
   syncBatchIds: vi.fn(),
   getOfflineStoreAccountId: vi.fn(),
   markConversationSyncBlocked: vi.fn(),
@@ -22,6 +25,7 @@ vi.mock("@react-native-async-storage/async-storage", () => ({
 vi.mock("@workspace/api-client-react", () => ({
   setBaseUrl: mocks.setBaseUrl,
   syncOfflineHistory: mocks.syncOfflineHistory,
+  markEngramMessagesSeen: mocks.markEngramMessagesSeen,
 }));
 vi.mock("../server-url", () => ({
   resolveServerUrl: mocks.resolveServerUrl,
@@ -29,6 +33,8 @@ vi.mock("../server-url", () => ({
 vi.mock("./store", () => ({
   buildPendingSyncBatch: mocks.buildPendingSyncBatch,
   markSyncBatchComplete: mocks.markSyncBatchComplete,
+  listPendingHumanSeenIds: mocks.listPendingHumanSeenIds,
+  markHumanMessagesSeenSynced: mocks.markHumanMessagesSeenSynced,
   syncBatchIds: mocks.syncBatchIds,
   getOfflineStoreAccountId: mocks.getOfflineStoreAccountId,
   markConversationSyncBlocked: mocks.markConversationSyncBlocked,
@@ -98,6 +104,8 @@ describe("offline reconnect synchronization", () => {
     mocks.storageGet.mockResolvedValue("device-1");
     mocks.resolveServerUrl.mockResolvedValue("https://engram.test");
     mocks.getOfflineStoreAccountId.mockReturnValue("account-a");
+    mocks.listPendingHumanSeenIds.mockResolvedValue([]);
+    mocks.markEngramMessagesSeen.mockResolvedValue({ updated: 0 });
     mocks.syncBatchIds.mockImplementation((batch) =>
       batch === pendingBatch ? ["conversation:7", "message:9"] : [],
     );
@@ -138,6 +146,48 @@ describe("offline reconnect synchronization", () => {
       pendingBatch.payload,
     );
     expect(mocks.markSyncBatchComplete).toHaveBeenCalledOnce();
+  });
+
+  it("reconciles offline human-message reads even when no history rows are pending", async () => {
+    mocks.buildPendingSyncBatch.mockResolvedValue(emptyBatch);
+    mocks.listPendingHumanSeenIds
+      .mockResolvedValueOnce([41, 42])
+      .mockResolvedValueOnce([41, 42])
+      .mockResolvedValueOnce([]);
+    mocks.markEngramMessagesSeen.mockResolvedValueOnce({ updated: 2 });
+
+    await expect(syncOfflineData()).resolves.toEqual({
+      syncedRows: 2,
+      batches: 1,
+    });
+
+    expect(mocks.markEngramMessagesSeen).toHaveBeenCalledWith({
+      ids: [41, 42],
+    });
+    expect(mocks.markHumanMessagesSeenSynced).toHaveBeenCalledWith([41, 42]);
+    expect(mocks.syncOfflineHistory).not.toHaveBeenCalled();
+  });
+
+  it("keeps offline read IDs queued when the server mark-seen request fails", async () => {
+    mocks.buildPendingSyncBatch.mockResolvedValue(emptyBatch);
+    mocks.listPendingHumanSeenIds
+      .mockResolvedValueOnce([41])
+      .mockResolvedValueOnce([41])
+      .mockResolvedValueOnce([41])
+      .mockResolvedValueOnce([41])
+      .mockResolvedValueOnce([]);
+    mocks.markEngramMessagesSeen
+      .mockRejectedValueOnce(new Error("network lost"))
+      .mockResolvedValueOnce({ updated: 1 });
+
+    await expect(syncOfflineData()).rejects.toThrow("network lost");
+    expect(mocks.markHumanMessagesSeenSynced).not.toHaveBeenCalled();
+
+    await expect(syncOfflineData()).resolves.toEqual({
+      syncedRows: 1,
+      batches: 1,
+    });
+    expect(mocks.markHumanMessagesSeenSynced).toHaveBeenCalledWith([41]);
   });
 
   it("does not clear local markers after a partial acknowledgement", async () => {

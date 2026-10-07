@@ -1,18 +1,25 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SyncOfflineHistoryBody } from "@workspace/api-zod";
-import { setBaseUrl, syncOfflineHistory } from "@workspace/api-client-react";
+import {
+  markEngramMessagesSeen,
+  setBaseUrl,
+  syncOfflineHistory,
+} from "@workspace/api-client-react";
 
 import { resolveServerUrl } from "../server-url";
 import {
   buildPendingSyncBatch,
   getOfflineStoreAccountId,
+  listPendingHumanSeenIds,
   markConversationSyncBlocked,
+  markHumanMessagesSeenSynced,
   markSyncBatchComplete,
   syncBatchIds,
 } from "./store";
 
 const DEVICE_ID_KEY = "engram.offlineSyncDeviceId";
 const MAX_BATCHES_PER_SYNC = 20;
+const HUMAN_SEEN_BATCH_SIZE = 100;
 
 export type OfflineSyncResult = {
   syncedRows: number;
@@ -47,6 +54,30 @@ async function assertServerReachable(serverUrl: string): Promise<void> {
   }
 }
 
+async function drainPendingHumanSeen(
+  assertSameAccount: () => void,
+): Promise<{ syncedRows: number; batches: number }> {
+  let syncedRows = 0;
+  let batches = 0;
+
+  while (batches < MAX_BATCHES_PER_SYNC) {
+    const ids = await listPendingHumanSeenIds(HUMAN_SEEN_BATCH_SIZE);
+    if (ids.length === 0) return { syncedRows, batches };
+
+    assertSameAccount();
+    await markEngramMessagesSeen({ ids });
+    assertSameAccount();
+    await markHumanMessagesSeenSynced(ids);
+    syncedRows += ids.length;
+    batches += 1;
+  }
+
+  if ((await listPendingHumanSeenIds(1)).length > 0) {
+    throw new Error("Offline read state requires another sync pass");
+  }
+  return { syncedRows, batches };
+}
+
 async function drainPendingRows(): Promise<OfflineSyncResult> {
   const syncAccountId = getOfflineStoreAccountId();
   if (!syncAccountId) {
@@ -63,10 +94,15 @@ async function drainPendingRows(): Promise<OfflineSyncResult> {
   };
   const deviceId = await getDeviceId();
   let batch = await buildPendingSyncBatch(deviceId);
-  if (syncBatchIds(batch).length === 0) {
+  const expectedIds = syncBatchIds(batch);
+  const pendingSeenIds = await listPendingHumanSeenIds(HUMAN_SEEN_BATCH_SIZE);
+  if (expectedIds.length === 0 && pendingSeenIds.length === 0) {
     return { syncedRows: 0, batches: 0 };
   }
   const validation = SyncOfflineHistoryBody.safeParse(batch.payload);
+  let blockedResult:
+    | Pick<OfflineSyncResult, "blockedRows" | "blockedMessage">
+    | undefined;
   if (!validation.success) {
     const conversationIndex = validation.error.issues.find(
       (issue) => issue.path[0] === "conversations",
@@ -92,23 +128,28 @@ async function drainPendingRows(): Promise<OfflineSyncResult> {
     if (Number.isFinite(localConversationId)) {
       await markConversationSyncBlocked(localConversationId, message);
     }
-    return {
-      syncedRows: 0,
-      batches: 0,
+    blockedResult = {
       blockedRows: 1,
       blockedMessage: message,
     };
+    if (pendingSeenIds.length === 0) {
+      return { syncedRows: 0, batches: 0, ...blockedResult };
+    }
   }
   const serverUrl = await resolveServerUrl();
   await assertServerReachable(serverUrl);
   assertSameAccount();
   setBaseUrl(serverUrl);
-  let syncedRows = 0;
-  let batches = 0;
+  const seenSync = await drainPendingHumanSeen(assertSameAccount);
+  let syncedRows = seenSync.syncedRows;
+  let batches = seenSync.batches;
+  if (blockedResult) return { syncedRows, batches, ...blockedResult };
+  if (expectedIds.length === 0) return { syncedRows, batches };
 
-  while (batches < MAX_BATCHES_PER_SYNC) {
-    const expectedIds = syncBatchIds(batch);
-    if (expectedIds.length === 0) return { syncedRows, batches };
+  let historyBatches = 0;
+  while (historyBatches < MAX_BATCHES_PER_SYNC) {
+    const currentIds = syncBatchIds(batch);
+    if (currentIds.length === 0) return { syncedRows, batches };
 
     // The bearer token is read by the API client at request time. Guard the
     // account immediately before that point so an in-flight sync can never
@@ -117,12 +158,13 @@ async function drainPendingRows(): Promise<OfflineSyncResult> {
     const result = await syncOfflineHistory(batch.payload);
     assertSameAccount();
     const acknowledged = new Set(result.syncedIds);
-    if (expectedIds.some((id) => !acknowledged.has(id))) {
+    if (currentIds.some((id) => !acknowledged.has(id))) {
       throw new Error("Server did not acknowledge every offline row");
     }
     await markSyncBatchComplete(batch);
-    syncedRows += expectedIds.length;
+    syncedRows += currentIds.length;
     batches += 1;
+    historyBatches += 1;
     batch = await buildPendingSyncBatch(deviceId);
   }
 

@@ -155,7 +155,13 @@ function AuthenticatedApp() {
       if (isOfflineMode()) return;
       void syncOfflineData()
         .then((result) => {
-          if (result.syncedRows > 0 && !isOfflineMode()) queryClient.clear();
+          if (
+            result.syncedRows > 0 &&
+            result.blockedRows === undefined &&
+            !isOfflineMode()
+          ) {
+            queryClient.clear();
+          }
         })
         .catch(() => {
           // Pending rows remain isolated in this user's database for a later retry.
