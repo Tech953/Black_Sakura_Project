@@ -3,12 +3,14 @@ import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+import { drizzle } from "drizzle-orm/node-postgres";
+import * as schema from "@workspace/db/schema";
 
 /**
  * PGlite serializes transactions on one connection, so it cannot prove that
  * two independent operators contend on the same row. When a real Postgres
  * connection is available, this suite uses a throwaway schema and separate
- * pooled connections to verify the per-engram lock.
+ * pooled connections to verify Hub movement and controls-event ordering.
  */
 const { hasPg, testSchema } = vi.hoisted(() => {
   const databaseUrl = process.env.DATABASE_URL;
@@ -19,7 +21,7 @@ const { hasPg, testSchema } = vi.hoisted(() => {
       );
     }
     process.stderr.write(
-      "[Hub concurrency] PostgreSQL checks skipped: DATABASE_URL is not set (2 tests will be reported as skipped).\n",
+      "[Hub concurrency] PostgreSQL checks skipped: DATABASE_URL is not set (4 tests will be reported as skipped).\n",
     );
     process.env.ENGRAM_DB_DRIVER = "pglite";
     delete process.env.PGLITE_DATA_DIR;
@@ -41,11 +43,15 @@ import {
   engramPresenceTable,
   engramsTable,
   ensureDatabaseReady,
+  hubControlsTable,
   hubActivityLogTable,
   hubSpacesTable,
+  pool,
 } from "@workspace/db";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { eq, sql } from "drizzle-orm";
+import { createControlsStore } from "./controls-store";
+import { subscribe, type EngramEvent } from "./events";
 import { movePresence } from "./hub-store";
 
 const suite = describe.skipIf(!hasPg);
@@ -55,6 +61,18 @@ const migrationsFolder = path.resolve(
 );
 const OWNER_ID = "hub-concurrency-test-owner";
 let temporaryMigrationsRoot: string | undefined;
+async function acquireTestPgClient() {
+  const pgPool = pool;
+  if (!pgPool) {
+    throw new Error("Hub PostgreSQL checks expected a node-postgres pool.");
+  }
+  return pgPool.connect();
+}
+type PgPoolClient = Awaited<ReturnType<typeof acquireTestPgClient>>;
+let controlsClientA: PgPoolClient | undefined;
+let controlsClientB: PgPoolClient | undefined;
+let controlsStoreA: ReturnType<typeof createControlsStore> | undefined;
+let controlsStoreB: ReturnType<typeof createControlsStore> | undefined;
 
 beforeAll(async () => {
   if (!hasPg) return;
@@ -83,17 +101,32 @@ beforeAll(async () => {
     migrationsSchema: testSchema,
     migrationsTable: "__drizzle_migrations",
   });
+
+  const clientA = await acquireTestPgClient();
+  const clientB = await acquireTestPgClient();
+  controlsClientA = clientA;
+  controlsClientB = clientB;
+  const [sessionA, sessionB] = await Promise.all([
+    clientA.query("SELECT pg_backend_pid() AS pid"),
+    clientB.query("SELECT pg_backend_pid() AS pid"),
+  ]);
+  expect(sessionA.rows[0]?.pid).not.toBe(sessionB.rows[0]?.pid);
+  controlsStoreA = createControlsStore(drizzle(clientA, { schema }));
+  controlsStoreB = createControlsStore(drizzle(clientB, { schema }));
 });
 
 beforeEach(async () => {
   if (!hasPg) return;
   await db.delete(hubActivityLogTable);
   await db.delete(engramPresenceTable);
+  await db.delete(hubControlsTable);
   await db.delete(engramsTable);
   await db.delete(hubSpacesTable);
 });
 
 afterAll(async () => {
+  controlsClientA?.release();
+  controlsClientB?.release();
   if (hasPg) {
     await db.execute(sql.raw(`DROP SCHEMA IF EXISTS "${testSchema}" CASCADE`));
   }
@@ -241,4 +274,57 @@ suite("movePresence — concurrent operators", () => {
       ],
     ]).toContainEqual(moveSummaries);
   });
+});
+
+suite("updateControls — concurrent PostgreSQL sessions", () => {
+  it.each([
+    { first: "paused" as const, second: "quietMode" as const },
+    { first: "quietMode" as const, second: "paused" as const },
+  ])(
+    "persists both flags and ends with the committed event when $first arrives first",
+    async ({ first, second }) => {
+      if (!controlsStoreA || !controlsStoreB) {
+        throw new Error("Hub controls PostgreSQL sessions were not initialized.");
+      }
+
+      const events: EngramEvent[] = [];
+      const unsubscribe = subscribe({ ownerId: OWNER_ID }, (event) => {
+        if (event.type === "controls.changed") events.push(event);
+      });
+      const updates = {
+        paused: {
+          store: controlsStoreA,
+          patch: { paused: true },
+        },
+        quietMode: {
+          store: controlsStoreB,
+          patch: { quietMode: true },
+        },
+      } as const;
+
+      try {
+        await Promise.all([
+          updates[first].store.updateControls(OWNER_ID, updates[first].patch),
+          updates[second].store.updateControls(OWNER_ID, updates[second].patch),
+        ]);
+      } finally {
+        unsubscribe();
+      }
+
+      const [persisted] = await db
+        .select()
+        .from(hubControlsTable)
+        .where(eq(hubControlsTable.ownerId, OWNER_ID));
+
+      expect(persisted).toMatchObject({ paused: true, quietMode: true });
+      expect(events).toHaveLength(2);
+      expect(events[0]?.data).toMatchObject(
+        first === "paused"
+          ? { paused: true, quietMode: false }
+          : { paused: false, quietMode: true },
+      );
+      expect(events.at(-1)?.ownerId).toBe(OWNER_ID);
+      expect(events.at(-1)?.data).toEqual(persisted);
+    },
+  );
 });
