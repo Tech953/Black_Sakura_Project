@@ -15,9 +15,15 @@ import {
   ensureDatabaseReady,
 } from "@workspace/db";
 import { and, eq, isNotNull, sql } from "drizzle-orm";
-import { createHumanDigest } from "./messages-store";
+import {
+  createHumanDigest,
+  loadRecentOperatorReplyRows,
+  markOperatorRepliesAcknowledged,
+  replyToMessage,
+} from "./messages-store";
 
 const OWNER_ID = "messages-store-digest-concurrency-owner";
+const OTHER_OWNER_ID = "messages-store-other-owner";
 const ready = ensureDatabaseReady({ seed: false });
 let engramSequence = 0;
 
@@ -31,12 +37,12 @@ afterAll(async () => {
   await closeDb();
 });
 
-async function insertEngram(): Promise<number> {
+async function insertEngram(ownerId = OWNER_ID): Promise<number> {
   engramSequence += 1;
   const [row] = await db
     .insert(engramsTable)
     .values({
-      ownerId: OWNER_ID,
+      ownerId,
       slug: `digest-concurrency-${engramSequence}`,
       name: "Digest Concurrency",
       title: "Digest concurrency test",
@@ -63,6 +69,33 @@ async function insertEngram(): Promise<number> {
       focusThemes: [],
     })
     .returning({ id: engramsTable.id });
+  return row.id;
+}
+
+async function insertIncomingHumanMessage(
+  fromEngramId: number,
+  content: string,
+  createdAt: Date,
+): Promise<number> {
+  const [row] = await db
+    .insert(engramMessagesTable)
+    .values({
+      fromEngramId,
+      toEngramId: null,
+      spaceId: null,
+      channel: "human",
+      author: "engram",
+      priority: "social",
+      status: "delivered",
+      content,
+      reason: null,
+      seen: false,
+      isDigest: false,
+      digestedAt: null,
+      deliveredAt: createdAt,
+      createdAt,
+    })
+    .returning({ id: engramMessagesTable.id });
   return row.id;
 }
 
@@ -278,5 +311,83 @@ describe("createHumanDigest — real database concurrency", () => {
       );
     expect(sourcesAfterRetry.map(({ id }) => id).sort()).toEqual(sourceIds.sort());
     expect(sourcesAfterRetry.every(({ digestedAt }) => digestedAt instanceof Date)).toBe(true);
+  });
+});
+
+describe("operator reply acknowledgement — real database ownership", () => {
+  it("preserves reply text and acknowledges only once for the owning user", async () => {
+    const ownerEngramId = await insertEngram(OWNER_ID);
+    const otherOwnerEngramId = await insertEngram(OTHER_OWNER_ID);
+    const createdAt = new Date("2026-09-13T13:00:00.000Z");
+    const ownerSourceId = await insertIncomingHumanMessage(
+      ownerEngramId,
+      "Can you check in when you have time?",
+      createdAt,
+    );
+    const otherOwnerSourceId = await insertIncomingHumanMessage(
+      otherOwnerEngramId,
+      "Please keep this reply private.",
+      createdAt,
+    );
+    const replyText = "I will check in after I finish this.";
+    const ownerReply = await replyToMessage(OWNER_ID, ownerSourceId, replyText, createdAt);
+    const otherOwnerReply = await replyToMessage(
+      OTHER_OWNER_ID,
+      otherOwnerSourceId,
+      "I will keep this separate.",
+      createdAt,
+    );
+
+    expect(ownerReply).not.toBeNull();
+    expect(otherOwnerReply).not.toBeNull();
+    if (!ownerReply || !otherOwnerReply) {
+      throw new Error("Expected both owner-scoped operator replies to be inserted");
+    }
+
+    await expect(loadRecentOperatorReplyRows(OWNER_ID, ownerEngramId)).resolves.toEqual([
+      {
+        id: ownerReply.id,
+        content: replyText,
+        acknowledgedAt: null,
+      },
+    ]);
+    await expect(
+      loadRecentOperatorReplyRows(OWNER_ID, otherOwnerEngramId),
+    ).resolves.toEqual([]);
+
+    const acknowledgedAt = new Date("2026-09-13T13:05:00.000Z");
+    await expect(
+      markOperatorRepliesAcknowledged(OWNER_ID, ownerEngramId, [ownerReply.id], acknowledgedAt),
+    ).resolves.toBe(1);
+    await expect(
+      markOperatorRepliesAcknowledged(OWNER_ID, ownerEngramId, [ownerReply.id], new Date()),
+    ).resolves.toBe(0);
+    await expect(
+      markOperatorRepliesAcknowledged(OWNER_ID, otherOwnerEngramId, [otherOwnerReply.id], acknowledgedAt),
+    ).resolves.toBe(0);
+
+    const [storedOwnerReply] = await db
+      .select({
+        content: engramMessagesTable.content,
+        acknowledgedAt: engramMessagesTable.acknowledgedAt,
+      })
+      .from(engramMessagesTable)
+      .where(eq(engramMessagesTable.id, ownerReply.id));
+    const [storedOtherOwnerReply] = await db
+      .select({
+        content: engramMessagesTable.content,
+        acknowledgedAt: engramMessagesTable.acknowledgedAt,
+      })
+      .from(engramMessagesTable)
+      .where(eq(engramMessagesTable.id, otherOwnerReply.id));
+
+    expect(storedOwnerReply).toEqual({
+      content: replyText,
+      acknowledgedAt,
+    });
+    expect(storedOtherOwnerReply).toEqual({
+      content: "I will keep this separate.",
+      acknowledgedAt: null,
+    });
   });
 });
