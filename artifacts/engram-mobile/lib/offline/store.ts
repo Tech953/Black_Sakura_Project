@@ -457,6 +457,10 @@ async function initializeDb(
       data TEXT NOT NULL,
       cachedAt TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS pending_human_seen (
+      messageId INTEGER PRIMARY KEY,
+      queuedAt TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS operator_replies (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       syncId TEXT NOT NULL UNIQUE,
@@ -975,10 +979,18 @@ export async function cacheHumanMessages(messages: EngramMessage[]): Promise<voi
   const cachedAt = nowIso();
   await d.withTransactionAsync(async () => {
     for (const message of messages) {
+      const pendingSeen = await d.getFirstAsync<{ messageId: number }>(
+        "SELECT messageId FROM pending_human_seen WHERE messageId = ?",
+        message.id,
+      );
+      const cachedMessage =
+        pendingSeen && message.channel === "human"
+          ? { ...message, seen: true }
+          : message;
       await d.runAsync(
         "INSERT OR REPLACE INTO human_messages (id, data, cachedAt) VALUES (?, ?, ?)",
         message.id,
-        JSON.stringify(message),
+        JSON.stringify(cachedMessage),
         cachedAt,
       );
     }
@@ -1021,6 +1033,84 @@ export async function listCachedHumanMessages(
   return messages
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id)
     .slice(0, limit);
+}
+
+/** Mark cached incoming human messages read and persist their server updates. */
+export async function markHumanMessagesSeen(ids: number[]): Promise<number> {
+  const d = await getDb();
+  const uniqueIds = [...new Set(ids)].filter(
+    (id) => Number.isSafeInteger(id) && id > 0,
+  );
+  let updated = 0;
+
+  await d.withTransactionAsync(async () => {
+    for (const id of uniqueIds) {
+      const row = await d.getFirstAsync<{ data: string }>(
+        "SELECT data FROM human_messages WHERE id = ?",
+        id,
+      );
+      if (!row) continue;
+
+      let message: EngramMessage;
+      try {
+        message = JSON.parse(row.data) as EngramMessage;
+      } catch {
+        continue;
+      }
+      if (
+        message.channel !== "human" ||
+        message.author !== "engram" ||
+        message.seen
+      ) {
+        continue;
+      }
+
+      await d.runAsync(
+        "UPDATE human_messages SET data = ? WHERE id = ?",
+        JSON.stringify({ ...message, seen: true }),
+        id,
+      );
+      await d.runAsync(
+        "INSERT OR IGNORE INTO pending_human_seen (messageId, queuedAt) VALUES (?, ?)",
+        id,
+        nowIso(),
+      );
+      updated += 1;
+    }
+  });
+
+  return updated;
+}
+
+export async function listPendingHumanSeenIds(limit = 100): Promise<number[]> {
+  const d = await getDb();
+  const safeLimit =
+    Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 500) : 100;
+  const rows = await d.getAllAsync<{ messageId: number }>(
+    `SELECT messageId FROM pending_human_seen
+     ORDER BY queuedAt, messageId
+     LIMIT ?`,
+    safeLimit,
+  );
+  return rows
+    .map(({ messageId }) => messageId)
+    .filter((id) => Number.isSafeInteger(id) && id > 0);
+}
+
+/** Clear only IDs acknowledged by the authenticated server mark-seen route. */
+export async function markHumanMessagesSeenSynced(ids: number[]): Promise<void> {
+  const d = await getDb();
+  const uniqueIds = [...new Set(ids)].filter(
+    (id) => Number.isSafeInteger(id) && id > 0,
+  );
+  await d.withTransactionAsync(async () => {
+    for (const id of uniqueIds) {
+      await d.runAsync(
+        "DELETE FROM pending_human_seen WHERE messageId = ?",
+        id,
+      );
+    }
+  });
 }
 
 export async function queueOperatorReply(

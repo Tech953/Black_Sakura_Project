@@ -156,6 +156,17 @@ export const offlineHandler: LocalHandler = async ({ method, path, body }) => {
     return ok(await store.listCachedHumanMessages(limit));
   }
 
+  if (url === "/api/messages/mark-seen" && method === "POST") {
+    const ids = (parsed as { ids?: unknown }).ids;
+    if (
+      !Array.isArray(ids) ||
+      ids.some((id) => typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0)
+    ) {
+      return { status: 400, body: { error: "Invalid mark-seen body" } };
+    }
+    return ok({ updated: await store.markHumanMessagesSeen(ids as number[]) });
+  }
+
   if ((m = url.match(/^\/api\/messages\/(\d+)\/reply$/)) && method === "POST") {
     const content = (parsed as { content?: unknown }).content;
     if (typeof content !== "string" || !content.trim()) {

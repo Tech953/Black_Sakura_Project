@@ -148,6 +148,8 @@
     "replyQueued": "Reply queued for sync",
     "replySending": "Sending…",
     "replyFailed": "Reply could not be sent.",
+    "markRead": "Mark as read",
+    "markReadFailed": "Could not mark as read. Try again.",
     "replyUnavailable": "This message is no longer available for reply.",
     "unknownSpace": "unknown space",
     "system": "system",

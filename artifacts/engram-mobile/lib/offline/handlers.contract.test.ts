@@ -17,6 +17,8 @@ import {
   ListEngramTransmissionsResponse,
   ListEngramWorldModelResponse,
   ListEngramsResponse,
+  MarkEngramMessagesSeenBody,
+  MarkEngramMessagesSeenResponse,
   MarkTransmissionsSeenBody,
   MarkTransmissionsSeenResponse,
   TransmitEngramResponse,
@@ -48,11 +50,13 @@ const state = {
   conversations: [] as Row[],
   messages: [] as Row[],
   humanMessages: [] as Row[],
+  pendingHumanSeen: [] as Row[],
   operatorReplies: [] as Row[],
 };
 
 const database = {
   execAsync: vi.fn(async () => {}),
+  withTransactionAsync: vi.fn(async (fn: () => Promise<void>) => fn()),
   runAsync: vi.fn(async (sql: string, ...args: unknown[]) => {
     if (sql.includes("INSERT OR IGNORE INTO engrams")) {
       const [slug, data, currentMood, createdAt, updatedAt] = args;
@@ -177,6 +181,29 @@ const database = {
       }
       return { lastInsertRowId: 0, changes };
     }
+    if (sql.includes("UPDATE human_messages SET data")) {
+      const [data, id] = args;
+      const row = state.humanMessages.find((candidate) => candidate.id === id);
+      if (row) row.data = data;
+      return { lastInsertRowId: 0, changes: row ? 1 : 0 };
+    }
+    if (sql.includes("INSERT OR REPLACE INTO human_messages")) {
+      const [id, data, cachedAt] = args;
+      const row = state.humanMessages.find((candidate) => candidate.id === id);
+      if (row) {
+        Object.assign(row, { data, cachedAt });
+      } else {
+        state.humanMessages.push({ id, data, cachedAt });
+      }
+      return { lastInsertRowId: Number(id), changes: 1 };
+    }
+    if (sql.includes("INSERT OR IGNORE INTO pending_human_seen")) {
+      const [messageId, queuedAt] = args;
+      if (!state.pendingHumanSeen.some((row) => row.messageId === messageId)) {
+        state.pendingHumanSeen.push({ messageId, queuedAt });
+      }
+      return { lastInsertRowId: 0, changes: 1 };
+    }
     if (sql.includes("INSERT INTO operator_replies")) {
       const [syncId, messageId, content, createdAt] = args;
       const id = state.operatorReplies.length + 1;
@@ -195,6 +222,9 @@ const database = {
     }
     if (sql.includes("FROM human_messages")) {
       return state.humanMessages.find((row) => row.id === id) ?? null;
+    }
+    if (sql.includes("FROM pending_human_seen")) {
+      return state.pendingHumanSeen.find((row) => row.messageId === id) ?? null;
     }
     return null;
   }),
@@ -216,6 +246,9 @@ const database = {
     if (sql.includes("FROM conversations c")) return [...state.conversations];
     if (sql.includes("FROM world_model")) return [];
     if (sql.includes("FROM human_messages")) return [...state.humanMessages];
+    if (sql.includes("FROM pending_human_seen")) {
+      return [...state.pendingHumanSeen];
+    }
     if (sql.includes("FROM operator_replies")) return [...state.operatorReplies];
     return [];
   }),
@@ -224,7 +257,7 @@ const database = {
 mocks.database = database;
 
 import { offlineHandler } from "./handlers";
-import { getDb } from "./store";
+import { cacheHumanMessages, getDb } from "./store";
 
 const ErrorResponse = z.object({ error: z.string() });
 
@@ -266,6 +299,7 @@ describe("offline handler generated response contracts", () => {
     state.conversations.length = 0;
     state.messages.length = 0;
     state.humanMessages.length = 0;
+    state.pendingHumanSeen.length = 0;
     state.operatorReplies.length = 0;
     for (const [index, engram] of state.engrams.entries()) {
       engram.isChatActive = index === 0 ? 1 : 0;
@@ -325,7 +359,7 @@ describe("offline handler generated response contracts", () => {
       status: "delivered",
       content: "Can you hear me?",
       reason: null,
-      seen: true,
+      seen: false,
       isDigest: false,
       digestGroupId: null,
       deliveredAt: "2026-09-13T12:00:00.000Z",
@@ -355,6 +389,33 @@ describe("offline handler generated response contracts", () => {
       status: "delivered",
       content: "I can hear you.",
     });
+
+    const marked = expectContract(
+      await request(
+        "POST",
+        "/api/messages/mark-seen",
+        MarkEngramMessagesSeenBody.parse({ ids: [1] }),
+      ),
+      200,
+      MarkEngramMessagesSeenResponse,
+    );
+    expect(marked.updated).toBe(1);
+    expect(state.pendingHumanSeen.map((row) => row.messageId)).toEqual([1]);
+
+    // A stale response may race the next reconnect sync. Keep the local seen
+    // state and the queued reply visible until the server acknowledges both.
+    await cacheHumanMessages([source as Parameters<typeof cacheHumanMessages>[0][number]]);
+    const refreshed = expectContract(
+      await request("GET", "/api/messages?channel=human"),
+      200,
+      ListEngramMessagesResponse,
+    );
+    expect(refreshed.find((message) => message.id === 1)?.seen).toBe(true);
+    expect(
+      refreshed.some(
+        (message) => message.author === "operator" && message.content === "I can hear you.",
+      ),
+    ).toBe(true);
   });
 
   it("matches inquiry create and list contracts", async () => {
@@ -502,6 +563,12 @@ describe("offline handler generated response contracts", () => {
       "invalid mark-seen ids",
       "POST",
       "/api/engrams/1/transmissions/mark-seen",
+      { ids: "all" },
+    ],
+    [
+      "invalid human-message mark-seen ids",
+      "POST",
+      "/api/messages/mark-seen",
       { ids: "all" },
     ],
     [
