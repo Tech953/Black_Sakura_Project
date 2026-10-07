@@ -1447,6 +1447,11 @@
     "toastRecordFailed": "记录信念失败",
     "toastRemovedTitle": "信念已移除",
     "toastRemovedDescription": "条目已从世界模型删除。",
-    "toastDeleteFailed": "删除失败"
+    "toastDeleteFailed": "删除失败",
+    "toastDeleteProtectedTitle": "Entry is protected",
+    "toastDeleteArchivedDescription": "This engram is archived. Its world-model entries are read-only.",
+    "toastDeleteReservedSourceDescription": "This memory is managed by Rebecca's source authority and cannot be deleted here.",
+    "toastDeleteNotFoundTitle": "Entry no longer found",
+    "toastDeleteNotFoundDescription": "This entry is no longer available. The world model is refreshing."
   }
 }

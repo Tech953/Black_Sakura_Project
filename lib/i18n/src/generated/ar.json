@@ -1447,6 +1447,11 @@
     "toastRecordFailed": "فشل تسجيل المعتقد",
     "toastRemovedTitle": "تمت إزالة المعتقد",
     "toastRemovedDescription": "تم حذف الإدخال من نموذج العالم.",
-    "toastDeleteFailed": "فشل الحذف"
+    "toastDeleteFailed": "فشل الحذف",
+    "toastDeleteProtectedTitle": "Entry is protected",
+    "toastDeleteArchivedDescription": "This engram is archived. Its world-model entries are read-only.",
+    "toastDeleteReservedSourceDescription": "This memory is managed by Rebecca's source authority and cannot be deleted here.",
+    "toastDeleteNotFoundTitle": "Entry no longer found",
+    "toastDeleteNotFoundDescription": "This entry is no longer available. The world model is refreshing."
   }
 }

@@ -1447,6 +1447,11 @@
     "toastRecordFailed": "신념 기록 실패",
     "toastRemovedTitle": "신념 제거됨",
     "toastRemovedDescription": "월드 모델에서 항목 삭제됨.",
-    "toastDeleteFailed": "삭제 실패"
+    "toastDeleteFailed": "삭제 실패",
+    "toastDeleteProtectedTitle": "Entry is protected",
+    "toastDeleteArchivedDescription": "This engram is archived. Its world-model entries are read-only.",
+    "toastDeleteReservedSourceDescription": "This memory is managed by Rebecca's source authority and cannot be deleted here.",
+    "toastDeleteNotFoundTitle": "Entry no longer found",
+    "toastDeleteNotFoundDescription": "This entry is no longer available. The world model is refreshing."
   }
 }
