@@ -697,14 +697,20 @@
       "hoursAgo": "منذ {{count}} س",
       "daysAgo": "منذ {{count}} ي"
     },
-    "noResultSaved": "No observations were saved. Retry to run perception again.",
-    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result.",
+    "noResultSaved": "لم يتم حفظ أي ملاحظات أثناء هذه المحاولة.",
+    "partialResultSaved": "هناك {{count}} ملاحظات موجودة لهذا الأصل. ستؤدي إعادة المحاولة بنجاح إلى استبدالها.",
     "fileTooLarge": "This file is too large to upload.",
     "fileTypeMismatch": "The file contents, MIME type, or filename extension do not agree. Choose the original file.",
     "unsupportedFileType": "This file type is not supported. Choose a text, image, audio, or video file.",
     "recoveredTitle": "Perception was recovered after an interruption",
-    "recoveredBody": "The worker stopped before completing this perception. No completed partial result was committed.",
-    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates."
+    "recoveredBody": "توقف معالج الخلفية قبل إكمال هذا الإدراك.",
+    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates.",
+    "providerFailureTitle": "مشكلة في مزود النموذج",
+    "providerFailureGuidance": "حاول مرة أخرى قريباً. إذا استمرت المشكلة، اطلب من أحد المشغلين التحقق من الوصول إلى المزود.",
+    "extractionFailureTitle": "تعذر قراءة المصدر",
+    "extractionFailureGuidance": "تأكد من أن الملف كامل ومدعوم. قم بتحميل نسخة صالحة إذا لزم الأمر؛ أعد المحاولة فقط إذا كنت متأكداً من صحة المصدر.",
+    "unknownFailureGuidance": "إذا كان المصدر يبدو صحيحاً، أعد المحاولة. إذا تكررت المشكلة، اطلب المساعدة من أحد المشغلين.",
+    "diagnosticLabel": "تفاصيل تقنية"
   },
   "memory": {
     "title": "بنية الذاكرة",

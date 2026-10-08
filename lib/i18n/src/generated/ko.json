@@ -697,14 +697,20 @@
       "hoursAgo": "{{count}}시간 전",
       "daysAgo": "{{count}}일 전"
     },
-    "noResultSaved": "No observations were saved. Retry to run perception again.",
-    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result.",
+    "noResultSaved": "이번 시도 중 저장된 관찰 결과가 없습니다.",
+    "partialResultSaved": "이 자산에 대해 {{count}}개의 기존 관찰 결과가 남아 있습니다. 성공적인 재시도 시 교체됩니다.",
     "fileTooLarge": "This file is too large to upload.",
     "fileTypeMismatch": "The file contents, MIME type, or filename extension do not agree. Choose the original file.",
     "unsupportedFileType": "This file type is not supported. Choose a text, image, audio, or video file.",
     "recoveredTitle": "Perception was recovered after an interruption",
-    "recoveredBody": "The worker stopped before completing this perception. No completed partial result was committed.",
-    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates."
+    "recoveredBody": "백그라운드 작업자가 이 인식을 완료하기 전에 중단되었습니다.",
+    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates.",
+    "providerFailureTitle": "모델 제공자 문제",
+    "providerFailureGuidance": "잠시 후 다시 시도하십시오. 문제가 계속되면 운영자에게 제공자 액세스 권한을 확인하도록 요청하십시오.",
+    "extractionFailureTitle": "소스를 읽을 수 없음",
+    "extractionFailureGuidance": "파일이 완전하고 지원되는 형식인지 확인하십시오. 필요한 경우 유효한 복사본을 업로드하고, 소스가 유효하다고 확신하는 경우에만 다시 시도하십시오.",
+    "unknownFailureGuidance": "소스가 올바르게 보이면 다시 시도하십시오. 문제가 반복되면 운영자에게 문의하십시오.",
+    "diagnosticLabel": "기술 세부 정보"
   },
   "memory": {
     "title": "메모리 아키텍처",

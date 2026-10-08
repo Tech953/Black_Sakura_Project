@@ -697,14 +697,20 @@
       "hoursAgo": "{{count}}ч назад",
       "daysAgo": "{{count}}д назад"
     },
-    "noResultSaved": "No observations were saved. Retry to run perception again.",
-    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result.",
+    "noResultSaved": "Во время этой попытки не было сохранено ни одной записи.",
+    "partialResultSaved": "Для этого актива осталось {{count}} существующих записей. Успешная повторная попытка заменит их.",
     "fileTooLarge": "This file is too large to upload.",
     "fileTypeMismatch": "The file contents, MIME type, or filename extension do not agree. Choose the original file.",
     "unsupportedFileType": "This file type is not supported. Choose a text, image, audio, or video file.",
     "recoveredTitle": "Perception was recovered after an interruption",
-    "recoveredBody": "The worker stopped before completing this perception. No completed partial result was committed.",
-    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates."
+    "recoveredBody": "Фоновый процесс был остановлен до завершения распознавания.",
+    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates.",
+    "providerFailureTitle": "Ошибка поставщика моделей",
+    "providerFailureGuidance": "Повторите попытку позже. Если проблема сохраняется, попросите оператора проверить доступ к поставщику.",
+    "extractionFailureTitle": "Не удалось прочитать источник",
+    "extractionFailureGuidance": "Убедитесь, что файл полный и поддерживается. При необходимости загрузите исправную копию; повторяйте попытку только если уверены в корректности источника.",
+    "unknownFailureGuidance": "Если источник выглядит корректно, повторите попытку. Если проблема повторяется, обратитесь к оператору.",
+    "diagnosticLabel": "Техническая информация"
   },
   "memory": {
     "title": "АРХИТЕКТУРА ПАМЯТИ",

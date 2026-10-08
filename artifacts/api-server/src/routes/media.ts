@@ -24,6 +24,7 @@ import {
   deleteMediaAsset,
   MEDIA_RECOVERY_ERROR,
 } from "../lib/media-store";
+import { decodeStoredMediaFailure } from "../lib/media-failure";
 import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 import { loadOwnedConversation, loadOwnedEngram } from "../lib/account-bootstrap";
 
@@ -50,6 +51,8 @@ function serializeAsset(a: MediaAsset) {
         ? "partial"
         : "none";
 
+  const decodedFailure = decodeStoredMediaFailure(a.error);
+
   return {
     id: a.id,
     engramId: a.engramId,
@@ -63,8 +66,11 @@ function serializeAsset(a: MediaAsset) {
     summary: a.summary ?? null,
     commentary: a.commentary ?? null,
     transcript: a.transcript ?? null,
-    error: a.error ?? null,
-    failureKind: a.error === MEDIA_RECOVERY_ERROR ? "recovered" : null,
+    error: decodedFailure.diagnostic,
+    failureKind:
+      a.error === MEDIA_RECOVERY_ERROR
+        ? "recovered"
+        : decodedFailure.failureKind,
     observationCount: a.observationCount,
     startedAt: a.startedAt ? a.startedAt.toISOString() : null,
     completedAt: a.completedAt ? a.completedAt.toISOString() : null,

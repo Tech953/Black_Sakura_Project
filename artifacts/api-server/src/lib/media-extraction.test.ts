@@ -36,16 +36,25 @@ const h = vi.hoisted(() => {
   }));
 
   const transcribeCreate = vi.fn(async () => ({ text: state.transcript }));
+  const normalizeLLMProviderError = vi.fn((error: unknown) => ({
+    message: error instanceof Error
+      ? `Normalized provider failure: ${error.message}`
+      : "Normalized provider failure",
+  }));
 
   const llm = {
     chat: { completions: { create: chatCreate } },
     audio: { transcriptions: { create: transcribeCreate } },
   };
 
-  return { state, chatCreate, transcribeCreate, llm };
+  return { state, chatCreate, transcribeCreate, normalizeLLMProviderError, llm };
 });
 
-vi.mock("./llm", () => ({ llm: h.llm, LLM_MODEL: "test-chat-model" }));
+vi.mock("./llm", () => ({
+  llm: h.llm,
+  LLM_MODEL: "test-chat-model",
+  normalizeLLMProviderError: h.normalizeLLMProviderError,
+}));
 vi.mock("openai", () => ({
   toFile: vi.fn(async (buf: Buffer, name: string, opts: unknown) => ({
     buf,
@@ -567,7 +576,24 @@ describe("extractFromMedia — unsupported modality", () => {
         { modality: "hologram", mimeType: "x/y", filename: "z" },
         Buffer.from(""),
       ),
-    ).rejects.toThrow(/Unsupported media modality/i);
+    ).rejects.toMatchObject({ failureKind: "extraction" });
+  });
+});
+
+describe("extractFromMedia — failure categories", () => {
+  it("classifies model-provider errors and preserves the normalized diagnostic", async () => {
+    h.chatCreate.mockRejectedValueOnce(new Error("provider timed out"));
+
+    await expect(
+      extractFromMedia(
+        { modality: "text", mimeType: "text/plain", filename: "harbor.txt" },
+        Buffer.from("A lighthouse."),
+      ),
+    ).rejects.toMatchObject({
+      failureKind: "provider",
+      message: "Normalized provider failure: provider timed out",
+    });
+    expect(h.normalizeLLMProviderError).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -655,6 +681,22 @@ describe("extractFromMedia — video", () => {
     // No usable audio bytes ⇒ transcription is never attempted.
     expect(h.transcribeCreate).not.toHaveBeenCalled();
     expect(h.chatCreate).not.toHaveBeenCalled();
+  });
+
+  it("preserves a provider failure when a video has no usable frames", async () => {
+    h.state.frameBuf = Buffer.from("");
+    h.state.audioBuf = Buffer.from("audio-track");
+    h.transcribeCreate.mockRejectedValueOnce(new Error("provider unavailable"));
+
+    await expect(
+      extractFromMedia(
+        { modality: "video", mimeType: "video/mp4", filename: "audio-only.mp4" },
+        Buffer.from("video-bytes"),
+      ),
+    ).rejects.toMatchObject({
+      failureKind: "provider",
+      message: "Normalized provider failure: provider unavailable",
+    });
   });
 
   it("caps combined observations at MAX_OBSERVATIONS (8) when both channels contribute", async () => {
