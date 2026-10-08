@@ -219,6 +219,18 @@ function createPackagedSmokeUpdater(): AutoUpdaterLike {
 }
 
 appendSmokeDiagnostic("main.log", "desktop main process initialized\n");
+if (
+  packagedSmokeEnabled &&
+  process.env.ENGRAM_PACKAGED_DIAGNOSTICS_PROBE === "1"
+) {
+  appendSmokeDiagnostic(
+    "main.log",
+    `diagnostics probe marker token=diagnostic-probe-secret path=${path.join(
+      os.tmpdir(),
+      "engram-diagnostics-probe",
+    )}\n`,
+  );
+}
 
 function bundledModelAvailable(): boolean {
   const spec = offlineModelSpec();
@@ -1090,6 +1102,14 @@ async function startServer(
     env,
     stdio: ["ignore", "pipe", "pipe"],
   });
+  appendSmokeDiagnostic(
+    "server.stdout.log",
+    "embedded server stdout capture active\n",
+  );
+  appendSmokeDiagnostic(
+    "server.stderr.log",
+    "embedded server stderr capture active\n",
+  );
   let startupStderr = "";
   let startupSettled = false;
   const rememberStartupStderr = (chunk: Buffer): void => {

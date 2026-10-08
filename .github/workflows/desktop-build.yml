@@ -586,9 +586,61 @@ jobs:
               tee artifacts/desktop/.ci-smoke/diagnostics/smoke.log
           fi
           status=${PIPESTATUS[0]}
-          node artifacts/desktop/scripts/sanitize-smoke-log.mjs \
-            artifacts/desktop/.ci-smoke/diagnostics/smoke.log || true
+          if ! node artifacts/desktop/scripts/sanitize-smoke-log.mjs \
+            artifacts/desktop/.ci-smoke/diagnostics/smoke.log; then
+            rm -f artifacts/desktop/.ci-smoke/diagnostics/smoke.log
+            echo "Could not sanitize packaged smoke log; removed it to avoid uploading unsafe diagnostics." >&2
+            exit 1
+          fi
           set -e
+          exit "$status"
+
+      - name: Probe packaged failure diagnostics
+        id: packaged_diagnostics_probe
+        if: always() && steps.packaged_smoke.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          EXPECT_SLIM_LLM: ${{ matrix.platform == 'win' && '1' || '0' }}
+          ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          ENGRAM_PACKAGED_GGUF_MULTI_MODEL: "1"
+          ENGRAM_EXPECTED_ARCH: ${{ matrix.arch }}
+          ENGRAM_PACKAGED_DIAGNOSTICS_PROBE: "1"
+          ENGRAM_SMOKE_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/diagnostics/failure-probe
+        run: |
+          set -uo pipefail
+          PROBE_DIR="artifacts/desktop/.ci-smoke/diagnostics/failure-probe"
+          mkdir -p "$PROBE_DIR"
+          set +e
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            xvfb-run -a pnpm --filter @workspace/desktop run smoke 2>&1 |
+              tee "$PROBE_DIR/smoke.log"
+          else
+            pnpm --filter @workspace/desktop run smoke 2>&1 |
+              tee "$PROBE_DIR/smoke.log"
+          fi
+          status=${PIPESTATUS[0]}
+          if [ -f "$PROBE_DIR/smoke.log" ]; then
+            node artifacts/desktop/scripts/sanitize-smoke-log.mjs \
+              "$PROBE_DIR/smoke.log"
+            sanitize_status=$?
+          else
+            sanitize_status=1
+          fi
+          set -e
+          if [ "$sanitize_status" -ne 0 ]; then
+            rm -f "$PROBE_DIR/smoke.log"
+            exit "$sanitize_status"
+          fi
+          if [ "$status" -eq 0 ]; then
+            echo "The packaged diagnostics probe unexpectedly passed." >&2
+            exit 1
+          fi
+          if ! grep -Fq "intentional diagnostics probe: health check failure" "$PROBE_DIR/smoke.log"; then
+            echo "The smoke process failed before reaching the intentional health-check probe." >&2
+            exit 1
+          fi
+          echo "Observed and sanitized the expected packaged health-check failure (exit $status)."
           exit "$status"
 
       - name: Collect packaged smoke diagnostics
@@ -597,54 +649,23 @@ jobs:
         run: |
           set -euo pipefail
           DIAGNOSTICS="artifacts/desktop/.ci-smoke/diagnostics"
-          mkdir -p "$DIAGNOSTICS"
-          PLATFORM="${{ matrix.platform }}" OUTPUT="$DIAGNOSTICS/resource-listing.txt" node <<'NODE'
-          const fs = require("node:fs");
-          const path = require("node:path");
+          node artifacts/desktop/scripts/collect-smoke-diagnostics.mjs \
+            "${{ matrix.platform }}" \
+            "artifacts/desktop/release" \
+            "$DIAGNOSTICS/resource-listing.txt"
 
-          const platform = process.env.PLATFORM;
-          const output = process.env.OUTPUT;
-          const release = path.join("artifacts", "desktop", "release");
-          const roots = [];
-          if (platform === "mac") {
-            if (fs.existsSync(release)) {
-              for (const entry of fs.readdirSync(release, { withFileTypes: true })) {
-                if (entry.isDirectory() && entry.name.startsWith("mac")) {
-                  roots.push(path.join(release, entry.name, "ENGRAM.app", "Contents", "Resources"));
-                }
-              }
-            }
-          } else {
-            roots.push(path.join(release, platform === "win" ? "win-unpacked" : "linux-unpacked", "resources"));
-          }
-
-          const lines = [`platform=${platform}`];
-          let found = false;
-          function walk(root, current, depth) {
-            if (depth > 4) return;
-            for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-              const full = path.join(current, entry.name);
-              const relative = path.relative(".", full).split(path.sep).join("/");
-              if (entry.isDirectory()) {
-                walk(root, full, depth + 1);
-              } else if (entry.isFile() || entry.isSymbolicLink()) {
-                found = true;
-                lines.push(`${relative}\t${fs.lstatSync(full).size} bytes`);
-              }
-            }
-          }
-          for (const root of roots) {
-            if (fs.existsSync(root) && fs.statSync(root).isDirectory()) {
-              lines.push(`[resource-root] ${path.relative(".", root).split(path.sep).join("/")}`);
-              walk(root, root, 0);
-            }
-          }
-          if (!found) lines.push("[resource-root] no packaged resources directory found");
-          fs.writeFileSync(output, `${lines.sort().join("\n")}\n`);
-          NODE
+      - name: Verify packaged failure diagnostics
+        if: always() && steps.packaged_diagnostics_probe.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node artifacts/desktop/scripts/verify-smoke-diagnostics.mjs \
+            "artifacts/desktop/.ci-smoke/diagnostics/failure-probe" \
+            "${{ matrix.platform }}" \
+            "artifacts/desktop/.ci-smoke/diagnostics/resource-listing.txt"
 
       - name: Upload packaged smoke diagnostics
-        if: always() && (steps.packaged_smoke.outcome == 'failure' || steps.windows_zip_check.outcome == 'failure') && (matrix.platform == 'win' || matrix.platform == 'mac')
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: desktop-smoke-diagnostics-${{ matrix.platform }}-${{ matrix.arch }}
@@ -875,8 +896,12 @@ jobs:
           xvfb-run -a pnpm --filter @workspace/desktop run smoke 2>&1 |
             tee artifacts/desktop/.ci-smoke/diagnostics/smoke.log
           status=${PIPESTATUS[0]}
-          node artifacts/desktop/scripts/sanitize-smoke-log.mjs \
-            artifacts/desktop/.ci-smoke/diagnostics/smoke.log || true
+          if ! node artifacts/desktop/scripts/sanitize-smoke-log.mjs \
+            artifacts/desktop/.ci-smoke/diagnostics/smoke.log; then
+            rm -f artifacts/desktop/.ci-smoke/diagnostics/smoke.log
+            echo "Could not sanitize packaged smoke log; removed it to avoid uploading unsafe diagnostics." >&2
+            exit 1
+          fi
           set -e
           exit "$status"
 
@@ -886,41 +911,10 @@ jobs:
         run: |
           set -euo pipefail
           DIAGNOSTICS="artifacts/desktop/.ci-smoke/diagnostics"
-          mkdir -p "$DIAGNOSTICS"
-          PLATFORM=linux OUTPUT="$DIAGNOSTICS/resource-listing.txt" node <<'NODE'
-          const fs = require("node:fs");
-          const path = require("node:path");
-
-          const platform = process.env.PLATFORM;
-          const output = process.env.OUTPUT;
-          const release = path.join("artifacts", "desktop", "release");
-          const roots = [
-            path.join(release, "linux-unpacked", "resources"),
-          ];
-          const lines = [`platform=${platform}`];
-          let found = false;
-          function walk(root, current, depth) {
-            if (depth > 4) return;
-            for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-              const full = path.join(current, entry.name);
-              const relative = path.relative(".", full).split(path.sep).join("/");
-              if (entry.isDirectory()) {
-                walk(root, full, depth + 1);
-              } else if (entry.isFile() || entry.isSymbolicLink()) {
-                found = true;
-                lines.push(`${relative}\t${fs.lstatSync(full).size} bytes`);
-              }
-            }
-          }
-          for (const root of roots) {
-            if (fs.existsSync(root) && fs.statSync(root).isDirectory()) {
-              lines.push(`[resource-root] ${path.relative(".", root).split(path.sep).join("/")}`);
-              walk(root, root, 0);
-            }
-          }
-          if (!found) lines.push("[resource-root] no packaged resources directory found");
-          fs.writeFileSync(output, `${lines.sort().join("\n")}\n`);
-          NODE
+          node artifacts/desktop/scripts/collect-smoke-diagnostics.mjs \
+            linux \
+            "artifacts/desktop/release" \
+            "$DIAGNOSTICS/resource-listing.txt"
 
       - name: Upload packaged smoke diagnostics
         if: always()
