@@ -719,7 +719,14 @@
     "purgedTitle": "Память очищена",
     "purgedDescription": "Запись удалена из хранилища.",
     "allLayers": "Все слои",
-    "emptyState": "В этом слое нет закодированных воспоминаний"
+    "emptyState": "В этом слое нет закодированных воспоминаний",
+    "encodedView": "Закодированная память",
+    "mediaEmpty": "Медиа-наблюдения еще не записаны",
+    "mediaEmptyForEngram": "Медиа-наблюдения для {{name}} не записаны",
+    "mediaObservations": "Медиа-наблюдения",
+    "openSource": "Открыть источник",
+    "openSourceAsset": "Открыть медиа-источник",
+    "selectEngram": "Выберите engram"
   },
   "mobile": {
     "tabs": {
@@ -910,7 +917,10 @@
       "environment": "Окружение",
       "openEnvironment": "Открыть окружение",
       "activeEngram": "Активный engram",
-      "makeActive": "Сделать активным"
+      "makeActive": "Сделать активным",
+      "mediaMemory": "Медиа-наблюдения",
+      "noMediaMemory": "Медиа-наблюдения еще недоступны.",
+      "openMediaSource": "Открыть медиа-источник"
     },
     "environment": {
       "kicker": "ENGRAM // ENVIRONMENT",

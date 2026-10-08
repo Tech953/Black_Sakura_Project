@@ -719,7 +719,14 @@
     "purgedTitle": "Memoria purgada",
     "purgedDescription": "Entrada eliminada del almacén.",
     "allLayers": "Todas las capas",
-    "emptyState": "No hay memorias codificadas en esta capa"
+    "emptyState": "No hay memorias codificadas en esta capa",
+    "encodedView": "Memoria codificada",
+    "mediaEmpty": "Aún no se han registrado observaciones de medios",
+    "mediaEmptyForEngram": "No se han registrado observaciones de medios para {{name}}",
+    "mediaObservations": "Observaciones de medios",
+    "openSource": "Abrir fuente",
+    "openSourceAsset": "Abrir fuente multimedia",
+    "selectEngram": "Seleccionar un engram"
   },
   "mobile": {
     "tabs": {
@@ -910,7 +917,10 @@
       "environment": "Entorno",
       "openEnvironment": "Abrir entorno",
       "activeEngram": "Engram activo",
-      "makeActive": "Activar"
+      "makeActive": "Activar",
+      "mediaMemory": "Observaciones de medios",
+      "noMediaMemory": "Aún no hay observaciones de medios disponibles.",
+      "openMediaSource": "Abrir fuente multimedia"
     },
     "environment": {
       "kicker": "ENGRAM // ENVIRONMENT",

@@ -196,38 +196,55 @@ async function main() {
       : {};
     const result: Record<string, Tree> = {};
     for (const [ns, tree] of Object.entries(english)) {
-      // Reuse an existing namespace translation when its key set still matches.
-      if (existing[ns] && keysMatch(tree, existing[ns])) {
+      // Reuse existing translations and refresh only requested English fallbacks.
+      const namespaceMatches =
+        existing[ns] !== undefined && keysMatch(tree, existing[ns]);
+      const scopedKeys = refreshKeys
+        .filter((key) => key.startsWith(`${ns}.`))
+        .map((key) => key.slice(ns.length + 1));
+      if (
+        existing[ns] &&
+        (namespaceMatches || (refreshKeys.length > 0 && scopedKeys.length > 0))
+      ) {
         if (refreshFallbacks || refreshKeys.length > 0) {
           const selectedTree =
             refreshKeys.length > 0
-              ? pickTreePaths(
-                  tree,
-                  refreshKeys
-                    .filter((key) => key.startsWith(`${ns}.`))
-                    .map((key) => key.slice(ns.length + 1)),
-                )
+              ? pickTreePaths(tree, scopedKeys)
               : tree;
+          const base = namespaceMatches
+            ? existing[ns]
+            : (fillMissingEnglish(existing[ns], tree) as Tree);
           const fallbackTree = englishFallbackTree(
             selectedTree,
             refreshKeys.length > 0
-              ? pickTreePaths(
-                  existing[ns],
-                  refreshKeys
-                    .filter((key) => key.startsWith(`${ns}.`))
-                    .map((key) => key.slice(ns.length + 1)),
-                )
-              : existing[ns],
+              ? pickTreePaths(base, scopedKeys)
+              : base,
           );
           if (fallbackTree) {
             console.log(`refreshing English fallbacks in ${ns} -> ${lang.code}`);
-            const translated = await translateNamespace(ns, fallbackTree as Tree, lang);
-            result[ns] = mergeTrees(existing[ns], translated) as Tree;
+            try {
+              const translated = await translateNamespace(
+                ns,
+                fallbackTree as Tree,
+                lang,
+              );
+              result[ns] = mergeTrees(base, translated) as Tree;
+            } catch (error) {
+              if (!fallbackOnError) throw error;
+              console.warn(
+                `  [${lang.code}/${ns}] translation unavailable; preserving existing values and adding English fallbacks`,
+              );
+              result[ns] = base;
+            }
             continue;
           }
+          result[ns] = base;
+          continue;
         }
-        result[ns] = existing[ns];
-        continue;
+        if (namespaceMatches) {
+          result[ns] = existing[ns];
+          continue;
+        }
       }
       console.log(`translating ${ns} -> ${lang.code} (${Object.keys(tree).length} top-level keys)`);
       try {

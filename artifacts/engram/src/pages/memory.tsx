@@ -184,7 +184,7 @@ export default function Memory() {
           }`}
           data-testid="filter-encoded-memory"
         >
-          {t("encodedView", { defaultValue: "Encoded memory" })}
+          {t("encodedView")}
         </button>
         <button
           onClick={() => setActiveView("media")}
@@ -196,7 +196,7 @@ export default function Memory() {
           data-testid="filter-media-observations"
         >
           <ScanEye className="w-3 h-3" />
-          {t("mediaObservations", { defaultValue: "Media observations" })}
+          {t("mediaObservations")}
         </button>
       </div>
 
@@ -292,7 +292,7 @@ function MediaMemoryView({
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-2 flex-wrap" aria-label={t("selectEngram", { defaultValue: "Select an engram" })}>
+      <div className="flex gap-2 flex-wrap" aria-label={t("selectEngram")}>
         {engrams.map((engram) => (
           <button
             key={engram.id}
@@ -320,11 +320,8 @@ function MediaMemoryView({
           <Eye className="w-8 h-8 mb-4 opacity-30" />
           <p className="text-xs uppercase tracking-widest">
             {selected
-              ? t("mediaEmptyForEngram", {
-                  defaultValue: "No media observations recorded for {{name}}",
-                  name: selected.name,
-                })
-              : t("mediaEmpty", { defaultValue: "No media observations recorded yet" })}
+              ? t("mediaEmptyForEngram", { name: selected.name })
+              : t("mediaEmpty")}
           </p>
         </div>
       ) : (
@@ -354,11 +351,11 @@ function MediaMemoryView({
                     <Link
                       href={`/media?asset=${assetId}`}
                       className="shrink-0 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-cyan-300/80 hover:text-cyan-200"
-                      aria-label={t("openSource", { defaultValue: "Open source asset" })}
+                      aria-label={t("openSourceAsset")}
                       data-testid={`link-media-memory-source-${entry.id}`}
                     >
                       <ExternalLink className="w-3 h-3" />
-                      {t("openSource", { defaultValue: "Open source" })}
+                      {t("openSource")}
                     </Link>
                   </div>
                 </CardContent>

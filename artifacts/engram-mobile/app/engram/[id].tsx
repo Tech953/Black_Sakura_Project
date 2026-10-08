@@ -300,7 +300,7 @@ export default function EngramDetailScreen() {
             ) : null}
           </Section>
 
-          <Section label={t("detail.mediaMemory", { defaultValue: "Media observations" })} colors={colors}>
+          <Section label={t("detail.mediaMemory")} colors={colors}>
             {mediaObservations.map((observation) => {
               const assetId = mediaAssetId(observation.source)!;
               const asset = mediaById.get(assetId);
@@ -316,7 +316,7 @@ export default function EngramDetailScreen() {
                     {observation.content}
                   </Text>
                   <PrimaryButton
-                    label={asset?.filename ?? t("detail.openMediaSource", { defaultValue: "Open source asset" })}
+                    label={asset?.filename ?? t("detail.openMediaSource")}
                     tone="outline"
                     onPress={() =>
                       router.push({
@@ -331,7 +331,7 @@ export default function EngramDetailScreen() {
             })}
             {!mediaObservations.length ? (
               <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
-                {t("detail.noMediaMemory", { defaultValue: "No media observations are available yet." })}
+                {t("detail.noMediaMemory")}
               </Text>
             ) : null}
           </Section>

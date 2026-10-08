@@ -719,7 +719,14 @@
     "purgedTitle": "स्मृति हटाई गई",
     "purgedDescription": "प्रविष्टि भंडार से हटाई गई।",
     "allLayers": "सभी लेयर",
-    "emptyState": "इस लेयर में कोई स्मृति एन्कोड नहीं है"
+    "emptyState": "इस लेयर में कोई स्मृति एन्कोड नहीं है",
+    "encodedView": "एन्कोडेड मेमोरी",
+    "mediaEmpty": "अभी तक कोई मीडिया अवलोकन दर्ज नहीं किया गया है",
+    "mediaEmptyForEngram": "{{name}} के लिए कोई मीडिया अवलोकन दर्ज नहीं किया गया है",
+    "mediaObservations": "मीडिया अवलोकन",
+    "openSource": "स्रोत खोलें",
+    "openSourceAsset": "मीडिया स्रोत खोलें",
+    "selectEngram": "एक engram चुनें"
   },
   "mobile": {
     "tabs": {
@@ -910,7 +917,10 @@
       "environment": "पर्यावरण",
       "openEnvironment": "पर्यावरण खोलें",
       "activeEngram": "सक्रिय engram",
-      "makeActive": "सक्रिय करें"
+      "makeActive": "सक्रिय करें",
+      "mediaMemory": "मीडिया अवलोकन",
+      "noMediaMemory": "अभी तक कोई मीडिया अवलोकन उपलब्ध नहीं है।",
+      "openMediaSource": "मीडिया स्रोत खोलें"
     },
     "environment": {
       "kicker": "ENGRAM // ENVIRONMENT",

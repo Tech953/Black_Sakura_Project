@@ -719,7 +719,14 @@
     "purgedTitle": "메모리 제거됨",
     "purgedDescription": "저장소에서 항목 제거됨.",
     "allLayers": "모든 계층",
-    "emptyState": "이 계층에 인코드된 메모리 없음"
+    "emptyState": "이 계층에 인코드된 메모리 없음",
+    "encodedView": "인코딩된 메모리",
+    "mediaEmpty": "아직 기록된 미디어 관찰이 없습니다",
+    "mediaEmptyForEngram": "{{name}}에 대해 기록된 미디어 관찰이 없습니다",
+    "mediaObservations": "미디어 관찰",
+    "openSource": "소스 열기",
+    "openSourceAsset": "미디어 소스 열기",
+    "selectEngram": "engram 선택"
   },
   "mobile": {
     "tabs": {
@@ -910,7 +917,10 @@
       "environment": "환경",
       "openEnvironment": "환경 열기",
       "activeEngram": "활성 engram",
-      "makeActive": "활성화"
+      "makeActive": "활성화",
+      "mediaMemory": "미디어 관찰",
+      "noMediaMemory": "아직 이용 가능한 미디어 관찰이 없습니다.",
+      "openMediaSource": "미디어 소스 열기"
     },
     "environment": {
       "kicker": "ENGRAM // ENVIRONMENT",
