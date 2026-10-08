@@ -14,3 +14,9 @@ Control writes and their `controls.changed` publication must share one per-owner
 **Why:** concurrent partial updates can each succeed while their asynchronous post-write event emissions complete out of order, leaving subscribers with a stale final control state even though the database is correct.
 
 **How to apply:** Queue the database write and event publication together per owner; keep the durable flags in the database and treat the in-process queue only as event-order protection.
+
+Publish `controls.changed` with the serialized Hub response shape, including both boolean flags and an ISO `updatedAt`; do not depend on SSE's JSON encoder to normalize a database row.
+
+**Why:** In-process listeners receive payloads before JSON serialization, while SSE converts `Date` values during encoding. Publishing a raw row made the two client paths disagree and exposed an internal owner field only in memory.
+
+**How to apply:** Reuse the controls response serializer for both the API and event producer, and verify the same payload through direct event listeners and SSE.

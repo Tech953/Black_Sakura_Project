@@ -23,7 +23,7 @@
 - [Artifact generation subsystem](artifact-generation.md) — how engram artifact generation mirrors media perception; why there is no world-model "generated" write path.
 - [Engram initiative & human-contact policy](engram-initiative-policy.md) — safety semantics of the autonomy/human-contact layer (quiet mode, fail-closed modes, anti-coercion).
 - [Human contact digests](human-contact-digest.md) — periodic low-priority contact summaries must claim source rows transactionally and remain visible as distinct bus messages.
-- [Hub controls updates](hub-controls.md) — partial control updates must preserve flags omitted by the caller.
+- [Hub controls updates](hub-controls.md) — preserve omitted flags and publish ordered, API-shaped control events.
 - [Engram engine restart safety](engram-engine-restart-safety.md) — why every autonomy guard in the engine must be DB-backed, not in-memory.
 - [Archival engram branches (Full Rezz)](archival-engram-branch.md) — original is read-only forever; the user-approved interactive continuation stays a separate writable branch.
 - [Engram authoring (seed data)](engram-authoring.md) — non-obvious couplings when adding a new engram to the seed.

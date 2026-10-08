@@ -6,6 +6,23 @@ import { publishEvent } from "./events";
 
 const controlUpdateTails = new Map<string, Promise<void>>();
 
+export interface SerializedHubControls {
+  id: number;
+  paused: boolean;
+  quietMode: boolean;
+  updatedAt: string;
+}
+
+/** Shape the persisted controls row exactly as the Hub controls API does. */
+export function serializeHubControls(controls: HubControls): SerializedHubControls {
+  return {
+    id: controls.id,
+    paused: controls.paused,
+    quietMode: controls.quietMode,
+    updatedAt: controls.updatedAt.toISOString(),
+  };
+}
+
 async function withControlUpdateLock<T>(
   ownerId: string,
   operation: () => Promise<T>,
@@ -88,7 +105,11 @@ export function createControlsStore(database: AppDatabase) {
         .set(update)
         .where(eq(hubControlsTable.ownerId, ownerId))
         .returning();
-      publishEvent({ type: "controls.changed", ownerId, data: row });
+      publishEvent({
+        type: "controls.changed",
+        ownerId,
+        data: serializeHubControls(row),
+      });
       return row;
     });
   }

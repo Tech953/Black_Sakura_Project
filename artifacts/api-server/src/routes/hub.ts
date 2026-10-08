@@ -10,7 +10,6 @@ import {
   ListHubSpaceTranscriptParams,
   UpdateHubControlsBody,
 } from "@workspace/api-zod";
-import type { HubControls } from "@workspace/db";
 import {
   loadSpaces,
   loadSpaceById,
@@ -19,7 +18,11 @@ import {
   movePresence,
 } from "../lib/hub-store";
 import { loadSpaceMessages } from "../lib/messages-store";
-import { loadControls, updateControls } from "../lib/controls-store";
+import {
+  loadControls,
+  serializeHubControls,
+  updateControls,
+} from "../lib/controls-store";
 import { publishEvent } from "../lib/events";
 import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 
@@ -64,15 +67,6 @@ function serializeActivity(a: HubActivity) {
     kind: a.kind,
     summary: a.summary,
     createdAt: a.createdAt.toISOString(),
-  };
-}
-
-function serializeControls(c: HubControls) {
-  return {
-    id: c.id,
-    paused: c.paused,
-    quietMode: c.quietMode,
-    updatedAt: c.updatedAt.toISOString(),
   };
 }
 
@@ -195,7 +189,7 @@ router.get("/hub/spaces/:spaceId/transcript", async (req, res) => {
 
 router.get("/hub/controls", async (req, res) => {
   const controls = await loadControls(req.userId!);
-  res.json(serializeControls(controls));
+  res.json(serializeHubControls(controls));
 });
 
 router.put("/hub/controls", async (req, res) => {
@@ -208,7 +202,7 @@ router.put("/hub/controls", async (req, res) => {
     paused: parsed.data.paused,
     quietMode: parsed.data.quietMode,
   });
-  res.json(serializeControls(controls));
+  res.json(serializeHubControls(controls));
 });
 
 export default router;
