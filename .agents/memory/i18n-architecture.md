@@ -5,7 +5,7 @@ description: How internationalization works across web, mobile, and engram repli
 
 # i18n architecture (ENGRAM)
 
-- Shared package `@workspace/i18n` (lib/i18n): English namespace JSONs under `src/en/` are the ONLY authored source. `src/generated/<lang>.json` are machine-translated full trees — never hand-edit them; rerun `pnpm --filter @workspace/scripts run generate:locales [langs...]` (resumable: reuses namespaces whose key sets still match, so it's cheap after small English edits; run per-language batches to fit shell timeout windows).
+- Shared package `@workspace/i18n` (lib/i18n): English namespace JSONs under `src/en/` are the ONLY authored source. `src/generated/<lang>.json` are machine-translated full trees; don't author values by hand. Normally rerun `pnpm --filter @workspace/scripts run generate:locales [langs...]` (resumable: reuses namespaces whose key sets still match, so it's cheap after small English edits; run per-language batches to fit shell timeout windows).
 - **Adding/changing English strings requires regenerating locales**, or the other 11 languages silently fall back to English (returnEmptyString: false + fallbackLng).
 - If the translation provider is unavailable, preserve the generated locale key trees with English fallback values and regenerate translations later; key parity still must pass the locale check.
 - Namespaces are one-per-web-page plus `mobile` (all mobile strings) and shared `common`/`nav`/`settings`. Keep page work in its own namespace file to allow parallel edits without index.ts conflicts.
@@ -13,4 +13,6 @@ description: How internationalization works across web, mobile, and engram repli
 - Prompt builders in engram-core take `responseLanguageInstruction` as a pre-built string (engram-core does NOT depend on @workspace/i18n; callers build the instruction).
 - Web: settings in localStorage (`engram.uiLang`, `engram.replyLang` = match|auto|code) via `src/i18n.ts`; RTL handled by `document.dir` (ar).
 - Mobile: AsyncStorage is async — all reads go through the exported `i18nReady` hydration promise and `resolveReplyLanguage()` is async (await it at send time); selection-version guards stop a slow hydration read from clobbering a newer in-session choice. Arabic applies native RTL through `I18nManager`; direction changes trigger one guarded app reload, while web updates the document direction immediately.
-- The locale provider's model-list preflight may return HTTP 405 even when chat completions work; preserve key parity and use a scoped generation path rather than weakening runtime English fallback.
+- The locale provider's model-list preflight may return HTTP 405; chat completions can still fail with HTTP 401. In that case, `LOCALE_FALLBACK_ON_ERROR=1` plus `--refresh-key=<namespace.path>` preserves existing translations and key parity; for UI strings that must be localized immediately, machine-translate only the new values and merge them without changing other generated content.
+  **Why:** A configured provider returned 405 for model listing and 401 for chat completion, while the scoped fallback path still preserved the locale trees.
+  **How to apply:** Use the fallback command for the missing key, then use the internal translation callback only for immediate localization; rerun the normal generator after the provider recovers.

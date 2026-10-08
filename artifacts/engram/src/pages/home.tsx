@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getListEngramWorldModelQueryKey,
   getListMediaQueryKey,
@@ -57,22 +57,44 @@ export default function Home() {
     () => engrams?.find((engram) => engram.isChatActive) ?? engrams?.[0],
     [engrams],
   );
+  const [recentPerceptionEngramId, setRecentPerceptionEngramId] = useState<
+    number | null
+  >(null);
+  const recentPerceptionEngram = useMemo(
+    () =>
+      engrams?.find((engram) => engram.id === recentPerceptionEngramId) ??
+      activeEngram,
+    [activeEngram, engrams, recentPerceptionEngramId],
+  );
+  useEffect(() => {
+    if (
+      recentPerceptionEngramId !== null &&
+      engrams &&
+      !engrams.some((engram) => engram.id === recentPerceptionEngramId)
+    ) {
+      setRecentPerceptionEngramId(null);
+    }
+  }, [engrams, recentPerceptionEngramId]);
   const { data: worldModel, isLoading: worldModelLoading } = useListEngramWorldModel(
-    activeEngram?.id ?? 0,
+    recentPerceptionEngram?.id ?? 0,
     {
       query: {
-        enabled: activeEngram !== undefined,
-        queryKey: getListEngramWorldModelQueryKey(activeEngram?.id ?? 0),
+        enabled: recentPerceptionEngram !== undefined,
+        queryKey: getListEngramWorldModelQueryKey(recentPerceptionEngram?.id ?? 0),
       },
     },
   );
   const { data: mediaAssets, isLoading: mediaLoading } = useListMedia(
-    activeEngram ? { engramId: activeEngram.id } : undefined,
+    recentPerceptionEngram
+      ? { engramId: recentPerceptionEngram.id }
+      : undefined,
     {
       query: {
-        enabled: activeEngram !== undefined,
+        enabled: recentPerceptionEngram !== undefined,
         queryKey: getListMediaQueryKey(
-          activeEngram ? { engramId: activeEngram.id } : undefined,
+          recentPerceptionEngram
+            ? { engramId: recentPerceptionEngram.id }
+            : undefined,
         ),
       },
     },
@@ -156,7 +178,9 @@ export default function Home() {
       </div>
 
       <RecentPerceptionCard
-        activeEngram={activeEngram}
+        engrams={engrams ?? []}
+        selectedEngram={recentPerceptionEngram}
+        onSelectEngram={setRecentPerceptionEngramId}
         worldModel={worldModel}
         mediaAssets={mediaAssets}
         loading={worldModelLoading || mediaLoading}
@@ -219,13 +243,17 @@ export default function Home() {
 }
 
 function RecentPerceptionCard({
-  activeEngram,
+  engrams,
+  selectedEngram,
+  onSelectEngram,
   worldModel,
   mediaAssets,
   loading,
   t,
 }: {
-  activeEngram?: { id: number; name: string; symbol?: string };
+  engrams: Array<{ id: number; name: string; symbol?: string }>;
+  selectedEngram?: { id: number; name: string; symbol?: string };
+  onSelectEngram: (engramId: number) => void;
   worldModel?: WorldModelEntry[];
   mediaAssets?: Array<{ id: number; filename: string; status: string }>;
   loading: boolean;
@@ -258,18 +286,45 @@ function RecentPerceptionCard({
       className="bg-card/40 border-cyan-400/20 backdrop-blur-sm"
       data-testid="recent-media-perception"
     >
-      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-        <div>
+      <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
           <CardTitle className="font-display tracking-widest text-sm text-cyan-300/90">
             {t("recentPerceptionTitle")}
           </CardTitle>
           <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
-            {activeEngram
+            {selectedEngram
               ? t("recentPerceptionSubtitle", {
-                  name: `${activeEngram.symbol ? `${activeEngram.symbol} ` : ""}${activeEngram.name}`,
+                  name: `${selectedEngram.symbol ? `${selectedEngram.symbol} ` : ""}${selectedEngram.name}`,
                 })
               : t("recentPerceptionNoEngram")}
           </p>
+          {engrams.length > 1 ? (
+            <div className="mt-3 max-w-sm">
+              <label
+                htmlFor="recent-perception-engram"
+                className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground"
+              >
+                {t("recentPerceptionSelectLabel")}
+              </label>
+              <select
+                id="recent-perception-engram"
+                value={selectedEngram ? String(selectedEngram.id) : ""}
+                onChange={(event) => {
+                  const nextId = Number(event.target.value);
+                  if (Number.isSafeInteger(nextId)) onSelectEngram(nextId);
+                }}
+                className="mt-1 h-8 w-full border border-cyan-400/20 bg-background/70 px-2 font-mono text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400/60"
+                data-testid="select-recent-perception-engram"
+              >
+                {engrams.map((engram) => (
+                  <option key={engram.id} value={engram.id}>
+                    {engram.symbol ? `${engram.symbol} ` : ""}
+                    {engram.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
         </div>
         <Link
           href="/world-model"

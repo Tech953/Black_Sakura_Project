@@ -16,6 +16,7 @@
   "recentPerceptionTitle": "Recent Perception",
   "recentPerceptionSubtitle": "{{name}} · latest media-derived observations",
   "recentPerceptionNoEngram": "No engram is available",
+  "recentPerceptionSelectLabel": "Choose an engram to inspect",
   "recentPerceptionObserved": "OBSERVED",
   "recentPerceptionProcessing": "Media perception is still in progress",
   "recentPerceptionEmpty": "No media observations recorded yet",

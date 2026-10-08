@@ -156,7 +156,8 @@ const fixtureScript = String.raw`
       simulationEnabled: true,
       humanContactEnabled: true,
       artifactGenerationEnabled: true,
-      isArchival: false
+      isArchival: false,
+      isChatActive: true
     },
     {
       id: 2,
@@ -166,7 +167,19 @@ const fixtureScript = String.raw`
       simulationEnabled: true,
       humanContactEnabled: true,
       artifactGenerationEnabled: true,
-      isArchival: false
+      isArchival: false,
+      isChatActive: false
+    },
+    {
+      id: 4,
+      name: "Quiet Surveyor",
+      symbol: "○",
+      mode: "simulation",
+      simulationEnabled: true,
+      humanContactEnabled: true,
+      artifactGenerationEnabled: true,
+      isArchival: false,
+      isChatActive: false
     }
   ];
   const archivalEngram = {
@@ -217,6 +230,17 @@ const fixtureScript = String.raw`
     createdAt: "2026-09-12T12:10:00.000Z",
     updatedAt: "2026-09-12T12:10:01.000Z"
   };
+  const routeScoutMediaAsset = {
+    ...mediaAsset,
+    id: 511,
+    engramId: 2,
+    filename: "north-pass.txt",
+    summary: "A route marker was recorded.",
+    commentary: "The scout found the north pass.",
+    observationCount: 1,
+    createdAt: "2026-09-12T12:14:00.000Z",
+    updatedAt: "2026-09-12T12:14:01.000Z"
+  };
   const processingMediaAsset = {
     ...mediaAsset,
     id: 503,
@@ -228,6 +252,12 @@ const fixtureScript = String.raw`
     observationCount: 0,
     completedAt: null,
     updatedAt: "2026-09-12T12:11:00.000Z"
+  };
+  const routeScoutProcessingAsset = {
+    ...processingMediaAsset,
+    id: 512,
+    engramId: 2,
+    filename: "queued-map.txt"
   };
   const recoveredMediaAsset = {
     ...mediaAsset,
@@ -254,6 +284,16 @@ const fixtureScript = String.raw`
     provenance: "observed",
     source: "media:501",
     createdAt: "2026-09-12T12:10:01.000Z"
+  }];
+  const routeScoutObservations = [{
+    id: 611,
+    mediaAssetId: 511,
+    engramId: 2,
+    content: "A route marker was recorded.",
+    confidence: 0.91,
+    provenance: "observed",
+    source: "media:511",
+    createdAt: "2026-09-12T12:14:01.000Z"
   }];
   const worldModelEntries = [
     {
@@ -322,6 +362,17 @@ const fixtureScript = String.raw`
       updatedAt: "2026-09-12T12:06:00.000Z"
     }
   ];
+  const routeScoutWorldModelEntries = [{
+    id: 708,
+    engramId: 2,
+    provenance: "observed",
+    content: "A route marker was recorded.",
+    confidence: 0.91,
+    scope: "private",
+    source: "media:511",
+    createdAt: "2026-09-12T12:14:01.000Z",
+    updatedAt: "2026-09-12T12:14:01.000Z"
+  }];
   const worldModelStorageKey = "engram:simulations-browser:world-model-entries";
   const storedWorldModelEntries = localStorage.getItem(worldModelStorageKey);
   let currentWorldModelEntries = storedWorldModelEntries
@@ -393,6 +444,7 @@ const fixtureScript = String.raw`
   const patchBodies = [];
   const worldModelPatchBodies = [];
   const fixtureInstanceId = crypto.randomUUID();
+  const writeRequests = [];
   const response = (body, status = 200) =>
     new Response(JSON.stringify(body), {
       status,
@@ -403,6 +455,8 @@ const fixtureScript = String.raw`
     patchBodies,
     createBodies,
     worldModelPatchBodies,
+    writeRequests,
+    engrams,
     instanceId: fixtureInstanceId
   };
   window.fetch = async (input, init = {}) => {
@@ -411,6 +465,9 @@ const fixtureScript = String.raw`
       init.method ?? (typeof input === "string" ? "GET" : input.method ?? "GET")
     ).toUpperCase();
     const pathname = new URL(url, window.location.origin).pathname;
+    if (method !== "GET" && method !== "HEAD") {
+      writeRequests.push({ pathname, method });
+    }
     if (pathname === "/api/engrams" && method === "GET") {
       return response(
         window.location.pathname === "/world-model"
@@ -430,6 +487,12 @@ const fixtureScript = String.raw`
     if (pathname === "/api/events") return response({});
     if (pathname === "/api/engrams/1/world-model" && method === "GET") {
       return response(currentWorldModelEntries);
+    }
+    if (pathname === "/api/engrams/2/world-model" && method === "GET") {
+      return response(routeScoutWorldModelEntries);
+    }
+    if (pathname === "/api/engrams/4/world-model" && method === "GET") {
+      return response([]);
     }
     if (pathname === "/api/engrams/3/world-model" && method === "GET") {
       return response(archivalWorldModelEntries);
@@ -482,10 +545,30 @@ const fixtureScript = String.raw`
       return response({ error: "World-model entry not found" }, 404);
     }
     if (pathname === "/api/media" && method === "GET") {
-      return response([mediaAsset, processingMediaAsset, recoveredMediaAsset]);
+      const engramId = new URL(url, window.location.origin).searchParams.get(
+        "engramId",
+      );
+      const assets = [
+        mediaAsset,
+        processingMediaAsset,
+        recoveredMediaAsset,
+        routeScoutMediaAsset,
+        routeScoutProcessingAsset,
+      ];
+      return response(
+        engramId === null
+          ? assets
+          : assets.filter((asset) => asset.engramId === Number(engramId)),
+      );
     }
     if (pathname === "/api/media/501" && method === "GET") {
       return response({ asset: mediaAsset, observations: mediaObservations });
+    }
+    if (pathname === "/api/media/511" && method === "GET") {
+      return response({
+        asset: routeScoutMediaAsset,
+        observations: routeScoutObservations,
+      });
     }
     if (pathname === "/api/media/504" && method === "GET") {
       return response({ asset: recoveredMediaAsset, observations: [] });
@@ -626,6 +709,19 @@ async function click(expression, label) {
     return true;
   })()`);
   if (!clicked) throw new Error(`Could not click ${label}`);
+}
+
+async function pressKey(key) {
+  await devtools.call("Input.dispatchKeyEvent", {
+    type: "keyDown",
+    key,
+    code: key,
+  });
+  await devtools.call("Input.dispatchKeyEvent", {
+    type: "keyUp",
+    key,
+    code: key,
+  });
 }
 
 async function waitForText(text, label) {
@@ -1380,6 +1476,99 @@ try {
   if (!recentCardText.includes("Source asset unavailable")) {
     throw new Error(`Deleted media source state was not explained: ${recentCardText}`);
   }
+
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="select-recent-perception-engram"]'))`,
+    "Recent Perception engram selector",
+  );
+  const perceptionSelectorIsLabeled = await devtools.evaluate(
+    `(() => {
+      const selector = document.querySelector('[data-testid="select-recent-perception-engram"]');
+      return selector instanceof HTMLSelectElement &&
+        selector.labels?.[0]?.textContent.trim().length > 0;
+    })()`,
+  );
+  if (!perceptionSelectorIsLabeled) {
+    throw new Error("Recent Perception selector has no accessible label");
+  }
+  const writesBeforePerceptionSelection = await devtools.evaluate(
+    "window.__simulationBrowserFixture.writeRequests.length",
+  );
+  await devtools.evaluate(
+    `document.querySelector('[data-testid="select-recent-perception-engram"]')?.focus()`,
+  );
+  await pressKey("ArrowDown");
+  await waitFor(
+    `document.querySelector('[data-testid="select-recent-perception-engram"]')?.value === "2"`,
+    "keyboard selection of Route Scout",
+  );
+  await waitFor(
+    `document.querySelector('[data-testid="recent-media-perception"]')?.innerText.includes("Route Scout") &&
+      Boolean(document.querySelector('[data-testid="recent-media-observation-708"]'))`,
+    "Route Scout name and observation update together",
+  );
+  await waitFor(
+    "Boolean(document.querySelector('[data-testid=\"recent-media-perception-processing\"]'))",
+    "selected engram processing notice",
+  );
+  await waitFor(
+    "!document.querySelector('[data-testid=\"recent-media-observation-701\"]')",
+    "previous engram observations removed",
+  );
+
+  await pressKey("ArrowDown");
+  await waitFor(
+    `document.querySelector('[data-testid="select-recent-perception-engram"]')?.value === "4"`,
+    "keyboard selection of Quiet Surveyor",
+  );
+  await waitFor(
+    `document.querySelector('[data-testid="recent-media-perception"]')?.innerText.includes("Quiet Surveyor") &&
+      Boolean(document.querySelector('[data-testid="recent-media-perception-empty"]'))`,
+    "empty state for selected engram",
+  );
+  await pressKey("ArrowUp");
+  await waitFor(
+    `document.querySelector('[data-testid="select-recent-perception-engram"]')?.value === "2" &&
+      Boolean(document.querySelector('[data-testid="recent-media-observation-708"]'))`,
+    "return to Route Scout by keyboard",
+  );
+
+  const engramWritesAfterPerceptionSelection = await devtools.evaluate(
+    "window.__simulationBrowserFixture.writeRequests.length",
+  );
+  if (engramWritesAfterPerceptionSelection !== writesBeforePerceptionSelection) {
+    throw new Error("Changing the Recent Perception engram sent an API write");
+  }
+  const chatActiveEngramIds = await devtools.evaluate(
+    `window.__simulationBrowserFixture.engrams
+      .filter((engram) => engram.isChatActive)
+      .map((engram) => engram.id)
+      .join(",")`,
+  );
+  if (chatActiveEngramIds !== "1") {
+    throw new Error(`Recent Perception changed chat-active engrams: ${chatActiveEngramIds}`);
+  }
+  await click(
+    `document.querySelector('[data-testid="link-recent-media-source-708"]')`,
+    "Route Scout source link",
+  );
+  await waitFor(
+    `location.pathname === "/media" && new URLSearchParams(location.search).get("asset") === "511"`,
+    "Route Scout source asset URL",
+  );
+  await waitFor(
+    `document.querySelector('[data-testid="media-511"]')?.getAttribute("data-focused") === "true"`,
+    "focused Route Scout source asset",
+  );
+  await waitFor("Boolean(document.querySelector('[data-testid=\"media-detail-511\"]'))", "expanded Route Scout source asset");
+  await waitForText("north-pass.txt", "Route Scout source filename");
+
+  await devtools.call("Page.navigate", { url: `${appUrl}/dashboard` });
+  await waitFor(
+    `document.querySelector('[data-testid="select-recent-perception-engram"]')?.value === "1" &&
+      Boolean(document.querySelector('[data-testid="recent-media-observation-701"]'))`,
+    "dashboard continues to follow the unchanged chat-active engram",
+  );
 
   const hubConsoleErrorStart = devtools.consoleErrors().length;
   await devtools.call("Page.navigate", { url: `${appUrl}/hub` });
