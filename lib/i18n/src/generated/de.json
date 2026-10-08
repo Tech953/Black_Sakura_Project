@@ -710,7 +710,10 @@
     "extractionFailureTitle": "Quelle konnte nicht gelesen werden",
     "extractionFailureGuidance": "Überprüfen Sie, ob die Datei vollständig und unterstützt ist. Laden Sie bei Bedarf eine gültige Kopie hoch; versuchen Sie es nur erneut, wenn Sie sicher sind, dass die Quelle gültig ist.",
     "unknownFailureGuidance": "Wenn die Quelle korrekt aussieht, versuchen Sie es erneut. Wenn das Problem weiterhin besteht, fragen Sie einen Bediener.",
-    "diagnosticLabel": "Technische Details"
+    "diagnosticLabel": "Technische Details",
+    "webmModalityPrompt": "Wählen Sie, wie diese WebM-Datei verarbeitet werden soll.",
+    "webmAudioOption": "Als Audio",
+    "webmVideoOption": "Als Video"
   },
   "memory": {
     "title": "GEDÄCHTNISARCHITEKTUR",

@@ -710,7 +710,10 @@
     "extractionFailureTitle": "تعذر قراءة المصدر",
     "extractionFailureGuidance": "تأكد من أن الملف كامل ومدعوم. قم بتحميل نسخة صالحة إذا لزم الأمر؛ أعد المحاولة فقط إذا كنت متأكداً من صحة المصدر.",
     "unknownFailureGuidance": "إذا كان المصدر يبدو صحيحاً، أعد المحاولة. إذا تكررت المشكلة، اطلب المساعدة من أحد المشغلين.",
-    "diagnosticLabel": "تفاصيل تقنية"
+    "diagnosticLabel": "تفاصيل تقنية",
+    "webmModalityPrompt": "اختر كيفية معالجة ملف WebM هذا.",
+    "webmAudioOption": "كصوت",
+    "webmVideoOption": "كفيديو"
   },
   "memory": {
     "title": "بنية الذاكرة",

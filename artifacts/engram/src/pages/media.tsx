@@ -10,6 +10,8 @@ import {
   type MediaAsset,
   type MediaObservationEntry,
   type Engram,
+  type WebmModality,
+  needsWebmModalityChoice,
   normalizeMediaUploadMimeType,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -90,7 +92,11 @@ export default function Media() {
   const { data: engrams } = useListEngrams();
   const [selectedEngramId, setSelectedEngramId] = useState<number | "">("");
   const [file, setFile] = useState<File | null>(null);
+  const [webmModality, setWebmModality] = useState<WebmModality | null>(null);
   const [uploading, setUploading] = useState(false);
+  const needsWebmChoice = file
+    ? needsWebmModalityChoice(file.name, file.type)
+    : false;
   const focusedAssetId = useMemo(() => {
     const params = new URLSearchParams(
       typeof window === "undefined" ? "" : window.location.search,
@@ -132,12 +138,22 @@ export default function Media() {
   );
 
   async function handleUpload() {
-    if (!file || selectedEngramId === "") return;
+    if (
+      !file ||
+      selectedEngramId === "" ||
+      (needsWebmModalityChoice(file.name, file.type) && !webmModality)
+    ) {
+      return;
+    }
     setUploading(true);
     try {
       const form = new FormData();
       form.append("engramId", String(selectedEngramId));
-      const mimeType = normalizeMediaUploadMimeType(file.name, file.type);
+      const mimeType = normalizeMediaUploadMimeType(
+        file.name,
+        file.type,
+        webmModality,
+      );
       const uploadFile =
         mimeType === file.type
           ? file
@@ -156,6 +172,7 @@ export default function Media() {
       }
       toast({ title: t("toastUploadedTitle"), description: t("toastUploadedDescription") });
       setFile(null);
+      setWebmModality(null);
       if (fileRef.current) fileRef.current.value = "";
       queryClient.invalidateQueries({ queryKey: getListMediaQueryKey() });
     } catch (e) {
@@ -227,14 +244,22 @@ export default function Media() {
               ref={fileRef}
               type="file"
               accept="text/plain,text/markdown,text/csv,application/json,image/*,audio/*,video/*"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setWebmModality(null);
+              }}
               className="text-sm font-mono text-muted-foreground file:mr-3 file:border file:border-primary/40 file:bg-primary/10 file:text-primary file:px-3 file:py-1.5 file:text-xs file:uppercase file:tracking-wider file:font-mono hover:file:bg-primary/20 file:cursor-pointer"
               data-testid="input-file"
             />
 
             <Button
               onClick={handleUpload}
-              disabled={uploading || !file || selectedEngramId === ""}
+              disabled={
+                uploading ||
+                !file ||
+                selectedEngramId === "" ||
+                (needsWebmChoice && !webmModality)
+              }
               className="font-mono text-[10px] uppercase tracking-wider h-9 md:ml-auto"
               data-testid="button-upload"
             >
@@ -250,6 +275,36 @@ export default function Media() {
             <p className="font-mono text-[10px] text-muted-foreground/60">
               {file.name} · {formatBytes(file.size)}
             </p>
+          )}
+          {file && needsWebmChoice && (
+            <div className="space-y-2" data-testid="webm-modality-choice">
+              <p
+                id="webm-modality-prompt"
+                className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+              >
+                {t("webmModalityPrompt")}
+              </p>
+              <div
+                role="group"
+                aria-labelledby="webm-modality-prompt"
+                className="flex flex-wrap gap-2"
+              >
+                {(["audio", "video"] as const).map((modality) => (
+                  <Button
+                    key={modality}
+                    type="button"
+                    variant={webmModality === modality ? "default" : "outline"}
+                    aria-pressed={webmModality === modality}
+                    disabled={uploading}
+                    onClick={() => setWebmModality(modality)}
+                    className="font-mono text-[10px] uppercase tracking-wider"
+                    data-testid={`webm-modality-${modality}`}
+                  >
+                    {t(modality === "audio" ? "webmAudioOption" : "webmVideoOption")}
+                  </Button>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

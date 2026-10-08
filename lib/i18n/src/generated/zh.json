@@ -710,7 +710,10 @@
     "extractionFailureTitle": "无法读取源",
     "providerFailureGuidance": "请稍后重试。如果问题持续存在，请请求操作员检查提供商访问权限。",
     "providerFailureTitle": "模型提供商问题",
-    "unknownFailureGuidance": "如果源看起来正确，请重试。如果问题重复出现，请咨询操作员。"
+    "unknownFailureGuidance": "如果源看起来正确，请重试。如果问题重复出现，请咨询操作员。",
+    "webmModalityPrompt": "选择如何处理此 WebM 文件。",
+    "webmAudioOption": "作为音频",
+    "webmVideoOption": "作为视频"
   },
   "memory": {
     "title": "记忆架构",

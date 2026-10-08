@@ -20,3 +20,9 @@ A completed Metro bundle is not proof that a headless browser regression reached
 **Why:** A focused Hub/Environment run bundled successfully but never produced a terminal signed-in screen result; repeating the same browser route did not resolve it.
 
 **How to apply:** After one cold-start retry, do not launch repeated or parallel mobile browser runs without new evidence. Check the owning workflow and browser output, and report the route-level check as inconclusive rather than changing UI based on a stalled run.
+
+The mobile release preflight can also fail before a later Expo web E2E app starts if Expo's native-module-version lookup returns an empty response; Chromium then reports a refused localhost connection even though the app bundle never loaded.
+
+**Why:** The preflight failed in Expo's `getNativeModuleVersionsAsync` JSON parsing once, then passed unchanged on immediate rerun.
+
+**How to apply:** For this specific empty-response failure, retry the preflight once before changing app code. If it repeats, inspect the Expo/network failure rather than treating the browser connection refusal as an app regression.

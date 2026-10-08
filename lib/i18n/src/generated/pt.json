@@ -710,7 +710,10 @@
     "extractionFailureTitle": "Não foi possível ler a fonte",
     "extractionFailureGuidance": "Verifique se o arquivo está completo e é suportado. Envie uma cópia válida, se necessário; tente novamente apenas se tiver certeza de que a fonte é válida.",
     "unknownFailureGuidance": "Se a fonte parecer correta, tente novamente. Se o problema persistir, pergunte a um operador.",
-    "diagnosticLabel": "Detalhe técnico"
+    "diagnosticLabel": "Detalhe técnico",
+    "webmModalityPrompt": "Escolha como este WebM deve ser processado.",
+    "webmAudioOption": "Como áudio",
+    "webmVideoOption": "Como vídeo"
   },
   "memory": {
     "title": "ARQUITETURA DE MEMÓRIA",
