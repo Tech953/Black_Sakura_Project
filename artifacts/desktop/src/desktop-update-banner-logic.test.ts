@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import settings from "../../../lib/i18n/src/en/settings.json";
 import {
   clampProgress,
+  isRetryableInstallFailure,
   statusText,
   type DesktopUpdateCopy,
   type DesktopUpdateStatus,
@@ -23,6 +24,13 @@ describe("desktop update banner accessibility contracts", () => {
       { state: "downloading", percent: 42.6 },
       { state: "downloaded", version: "1.2.3" },
       { state: "error", message: "feed unavailable" },
+      {
+        state: "error",
+        message: "install failed",
+        retryable: true,
+        updateReady: true,
+        version: "1.2.3",
+      },
       { state: "not-available", manual: true },
     ];
 
@@ -32,7 +40,27 @@ describe("desktop update banner accessibility contracts", () => {
       copy.downloading.replace("{{percent}}", "43"),
       copy.downloaded,
       copy.error,
+      copy.downloaded,
       copy.upToDate,
     ]);
+  });
+
+  it("only offers direct retry while the downloaded update is still available", () => {
+    expect(
+      isRetryableInstallFailure({
+        state: "error",
+        message: "install failed",
+        retryable: true,
+        updateReady: true,
+      }),
+    ).toBe(true);
+    expect(
+      isRetryableInstallFailure({
+        state: "error",
+        message: "install failed",
+        retryable: true,
+        deferred: true,
+      }),
+    ).toBe(false);
   });
 });

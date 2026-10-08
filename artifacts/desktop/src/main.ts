@@ -2142,6 +2142,8 @@ ipcMain.handle("update:check", () => {
 });
 
 ipcMain.handle("update:install", async () => {
+  hasPersistedDeferredUpdateFailure = false;
+  clearDeferredUpdateFailure();
   try {
     await updateController.installDownloadedUpdate();
     return { ok: true };

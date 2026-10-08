@@ -191,6 +191,8 @@ describe("setupAutoUpdates", () => {
       message: DEFERRED_UPDATE_FAILURE_MESSAGE,
       deferred: true,
       retryable: true,
+      updateReady: true,
+      version: "1.2.3",
     });
   });
 
@@ -209,7 +211,88 @@ describe("setupAutoUpdates", () => {
       message: DEFERRED_UPDATE_FAILURE_MESSAGE,
       deferred: true,
       retryable: true,
+      updateReady: true,
+      version: "1.2.3",
     });
+  });
+
+  it("allows a deduplicated retry after the install promise rejects", async () => {
+    const harness = createHarness(1);
+    harness.installDownloadedUpdate
+      .mockRejectedValueOnce(new Error("transient shutdown failure"))
+      .mockResolvedValueOnce(undefined);
+
+    harness.updater.emit("update-downloaded", { version: "1.2.3" });
+    await expect(
+      harness.controller.installDownloadedUpdate(),
+    ).rejects.toThrow("transient shutdown failure");
+
+    expect(harness.setStatus).toHaveBeenLastCalledWith({
+      state: "error",
+      message: DEFERRED_UPDATE_FAILURE_MESSAGE,
+      deferred: true,
+      retryable: true,
+      updateReady: true,
+      version: "1.2.3",
+    });
+
+    await Promise.all([
+      harness.controller.installDownloadedUpdate(),
+      harness.controller.installDownloadedUpdate(),
+    ]);
+    expect(harness.installDownloadedUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets an updater error release the completed install promise for retry", async () => {
+    const harness = createHarness(1);
+
+    harness.updater.emit("update-downloaded", { version: "1.2.3" });
+    await harness.controller.installDownloadedUpdate();
+    expect(harness.installDownloadedUpdate).toHaveBeenCalledTimes(1);
+
+    harness.updater.emit("error", new Error("installer handoff failed"));
+    expect(harness.setStatus).toHaveBeenLastCalledWith({
+      state: "error",
+      message: DEFERRED_UPDATE_FAILURE_MESSAGE,
+      deferred: true,
+      retryable: true,
+      updateReady: true,
+      version: "1.2.3",
+    });
+
+    await Promise.all([
+      harness.controller.installDownloadedUpdate(),
+      harness.controller.installDownloadedUpdate(),
+    ]);
+    expect(harness.installDownloadedUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it("deduplicates retries until an in-flight attempt settles after an updater error", async () => {
+    const harness = createHarness(1);
+    let finishAttempt: (() => void) | undefined;
+    harness.installDownloadedUpdate
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishAttempt = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(undefined);
+
+    harness.updater.emit("update-downloaded", { version: "1.2.3" });
+    const firstAttempt = harness.controller.installDownloadedUpdate();
+    await flushPromises();
+    expect(harness.installDownloadedUpdate).toHaveBeenCalledTimes(1);
+
+    harness.updater.emit("error", new Error("installer handoff failed"));
+    const duplicateRetry = harness.controller.installDownloadedUpdate();
+    await flushPromises();
+    expect(harness.installDownloadedUpdate).toHaveBeenCalledTimes(1);
+
+    finishAttempt?.();
+    await Promise.all([firstAttempt, duplicateRetry]);
+    await harness.controller.installDownloadedUpdate();
+    expect(harness.installDownloadedUpdate).toHaveBeenCalledTimes(2);
   });
 
   it("forwards optional transfer details with download progress", () => {
