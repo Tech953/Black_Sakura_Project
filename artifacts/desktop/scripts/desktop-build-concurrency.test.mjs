@@ -169,4 +169,23 @@ describe("desktop release workflow concurrency", () => {
       /steps\.windows_zip_check\.outcome == 'failure'/,
     );
   });
+
+  it("runs fixture cache tests before the pre-release packaged smoke", () => {
+    const preReleaseJob = workflow.indexOf("\n  pre-release-smoke:");
+    const fixtureTests = workflow.indexOf(
+      "- name: Run desktop fixture cache tests",
+      preReleaseJob,
+    );
+    const packagedSmoke = workflow.indexOf(
+      "- name: Smoke test packaged app",
+      preReleaseJob,
+    );
+
+    expect(preReleaseJob).toBeGreaterThanOrEqual(0);
+    expect(fixtureTests).toBeGreaterThan(preReleaseJob);
+    expect(packagedSmoke).toBeGreaterThan(fixtureTests);
+    expect(workflow.slice(fixtureTests, packagedSmoke)).toContain(
+      "pnpm --filter @workspace/desktop run test",
+    );
+  });
 });

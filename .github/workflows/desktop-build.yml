@@ -774,6 +774,9 @@ jobs:
       - name: Build shared libraries
         run: pnpm run typecheck:libs
 
+      - name: Run desktop fixture cache tests
+        run: pnpm --filter @workspace/desktop run test
+
       - name: Run API suite with configured provider environment
         env:
           ENGRAM_DB_DRIVER: pglite
