@@ -21,20 +21,16 @@ import {
   checkLlamaRuntime,
   checkLlamaRuntimeArchitecture,
 } from "./llama-runtime-check.mjs";
+import {
+  LLAMA_RUNTIME_ASSETS,
+  LLAMA_VERSION,
+} from "./llama-runtime-metadata.mjs";
 
 const require = createRequire(import.meta.url);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const desktopDir = path.join(here, ".."); // artifacts/desktop
 const repoRoot = path.join(desktopDir, "..", ".."); // workspace root
 const resources = path.join(desktopDir, "resources");
-const PINNED_LLAMA_VERSION = "b10242";
-const PINNED_LLAMA_ARCHIVE_SHA256 = {
-  "linux-x64": "fb13c9fa97a605c6bba16a99b2f54eff6874d58bdbe5b94ece6e358eaa270088",
-  "linux-arm64": "c79ae4262304cdab2698201b1bba01648fcff8f8aada237b64797bc97ebe452d",
-  "darwin-x64": "d7ccf0251ff9087ee4f4c0ea6c8c7f4f3575aa187b2c2e755d2d4c5d234490ba",
-  "darwin-arm64": "fd93f5c97086b434d17855eaaf95ba56758ade7a4af3a4ad74714bb70784c8b9",
-  "win32-x64": "a9b8966b2ed82d33a87cafb4149a1b40de48a701a0ec431f2d8f5b994827a758",
-};
 const bundleLlmSetting = process.env.DESKTOP_BUNDLE_LLM ?? "1";
 const requireLlamaRuntime = process.env.DESKTOP_REQUIRE_LLAMA_RUNTIME === "1";
 
@@ -243,14 +239,14 @@ function stageLlama(includeDefaultModel) {
     // Unzipped contents of the pinned llama.cpp win-cpu-x64 release.
     const winDir = path.join(
       llamaCache,
-      `llama-${PINNED_LLAMA_VERSION}-win-x64`,
+      `llama-${LLAMA_VERSION}-win-x64`,
     );
     if (existsSync(winDir)) binSrcDir = winDir;
   } else {
     // Linux/macOS release layout: the exact pinned version directory.
     const pinnedDir = path.join(
       llamaCache,
-      `llama-${PINNED_LLAMA_VERSION}`,
+      `llama-${LLAMA_VERSION}`,
     );
     if (existsSync(pinnedDir)) binSrcDir = pinnedDir;
   }
@@ -275,18 +271,16 @@ function stageLlama(includeDefaultModel) {
     }
     const expectedArchitecture = process.env.LLAMA_ARCH || process.arch;
     const expectedArchiveSha256 =
-      PINNED_LLAMA_ARCHIVE_SHA256[
-        `${llamaTarget}-${expectedArchitecture}`
-      ];
+      LLAMA_RUNTIME_ASSETS[`${llamaTarget}-${expectedArchitecture}`]?.sha256;
     if (
       !expectedArchiveSha256 ||
-      marker.version !== PINNED_LLAMA_VERSION ||
+      marker.version !== LLAMA_VERSION ||
       marker.platform !== llamaTarget ||
       marker.architecture !== expectedArchitecture ||
       marker.archiveSha256 !== expectedArchiveSha256
     ) {
       throw new Error(
-        `[desktop] llama.cpp verification marker does not match ${llamaTarget}-${expectedArchitecture} ${PINNED_LLAMA_VERSION}.`,
+        `[desktop] llama.cpp verification marker does not match ${llamaTarget}-${expectedArchitecture} ${LLAMA_VERSION}.`,
       );
     }
   }

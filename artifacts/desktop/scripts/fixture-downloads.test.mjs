@@ -10,10 +10,8 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  LLAMA_VERSION,
-  prepareLlamaRuntime,
-} from "./prepare-llama-runtime.mjs";
+import { LLAMA_VERSION } from "./llama-runtime-metadata.mjs";
+import { prepareLlamaRuntime } from "./prepare-llama-runtime.mjs";
 import { downloadSmokeGguf } from "./download-smoke-gguf.mjs";
 
 const temporaryDirectories = [];
