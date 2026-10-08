@@ -178,7 +178,7 @@ function MediaAssetCard({
         <View style={[styles.status, { borderColor: toneColor + "88" }]}>
           {active ? <View style={[styles.statusDot, { backgroundColor: toneColor }]} /> : null}
           <Text style={[styles.statusText, { color: toneColor }]}>
-            {t(`media.status.${asset.status}`)}
+            {t(`status.${asset.status}`)}
           </Text>
         </View>
       </View>
@@ -234,6 +234,7 @@ function MediaAssetCard({
         {asset.status === "failed" ? (
           <Pressable
             accessibilityLabel={t("retry")}
+            testID={`media-asset-retry-${asset.id}`}
             disabled={retry.isPending}
             onPress={onRetry}
             style={[styles.action, { borderColor: colors.accent + "88" }]}

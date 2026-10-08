@@ -264,7 +264,40 @@ const browserMock = String.raw`(() => {
     ],
     702: [],
   };
-  window.__historyE2E = { conversations, messages, shares: [], downloads: [], archiveRequests: [], requests: [] };
+  const mediaRecovery = {
+    enabled: new URLSearchParams(window.location.search).get("e2e-fixture") === "media-recovery",
+    asset: {
+      id: 812,
+      engramId: 1,
+      conversationId: null,
+      filename: "recovered-timeout.jpg",
+      mimeType: "image/jpeg",
+      modality: "image",
+      sizeBytes: 512,
+      status: "failed",
+      resultState: "none",
+      summary: null,
+      commentary: null,
+      transcript: null,
+      error: "Media perception was recovered after an interruption.",
+      failureKind: "recovered",
+      observationCount: 0,
+      startedAt: "2026-09-10T12:00:00.000Z",
+      completedAt: null,
+      createdAt: "2026-09-10T12:00:00.000Z",
+      updatedAt: "2026-09-10T12:01:00.000Z",
+    },
+    retryRequests: [],
+  };
+  window.__historyE2E = {
+    conversations,
+    messages,
+    shares: [],
+    downloads: [],
+    archiveRequests: [],
+    requests: [],
+    mediaRecovery,
+  };
   const hubEnvironmentE2E = {
     emptyResponses: [],
     simulationMode: new URLSearchParams(window.location.search).get("e2e-fixture") === "simulations",
@@ -489,7 +522,29 @@ const browserMock = String.raw`(() => {
     if (/^\/api\/engrams\/\d+\/world-model$/.test(path) && method === "GET") {
       return emptyList("worldModel");
     }
-    if (path === "/api/media" && method === "GET") return emptyList("media");
+    const mediaRetry = path.match(/^\/api\/media\/(\d+)\/retry$/);
+    if (mediaRetry && method === "POST") {
+      const id = Number(mediaRetry[1]);
+      if (!window.__historyE2E.mediaRecovery.enabled || id !== window.__historyE2E.mediaRecovery.asset.id) {
+        return response({ error: "Unknown media retry fixture" }, 404);
+      }
+      window.__historyE2E.mediaRecovery.retryRequests.push({ id, method, path });
+      window.__historyE2E.mediaRecovery.asset = {
+        ...window.__historyE2E.mediaRecovery.asset,
+        status: "pending",
+        error: null,
+        failureKind: null,
+        startedAt: null,
+        completedAt: null,
+        updatedAt: "2026-09-10T12:02:00.000Z",
+      };
+      return response(window.__historyE2E.mediaRecovery.asset);
+    }
+    if (path === "/api/media" && method === "GET") {
+      return window.__historyE2E.mediaRecovery.enabled
+        ? response([window.__historyE2E.mediaRecovery.asset])
+        : emptyList("media");
+    }
     if (path === "/api/hub/controls" && method === "GET") {
       return response({ paused: false, quietMode: false });
     }
@@ -1133,6 +1188,55 @@ async function runLiveStateAccountSwitchRegression(client) {
   return client;
 }
 
+async function runMediaRecoveryRegression(client) {
+  await clickVisibleText(client, "Media");
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector('[data-testid="media-asset-812"]')) &&
+      Boolean(document.querySelector('[data-testid="media-failure-category-812"]')) &&
+      document.querySelector('[data-testid="media-asset-812"]')?.innerText.toLowerCase().includes("failed")`,
+    "recovered failed media asset",
+  );
+
+  const noticeText = await client.evaluate(
+    `document.querySelector('[data-testid="media-failure-notice-812"]')?.innerText ?? ""`,
+  );
+  for (const expected of [
+    "Perception was recovered after an interruption",
+    "The worker stopped before completing this perception.",
+    "No observations were saved during this attempt.",
+    "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates.",
+  ]) {
+    if (!noticeText.includes(expected)) {
+      throw new Error(`Recovered media notice omitted ${JSON.stringify(expected)}: ${noticeText}`);
+    }
+  }
+
+  const retryEnabled = await client.evaluate(
+    `(() => {
+      const retry = document.querySelector('[data-testid="media-asset-retry-812"]');
+      return Boolean(retry && !retry.disabled);
+    })()`,
+  );
+  if (!retryEnabled) {
+    throw new Error("Recovered media asset did not expose an enabled retry action");
+  }
+  await clickTestId(client, "media-asset-retry-812");
+  await waitForValue(
+    client,
+    `window.__historyE2E.mediaRecovery.retryRequests.length === 1 &&
+      window.__historyE2E.mediaRecovery.retryRequests[0].id === 812 &&
+      window.__historyE2E.mediaRecovery.retryRequests[0].method === "POST" &&
+      window.__historyE2E.mediaRecovery.retryRequests[0].path === "/api/media/812/retry" &&
+      document.querySelector('[data-testid="media-asset-812"]')?.innerText.toLowerCase().includes("queued")`,
+    "recovered media requeue request and queued state",
+  );
+  console.log(
+    "Mobile media recovery browser regression passed: no-partial-result and duplicate-safe retry guidance, enabled retry, and POST /api/media/812/retry requeue.",
+  );
+  return client;
+}
+
 const processes = [];
 let profileDir;
 let client;
@@ -1220,7 +1324,11 @@ try {
   await client.call("Runtime.enable");
   await client.call("Network.enable");
   await client.call("Page.addScriptToEvaluateOnNewDocument", { source: browserMock });
-  await client.call("Page.navigate", { url: `${appUrl}/` });
+  const initialUrl =
+    scenario === "history" && !nativeExportMode
+      ? `${appUrl}/?e2e-fixture=media-recovery`
+      : `${appUrl}/`;
+  await client.call("Page.navigate", { url: initialUrl });
 
   if (scenario === "hub-environment") {
     client = await runHubEnvironmentRegression(client, appUrl, cdpPort);
@@ -1358,6 +1466,9 @@ try {
       rmSync(pdfProbePath, { force: true });
     }
     console.log("Mobile history browser regression passed: hydrate, archive, restore, read-only state, and four export downloads.");
+    if (!nativeExportMode) {
+      await runMediaRecoveryRegression(client);
+    }
   }
   }
 } finally {
