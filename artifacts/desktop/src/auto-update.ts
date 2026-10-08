@@ -57,7 +57,7 @@ export type AutoUpdateDeps = {
   updater: AutoUpdaterLike;
   getMainWindow: () => UpdateWindow | null;
   showMessageBox: (
-    window: UpdateWindow,
+    window: UpdateWindow | null,
     options: UpdateDialogOptions,
   ) => Promise<{ response: number }>;
   setStatus: (status: UpdateStatus) => void;
@@ -249,14 +249,30 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
     downloadedUpdate = info;
     deferredInstall = false;
     installPromise = null;
-    deps.setStatus({ state: "downloaded", version: info?.version });
     manualUpdateCheck = false;
     deps.resetWindowTitle();
     const window = deps.getMainWindow();
-    if (!window || window.isDestroyed()) return;
-    window.setProgressBar(-1);
+    const rendererAvailable = Boolean(window && !window.isDestroyed());
+    if (rendererAvailable && window) window.setProgressBar(-1);
+
+    // The in-app banner owns the ready decision whenever its renderer is
+    // available. Default to install-on-quit so dismissing that banner as
+    // "Later" keeps the previous native-dialog behavior without extra IPC.
+    if (!deps.deferInstallOnQuit) {
+      deferredInstall = true;
+      deps.updater.autoInstallOnAppQuit = true;
+    }
+
+    if (rendererAvailable) {
+      deps.setStatus({ state: "downloaded", version: info?.version });
+      return;
+    }
+
+    // There is no renderer to show the banner, so use the native dialog as a
+    // fallback. Do not publish "downloaded" until it closes; otherwise a
+    // window created while the dialog is open could show a second decision.
     void deps
-      .showMessageBox(window, {
+      .showMessageBox(null, {
         type: "info",
         title: "Update ready",
         message: `ENGRAM ${info.version} has been downloaded.`,
@@ -272,11 +288,12 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
             deps.logError?.("[desktop] update installation failed:", error);
           });
         } else {
-          if (!deps.deferInstallOnQuit) {
-            deferredInstall = true;
-            deps.updater.autoInstallOnAppQuit = true;
-          }
+          deps.setStatus({ state: "downloaded", version: info?.version });
         }
+      })
+      .catch((error) => {
+        deps.logError?.("[desktop] update ready dialog failed:", error);
+        deps.setStatus({ state: "downloaded", version: info?.version });
       });
   });
 

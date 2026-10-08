@@ -508,6 +508,41 @@ async function runPackagedUpdateSmoke(
       `download handling phase failed: app info did not retain downloaded state: ${JSON.stringify(updateResult.appInfo)}`,
     );
   }
+  let readySurface;
+  const readySurfaceDeadline = Date.now() + 5_000;
+  while (Date.now() < readySurfaceDeadline) {
+    readySurface = await bridgeWindow.evaluate(() => {
+      const banner = document.querySelector(
+        '[data-testid="desktop-update-banner"]',
+      );
+      return {
+        banner: Boolean(banner),
+        restart: Boolean(
+          banner?.querySelector('[data-testid="restart-desktop-update"]'),
+        ),
+        later: Boolean(
+          banner?.querySelector('[data-testid="later-desktop-update"]'),
+        ),
+        focusedInsideBanner: Boolean(
+          banner?.contains(document.activeElement ?? null),
+        ),
+      };
+    });
+    if (readySurface.banner && readySurface.restart && readySurface.later) {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  if (
+    !readySurface.banner ||
+    !readySurface.restart ||
+    !readySurface.later ||
+    readySurface.focusedInsideBanner
+  ) {
+    throw new Error(
+      `download handling phase failed: in-app ready surface was missing, incomplete, or took focus: ${JSON.stringify(readySurface)}`,
+    );
+  }
   let healthBeforeInstall;
   try {
     const response = await fetch(healthUrl);
@@ -550,7 +585,7 @@ async function runPackagedUpdateSmoke(
     "phase=feed-setup",
     "phase=download-progress",
     "phase=downloaded",
-    "phase=deferred",
+    "phase=ready-status",
     "phase=server-stopped",
     "phase=quit-and-install",
   ];

@@ -2214,9 +2214,16 @@ function setupAutoUpdates(): void {
         }
         return Promise.resolve({ response });
       }
-      return dialog.showMessageBox(window as BrowserWindow, options);
+      return window
+        ? dialog.showMessageBox(window as BrowserWindow, options)
+        : dialog.showMessageBox(options);
     },
-    setStatus: setUpdateStatus,
+    setStatus: (status) => {
+      setUpdateStatus(status);
+      if (packagedSmokeUpdateEnabled && status.state === "downloaded") {
+        appendSmokeDiagnostic("update.log", "phase=ready-status\n");
+      }
+    },
     resetWindowTitle,
     stopDesktopWork: () =>
       stopDesktopWork({
