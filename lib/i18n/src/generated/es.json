@@ -723,6 +723,8 @@
     "encodedView": "Memoria codificada",
     "mediaEmpty": "Aún no se han registrado observaciones de medios",
     "mediaEmptyForEngram": "No se han registrado observaciones de medios para {{name}}",
+    "mediaSearchPlaceholder": "Buscar observaciones o nombres de archivos de origen",
+    "mediaSearchEmpty": "No hay observaciones multimedia que coincidan con su búsqueda.",
     "mediaObservations": "Observaciones de medios",
     "openSource": "Abrir fuente",
     "openSourceAsset": "Abrir fuente multimedia",
@@ -920,6 +922,9 @@
       "makeActive": "Activar",
       "mediaMemory": "Observaciones de medios",
       "noMediaMemory": "Aún no hay observaciones de medios disponibles.",
+      "searchMediaMemory": "Buscar observaciones o nombres de archivos de origen",
+      "clearMediaMemorySearch": "Borrar búsqueda",
+      "noMediaMemoryMatches": "No hay observaciones multimedia que coincidan con su búsqueda.",
       "openMediaSource": "Abrir fuente multimedia"
     },
     "environment": {

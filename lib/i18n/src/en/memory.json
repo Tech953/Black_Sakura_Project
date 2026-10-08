@@ -6,6 +6,8 @@
   "selectEngram": "Select an engram",
   "mediaEmpty": "No media observations recorded yet",
   "mediaEmptyForEngram": "No media observations recorded for {{name}}",
+  "mediaSearchPlaceholder": "Search observations or source filenames",
+  "mediaSearchEmpty": "No media observations match your search.",
   "openSource": "Open source",
   "openSourceAsset": "Open source asset",
   "encodeMemory": "Encode Memory",

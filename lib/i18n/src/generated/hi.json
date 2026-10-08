@@ -723,6 +723,8 @@
     "encodedView": "एन्कोडेड मेमोरी",
     "mediaEmpty": "अभी तक कोई मीडिया अवलोकन दर्ज नहीं किया गया है",
     "mediaEmptyForEngram": "{{name}} के लिए कोई मीडिया अवलोकन दर्ज नहीं किया गया है",
+    "mediaSearchPlaceholder": "अवलोकनों या स्रोत फ़ाइल नामों को खोजें",
+    "mediaSearchEmpty": "कोई भी मीडिया अवलोकन आपकी खोज से मेल नहीं खाता।",
     "mediaObservations": "मीडिया अवलोकन",
     "openSource": "स्रोत खोलें",
     "openSourceAsset": "मीडिया स्रोत खोलें",
@@ -920,6 +922,9 @@
       "makeActive": "सक्रिय करें",
       "mediaMemory": "मीडिया अवलोकन",
       "noMediaMemory": "अभी तक कोई मीडिया अवलोकन उपलब्ध नहीं है।",
+      "searchMediaMemory": "अवलोकनों या स्रोत फ़ाइल नामों को खोजें",
+      "clearMediaMemorySearch": "खोज साफ़ करें",
+      "noMediaMemoryMatches": "कोई भी मीडिया अवलोकन आपकी खोज से मेल नहीं खाता।",
       "openMediaSource": "मीडिया स्रोत खोलें"
     },
     "environment": {

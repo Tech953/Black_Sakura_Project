@@ -723,6 +723,8 @@
     "encodedView": "Закодированная память",
     "mediaEmpty": "Медиа-наблюдения еще не записаны",
     "mediaEmptyForEngram": "Медиа-наблюдения для {{name}} не записаны",
+    "mediaSearchPlaceholder": "Поиск наблюдений или имен исходных файлов",
+    "mediaSearchEmpty": "Нет медиа-наблюдений, соответствующих вашему поиску.",
     "mediaObservations": "Медиа-наблюдения",
     "openSource": "Открыть источник",
     "openSourceAsset": "Открыть медиа-источник",
@@ -920,6 +922,9 @@
       "makeActive": "Сделать активным",
       "mediaMemory": "Медиа-наблюдения",
       "noMediaMemory": "Медиа-наблюдения еще недоступны.",
+      "searchMediaMemory": "Поиск наблюдений или имен исходных файлов",
+      "clearMediaMemorySearch": "Очистить поиск",
+      "noMediaMemoryMatches": "Нет медиа-наблюдений, соответствующих вашему поиску.",
       "openMediaSource": "Открыть медиа-источник"
     },
     "environment": {

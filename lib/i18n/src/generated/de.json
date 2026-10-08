@@ -723,6 +723,8 @@
     "encodedView": "Codierter Speicher",
     "mediaEmpty": "Noch keine Medienbeobachtungen aufgezeichnet",
     "mediaEmptyForEngram": "Keine Medienbeobachtungen für {{name}} aufgezeichnet",
+    "mediaSearchPlaceholder": "Beobachtungen oder Quelldateinamen durchsuchen",
+    "mediaSearchEmpty": "Keine Medienbeobachtungen entsprechen Ihrer Suche.",
     "mediaObservations": "Medienbeobachtungen",
     "openSource": "Quelle öffnen",
     "openSourceAsset": "Medienquelle öffnen",
@@ -920,6 +922,9 @@
       "makeActive": "Aktivieren",
       "mediaMemory": "Medienbeobachtungen",
       "noMediaMemory": "Es sind noch keine Medienbeobachtungen verfügbar.",
+      "searchMediaMemory": "Beobachtungen oder Quelldateinamen durchsuchen",
+      "clearMediaMemorySearch": "Suche löschen",
+      "noMediaMemoryMatches": "Keine Medienbeobachtungen entsprechen Ihrer Suche.",
       "openMediaSource": "Medienquelle öffnen"
     },
     "environment": {
