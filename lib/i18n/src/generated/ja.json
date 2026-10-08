@@ -710,7 +710,10 @@
     "extractionFailureTitle": "ソースを読み込めませんでした",
     "extractionFailureGuidance": "ファイルが完全でサポートされている形式か確認してください。必要に応じて有効なコピーをアップロードし、ソースが有効であると確信できる場合のみ再試行してください。",
     "unknownFailureGuidance": "ソースが正しく見える場合は再試行してください。それでも問題が続く場合は、オペレーターに問い合わせてください。",
-    "diagnosticLabel": "技術詳細"
+    "diagnosticLabel": "技術詳細",
+    "webmModalityPrompt": "この WebM をどの形式として認識するか選択してください。",
+    "webmAudioOption": "音声として",
+    "webmVideoOption": "動画として"
   },
   "memory": {
     "title": "メモリアーキテクチャ",

@@ -35,6 +35,8 @@ import {
   useListMedia,
   useRetryMediaAsset,
   type MediaAsset,
+  type WebmModality,
+  needsWebmModalityChoice,
   normalizeMediaUploadMimeType,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -374,9 +376,13 @@ export default function MediaScreen() {
   const engramsQuery = useListEngrams();
   const [selectedId, setSelectedId] = useState<number | null>(selectedEngramId);
   const [file, setFile] = useState<PickedFile | null>(null);
+  const [webmModality, setWebmModality] = useState<WebmModality | null>(null);
   const [uploading, setUploading] = useState(false);
   const [serverUrl, setServerUrl] = useState("");
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const needsWebmChoice = file
+    ? needsWebmModalityChoice(file.name, file.mimeType)
+    : false;
   const focusedAssetId = useMemo(() => {
     const raw = Array.isArray(params.asset) ? params.asset[0] : params.asset;
     const id = Number(raw);
@@ -440,10 +446,17 @@ export default function MediaScreen() {
       mimeType: normalizeMediaUploadMimeType(picked.name, picked.mimeType),
       size: picked.size,
     });
+    setWebmModality(null);
   }, []);
 
   const upload = useCallback(async () => {
-    if (!file || selectedId == null) return;
+    if (
+      !file ||
+      selectedId == null ||
+      (needsWebmModalityChoice(file.name, file.mimeType) && !webmModality)
+    ) {
+      return;
+    }
     setUploading(true);
     try {
       const serverUrl = await resolveServerUrl();
@@ -453,7 +466,11 @@ export default function MediaScreen() {
       body.append("file", {
         uri: file.uri,
         name: file.name,
-        type: file.mimeType,
+        type: normalizeMediaUploadMimeType(
+          file.name,
+          file.mimeType,
+          webmModality,
+        ),
       } as unknown as Blob);
       const response = await fetch(`${serverUrl}/api/media`, {
         method: "POST",
@@ -487,6 +504,7 @@ export default function MediaScreen() {
         throw new Error(payload?.error ?? t("uploadFailed", { defaultValue: "Upload failed" }));
       }
       setFile(null);
+      setWebmModality(null);
       await queryClient.invalidateQueries({ queryKey: getListMediaQueryKey() });
     } catch (error) {
       Alert.alert(
@@ -496,7 +514,7 @@ export default function MediaScreen() {
     } finally {
       setUploading(false);
     }
-  }, [file, getToken, queryClient, selectedId, t]);
+  }, [file, getToken, queryClient, selectedId, t, webmModality]);
 
   if (mediaQuery.isError || engramsQuery.isError) {
     return (
@@ -613,14 +631,65 @@ export default function MediaScreen() {
                 testID="media-selected-mime"
                 style={[styles.fileMeta, { color: colors.mutedForeground }]}
               >
-                {file.mimeType} · {formatBytes(file.size ?? 0)}
+                {normalizeMediaUploadMimeType(
+                  file.name,
+                  file.mimeType,
+                  webmModality,
+                )}{" "}
+                · {formatBytes(file.size ?? 0)}
               </Text>
+            ) : null}
+            {file && needsWebmChoice ? (
+              <View style={styles.webmChoice} testID="media-webm-modality-choice">
+                <Text style={[styles.webmChoicePrompt, { color: colors.mutedForeground }]}>
+                  {t("webmModalityPrompt")}
+                </Text>
+                <View style={styles.webmChoiceOptions}>
+                  {(["audio", "video"] as const).map((modality) => {
+                    const selected = webmModality === modality;
+                    return (
+                      <Pressable
+                        key={modality}
+                        testID={`media-webm-modality-${modality}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={t(
+                          modality === "audio" ? "webmAudioOption" : "webmVideoOption",
+                        )}
+                        accessibilityState={{ selected }}
+                        onPress={() => setWebmModality(modality)}
+                        style={[
+                          styles.webmChoiceButton,
+                          {
+                            borderColor: selected ? colors.primary : colors.border,
+                            backgroundColor: selected
+                              ? colors.primary + "20"
+                              : colors.background,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.webmChoiceText,
+                            { color: selected ? colors.primary : colors.foreground },
+                          ]}
+                        >
+                          {t(modality === "audio" ? "webmAudioOption" : "webmVideoOption")}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
             ) : null}
             <PrimaryButton
               testID="media-upload"
               label={t("perceive")}
               loading={uploading}
-              disabled={!file || selectedId == null}
+              disabled={
+                !file ||
+                selectedId == null ||
+                (needsWebmChoice && !webmModality)
+              }
               onPress={() => void upload()}
               style={{ marginTop: 12 }}
             />
@@ -671,6 +740,16 @@ const styles = StyleSheet.create({
   filePicker: { flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderRadius: 6, padding: 12 },
   fileName: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 13 },
   fileMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, marginTop: 7 },
+  webmChoice: { marginTop: 12, gap: 8 },
+  webmChoicePrompt: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 },
+  webmChoiceOptions: { flexDirection: "row", gap: 8 },
+  webmChoiceButton: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  webmChoiceText: { fontFamily: "JetBrainsMono_500Medium", fontSize: 11, textTransform: "uppercase" },
   retryButton: { marginTop: 20, minWidth: 130 },
   assetCard: { borderWidth: 1, borderRadius: 8, padding: 14, marginBottom: 12 },
   assetHeader: { flexDirection: "row", alignItems: "center", gap: 10 },

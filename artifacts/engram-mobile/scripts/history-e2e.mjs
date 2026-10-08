@@ -1237,6 +1237,64 @@ async function runMediaRecoveryRegression(client) {
   return client;
 }
 
+async function runMediaWebmChoiceRegression(client) {
+  await clickTestId(client, "media-engram-1");
+  await clickTestId(client, "media-file-picker");
+  await waitForValue(
+    client,
+    `Boolean([...document.querySelectorAll('input[type="file"]')].find((input) =>
+      input.getAttribute("accept")?.includes("video/*")
+    ))`,
+    "WebM document picker",
+  );
+  const fileSelected = await client.evaluate(`(() => {
+    const input = [...document.querySelectorAll('input[type="file"]')].find((item) =>
+      item.getAttribute("accept")?.includes("video/*")
+    );
+    if (!input) return false;
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(
+      [new Uint8Array([0x1a, 0x45, 0xdf, 0xa3])],
+      "generic-picker.WEBM",
+      { type: "application/octet-stream" },
+    ));
+    input.files = transfer.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  })()`);
+  if (!fileSelected) throw new Error("Could not select the generic-MIME WebM fixture");
+
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector('[data-testid="media-webm-modality-choice"]')) &&
+      Boolean(document.querySelector('[data-testid="media-webm-modality-audio"]')) &&
+      Boolean(document.querySelector('[data-testid="media-webm-modality-video"]')) &&
+      (document.querySelector('[data-testid="media-upload"]')?.disabled ||
+        document.querySelector('[data-testid="media-upload"]')?.getAttribute("aria-disabled") === "true")`,
+    "explicit WebM modality choices and blocked upload",
+  );
+  await clickTestId(client, "media-webm-modality-audio");
+  await waitForValue(
+    client,
+    `document.querySelector('[data-testid="media-selected-mime"]')?.innerText.includes("audio/webm") &&
+      !document.querySelector('[data-testid="media-upload"]')?.disabled &&
+      document.querySelector('[data-testid="media-upload"]')?.getAttribute("aria-disabled") !== "true"`,
+    "audio WebM choice",
+  );
+  await clickTestId(client, "media-webm-modality-video");
+  await waitForValue(
+    client,
+    `document.querySelector('[data-testid="media-selected-mime"]')?.innerText.includes("video/webm") &&
+      !document.querySelector('[data-testid="media-upload"]')?.disabled &&
+      document.querySelector('[data-testid="media-upload"]')?.getAttribute("aria-disabled") !== "true"`,
+    "video WebM choice",
+  );
+  console.log(
+    "Mobile WebM picker browser regression passed: generic MIME requires an explicit audio/video choice and maps each choice to its MIME.",
+  );
+  return client;
+}
+
 const processes = [];
 let profileDir;
 let client;
@@ -1468,6 +1526,7 @@ try {
     console.log("Mobile history browser regression passed: hydrate, archive, restore, read-only state, and four export downloads.");
     if (!nativeExportMode) {
       await runMediaRecoveryRegression(client);
+      await runMediaWebmChoiceRegression(client);
     }
   }
   }
