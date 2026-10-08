@@ -196,7 +196,7 @@ function minimalOgg(): Buffer {
   page[26] = 1;
   page[27] = payload.length;
   payload.copy(page, 28);
-  page.writeUInt32BE(oggCrc(page), 22);
+  page.writeUInt32LE(oggCrc(page), 22);
   return page;
 }
 

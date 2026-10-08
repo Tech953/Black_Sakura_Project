@@ -456,7 +456,8 @@ function isStructurallyValidOgg(data: Buffer): boolean {
     for (let index = offset + 27; index < tableEnd; index += 1) pagePayloadSize += data[index]!;
     const pageEnd = tableEnd + pagePayloadSize;
     if (pageEnd > data.length) return false;
-    const expectedCrc = readUInt32BE(data, offset + 22);
+    // Ogg stores the page checksum as a little-endian integer.
+    const expectedCrc = readUInt32LE(data, offset + 22);
     if (expectedCrc == null || expectedCrc !== oggCrc(data, offset, pageEnd)) return false;
     payloadBytes += pagePayloadSize;
     pages += 1;
