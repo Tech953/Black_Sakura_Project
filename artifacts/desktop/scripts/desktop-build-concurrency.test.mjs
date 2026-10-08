@@ -165,8 +165,33 @@ describe("desktop release workflow concurrency", () => {
     expect(workflow).toMatch(
       /- name: Collect packaged smoke diagnostics\s+if: always\(\)/,
     );
-    expect(workflow).toMatch(
-      /steps\.windows_zip_check\.outcome == 'failure'/,
+  });
+
+  it("uploads bounded diagnostics and verifies an expected failure on native runners", () => {
+    const buildStart = workflow.indexOf("\n  build:");
+    const buildEnd = workflow.indexOf(
+      "\n  llama-runtime-contract:",
+      buildStart,
+    );
+    const buildJob = workflow.slice(buildStart, buildEnd);
+
+    expect(buildJob).toMatch(
+      /- name: Probe packaged failure diagnostics\s+id: packaged_diagnostics_probe\s+if: always\(\) && steps\.packaged_smoke\.outcome == 'success'\s+continue-on-error: true[\s\S]*ENGRAM_PACKAGED_DIAGNOSTICS_PROBE:\s+"1"/,
+    );
+    expect(buildJob).toMatch(
+      /intentional diagnostics probe: health check failure/,
+    );
+    expect(buildJob).toMatch(
+      /- name: Collect packaged smoke diagnostics\s+if: always\(\)[\s\S]*collect-smoke-diagnostics\.mjs/,
+    );
+    expect(buildJob).toMatch(
+      /- name: Verify packaged failure diagnostics\s+if: always\(\) && steps\.packaged_diagnostics_probe\.outcome == 'failure'[\s\S]*verify-smoke-diagnostics\.mjs/,
+    );
+    expect(buildJob).toMatch(
+      /- name: Upload packaged smoke diagnostics\s+if: always\(\)/,
+    );
+    expect(buildJob).not.toContain(
+      "steps.windows_zip_check.outcome == 'failure'",
     );
   });
 

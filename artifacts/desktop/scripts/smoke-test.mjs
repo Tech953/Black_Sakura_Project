@@ -1173,6 +1173,15 @@ async function main() {
     }
     log("/api/healthz -> 200 OK");
 
+    if (process.env.ENGRAM_PACKAGED_DIAGNOSTICS_PROBE === "1") {
+      throw new Error(
+        `intentional diagnostics probe: health check failure (expected status=503, received ${health.status}); token=diagnostic-probe-secret; path=${path.join(
+          os.tmpdir(),
+          "engram-diagnostics-probe",
+        )}`,
+      );
+    }
+
     // Open Settings through the same production menu/IPC path. In CI the main
     // process substitutes the downloaded fixture for the native picker result;
     // the renderer still receives only the allowlisted inspection payload.
