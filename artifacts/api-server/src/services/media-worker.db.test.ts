@@ -269,62 +269,117 @@ describe("runMediaTick — full lifecycle against a real DB", () => {
     expect(await observationLinkCount(asset.id)).toBe(0);
   });
 
-  it("rolls back a failed completion transaction so a retry creates one fresh observation set", async () => {
+  it("rolls back repeated completion failures so retries create one fresh observation set", async () => {
     const engramId = await insertEngram();
     const asset = await seedPendingAsset(engramId);
+    const completionFailureMessages = [
+      "simulate first worker crash during completion commit",
+      "simulate second worker crash during completion commit",
+    ];
+    h.extractFromMedia
+      .mockResolvedValueOnce({
+        observations: ["First attempt observation."],
+        summary: "First attempt summary.",
+        transcript: "First attempt transcript.",
+      })
+      .mockResolvedValueOnce({
+        observations: [
+          "Second attempt observation one.",
+          "Second attempt observation two.",
+          "Second attempt observation three.",
+        ],
+        summary: "Second attempt summary.",
+        transcript: "Second attempt transcript.",
+      })
+      .mockResolvedValueOnce({
+        observations: ["A lighthouse blinks twice.", "A gull settles on the rail."],
+        summary: "Two short images of a harbor.",
+        transcript: null,
+      });
+
     const realUpdateMediaAsset = mediaStore.updateMediaAsset;
+    let completionAttempts = 0;
+    let failureIndex = 0;
+    const completionObservationCounts: number[] = [];
     const completionFailure = vi
       .spyOn(mediaStore, "updateMediaAsset")
       .mockImplementation(async (id, patch, executor) => {
         if (patch.status === "completed") {
-          throw new Error("simulate worker crash during completion commit");
+          completionAttempts += 1;
+          completionObservationCounts.push(patch.observationCount ?? -1);
+          if (failureIndex < completionFailureMessages.length) {
+            throw new Error(completionFailureMessages[failureIndex++]);
+          }
         }
         return realUpdateMediaAsset(id, patch, executor);
       });
 
-    const failedPass = await runMediaTick();
+    try {
+      for (const [attemptIndex, failureMessage] of completionFailureMessages.entries()) {
+        const failedPass = await runMediaTick();
 
-    expect(failedPass.processed).toBe(1);
-    expect(h.extractFromMedia).toHaveBeenCalledTimes(1);
-    expect(completionFailure).toHaveBeenCalledWith(
-      asset.id,
-      expect.objectContaining({
-        status: "completed",
-        observationCount: 2,
-      }),
-      expect.anything(),
-    );
+        expect(failedPass.processed).toBe(1);
+        expect(completionAttempts).toBe(attemptIndex + 1);
+        expect(h.extractFromMedia).toHaveBeenCalledTimes(attemptIndex + 1);
 
-    // The first observation was attempted inside the transaction, but the
-    // completion failure rolled back both rows and left the asset recoverable.
-    const failed = await reload(asset.id);
-    expect(failed.status).toBe("failed");
-    expect(failed.error).toContain("simulate worker crash during completion commit");
-    expect(failed.summary).toBeNull();
-    expect(failed.transcript).toBeNull();
-    expect(failed.commentary).toBeNull();
-    expect(failed.observationCount).toBe(0);
-    expect(failed.completedAt).toBeNull();
-    expect(await allWorldModelRows()).toHaveLength(0);
-    expect(await observationLinkCount(asset.id)).toBe(0);
+        const failed = await reload(asset.id);
+        expect(failed.status).toBe("failed");
+        expect(failed.error).toContain(failureMessage);
+        expect(failed.summary).toBeNull();
+        expect(failed.transcript).toBeNull();
+        expect(failed.commentary).toBeNull();
+        expect(failed.observationCount).toBe(0);
+        expect(failed.completedAt).toBeNull();
 
-    completionFailure.mockRestore();
-    expect(await requeueMediaAsset(asset.id)).toBeTruthy();
+        const mediaRows = (await allWorldModelRows()).filter(
+          (row) => row.source === `media:${asset.id}`,
+        );
+        expect(mediaRows).toHaveLength(0);
+        expect(await observationLinkCount(asset.id)).toBe(0);
+        expect(await requeueMediaAsset(asset.id)).toBeTruthy();
+      }
 
-    const retry = await runMediaTick();
+      const finalPass = await runMediaTick();
 
-    expect(retry.processed).toBe(1);
-    expect(h.extractFromMedia).toHaveBeenCalledTimes(2);
-    const completed = await reload(asset.id);
-    expect(completed.status).toBe("completed");
-    expect(completed.observationCount).toBe(2);
-    expect(completed.error).toBeNull();
-    expect(await allWorldModelRows()).toHaveLength(2);
-    expect(await observationLinkCount(asset.id)).toBe(2);
-    expect((await allWorldModelRows()).map((row) => row.content).sort()).toEqual([
-      "A gull settles on the rail.",
-      "A lighthouse blinks twice.",
-    ]);
+      expect(finalPass.processed).toBe(1);
+      expect(completionAttempts).toBe(3);
+      expect(completionObservationCounts).toEqual([1, 3, 2]);
+      expect(h.extractFromMedia).toHaveBeenCalledTimes(3);
+
+      const completed = await reload(asset.id);
+      expect(completed.status).toBe("completed");
+      expect(completed.summary).toBe("Two short images of a harbor.");
+      expect(completed.transcript).toBeNull();
+      expect(completed.observationCount).toBe(2);
+      expect(completed.completedAt).toBeInstanceOf(Date);
+      expect(completed.error).toBeNull();
+
+      const rows = await allWorldModelRows();
+      expect(rows).toHaveLength(2);
+      expect(rows.every(
+        (row) =>
+          row.engramId === engramId &&
+          row.provenance === "observed" &&
+          row.source === `media:${asset.id}`,
+      )).toBe(true);
+      expect(rows.map((row) => row.content).sort()).toEqual([
+        "A gull settles on the rail.",
+        "A lighthouse blinks twice.",
+      ]);
+      expect(new Set(rows.map((row) => row.content)).size).toBe(2);
+
+      const links = await db
+        .select({ worldModelEntryId: mediaObservationsTable.worldModelEntryId })
+        .from(mediaObservationsTable)
+        .where(eq(mediaObservationsTable.assetId, asset.id));
+      expect(links).toHaveLength(2);
+      expect(new Set(links.map((link) => link.worldModelEntryId)).size).toBe(2);
+      expect(links.map((link) => link.worldModelEntryId).sort()).toEqual(
+        rows.map((row) => row.id).sort(),
+      );
+    } finally {
+      completionFailure.mockRestore();
+    }
   });
 
   it("replaces pre-existing partial observations on retry without duplicates", async () => {
