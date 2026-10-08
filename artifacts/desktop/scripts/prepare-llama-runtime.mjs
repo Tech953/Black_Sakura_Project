@@ -7,13 +7,14 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { rename } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const LLAMA_VERSION = "b10242";
+export const LLAMA_VERSION = "b10242";
 const RELEASE_BASE =
   `https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_VERSION}`;
 
@@ -42,29 +43,7 @@ const assets = {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(here, "..", "..", "..");
-const cache = path.join(repoRoot, ".llama");
-const platform = process.env.LLAMA_TARGET || process.platform;
-const architecture = process.env.LLAMA_ARCH || process.arch;
-const asset = assets[`${platform}-${architecture}`];
-
-if (!asset) {
-  throw new Error(
-    `No pinned llama.cpp CPU runtime for ${platform}-${architecture}.`,
-  );
-}
-
-const destination =
-  platform === "win32"
-    ? path.join(cache, `llama-${LLAMA_VERSION}-win-x64`)
-    : path.join(cache, `llama-${LLAMA_VERSION}`);
-const executable = path.join(
-  destination,
-  platform === "win32" ? "llama-server.exe" : "llama-server",
-);
-
-mkdirSync(cache, { recursive: true });
-const archive = path.join(cache, asset.name);
-const temporary = `${archive}.${process.pid}.partial`;
+const defaultCache = path.join(repoRoot, ".llama");
 
 async function sha256(file) {
   const hash = createHash("sha256");
@@ -72,62 +51,104 @@ async function sha256(file) {
   return hash.digest("hex");
 }
 
-if (!existsSync(archive) || (await sha256(archive)) !== asset.sha256) {
-  rmSync(archive, { force: true });
-  rmSync(temporary, { force: true });
-  console.log(`[desktop] downloading pinned llama.cpp runtime ${asset.name}`);
-  const response = await fetch(`${RELEASE_BASE}/${asset.name}`, {
-    redirect: "follow",
-  });
-  if (!response.ok || !response.body) {
+export async function prepareLlamaRuntime({
+  platform = process.env.LLAMA_TARGET || process.platform,
+  architecture = process.env.LLAMA_ARCH || process.arch,
+  cache = defaultCache,
+  assetCatalog = assets,
+  releaseBase = RELEASE_BASE,
+  fetchImpl = globalThis.fetch,
+  spawnSyncImpl = spawnSync,
+  renameFile = rename,
+} = {}) {
+  const asset = assetCatalog[`${platform}-${architecture}`];
+  if (!asset) {
     throw new Error(
-      `Could not download llama.cpp runtime (${response.status} ${response.statusText}).`,
+      `No pinned llama.cpp CPU runtime for ${platform}-${architecture}.`,
     );
   }
-  await pipeline(
-    Readable.fromWeb(response.body),
-    createWriteStream(temporary, { flags: "wx", mode: 0o600 }),
+
+  const destination =
+    platform === "win32"
+      ? path.join(cache, `llama-${LLAMA_VERSION}-win-x64`)
+      : path.join(cache, `llama-${LLAMA_VERSION}`);
+  const executable = path.join(
+    destination,
+    platform === "win32" ? "llama-server.exe" : "llama-server",
   );
-  const actual = await sha256(temporary);
-  if (actual !== asset.sha256) {
+
+  mkdirSync(cache, { recursive: true });
+  const archive = path.join(cache, asset.name);
+  const temporary = `${archive}.${process.pid}.partial`;
+
+  if (!existsSync(archive) || (await sha256(archive)) !== asset.sha256) {
+    rmSync(archive, { force: true });
     rmSync(temporary, { force: true });
-    throw new Error(
-      `llama.cpp runtime checksum mismatch: expected ${asset.sha256}, got ${actual}.`,
-    );
+    console.log(`[desktop] downloading pinned llama.cpp runtime ${asset.name}`);
+
+    try {
+      const response = await fetchImpl(`${releaseBase}/${asset.name}`, {
+        redirect: "follow",
+      });
+      if (!response.ok || !response.body) {
+        throw new Error(
+          `Could not download llama.cpp runtime (${response.status} ${response.statusText}).`,
+        );
+      }
+      await pipeline(
+        Readable.fromWeb(response.body),
+        createWriteStream(temporary, { flags: "wx", mode: 0o600 }),
+      );
+      const actual = await sha256(temporary);
+      if (actual !== asset.sha256) {
+        throw new Error(
+          `llama.cpp runtime checksum mismatch: expected ${asset.sha256}, got ${actual}.`,
+        );
+      }
+      await renameFile(temporary, archive);
+    } catch (error) {
+      rmSync(temporary, { force: true });
+      throw error;
+    }
   }
-  await import("node:fs/promises").then(({ rename }) =>
-    rename(temporary, archive),
+
+  rmSync(destination, { recursive: true, force: true });
+  mkdirSync(platform === "win32" ? destination : cache, { recursive: true });
+  const extractor = platform === "win32" ? "unzip" : "tar";
+  const extractArgs =
+    platform === "win32"
+      ? ["-q", archive, "-d", destination]
+      : ["-xzf", archive, "-C", cache];
+  const extracted = spawnSyncImpl(extractor, extractArgs, {
+    stdio: "inherit",
+    shell: false,
+  });
+  if (extracted.status !== 0 || !existsSync(executable)) {
+    throw new Error(`Failed to extract llama.cpp runtime from ${archive}.`);
+  }
+
+  writeFileSync(
+    path.join(destination, ".engram-verified-runtime.json"),
+    `${JSON.stringify(
+      {
+        version: LLAMA_VERSION,
+        platform,
+        architecture,
+        archiveSha256: asset.sha256,
+      },
+      null,
+      2,
+    )}\n`,
+    { encoding: "utf8", mode: 0o600 },
   );
+
+  console.log(`[desktop] pinned llama.cpp runtime ready: ${executable}`);
+  return { archive, executable };
 }
 
-rmSync(destination, { recursive: true, force: true });
-mkdirSync(platform === "win32" ? destination : cache, { recursive: true });
-const extractor = platform === "win32" ? "unzip" : "tar";
-const extractArgs =
-  platform === "win32"
-    ? ["-q", archive, "-d", destination]
-    : ["-xzf", archive, "-C", cache];
-const extracted = spawnSync(extractor, extractArgs, {
-  stdio: "inherit",
-  shell: false,
-});
-if (extracted.status !== 0 || !existsSync(executable)) {
-  throw new Error(`Failed to extract llama.cpp runtime from ${archive}.`);
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  await prepareLlamaRuntime();
 }
-
-writeFileSync(
-  path.join(destination, ".engram-verified-runtime.json"),
-  `${JSON.stringify(
-    {
-      version: LLAMA_VERSION,
-      platform,
-      architecture,
-      archiveSha256: asset.sha256,
-    },
-    null,
-    2,
-  )}\n`,
-  { encoding: "utf8", mode: 0o600 },
-);
-
-console.log(`[desktop] pinned llama.cpp runtime ready: ${executable}`);
