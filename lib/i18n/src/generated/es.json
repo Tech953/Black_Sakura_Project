@@ -526,7 +526,8 @@
     "recentPerceptionProcessing": "Media perception is still in progress",
     "recentPerceptionEmpty": "No media observations recorded yet",
     "recentPerceptionSourceUnavailable": "Source asset unavailable",
-    "openWorldModel": "Open world model"
+    "openWorldModel": "Open world model",
+    "recentPerceptionSelectLabel": "Elige un engram para inspeccionar"
   },
   "hub": {
     "title": "EL HUB",
