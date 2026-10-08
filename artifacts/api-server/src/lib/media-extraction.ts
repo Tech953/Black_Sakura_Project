@@ -104,6 +104,246 @@ function readUInt32LE(data: Buffer, offset: number): number | null {
   return offset >= 0 && offset + 4 <= data.length ? data.readUInt32LE(offset) : null;
 }
 
+function isStructurallyValidPng(data: Buffer): boolean {
+  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (!startsWithBytes(data, signature) || data.length < 20) return false;
+
+  let offset = signature.length;
+  let sawHeader = false;
+  let sawIdat = false;
+  let sawImageData = false;
+  let idatSequenceEnded = false;
+  let sawEnd = false;
+
+  while (offset < data.length) {
+    if (data.length - offset < 12) return false;
+    const chunkLength = readUInt32BE(data, offset);
+    if (chunkLength == null || chunkLength > data.length - offset - 12) return false;
+    const chunkType = data.toString("ascii", offset + 4, offset + 8);
+    if (!/^[A-Za-z]{4}$/.test(chunkType)) return false;
+
+    const payloadStart = offset + 8;
+    if (!sawHeader && chunkType !== "IHDR") return false;
+    if (chunkType === "IHDR") {
+      if (sawHeader || offset !== signature.length || chunkLength !== 13) return false;
+      const width = readUInt32BE(data, payloadStart);
+      const height = readUInt32BE(data, payloadStart + 4);
+      if (width == null || height == null || width === 0 || height === 0) return false;
+      sawHeader = true;
+    } else if (chunkType === "IDAT") {
+      if (idatSequenceEnded) return false;
+      sawIdat = true;
+      sawImageData ||= chunkLength > 0;
+    } else if (sawIdat) {
+      idatSequenceEnded = true;
+    }
+
+    offset += chunkLength + 12;
+    if (chunkType === "IEND") {
+      if (chunkLength !== 0 || !sawImageData) return false;
+      sawEnd = true;
+      break;
+    }
+  }
+
+  return sawHeader && sawIdat && sawImageData && sawEnd && offset === data.length;
+}
+
+function isWebpImageChunk(
+  data: Buffer,
+  chunkType: string,
+  payloadStart: number,
+  chunkLength: number,
+): boolean {
+  if (chunkType === "VP8 ") {
+    return (
+      chunkLength >= 10 &&
+      startsWithBytes(data, [0x9d, 0x01, 0x2a], payloadStart + 3)
+    );
+  }
+  return chunkType === "VP8L" && chunkLength >= 5 && data[payloadStart] === 0x2f;
+}
+
+function hasWebpFrameImage(data: Buffer, start: number, end: number): boolean {
+  let offset = start;
+  let sawImage = false;
+  while (offset < end) {
+    if (end - offset < 8) return false;
+    const chunkType = data.toString("ascii", offset, offset + 4);
+    const chunkLength = readUInt32LE(data, offset + 4);
+    if (chunkLength == null || chunkLength > end - offset - 8) return false;
+    const payloadStart = offset + 8;
+    const payloadEnd = payloadStart + chunkLength;
+    const nextOffset = payloadEnd + (chunkLength % 2);
+    if (nextOffset > end) return false;
+
+    if (chunkType === "VP8X" || chunkType === "ANIM" || chunkType === "ANMF") {
+      return false;
+    }
+    if (chunkType === "ALPH" && chunkLength === 0) return false;
+    if (chunkType === "VP8 " || chunkType === "VP8L") {
+      if (!isWebpImageChunk(data, chunkType, payloadStart, chunkLength) || sawImage) {
+        return false;
+      }
+      sawImage = true;
+    }
+    offset = nextOffset;
+  }
+  return offset === end && sawImage;
+}
+
+function isStructurallyValidWebp(data: Buffer): boolean {
+  if (
+    data.length < 20 ||
+    data.toString("ascii", 0, 4) !== "RIFF" ||
+    readUInt32LE(data, 4) !== data.length - 8 ||
+    data.toString("ascii", 8, 12) !== "WEBP"
+  )
+    return false;
+
+  let offset = 12;
+  let sawVp8x = false;
+  let sawAnimation = false;
+  let sawAnimationFrame = false;
+  let sawStaticImage = false;
+
+  while (offset < data.length) {
+    if (data.length - offset < 8) return false;
+    const chunkType = data.toString("ascii", offset, offset + 4);
+    const chunkLength = readUInt32LE(data, offset + 4);
+    if (chunkLength == null || chunkLength > data.length - offset - 8) return false;
+    const payloadStart = offset + 8;
+    const payloadEnd = payloadStart + chunkLength;
+    const nextOffset = payloadEnd + (chunkLength % 2);
+    if (nextOffset > data.length) return false;
+
+    if (chunkType === "VP8X") {
+      if (sawVp8x || chunkLength !== 10) return false;
+      sawVp8x = true;
+    } else if (chunkType === "ANIM") {
+      if (sawAnimation || chunkLength !== 6 || sawStaticImage || sawAnimationFrame) {
+        return false;
+      }
+      sawAnimation = true;
+    } else if (chunkType === "ANMF") {
+      if (
+        !sawVp8x ||
+        !sawAnimation ||
+        sawStaticImage ||
+        chunkLength < 16 ||
+        !hasWebpFrameImage(data, payloadStart + 16, payloadEnd)
+      )
+        return false;
+      sawAnimationFrame = true;
+    } else if (chunkType === "VP8 " || chunkType === "VP8L") {
+      if (
+        sawAnimation ||
+        sawAnimationFrame ||
+        sawStaticImage ||
+        !isWebpImageChunk(data, chunkType, payloadStart, chunkLength)
+      )
+        return false;
+      sawStaticImage = true;
+    }
+
+    offset = nextOffset;
+  }
+
+  return (
+    offset === data.length &&
+    (sawStaticImage || (sawAnimation && sawAnimationFrame))
+  );
+}
+
+function readGifSubBlocks(
+  data: Buffer,
+  start: number,
+): { nextOffset: number; dataLength: number; firstBlockLength: number } | null {
+  let offset = start;
+  let dataLength = 0;
+  let firstBlockLength: number | null = null;
+
+  while (offset < data.length) {
+    const blockLength = data[offset++]!;
+    firstBlockLength ??= blockLength;
+    if (blockLength === 0) {
+      return { nextOffset: offset, dataLength, firstBlockLength };
+    }
+    if (blockLength > data.length - offset) return null;
+    dataLength += blockLength;
+    offset += blockLength;
+  }
+  return null;
+}
+
+function isStructurallyValidGif(data: Buffer): boolean {
+  const header = data.toString("ascii", 0, 6);
+  if (
+    data.length < 14 ||
+    (header !== "GIF87a" && header !== "GIF89a") ||
+    data.readUInt16LE(6) === 0 ||
+    data.readUInt16LE(8) === 0
+  )
+    return false;
+
+  let offset = 13;
+  const screenPacked = data[10]!;
+  if (screenPacked & 0x80) {
+    const colorTableBytes = 3 * 2 ** ((screenPacked & 0x07) + 1);
+    if (colorTableBytes > data.length - offset) return false;
+    offset += colorTableBytes;
+  }
+
+  let sawImage = false;
+  while (offset < data.length) {
+    const blockType = data[offset]!;
+    if (blockType === 0x3b) {
+      offset += 1;
+      return sawImage && offset === data.length;
+    }
+
+    if (blockType === 0x21) {
+      if (offset + 2 > data.length) return false;
+      const label = data[offset + 1]!;
+      const blocks = readGifSubBlocks(data, offset + 2);
+      if (!blocks) return false;
+      if (
+        (label === 0xf9 && blocks.firstBlockLength !== 4) ||
+        (label === 0xff && blocks.firstBlockLength !== 11) ||
+        (label === 0x01 && blocks.firstBlockLength !== 12)
+      )
+        return false;
+      offset = blocks.nextOffset;
+      continue;
+    }
+
+    if (blockType === 0x2c) {
+      if (offset + 10 > data.length) return false;
+      const frameWidth = data.readUInt16LE(offset + 5);
+      const frameHeight = data.readUInt16LE(offset + 7);
+      if (frameWidth === 0 || frameHeight === 0) return false;
+      const imagePacked = data[offset + 9]!;
+      offset += 10;
+      if (imagePacked & 0x80) {
+        const colorTableBytes = 3 * 2 ** ((imagePacked & 0x07) + 1);
+        if (colorTableBytes > data.length - offset) return false;
+        offset += colorTableBytes;
+      }
+      if (offset >= data.length) return false;
+      const minimumCodeSize = data[offset++]!;
+      if (minimumCodeSize < 2 || minimumCodeSize > 8) return false;
+      const blocks = readGifSubBlocks(data, offset);
+      if (!blocks || blocks.dataLength === 0) return false;
+      sawImage = true;
+      offset = blocks.nextOffset;
+      continue;
+    }
+
+    return false;
+  }
+  return false;
+}
+
 function isStructurallyValidJpeg(data: Buffer): boolean {
   if (data.length < 4 || !startsWithBytes(data, [0xff, 0xd8]) || data[data.length - 2] !== 0xff || data[data.length - 1] !== 0xd9)
     return false;
@@ -438,19 +678,22 @@ function isStructurallyValidMp3(data: Buffer): boolean {
  * because it has an unambiguous parser-level check.
  */
 export function detectContentType(data: Buffer): string | null {
-  if (startsWithBytes(data, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
-    return "image/png";
+  if (startsWithBytes(data, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
+    return isStructurallyValidPng(data) ? "image/png" : null;
+  }
   if (isStructurallyValidJpeg(data)) return "image/jpeg";
   if (
     startsWithBytes(data, [0x52, 0x49, 0x46, 0x46]) &&
     data.subarray(8, 12).toString("ascii") === "WEBP"
-  )
-    return "image/webp";
+  ) {
+    return isStructurallyValidWebp(data) ? "image/webp" : null;
+  }
   if (
     data.subarray(0, 6).toString("ascii") === "GIF87a" ||
     data.subarray(0, 6).toString("ascii") === "GIF89a"
-  )
-    return "image/gif";
+  ) {
+    return isStructurallyValidGif(data) ? "image/gif" : null;
+  }
 
   if (isStructurallyValidWav(data))
     return "audio/wav";

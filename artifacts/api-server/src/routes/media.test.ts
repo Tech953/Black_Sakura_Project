@@ -129,6 +129,25 @@ const validJpeg = Buffer.from(
   "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYwLjMxLjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABLAAEBAAAAAAAAAAAAAAAAAAAACAEBAAAAAAAAAAAAAAAAAAAAABABAAAAAAAAAAAAAAAAAAAAABEBAAAAAAAAAAAAAAAAAAAAAP/AABEIAAIAAgMBIgACEQADEQD/2gAMAwEAAhEDEQA/AJ/AB//Z",
   "base64",
 );
+const validPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACAQMAAABIeJ9nAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAADUExURf8AABniCTcAAAAMSURBVAjXY2BgYAAAAAQAASc0JwoAAAAASUVORK5CYII=",
+  "base64",
+);
+const validWebp = Buffer.from(
+  "UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoCAAIAAgA0JaACdLoB+AADsAD+8MQL/yC5YXXI1/8gP+QH/ID/+PIAAAA=",
+  "base64",
+);
+const validGif = Buffer.from(
+  "R0lGODlhAgACAPAAAP8AAAAAACH5BAAAAAAALAAAAAACAAIAAAIChFEAOw==",
+  "base64",
+);
+const invalidPngChunkLength = Buffer.from(validPng);
+invalidPngChunkLength.writeUInt32BE(0xffffffff, 8);
+const invalidWebpChunkLength = Buffer.from(validWebp);
+invalidWebpChunkLength.writeUInt32LE(0xffffffff, 16);
+const invalidGifBlockLength = Buffer.from(validGif);
+const gifImageSeparator = invalidGifBlockLength.indexOf(0x2c, 13);
+invalidGifBlockLength[gifImageSeparator + 11] = 0xff;
 
 // --- HTTP harness --------------------------------------------------------------
 let server: Server;
@@ -467,7 +486,19 @@ describe("POST /media (upload)", () => {
     {
       mime: "image/png",
       filename: "scene.png",
-      bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      bytes: validPng,
+      modality: "image",
+    },
+    {
+      mime: "image/webp",
+      filename: "scene.webp",
+      bytes: validWebp,
+      modality: "image",
+    },
+    {
+      mime: "image/gif",
+      filename: "scene.gif",
+      bytes: validGif,
       modality: "image",
     },
     {
@@ -565,6 +596,12 @@ describe("POST /media (upload)", () => {
       Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x81, 0x00]),
     ],
     ["truncated JPEG", "image/jpeg", "broken.jpg", Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])],
+    ["truncated PNG", "image/png", "broken.png", validPng.subarray(0, -1)],
+    ["invalid PNG chunk length", "image/png", "broken.png", invalidPngChunkLength],
+    ["truncated WebP", "image/webp", "broken.webp", validWebp.subarray(0, -1)],
+    ["invalid WebP chunk length", "image/webp", "broken.webp", invalidWebpChunkLength],
+    ["truncated GIF", "image/gif", "broken.gif", validGif.subarray(0, -1)],
+    ["invalid GIF block length", "image/gif", "broken.gif", invalidGifBlockLength],
   ])("rejects a %s at upload with 415", async (_label, mime, filename, bytes) => {
     const form = new FormData();
     form.append("engramId", "3");
