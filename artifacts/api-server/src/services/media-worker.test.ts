@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Engram, MediaAsset } from "@workspace/db";
+import {
+  decodeStoredMediaFailure,
+  MediaProcessingFailure,
+} from "../lib/media-failure";
 
 // --- Hoisted mock state (db + every collaborator the worker reaches) -----------
 const h = vi.hoisted(() => {
@@ -262,6 +266,25 @@ describe("runMediaTick — failures surface on the job", () => {
     expect(patch.observationCount).toBe(0);
   });
 
+  it.each(["provider", "extraction"] as const)(
+    "persists the %s category separately from its diagnostic",
+    async (failureKind) => {
+      h.claimNextPendingJob.mockResolvedValueOnce(makeAsset());
+      h.extractFromMedia.mockRejectedValueOnce(
+        new MediaProcessingFailure(failureKind, `${failureKind} diagnostic`),
+      );
+
+      await runMediaTick();
+
+      const [, patch] = h.updateMediaAsset.mock.calls[0];
+      expect(decodeStoredMediaFailure(patch.error as string)).toEqual({
+        failureKind,
+        diagnostic: `${failureKind} diagnostic`,
+      });
+      expect(patch.observationCount).toBe(0);
+    },
+  );
+
   it("marks a write-time failure as no-result instead of exposing a partial result", async () => {
     h.claimNextPendingJob.mockResolvedValueOnce(makeAsset());
     h.appendMediaObservation
@@ -283,6 +306,7 @@ describe("runMediaTick — failures surface on the job", () => {
       completedAt: null,
     });
     expect(patch.error).toContain("world model write failed");
+    expect(decodeStoredMediaFailure(patch.error as string).failureKind).toBeNull();
   });
 
   it("replaces a failed attempt on retry without appending another copy", async () => {

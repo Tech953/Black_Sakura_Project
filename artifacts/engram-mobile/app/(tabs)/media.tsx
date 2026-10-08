@@ -113,6 +113,14 @@ function MediaAssetCard({
           ? colors.accent
           : colors.primary;
   const recovered = asset.failureKind === "recovered";
+  const failureTitle =
+    recovered
+      ? t("recoveredTitle")
+      : asset.failureKind === "provider"
+        ? t("providerFailureTitle")
+        : asset.failureKind === "extraction"
+          ? t("extractionFailureTitle")
+          : t("perceptionFailed");
 
   const onRetry = () => {
     retry.mutate(
@@ -178,13 +186,19 @@ function MediaAssetCard({
       {asset.summary ? (
         <Text style={[styles.summary, { color: colors.foreground }]}>{asset.summary}</Text>
       ) : null}
-      {asset.status === "failed" && asset.error ? (
-        <View style={[styles.errorBox, { borderColor: colors.destructive + "66" }]}>
+      {asset.status === "failed" && (asset.error || asset.failureKind) ? (
+        <View
+          testID={`media-failure-notice-${asset.id}`}
+          style={[styles.errorBox, { borderColor: colors.destructive + "66" }]}
+        >
+          <Text
+            testID={`media-failure-category-${asset.id}`}
+            style={[styles.errorText, { color: colors.destructive }]}
+          >
+            {failureTitle}
+          </Text>
           {recovered ? (
             <>
-              <Text style={[styles.errorText, { color: colors.destructive }]}>
-                {t("recoveredTitle")}
-              </Text>
               <Text style={[styles.errorSummary, { color: colors.destructive }]}>
                 {t("recoveredBody")}
               </Text>
@@ -194,14 +208,25 @@ function MediaAssetCard({
             </>
           ) : (
             <>
-              <Text style={[styles.errorText, { color: colors.destructive }]}>{asset.error}</Text>
               <Text style={[styles.errorSummary, { color: colors.destructive }]}>
-                {asset.resultState === "partial"
-                  ? t("partialResultSaved", { count: asset.observationCount })
-                  : t("noResultSaved")}
+                {asset.failureKind === "provider"
+                  ? t("providerFailureGuidance")
+                  : asset.failureKind === "extraction"
+                    ? t("extractionFailureGuidance")
+                    : t("unknownFailureGuidance")}
               </Text>
+              {asset.error ? (
+                <Text style={[styles.errorSummary, { color: colors.destructive }]}>
+                  {t("diagnosticLabel")}: {asset.error}
+                </Text>
+              ) : null}
             </>
           )}
+          <Text style={[styles.errorSummary, { color: colors.destructive }]}>
+            {asset.resultState === "partial"
+              ? t("partialResultSaved", { count: asset.observationCount })
+              : t("noResultSaved")}
+          </Text>
         </View>
       ) : null}
 

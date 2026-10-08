@@ -32,7 +32,7 @@ export interface MediaAsset {
   /** @nullable */
   error: string | null;
   /**
-     * Why a failed media job needs operator attention, when a known recovery path applies.
+     * Stable category for known media processing failures and recovery.
      * @nullable
      */
   failureKind: MediaAssetFailureKind;

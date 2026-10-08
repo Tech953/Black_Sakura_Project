@@ -4,7 +4,8 @@ import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { toFile } from "openai";
-import { llm, LLM_MODEL } from "./llm";
+import { llm, LLM_MODEL, normalizeLLMProviderError } from "./llm";
+import { MediaProcessingFailure } from "./media-failure";
 import type { MediaModality } from "@workspace/db";
 
 const execFileAsync = promisify(execFile);
@@ -29,6 +30,21 @@ const MAX_VIDEO_FRAMES = 4;
 const MAX_TEXT_CHARS = 12_000;
 const MAX_TRANSCRIPT_PROMPT_CHARS = 6_000;
 const MAX_OBSERVATIONS = 8;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function callMediaProvider<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request();
+  } catch (error) {
+    const normalized = normalizeLLMProviderError(error);
+    throw new MediaProcessingFailure("provider", normalized.message, {
+      cause: normalized,
+    });
+  }
+}
 
 /**
  * MIME allowlist → modality. Upload is rejected for anything not listed here, and
@@ -619,13 +635,15 @@ async function extractFromText(
   body: string,
 ): Promise<{ observations: string[]; summary: string }> {
   const content = clampText(body, MAX_TEXT_CHARS);
-  const res = await llm.chat.completions.create({
-    model: LLM_MODEL,
-    messages: [
-      { role: "system", content: EXTRACTION_SYSTEM },
-      { role: "user", content: `The following is the ${label} to perceive:\n\n${content}` },
-    ],
-  });
+  const res = await callMediaProvider(() =>
+    llm.chat.completions.create({
+      model: LLM_MODEL,
+      messages: [
+        { role: "system", content: EXTRACTION_SYSTEM },
+        { role: "user", content: `The following is the ${label} to perceive:\n\n${content}` },
+      ],
+    }),
+  );
   return parseExtractionJson(res.choices[0]?.message?.content ?? "");
 }
 
@@ -633,22 +651,24 @@ async function extractFromImageData(
   dataUrls: string[],
   hint: string,
 ): Promise<{ observations: string[]; summary: string }> {
-  const res = await llm.chat.completions.create({
-    model: VISION_MODEL,
-    messages: [
-      { role: "system", content: EXTRACTION_SYSTEM },
-      {
-        role: "user",
-        content: [
-          { type: "text" as const, text: hint },
-          ...dataUrls.map((url) => ({
-            type: "image_url" as const,
-            image_url: { url },
-          })),
-        ],
-      },
-    ],
-  });
+  const res = await callMediaProvider(() =>
+    llm.chat.completions.create({
+      model: VISION_MODEL,
+      messages: [
+        { role: "system", content: EXTRACTION_SYSTEM },
+        {
+          role: "user",
+          content: [
+            { type: "text" as const, text: hint },
+            ...dataUrls.map((url) => ({
+              type: "image_url" as const,
+              image_url: { url },
+            })),
+          ],
+        },
+      ],
+    }),
+  );
   return parseExtractionJson(res.choices[0]?.message?.content ?? "");
 }
 
@@ -657,11 +677,20 @@ async function transcribeAudio(
   filename: string,
   mimeType: string,
 ): Promise<string> {
-  const file = await toFile(buffer, filename, { type: mimeType });
-  const res = await llm.audio.transcriptions.create({
-    file,
-    model: TRANSCRIBE_MODEL,
-  });
+  let file: Awaited<ReturnType<typeof toFile>>;
+  try {
+    file = await toFile(buffer, filename, { type: mimeType });
+  } catch (error) {
+    throw new MediaProcessingFailure("extraction", errorMessage(error), {
+      cause: error,
+    });
+  }
+  const res = await callMediaProvider(() =>
+    llm.audio.transcriptions.create({
+      file,
+      model: TRANSCRIBE_MODEL,
+    }),
+  );
   return (res.text ?? "").trim();
 }
 
@@ -728,6 +757,7 @@ async function extractFromVideo(
     }
 
     let transcript = "";
+    let audioProviderFailure: MediaProcessingFailure | null = null;
     const audioOut = join(dir, "audio.mp3");
     try {
       await execFileAsync(
@@ -738,7 +768,13 @@ async function extractFromVideo(
       const audioBuf = await readFile(audioOut);
       if (audioBuf.length > 0)
         transcript = await transcribeAudio(audioBuf, "audio.mp3", "audio/mpeg");
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof MediaProcessingFailure &&
+        error.failureKind === "provider"
+      ) {
+        audioProviderFailure = error;
+      }
       // No audio track / no speech — vision-only is fine.
     }
 
@@ -758,7 +794,11 @@ async function extractFromVideo(
     }
 
     if (!frames.length && !transcript) {
-      throw new Error("Could not extract any frames or audio from the video.");
+      if (audioProviderFailure) throw audioProviderFailure;
+      throw new MediaProcessingFailure(
+        "extraction",
+        "Could not extract any frames or audio from the video.",
+      );
     }
 
     const observations = [...vision.observations, ...audio.observations].slice(
@@ -784,44 +824,54 @@ export async function extractFromMedia(
   asset: { modality: MediaModality | string; mimeType: string; filename: string },
   data: Buffer,
 ): Promise<MediaExtraction> {
-  switch (asset.modality) {
-    case "text": {
-      const { observations, summary } = await extractFromText(
-        "text document",
-        data.toString("utf8"),
-      );
-      return { observations, summary, transcript: null };
-    }
-    case "image": {
-      const dataUrl = `data:${asset.mimeType};base64,${data.toString("base64")}`;
-      const { observations, summary } = await extractFromImageData(
-        [dataUrl],
-        "Describe this image as concrete observations.",
-      );
-      return { observations, summary, transcript: null };
-    }
-    case "audio": {
-      const transcript = await transcribeAudio(
-        data,
-        asset.filename,
-        asset.mimeType,
-      );
-      if (!transcript) {
-        return {
-          observations: [],
-          summary: "Audio contained no discernible speech.",
-          transcript: "",
-        };
+  try {
+    switch (asset.modality) {
+      case "text": {
+        const { observations, summary } = await extractFromText(
+          "text document",
+          data.toString("utf8"),
+        );
+        return { observations, summary, transcript: null };
       }
-      const { observations, summary } = await extractFromText(
-        "audio transcript",
-        transcript,
-      );
-      return { observations, summary, transcript };
+      case "image": {
+        const dataUrl = `data:${asset.mimeType};base64,${data.toString("base64")}`;
+        const { observations, summary } = await extractFromImageData(
+          [dataUrl],
+          "Describe this image as concrete observations.",
+        );
+        return { observations, summary, transcript: null };
+      }
+      case "audio": {
+        const transcript = await transcribeAudio(
+          data,
+          asset.filename,
+          asset.mimeType,
+        );
+        if (!transcript) {
+          return {
+            observations: [],
+            summary: "Audio contained no discernible speech.",
+            transcript: "",
+          };
+        }
+        const { observations, summary } = await extractFromText(
+          "audio transcript",
+          transcript,
+        );
+        return { observations, summary, transcript };
+      }
+      case "video":
+        return await extractFromVideo(asset, data);
+      default:
+        throw new MediaProcessingFailure(
+          "extraction",
+          `Unsupported media modality: ${asset.modality}`,
+        );
     }
-    case "video":
-      return extractFromVideo(asset, data);
-    default:
-      throw new Error(`Unsupported media modality: ${asset.modality}`);
+  } catch (error) {
+    if (error instanceof MediaProcessingFailure) throw error;
+    throw new MediaProcessingFailure("extraction", errorMessage(error), {
+      cause: error,
+    });
   }
 }

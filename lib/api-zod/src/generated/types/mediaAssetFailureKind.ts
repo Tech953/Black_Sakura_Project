@@ -7,12 +7,14 @@
  */
 
 /**
- * Why a failed media job needs operator attention, when a known recovery path applies.
+ * Stable category for known media processing failures and recovery.
  * @nullable
  */
 export type MediaAssetFailureKind = typeof MediaAssetFailureKind[keyof typeof MediaAssetFailureKind] | null;
 
 
 export const MediaAssetFailureKind = {
+  provider: 'provider',
+  extraction: 'extraction',
   recovered: 'recovered',
 } as const;

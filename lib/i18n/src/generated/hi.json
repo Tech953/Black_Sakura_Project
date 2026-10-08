@@ -697,14 +697,20 @@
       "hoursAgo": "{{count}}घं पहले",
       "daysAgo": "{{count}}दि पहले"
     },
-    "noResultSaved": "No observations were saved. Retry to run perception again.",
-    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result.",
+    "noResultSaved": "इस प्रयास के दौरान कोई अवलोकन सहेजा नहीं गया।",
+    "partialResultSaved": "इस एसेट के लिए {{count}} मौजूदा अवलोकन शेष हैं। सफल पुन: प्रयास उन्हें प्रतिस्थापित कर देगा।",
     "fileTooLarge": "This file is too large to upload.",
     "fileTypeMismatch": "The file contents, MIME type, or filename extension do not agree. Choose the original file.",
     "unsupportedFileType": "This file type is not supported. Choose a text, image, audio, or video file.",
     "recoveredTitle": "Perception was recovered after an interruption",
-    "recoveredBody": "The worker stopped before completing this perception. No completed partial result was committed.",
-    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates."
+    "recoveredBody": "बैकग्राउंड वर्कर इस धारणा को पूरा करने से पहले ही रुक गया।",
+    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates.",
+    "providerFailureTitle": "मॉडल प्रदाता समस्या",
+    "providerFailureGuidance": "थोड़ी देर बाद पुनः प्रयास करें। यदि समस्या बनी रहती है, तो ऑपरेटर से प्रदाता की पहुंच जांचने के लिए कहें।",
+    "extractionFailureTitle": "स्रोत पढ़ा नहीं जा सका",
+    "extractionFailureGuidance": "जांचें कि फ़ाइल पूर्ण और समर्थित है या नहीं। यदि आवश्यक हो तो एक मान्य प्रति अपलोड करें; केवल तभी पुनः प्रयास करें जब आपको यकीन हो कि स्रोत मान्य है।",
+    "unknownFailureGuidance": "यदि स्रोत सही दिखता है, तो पुनः प्रयास करें। यदि समस्या दोहराई जाती है, तो ऑपरेटर से पूछें।",
+    "diagnosticLabel": "तकनीकी विवरण"
   },
   "memory": {
     "title": "स्मृति आर्किटेक्चर",

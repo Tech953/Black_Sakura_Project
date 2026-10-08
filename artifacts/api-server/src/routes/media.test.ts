@@ -65,6 +65,7 @@ vi.mock("../lib/media-store", () => ({
 }));
 
 import mediaRouter from "./media";
+import { encodeStoredMediaFailure } from "../lib/media-failure";
 
 // --- Fixtures ------------------------------------------------------------------
 function makeAsset(overrides: Record<string, unknown> = {}) {
@@ -244,6 +245,43 @@ describe("GET /media/:id", () => {
     const body = (await res.json()) as any;
     expect(body.asset.failureKind).toBe("recovered");
     expect(body.asset.resultState).toBe("none");
+  });
+
+  it.each([
+    ["provider", "The provider is rate-limiting this request."],
+    ["extraction", "Could not decode the source file."],
+  ] as const)(
+    "exposes the %s category and keeps the diagnostic separate",
+    async (failureKind, diagnostic) => {
+      h.loadMediaAssetById.mockResolvedValueOnce(
+        makeAsset({
+          status: "failed",
+          error: encodeStoredMediaFailure(failureKind, diagnostic),
+          observationCount: 0,
+        }),
+      );
+      h.loadMediaObservations.mockResolvedValueOnce([]);
+
+      const res = await fetch(`${base}/media/7`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.asset.failureKind).toBe(failureKind);
+      expect(body.asset.error).toBe(diagnostic);
+      expect(body.asset.resultState).toBe("none");
+    },
+  );
+
+  it("preserves legacy unclassified diagnostics", async () => {
+    h.loadMediaAssetById.mockResolvedValueOnce(
+      makeAsset({ status: "failed", error: "Unexpected database error" }),
+    );
+    h.loadMediaObservations.mockResolvedValueOnce([]);
+
+    const res = await fetch(`${base}/media/7`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as any;
+    expect(body.asset.failureKind).toBeNull();
+    expect(body.asset.error).toBe("Unexpected database error");
   });
 
   it("404s when the asset is missing", async () => {

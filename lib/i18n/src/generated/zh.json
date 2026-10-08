@@ -697,14 +697,20 @@
       "hoursAgo": "{{count}} 小时前",
       "daysAgo": "{{count}} 天前"
     },
-    "noResultSaved": "No observations were saved. Retry to run perception again.",
-    "partialResultSaved": "{{count}} observations were saved before the failure. Retry will replace this partial result.",
+    "noResultSaved": "在此次尝试期间未保存任何观测结果。",
+    "partialResultSaved": "此资产仍保留有 {{count}} 个现有观测结果。重试成功后将替换它们。",
     "fileTooLarge": "This file is too large to upload.",
     "fileTypeMismatch": "The file contents, MIME type, or filename extension do not agree. Choose the original file.",
     "unsupportedFileType": "This file type is not supported. Choose a text, image, audio, or video file.",
     "recoveredTitle": "Perception was recovered after an interruption",
-    "recoveredBody": "The worker stopped before completing this perception. No completed partial result was committed.",
-    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates."
+    "recoveredBody": "后台处理程序在完成此感知前已停止。",
+    "recoveredRetry": "Retry will perceive the original asset again and replace any prior derived observations without creating duplicates.",
+    "diagnosticLabel": "技术细节",
+    "extractionFailureGuidance": "请检查文件是否完整且受支持。如有必要，请上传有效副本；仅在确信源有效的情况下才重试。",
+    "extractionFailureTitle": "无法读取源",
+    "providerFailureGuidance": "请稍后重试。如果问题持续存在，请请求操作员检查提供商访问权限。",
+    "providerFailureTitle": "模型提供商问题",
+    "unknownFailureGuidance": "如果源看起来正确，请重试。如果问题重复出现，请咨询操作员。"
   },
   "memory": {
     "title": "记忆架构",
