@@ -5,7 +5,14 @@ export type DesktopUpdateStatus =
   | { state: "not-available"; manual?: boolean }
   | { state: "downloading"; percent: number }
   | { state: "downloaded"; version?: string }
-  | { state: "error"; message: string };
+  | {
+      state: "error";
+      message: string;
+      deferred?: boolean;
+      retryable?: boolean;
+      updateReady?: boolean;
+      version?: string;
+    };
 
 export type DesktopUpdateCopy = {
   checking: string;
@@ -19,6 +26,16 @@ export type DesktopUpdateCopy = {
 
 export function clampProgress(percent: number): number {
   return Math.max(0, Math.min(100, Math.round(percent)));
+}
+
+export function isRetryableInstallFailure(
+  status: DesktopUpdateStatus,
+): boolean {
+  return (
+    status.state === "error" &&
+    status.retryable === true &&
+    status.updateReady === true
+  );
 }
 
 export function statusText(
@@ -42,7 +59,7 @@ export function statusText(
     case "not-available":
       return copy.upToDate;
     case "error":
-      return copy.error;
+      return isRetryableInstallFailure(status) ? copy.downloaded : copy.error;
     default:
       return "";
   }

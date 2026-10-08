@@ -137,6 +137,8 @@ export type UpdateStatus =
       message: string;
       deferred?: boolean;
       retryable?: boolean;
+      updateReady?: boolean;
+      version?: string;
     };
 
 export interface AppInfo {

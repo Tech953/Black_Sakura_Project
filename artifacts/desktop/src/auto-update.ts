@@ -1,7 +1,8 @@
 import type { UpdateStatus } from "./desktop-bridge";
 
 export const UPDATE_CHECK_FAILURE_MESSAGE = "Could not check for updates.";
-export const UPDATE_INSTALL_FAILURE_MESSAGE = "Update could not be installed.";
+export const UPDATE_INSTALL_FAILURE_MESSAGE =
+  "The downloaded update could not be installed.";
 export const DEFERRED_UPDATE_FAILURE_MESSAGE =
   "The downloaded update could not be installed. Try again or download the latest release.";
 
@@ -80,6 +81,8 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
   let deferredInstall = false;
   let downloadedUpdate: UpdateInfo | null = null;
   let installPromise: Promise<void> | null = null;
+  let installAttemptInFlight = false;
+  let resetInstallPromiseAfterAttempt = false;
   const schedule =
     deps.schedule ?? ((callback, delayMs) => setTimeout(callback, delayMs));
   const checkForUpdatesManually = (): void => {
@@ -108,6 +111,15 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
     });
   };
 
+  const createInstallFailureStatus = (info: UpdateInfo): UpdateStatus => ({
+    state: "error",
+    message: DEFERRED_UPDATE_FAILURE_MESSAGE,
+    retryable: true,
+    updateReady: true,
+    ...(deferredInstall ? { deferred: true } : {}),
+    ...(info.version === undefined ? {} : { version: info.version }),
+  });
+
   const installReadyUpdate = (): Promise<void> => {
     if (!deps.isPackaged) {
       return Promise.reject(
@@ -120,24 +132,31 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
       );
     }
     if (!installPromise) {
-      installPromise = deps
-        .installDownloadedUpdate({
-          stopServer: deps.stopDesktopWork,
-          quitAndInstall: () => deps.updater.quitAndInstall(),
-          setAutoInstallOnAppQuit: (value) => {
-            deps.updater.autoInstallOnAppQuit = value;
-          },
-          markQuitting: deps.markQuitting,
+      installAttemptInFlight = true;
+      installPromise = Promise.resolve()
+        .then(() =>
+          deps.installDownloadedUpdate({
+            stopServer: deps.stopDesktopWork,
+            quitAndInstall: () => deps.updater.quitAndInstall(),
+            setAutoInstallOnAppQuit: (value) => {
+              deps.updater.autoInstallOnAppQuit = value;
+            },
+            markQuitting: deps.markQuitting,
+          }),
+        )
+        .then(() => {
+          installAttemptInFlight = false;
+          if (resetInstallPromiseAfterAttempt) {
+            resetInstallPromiseAfterAttempt = false;
+            installPromise = null;
+          }
         })
         .catch((error) => {
+          installAttemptInFlight = false;
+          resetInstallPromiseAfterAttempt = false;
           installPromise = null;
-          if (deferredInstall) {
-            deps.setStatus({
-              state: "error",
-              message: DEFERRED_UPDATE_FAILURE_MESSAGE,
-              deferred: true,
-              retryable: true,
-            });
+          if (downloadedUpdate) {
+            deps.setStatus(createInstallFailureStatus(downloadedUpdate));
           }
           throw error;
         });
@@ -218,17 +237,16 @@ export function setupAutoUpdates(deps: AutoUpdateDeps): AutoUpdateController {
   });
 
   deps.updater.on("error", (error) => {
-    const deferredFailure = deferredInstall && downloadedUpdate !== null;
-    deps.setStatus(
-      deferredFailure
-        ? {
-            state: "error",
-            message: DEFERRED_UPDATE_FAILURE_MESSAGE,
-            deferred: true,
-            retryable: true,
-          }
-        : { state: "error", message: UPDATE_CHECK_FAILURE_MESSAGE },
-    );
+    if (downloadedUpdate) {
+      if (installAttemptInFlight) {
+        resetInstallPromiseAfterAttempt = true;
+      } else {
+        installPromise = null;
+      }
+      deps.setStatus(createInstallFailureStatus(downloadedUpdate));
+    } else {
+      deps.setStatus({ state: "error", message: UPDATE_CHECK_FAILURE_MESSAGE });
+    }
     deps.resetWindowTitle();
     const window = deps.getMainWindow();
     if (window && !window.isDestroyed()) window.setProgressBar(-1);

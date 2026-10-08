@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import {
   clampProgress,
+  isRetryableInstallFailure,
   statusText,
   type DesktopUpdateCopy,
   type DesktopUpdateStatus,
@@ -28,6 +29,7 @@ function desktopBridge(): DesktopBridge | undefined {
 
 export default function DesktopUpdateBanner() {
   const { t } = useTranslation("settings");
+  const { t: tCommon } = useTranslation("common");
   const [status, setStatus] = useState<DesktopUpdateStatus>({ state: "idle" });
   const [dismissed, setDismissed] = useState(false);
   const [installing, setInstalling] = useState(false);
@@ -42,7 +44,10 @@ export default function DesktopUpdateBanner() {
 
     let mounted = true;
     const unsubscribe = bridge.onUpdateStatus((next) => {
-      if (mounted) setStatus(next);
+      if (mounted) {
+        if (isRetryableInstallFailure(next)) setInstalling(false);
+        setStatus(next);
+      }
     });
     void bridge
       .getAppInfo()
@@ -79,6 +84,7 @@ export default function DesktopUpdateBanner() {
 
   const isError = status.state === "error";
   const isReady = status.state === "downloaded";
+  const retryableInstallFailure = isRetryableInstallFailure(status);
   const isProgress =
     status.state === "available" || status.state === "downloading";
   const isDownloading = status.state === "downloading";
@@ -129,22 +135,31 @@ export default function DesktopUpdateBanner() {
   const handleRestart = async (): Promise<void> => {
     const bridge = desktopBridge();
     if (!bridge || installing) return;
+    const version =
+      status.state === "downloaded" ||
+      (status.state === "error" && status.updateReady)
+        ? status.version
+        : undefined;
+    const setInstallFailure = (message: string): void => {
+      setStatus({
+        state: "error",
+        message,
+        retryable: true,
+        updateReady: true,
+        ...(version === undefined ? {} : { version }),
+      });
+    };
     setInstalling(true);
     try {
       const result = await bridge.installDownloadedUpdate();
       if (!result.ok) {
-        setStatus({
-          state: "error",
-          message:
-            result.error ?? "The downloaded update could not be installed.",
-        });
+        setInstallFailure(
+          result.error ?? "The downloaded update could not be installed.",
+        );
         setInstalling(false);
       }
-    } catch (error) {
-      setStatus({
-        state: "error",
-        message: error instanceof Error ? error.message : String(error),
-      });
+    } catch {
+      setInstallFailure("The downloaded update could not be installed.");
       setInstalling(false);
     }
   };
@@ -189,9 +204,20 @@ export default function DesktopUpdateBanner() {
               >
                 {status.message}
               </p>
-              <p className="mt-1 text-xs text-slate-400">
-                Try “Check for Updates…” again from the app menu.
-              </p>
+              {retryableInstallFailure ? (
+                status.version && (
+                  <p
+                    className="mt-1 font-mono text-[10px] text-slate-400"
+                    data-testid="desktop-update-version"
+                  >
+                    ENGRAM {status.version}
+                  </p>
+                )
+              ) : (
+                <p className="mt-1 text-xs text-slate-400">
+                  Try “Check for Updates…” again from the app menu.
+                </p>
+              )}
             </>
           )}
           {isProgress && (
@@ -214,16 +240,24 @@ export default function DesktopUpdateBanner() {
               />
             </div>
           )}
-          {isReady && (
+          {(isReady || retryableInstallFailure) && (
             <div className="mt-3 flex items-center gap-2">
               <button
                 type="button"
                 className="rounded-sm bg-cyan-300 px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-950 transition-colors hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 disabled:cursor-wait disabled:opacity-60"
                 onClick={() => void handleRestart()}
                 disabled={installing}
-                data-testid="restart-desktop-update"
+                data-testid={
+                  retryableInstallFailure
+                    ? "retry-desktop-update"
+                    : "restart-desktop-update"
+                }
               >
-                {installing ? "Restarting…" : "Restart now"}
+                {installing
+                  ? "Restarting…"
+                  : retryableInstallFailure
+                    ? tCommon("retry")
+                    : "Restart now"}
               </button>
               <button
                 type="button"
