@@ -719,7 +719,14 @@
     "purgedTitle": "记忆已清除",
     "purgedDescription": "条目已从存储中移除。",
     "allLayers": "所有层",
-    "emptyState": "此层暂无已编码记忆"
+    "emptyState": "此层暂无已编码记忆",
+    "encodedView": "已编码内存",
+    "mediaObservations": "媒体观察",
+    "selectEngram": "选择一个 engram",
+    "mediaEmpty": "尚未记录任何媒体观察",
+    "mediaEmptyForEngram": "未记录 {{name}} 的媒体观察",
+    "openSource": "打开源文件",
+    "openSourceAsset": "打开媒体源"
   },
   "mobile": {
     "tabs": {
@@ -910,7 +917,10 @@
       "environment": "环境",
       "openEnvironment": "打开环境",
       "activeEngram": "激活的 engram",
-      "makeActive": "设为激活"
+      "makeActive": "设为激活",
+      "mediaMemory": "媒体观察",
+      "noMediaMemory": "暂无可用媒体观察。",
+      "openMediaSource": "打开媒体源"
     },
     "environment": {
       "kicker": "ENGRAM // ENVIRONMENT",

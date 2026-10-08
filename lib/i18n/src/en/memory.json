@@ -1,6 +1,13 @@
 {
   "title": "MEMORY ARCHITECTURE",
   "subtitle": "Six-layer persistent knowledge store",
+  "encodedView": "Encoded memory",
+  "mediaObservations": "Media observations",
+  "selectEngram": "Select an engram",
+  "mediaEmpty": "No media observations recorded yet",
+  "mediaEmptyForEngram": "No media observations recorded for {{name}}",
+  "openSource": "Open source",
+  "openSourceAsset": "Open source asset",
   "encodeMemory": "Encode Memory",
   "encodeNewMemory": "Encode New Memory",
   "contentPlaceholder": "Memory content...",

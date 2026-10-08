@@ -14,3 +14,9 @@ When the translation service is unavailable, keep every generated locale structu
 **Why:** Model-list preflight is optional for an OpenAI-compatible chat endpoint, while a rejected chat request cannot generate translations. Repeating an unchanged 401 request does not improve output; the English fallback path keeps runtime key trees complete.
 
 **How to apply:** After a model-list 405, try one scoped chat translation. If chat returns 401, stop generation, confirm exact key parity, preserve English fallbacks unless the task requires completed translations through another available route, and retry once the provider is healthy.
+
+When Replit-managed AI setup is blocked by account status, the internal `queryWithLLM` callback may still be available for small, key-scoped translations. Use it only when the task requires completed translations; merge only those generated strings and verify every unrelated locale value remains unchanged.
+
+**Why:** Managed provider access and the internal query callback can fail independently. The alternate path completed a small translation batch while the configured locale provider remained unavailable.
+
+**How to apply:** Prefer the locale generator when it can authenticate. After an account-restriction error, check whether `queryWithLLM` is available before falling back to English; if it is unavailable, preserve English fallbacks, confirm key parity, and report that translation completion is blocked.
