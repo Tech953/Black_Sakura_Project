@@ -204,6 +204,18 @@ const minimalJpeg = Buffer.from(
   "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYwLjMxLjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABLAAEBAAAAAAAAAAAAAAAAAAAACAEBAAAAAAAAAAAAAAAAAAAAABABAAAAAAAAAAAAAAAAAAAAABEBAAAAAAAAAAAAAAAAAAAAAP/AABEIAAIAAgMBIgACEQADEQD/2gAMAwEAAhEDEQA/AJ/AB//Z",
   "base64",
 );
+const validPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACAQMAAABIeJ9nAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAADUExURf8AABniCTcAAAAMSURBVAjXY2BgYAAAAAQAASc0JwoAAAAASUVORK5CYII=",
+  "base64",
+);
+const validWebp = Buffer.from(
+  "UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoCAAIAAgA0JaACdLoB+AADsAD+8MQL/yC5YXXI1/8gP+QH/ID/+PIAAAA=",
+  "base64",
+);
+const validGif = Buffer.from(
+  "R0lGODlhAgACAPAAAP8AAAAAACH5BAAAAAAALAAAAAACAAIAAAIChFEAOw==",
+  "base64",
+);
 const minimalMp3 = Buffer.alloc(417);
 minimalMp3.set([0xff, 0xfb, 0x90, 0x64]);
 
@@ -263,9 +275,9 @@ describe("detectContentType — uploaded bytes must match the claimed MIME", () 
   it("recognizes complete minimal fixtures for the supported binary containers", () => {
     expect(detectContentType(Buffer.from("the harbor was quiet"))).toBe("text/plain");
     expect(detectContentType(Buffer.from('{"harbor":"quiet"}'))).toBe("application/json");
-    expect(detectContentType(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe(
-      "image/png",
-    );
+    expect(detectContentType(validPng)).toBe("image/png");
+    expect(detectContentType(validWebp)).toBe("image/webp");
+    expect(detectContentType(validGif)).toBe("image/gif");
     expect(detectContentType(minimalJpeg)).toBe("image/jpeg");
     expect(detectContentType(minimalMp3)).toBe("audio/mpeg");
     expect(detectContentType(minimalWav())).toBe("audio/wav");
@@ -284,9 +296,8 @@ describe("detectContentType — uploaded bytes must match the claimed MIME", () 
     const wav = minimalWav();
     expect(contentMatchesMime(wav, "audio/x-wav")).toBe(true);
 
-    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    expect(contentMatchesMime(png, "image/png")).toBe(true);
-    expect(contentMatchesMime(png, "text/plain")).toBe(false);
+    expect(contentMatchesMime(validPng, "image/png")).toBe(true);
+    expect(contentMatchesMime(validPng, "text/plain")).toBe(false);
     expect(contentMatchesMime(Buffer.from([0x4d, 0x5a, 0x90, 0x00]), "text/plain")).toBe(false);
   });
 
@@ -305,12 +316,29 @@ describe("detectContentType — uploaded bytes must match the claimed MIME", () 
     ["truncated QuickTime", minimalIso("qt  ").subarray(0, -1), "video/quicktime"],
     ["truncated Matroska", minimalEbml("matroska").subarray(0, -1), "video/x-matroska"],
     ["truncated JPEG", minimalJpeg.subarray(0, -2), "image/jpeg"],
+    ["truncated PNG", validPng.subarray(0, -1), "image/png"],
+    ["truncated WebP", validWebp.subarray(0, -1), "image/webp"],
+    ["truncated GIF", validGif.subarray(0, -1), "image/gif"],
   ])("%s is rejected before extraction", (_label, bytes, mime) => {
     expect(detectContentType(bytes)).toBeNull();
     expect(contentMatchesMime(bytes, mime)).toBe(false);
   });
 
   it("rejects structurally invalid containers even when their leading bytes look valid", () => {
+    const invalidPng = Buffer.from(validPng);
+    invalidPng.writeUInt32BE(0xffffffff, 8);
+    expect(contentMatchesMime(invalidPng, "image/png")).toBe(false);
+
+    const invalidWebp = Buffer.from(validWebp);
+    invalidWebp.writeUInt32LE(0xffffffff, 16);
+    expect(contentMatchesMime(invalidWebp, "image/webp")).toBe(false);
+
+    const invalidGif = Buffer.from(validGif);
+    const imageSeparator = invalidGif.indexOf(0x2c, 13);
+    expect(imageSeparator).toBeGreaterThanOrEqual(13);
+    invalidGif[imageSeparator + 11] = 0xff;
+    expect(contentMatchesMime(invalidGif, "image/gif")).toBe(false);
+
     const invalidWav = minimalWav();
     invalidWav.writeUInt32LE(invalidWav.length, 4);
     expect(contentMatchesMime(invalidWav, "audio/wav")).toBe(false);
@@ -354,7 +382,7 @@ describe("extractFromMedia — image", () => {
   it("perceives an image via the vision model using a base64 data URL", async () => {
     const result = await extractFromMedia(
       { modality: "image", mimeType: "image/png", filename: "scene.png" },
-      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+      validPng,
     );
 
     expect(result.observations.length).toBeGreaterThan(0);
