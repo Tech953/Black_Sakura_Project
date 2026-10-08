@@ -77,7 +77,11 @@ import {
 import { createAppInfo, createUpdateStatusStore } from "./update-status";
 import {
   appendBoundedDiagnostic,
+  captureChildOutput,
+  raceChildStartup,
+  recordStartupFailure,
   sanitizeDiagnosticText,
+  waitForHealthProbe,
 } from "./smoke-diagnostics";
 
 // ---------------------------------------------------------------------------
@@ -728,48 +732,40 @@ function findFreePort(): Promise<number> {
 }
 
 function waitForHealth(port: number, timeoutMs = 60000): Promise<void> {
-  const start = Date.now();
-  let lastFailure = "";
-  return new Promise((resolve, reject) => {
-    const attempt = (): void => {
-      const req = http.get(
-        { host: "127.0.0.1", port, path: "/api/healthz", timeout: 2000 },
-        (res) => {
-          let body = "";
-          res.setEncoding("utf8");
-          res.on("data", (chunk) => {
-            body += chunk;
-          });
-          if (res.statusCode === 200) {
-            resolve();
-          } else {
-            lastFailure = `HTTP ${res.statusCode}${body ? `: ${body.slice(0, 500)}` : ""}`;
-            retry();
-          }
-        },
-      );
-      req.on("error", (error) => {
-        lastFailure = error.message;
-        retry();
-      });
-      req.on("timeout", () => {
-        req.destroy();
-        lastFailure = "request timed out";
-        retry();
-      });
-    };
-    const retry = (): void => {
-      if (Date.now() - start > timeoutMs) {
-        reject(
-          new Error(
-            `Embedded server did not become healthy in time.${lastFailure ? ` Last check: ${lastFailure}.` : ""}`,
-          ),
+  return waitForHealthProbe({
+    probe: () =>
+      new Promise((resolve, reject) => {
+        const req = http.get(
+          { host: "127.0.0.1", port, path: "/api/healthz", timeout: 2000 },
+          (res) => {
+            let body = "";
+            res.setEncoding("utf8");
+            res.on("data", (chunk) => {
+              if (body.length < 500) {
+                body += chunk.slice(0, 500 - body.length);
+              }
+            });
+            res.on("error", reject);
+            res.on("end", () => {
+              const status = res.statusCode ?? 0;
+              resolve({
+                healthy: status === 200,
+                failure: `HTTP ${status}${body ? `: ${body}` : ""}`,
+              });
+            });
+          },
         );
-      } else {
-        setTimeout(attempt, 500);
-      }
-    };
-    attempt();
+        req.on("error", reject);
+        req.on("timeout", () => req.destroy(new Error("request timed out")));
+      }),
+    timeoutMs,
+    retryIntervalMs: 500,
+    failureMessage: "Embedded server did not become healthy in time.",
+    onTimeout: (error) =>
+      appendSmokeDiagnostic(
+        "main.log",
+        `embedded server health timeout: ${errorMessage(error)}\n`,
+      ),
   });
 }
 
@@ -777,34 +773,28 @@ function waitForHealth(port: number, timeoutMs = 60000): Promise<void> {
 // take a while (the model is memory-mapped and warmed), so the timeout is
 // generous.
 function waitForLlamaHealth(port: number, timeoutMs = 300000): Promise<void> {
-  const start = Date.now();
-  return new Promise((resolve, reject) => {
-    const attempt = (): void => {
-      const req = http.get(
-        { host: "127.0.0.1", port, path: "/health", timeout: 2000 },
-        (res) => {
-          res.resume();
-          if (res.statusCode === 200) {
-            resolve();
-          } else {
-            retry();
-          }
-        },
-      );
-      req.on("error", retry);
-      req.on("timeout", () => {
-        req.destroy();
-        retry();
-      });
-    };
-    const retry = (): void => {
-      if (Date.now() - start > timeoutMs) {
-        reject(new Error("Local model server did not become ready in time."));
-      } else {
-        setTimeout(attempt, 1000);
-      }
-    };
-    attempt();
+  return waitForHealthProbe({
+    probe: () =>
+      new Promise((resolve, reject) => {
+        const req = http.get(
+          { host: "127.0.0.1", port, path: "/health", timeout: 2000 },
+          (res) => {
+            const status = res.statusCode ?? 0;
+            res.resume();
+            resolve({ healthy: status === 200, failure: `HTTP ${status}` });
+          },
+        );
+        req.on("error", reject);
+        req.on("timeout", () => req.destroy(new Error("request timed out")));
+      }),
+    timeoutMs,
+    retryIntervalMs: 1000,
+    failureMessage: "Local model server did not become ready in time.",
+    onTimeout: (error) =>
+      appendSmokeDiagnostic(
+        "main.log",
+        `local model health timeout: ${errorMessage(error)}\n`,
+      ),
   });
 }
 
@@ -833,6 +823,90 @@ async function startLlama(settings: Settings): Promise<void> {
     llamaModelAlias = `downloaded-${spec.sha256.slice(0, 12)}`;
   }
   llamaPort = await findFreePort();
+  let startupStderr = "";
+  const startupError = (message: string, sourceError?: unknown): Error => {
+    const diagnosticError = new Error(message);
+    if (
+      sourceError &&
+      typeof sourceError === "object" &&
+      "code" in sourceError
+    ) {
+      Object.defineProperty(diagnosticError, "code", {
+        configurable: true,
+        value: (sourceError as { code?: unknown }).code,
+      });
+    }
+    const failure = localModelFailureFromError(
+      diagnosticError,
+      process.platform,
+      startupStderr,
+      llamaBin,
+    );
+    return attachLocalModelFailure(new Error(failure.message), failure);
+  };
+  const captureModelOutput = (proc: ChildProcess): void => {
+    appendSmokeDiagnostic("llama.stdout.log", "llama stdout capture active\n");
+    appendSmokeDiagnostic("llama.stderr.log", "llama stderr capture active\n");
+    captureChildOutput(proc, {
+      stdoutFile: "llama.stdout.log",
+      stderrFile: "llama.stderr.log",
+      append: appendSmokeDiagnostic,
+      sanitize: sanitizeSmokeDiagnostic,
+      onStdout: (output) => process.stdout.write(`[llama] ${output}`),
+      onStderr: (output) => {
+        startupStderr = `${startupStderr}${output}`.slice(-12_000);
+        process.stderr.write(`[llama] ${output}`);
+      },
+    });
+  };
+  const startupHandlers = (proc: ChildProcess) => ({
+    onSpawnError: (error: Error): Error => {
+      if (llamaProcess === proc) {
+        llamaProcess = null;
+        customRuntimeFingerprint = null;
+      }
+      appendSmokeDiagnostic(
+        "main.log",
+        `llama spawn error: ${sanitizeSmokeDiagnostic(error.message)}\n`,
+      );
+      return startupError(
+        `Local model server failed to start: ${error.message}`,
+        error,
+      );
+    },
+    onEarlyExit: (code: number | null, signal: NodeJS.Signals | null): Error => {
+      if (llamaProcess === proc) {
+        llamaProcess = null;
+        customRuntimeFingerprint = null;
+      }
+      appendSmokeDiagnostic(
+        "main.log",
+        `llama exited before health: code=${code}, signal=${signal}\n`,
+      );
+      return startupError(
+        `Local model server exited before becoming ready (code=${code}, signal=${signal}).`,
+      );
+    },
+    onUnexpectedExit: (
+      code: number | null,
+      signal: NodeJS.Signals | null,
+    ): void => {
+      if (llamaProcess === proc) {
+        llamaProcess = null;
+        customRuntimeFingerprint = null;
+      }
+      if (!quitting) {
+        appendSmokeDiagnostic(
+          "main.log",
+          `llama exited unexpectedly: code=${code}, signal=${signal}\n`,
+        );
+        // eslint-disable-next-line no-console
+        console.error(
+          `[desktop] bundled model server exited unexpectedly (code=${code}, signal=${signal}).`,
+        );
+      }
+    },
+  });
   if (
     packagedSmokeEnabled &&
     !(packagedSmokeUsesRealRuntime && mode === "custom")
@@ -858,7 +932,21 @@ async function startLlama(settings: Settings): Promise<void> {
       },
     );
     llamaProcess = proc;
-    await waitForLlamaHealth(llamaPort);
+    captureModelOutput(proc);
+    try {
+      await raceChildStartup(
+        proc,
+        waitForLlamaHealth(llamaPort),
+        startupHandlers(proc),
+      );
+    } catch (error) {
+      appendSmokeDiagnostic(
+        "main.log",
+        `local model startup failure: ${sanitizeSmokeDiagnostic(errorMessage(error))}\n`,
+      );
+      await stopLlama();
+      throw error;
+    }
     if (mode === "custom" && settings.custom) {
       customRuntimeFingerprint = settings.custom.sha256;
       customRuntimeError = null;
@@ -885,90 +973,13 @@ async function startLlama(settings: Settings): Promise<void> {
     stdio: ["ignore", "pipe", "pipe"],
   });
   llamaProcess = proc;
-  let startupStderr = "";
-  proc.stdout?.on("data", (chunk: Buffer) => {
-    const output = sanitizeSmokeDiagnostic(chunk.toString());
-    appendSmokeDiagnostic("llama.stdout.log", output);
-    process.stdout.write(`[llama] ${output}`);
-  });
-  proc.stderr?.on("data", (chunk: Buffer) => {
-    const output = sanitizeSmokeDiagnostic(chunk.toString());
-    startupStderr = `${startupStderr}${output}`.slice(-12_000);
-    appendSmokeDiagnostic("llama.stderr.log", output);
-    process.stderr.write(`[llama] ${output}`);
-  });
-  const startupError = (message: string, sourceError?: unknown): Error => {
-    const diagnosticError = new Error(message);
-    if (
-      sourceError &&
-      typeof sourceError === "object" &&
-      "code" in sourceError
-    ) {
-      Object.defineProperty(diagnosticError, "code", {
-        configurable: true,
-        value: (sourceError as { code?: unknown }).code,
-      });
-    }
-    const failure = localModelFailureFromError(
-      diagnosticError,
-      process.platform,
-      startupStderr,
-      llamaBin,
-    );
-    return attachLocalModelFailure(new Error(failure.message), failure);
-  };
-  // Startup is transactional: any spawn error or early exit before health
-  // rejects the promise, and the caller cleans up + falls back. `settled`
-  // guards double-settlement between the racing handlers.
-  let settled = false;
-  const spawnFailure = new Promise<never>((_, reject) => {
-    proc.on("error", (err) => {
-      if (llamaProcess === proc) {
-        llamaProcess = null;
-        customRuntimeFingerprint = null;
-      }
-      if (!settled) {
-        settled = true;
-        appendSmokeDiagnostic(
-          "main.log",
-          `llama spawn error: ${sanitizeSmokeDiagnostic(err.message)}\n`,
-        );
-        reject(
-          startupError(`Local model server failed to start: ${err.message}`, err),
-        );
-      }
-    });
-    proc.on("exit", (code, signal) => {
-      if (llamaProcess === proc) {
-        llamaProcess = null;
-        customRuntimeFingerprint = null;
-      }
-      if (!settled) {
-        settled = true;
-        appendSmokeDiagnostic(
-          "main.log",
-          `llama exited before health: code=${code}, signal=${signal}\n`,
-        );
-        reject(
-          startupError(
-            `Local model server exited before becoming ready (code=${code}, signal=${signal}).`,
-          ),
-        );
-      } else if (!quitting) {
-        appendSmokeDiagnostic(
-          "main.log",
-          `llama exited unexpectedly: code=${code}, signal=${signal}\n`,
-        );
-        // eslint-disable-next-line no-console
-        console.error(
-          `[desktop] bundled model server exited unexpectedly (code=${code}, signal=${signal}).`,
-        );
-      }
-    });
-  });
+  captureModelOutput(proc);
   try {
-    await Promise.race([waitForLlamaHealth(llamaPort), spawnFailure]);
-    settled = true;
+    await raceChildStartup(
+      proc,
+      waitForLlamaHealth(llamaPort),
+      startupHandlers(proc),
+    );
     if (packagedSmokeGgufRequestEnabled && mode === "custom") {
       let response: Response;
       try {
@@ -1027,7 +1038,10 @@ async function startLlama(settings: Settings): Promise<void> {
       customRuntimeError = null;
     }
   } catch (err) {
-    settled = true;
+    appendSmokeDiagnostic(
+      "main.log",
+      `local model startup failure: ${sanitizeSmokeDiagnostic(errorMessage(err))}\n`,
+    );
     await stopLlama();
     if (localModelFailureOn(err)) throw err;
     const failure = localModelFailureFromError(
@@ -1098,10 +1112,11 @@ async function startServer(
   currentPort = await findFreePort();
   const env = buildServerEnv(settings, currentPort);
 
-  serverProcess = spawn(process.execPath, [serverEntry], {
+  const proc = spawn(process.execPath, [serverEntry], {
     env,
     stdio: ["ignore", "pipe", "pipe"],
   });
+  serverProcess = proc;
   appendSmokeDiagnostic(
     "server.stdout.log",
     "embedded server stdout capture active\n",
@@ -1111,84 +1126,74 @@ async function startServer(
     "embedded server stderr capture active\n",
   );
   let startupStderr = "";
-  let startupSettled = false;
-  const rememberStartupStderr = (chunk: Buffer): void => {
-    const output = sanitizeSmokeDiagnostic(chunk.toString());
-    startupStderr = `${startupStderr}${output}`.slice(-12_000);
-    appendSmokeDiagnostic("server.stderr.log", output);
-  };
-  serverProcess.stdout?.on("data", (chunk: Buffer) => {
-    const output = sanitizeSmokeDiagnostic(chunk.toString());
-    appendSmokeDiagnostic("server.stdout.log", output);
-    process.stdout.write(`[server] ${output}`);
-  });
-  serverProcess.stderr?.on("data", (chunk: Buffer) => {
-    rememberStartupStderr(chunk);
-    process.stderr.write(
-      `[server] ${sanitizeSmokeDiagnostic(chunk.toString())}`,
-    );
-  });
-  const serverFailure = new Promise<never>((_, reject) => {
-    serverProcess?.on("error", (error) => {
-      if (startupSettled) return;
-      startupSettled = true;
-      appendSmokeDiagnostic(
-        "main.log",
-        `embedded server spawn error: ${error.message}\n`,
-      );
-      reject(new Error(`Embedded server failed to start: ${error.message}`));
-    });
-    serverProcess?.on("exit", (code, signal) => {
-      if (serverProcess) serverProcess = null;
-      if (startupSettled) {
-        if (!quitting) {
-          appendSmokeDiagnostic(
-            "main.log",
-            `embedded server exited unexpectedly: code=${code}, signal=${signal}\n`,
-          );
-          // eslint-disable-next-line no-console
-          console.error(
-            `[desktop] server process exited unexpectedly (code=${code}, signal=${signal}).`,
-          );
-        }
-        return;
-      }
-      startupSettled = true;
-      appendSmokeDiagnostic(
-        "main.log",
-        `embedded server exited before health: code=${code}, signal=${signal}\n`,
-      );
-      const details = startupStderr.trim()
-        ? `\n\nServer output:\n${startupStderr.trim()}`
-        : "";
-      reject(
-        new Error(
-          `Embedded server exited before becoming healthy (code=${code}, signal=${signal}).${details}`,
-        ),
-      );
-    });
+  captureChildOutput(proc, {
+    stdoutFile: "server.stdout.log",
+    stderrFile: "server.stderr.log",
+    append: appendSmokeDiagnostic,
+    sanitize: sanitizeSmokeDiagnostic,
+    onStdout: (output) => process.stdout.write(`[server] ${output}`),
+    onStderr: (output) => {
+      startupStderr = `${startupStderr}${output}`.slice(-12_000);
+      process.stderr.write(`[server] ${output}`);
+    },
   });
 
   try {
     // Windows Defender and first-run PGlite initialization can make the
     // embedded child take substantially longer than a warm Linux launch.
-    await Promise.race([
+    await raceChildStartup(
+      proc,
       waitForHealth(
         currentPort,
         process.platform === "win32" ? 180_000 : 60_000,
       ),
-      serverFailure,
-    ]);
-    startupSettled = true;
+      {
+        onSpawnError: (error) => {
+          if (serverProcess === proc) serverProcess = null;
+          appendSmokeDiagnostic(
+            "main.log",
+            `embedded server spawn error: ${sanitizeSmokeDiagnostic(error.message)}\n`,
+          );
+          return new Error(
+            `Embedded server failed to start: ${error.message}`,
+          );
+        },
+        onEarlyExit: (code, signal) => {
+          if (serverProcess === proc) serverProcess = null;
+          appendSmokeDiagnostic(
+            "main.log",
+            `embedded server exited before health: code=${code}, signal=${signal}\n`,
+          );
+          const details = startupStderr.trim()
+            ? `\n\nServer output:\n${startupStderr.trim()}`
+            : "";
+          return new Error(
+            `Embedded server exited before becoming healthy (code=${code}, signal=${signal}).${details}`,
+          );
+        },
+        onUnexpectedExit: (code, signal) => {
+          if (serverProcess === proc) serverProcess = null;
+          if (!quitting) {
+            appendSmokeDiagnostic(
+              "main.log",
+              `embedded server exited unexpectedly: code=${code}, signal=${signal}\n`,
+            );
+            // eslint-disable-next-line no-console
+            console.error(
+              `[desktop] server process exited unexpectedly (code=${code}, signal=${signal}).`,
+            );
+          }
+        },
+      },
+    );
     const persisted = loadSettings();
     if (!localModelFailure && persisted.localModelFailure) {
       saveSettings({ ...persisted, localModelFailure: undefined });
     }
   } catch (error) {
-    startupSettled = true;
     appendSmokeDiagnostic(
       "main.log",
-      `embedded server health/startup failure: ${errorMessage(error)}\n`,
+      `embedded server health/startup failure: ${sanitizeSmokeDiagnostic(errorMessage(error))}\n`,
     );
     await stopServer();
     throw error;
@@ -2278,9 +2283,17 @@ if (!gotLock) {
       }
       setupAutoUpdates();
     } catch (error) {
+      const startupFailure = recordStartupFailure(
+        appendSmokeDiagnostic,
+        "desktop main-process startup failed",
+        error,
+      );
+      const safeStartupFailure = sanitizeSmokeDiagnostic(startupFailure);
+      // eslint-disable-next-line no-console
+      console.error(`[desktop] ${safeStartupFailure}`);
       dialog.showErrorBox(
         "ENGRAM failed to start",
-        `The embedded server could not start.\n\n${String(error)}`,
+        `The embedded server could not start.\n\n${safeStartupFailure}`,
       );
       app.quit();
     }
