@@ -9,6 +9,12 @@ The first authenticated Expo web browser run can finish bundling while Chromium 
 
 **How to apply:** When the harness reports static HTML, zero requests, and no browser errors after a cold Expo start, retry once before changing application code. Keep the actual test assertion strict after the app renders.
 
+A cold Metro entry bundle can take longer than the usual 30-second UI assertion timeout to reach Chromium. API request mocks do not reveal script-loading stalls; enable CDP Network events and inspect the `/entry.bundle` request/response/failure sequence.
+
+**Why:** The bundle request was still pending at the original startup timeout even though the same app became healthy once Metro finished bundling.
+
+**How to apply:** Give only initial app readiness a longer budget; keep subsequent feature assertions bounded and strict.
+
 A completed Metro bundle is not proof that a headless browser regression reached the app. A warmed run can still stall without returning an assertion while the managed preview itself starts normally.
 
 **Why:** A focused Hub/Environment run bundled successfully but never produced a terminal signed-in screen result; repeating the same browser route did not resolve it.

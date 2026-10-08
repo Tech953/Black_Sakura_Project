@@ -10,6 +10,7 @@ import path from "node:path";
 const mobileRoot = path.resolve(new URL("..", import.meta.url).pathname);
 const scenario = process.argv.find((arg) => arg.startsWith("--scenario="))?.split("=")[1] ?? "history";
 const nativeExportMode = process.env.MOBILE_NATIVE_EXPORT_E2E === "true";
+const initialAppTimeoutMs = 120_000;
 
 async function reserveEphemeralPort() {
   const server = http.createServer();
@@ -539,10 +540,38 @@ async function waitForValue(client, expression, description, timeoutMs = 30_000)
   const diagnostic = await client.evaluate(
     `JSON.stringify({ path: location.pathname, title: document.title, body: document.body?.innerText ?? "", html: document.body?.innerHTML?.slice(0, 1000) ?? "", requests: window.__historyE2E?.requests ?? [] })`,
   );
+  const bundleNetwork = client.events
+    .filter((event) =>
+      ["Network.requestWillBeSent", "Network.responseReceived", "Network.loadingFailed"].includes(event.method) &&
+      (event.params.request?.url ?? event.params.response?.url ?? "").split("?")[0].endsWith("/entry.bundle"),
+    )
+    .map((event) => ({
+      method: event.method,
+      status: event.params.response?.status,
+      error: event.params.errorText,
+    }));
   const browserErrors = client.events
     .filter((event) => event.method === "Runtime.consoleAPICalled" || event.method === "Runtime.exceptionThrown")
     .slice(-12);
-  throw new Error(`Timed out waiting for ${description}: ${diagnostic}; browser=${JSON.stringify(browserErrors)}`);
+  const safeBrowserErrors = browserErrors.map((event) => {
+    const params = event.params ?? {};
+    const messages = (params.args ?? [])
+      .map((argument) => argument.value ?? argument.description ?? argument.type ?? "")
+      .filter(Boolean)
+      .join(" ");
+    const exception =
+      params.exceptionDetails?.exception?.description ??
+      params.exceptionDetails?.text ??
+      "";
+    return {
+      method: event.method,
+      type: params.type,
+      message: (exception || messages).slice(0, 500),
+    };
+  });
+  throw new Error(
+    `Timed out waiting for ${description}: ${diagnostic}; bundleNetwork=${JSON.stringify(bundleNetwork)}; browser=${JSON.stringify(safeBrowserErrors)}`,
+  );
 }
 
 async function clickTestId(client, testId) {
@@ -564,6 +593,14 @@ async function clickVisibleText(client, text) {
     `(() => { const wanted = ${JSON.stringify(text)}; const nodes = [...document.querySelectorAll('a,button,[role="button"],*')]; const node = nodes.find((item) => item.textContent?.trim() === wanted && item.getClientRects().length > 0); if (!node) return false; node.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); node.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); node.click(); return true; })()`,
   );
   if (!clicked) throw new Error(`Could not click visible text ${text}`);
+}
+
+async function waitForVisibleText(client, text, description = `visible text: ${text}`) {
+  await waitForValue(
+    client,
+    `Boolean([...document.querySelectorAll('a,button,[role="button"],*')].find((item) => item.textContent?.trim() === ${JSON.stringify(text)} && item.getClientRects().length > 0))`,
+    description,
+  );
 }
 
 async function clickLabel(client, label) {
@@ -628,7 +665,18 @@ async function clickVisibleBackControl(client) {
 }
 
 async function navigateAndReconnect(client, cdpPort, appUrl, url) {
+  const previousEventCount = client.events.length;
   await client.call("Page.navigate", { url });
+  const loadStarted = Date.now();
+  while (
+    Date.now() - loadStarted < initialAppTimeoutMs &&
+    !client.events.slice(previousEventCount).some((event) => event.method === "Page.loadEventFired")
+  ) {
+    await wait(50);
+  }
+  if (!client.events.slice(previousEventCount).some((event) => event.method === "Page.loadEventFired")) {
+    throw new Error(`Timed out waiting for the browser page to load after navigating to ${url}`);
+  }
   client.close();
 
   const started = Date.now();
@@ -646,6 +694,8 @@ async function navigateAndReconnect(client, cdpPort, appUrl, url) {
   const reconnected = cdpClient(target.webSocketDebuggerUrl);
   await reconnected.call("Page.enable");
   await reconnected.call("Runtime.enable");
+  await reconnected.call("Network.enable");
+  await reconnected.call("Page.addScriptToEvaluateOnNewDocument", { source: browserMock });
   return reconnected;
 }
 
@@ -684,6 +734,7 @@ async function runSimulationReviewRegression(client, cdpPort, appUrl) {
     client,
     `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
     "authenticated simulation fixture home",
+    initialAppTimeoutMs,
   );
   await clickVisibleText(client, "Hub");
   await waitForValue(
@@ -834,7 +885,7 @@ async function runSimulationReviewRegression(client, cdpPort, appUrl) {
     `location.pathname.includes("/simulation/703") &&
       document.body.innerText.includes("Simulation unavailable") &&
       document.body.innerText.includes("This run could not be loaded from the ENGRAM core.") &&
-      document.body.innerText.includes("Retry")`,
+      document.body.innerText.toLowerCase().includes("retry")`,
     "failed simulation read state",
   );
   const failedReadRequested = await client.evaluate(
@@ -857,6 +908,7 @@ async function runHubEnvironmentRegression(client, appUrl, cdpPort) {
     client,
     `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
     "signed-in engram card",
+    initialAppTimeoutMs,
   );
   await clickVisibleText(client, "Hub");
   await waitForValue(
@@ -894,6 +946,7 @@ async function runHubEnvironmentRegression(client, appUrl, cdpPort) {
     `location.pathname.includes("/engram/1") && document.body.innerText.toLowerCase().includes("no memory entries are available yet.") && document.body.innerText.toLowerCase().includes("no beliefs are registered yet.") && ["memories", "beliefs"].every((name) => window.__hubEnvironmentE2E.emptyResponses.includes(name))`,
     "detail with readable empty Memory and Beliefs",
   );
+  await waitForVisibleText(client, "Open environment", "Environment action on persona detail");
   await clickVisibleText(client, "Open environment");
   await waitForValue(
     client,
@@ -975,6 +1028,7 @@ async function runLiveStateAccountSwitchRegression(client) {
     client,
     `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
     "signed-in persona card",
+    initialAppTimeoutMs,
   );
   await client.evaluate(
     "window.__hubEnvironmentE2E.liveStateRecoveryEnabled = true",
@@ -985,6 +1039,7 @@ async function runLiveStateAccountSwitchRegression(client) {
     `location.pathname.includes("/engram/1")`,
     "persona detail before account switch",
   );
+  await waitForVisibleText(client, "Open environment", "Owner A Environment action");
   await clickVisibleText(client, "Open environment");
   await waitForValue(
     client,
@@ -1034,6 +1089,7 @@ async function runLiveStateAccountSwitchRegression(client) {
         "Owner B persona detail",
       );
     }
+    await waitForVisibleText(client, "Open environment", "Owner B Environment action");
     await clickVisibleText(client, "Open environment");
     await waitForValue(
       client,
@@ -1162,6 +1218,7 @@ try {
   client = cdpClient(target.webSocketDebuggerUrl);
   await client.call("Page.enable");
   await client.call("Runtime.enable");
+  await client.call("Network.enable");
   await client.call("Page.addScriptToEvaluateOnNewDocument", { source: browserMock });
   await client.call("Page.navigate", { url: `${appUrl}/` });
 
@@ -1170,7 +1227,12 @@ try {
   } else if (scenario === "live-state-account-switch") {
     client = await runLiveStateAccountSwitchRegression(client);
   } else {
-  await waitForValue(client, `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`, "signed-in engram card");
+  await waitForValue(
+    client,
+    `Boolean(document.querySelector('[data-testid="engram-card-1"]'))`,
+    "signed-in engram card",
+    initialAppTimeoutMs,
+  );
   await clickTestId(client, "engram-card-1");
   await waitForValue(client, `location.pathname.includes("/engram/1")`, "engram detail route");
   await client.evaluate("history.back()");
