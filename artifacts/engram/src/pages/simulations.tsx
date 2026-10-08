@@ -236,7 +236,7 @@ function LaunchSimulationPanel({ engrams }: { engrams: Engram[] }) {
               key={e.id}
               onClick={() => toggleParticipant(e.id)}
               data-testid={`button-sim-engram-${e.id}`}
-              className={`px-3 py-1.5 border font-mono text-xs transition-all ${
+              className={`max-w-full min-w-0 whitespace-normal break-words text-left px-3 py-1.5 border font-mono text-xs transition-all ${
                 selectedIds.includes(e.id)
                   ? "border-rose-500/60 bg-rose-500/10 text-rose-300"
                   : "border-border/40 text-muted-foreground hover:border-rose-500/30"
@@ -364,7 +364,10 @@ function SimulationCard({
                 {t("simulatedBadge")}
               </Badge>
               {participants.length > 1 && (
-                <span className="font-mono text-[9px] text-muted-foreground/70">
+                <span
+                  className="min-w-0 break-words font-mono text-[9px] text-muted-foreground/70"
+                  data-testid={`simulation-participants-${sim.id}`}
+                >
                   {participants.map((participant) => `${participant.symbol} ${participant.name}`).join(" · ")}
                 </span>
               )}
@@ -500,13 +503,21 @@ function SimulationCard({
 function StepRow({ step, speaker }: { step: SimulationStep; speaker?: Engram }) {
   const { t } = useTranslation("simulations");
   return (
-    <div className="flex gap-3 items-start" data-testid={`simulation-step-${step.id}`}>
+    <div className="flex min-w-0 gap-3 items-start" data-testid={`simulation-step-${step.id}`}>
       <div className="shrink-0 w-6 h-6 rounded-none border border-rose-500/25 text-rose-300/80 flex items-center justify-center font-mono text-[10px]">
         {step.stepNumber}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm leading-relaxed font-sans text-foreground/80">{step.narrative}</p>
-        <span className="font-mono text-[8px] uppercase tracking-wider text-rose-400/50">
+        <p
+          className="break-words text-sm leading-relaxed font-sans text-foreground/80"
+          data-testid={`simulation-step-narrative-${step.id}`}
+        >
+          {step.narrative}
+        </p>
+        <span
+          className="block max-w-full break-words font-mono text-[8px] uppercase tracking-wider text-rose-400/50"
+          data-testid={`simulation-step-speaker-${step.id}`}
+        >
           {speaker ? `${speaker.symbol} ${speaker.name} · ` : ""}
           {t("stepSimulated", { time: relativeTime(step.createdAt) })}
         </span>

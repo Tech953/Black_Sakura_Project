@@ -939,13 +939,99 @@ try {
     throw new Error(`Ended simulation still exposed lifecycle controls: ${JSON.stringify(endedControls)}`);
   }
 
+  const originalViewport = await devtools.evaluate(
+    "({ width: window.innerWidth, height: window.innerHeight })",
+  );
+  await devtools.call("Emulation.setDeviceMetricsOverride", {
+    width: 375,
+    height: 812,
+    deviceScaleFactor: 1,
+    mobile: true,
+  });
+  await waitFor(
+    "window.innerWidth === 375 && window.innerHeight === 812",
+    "narrow 375x812 simulation viewport",
+  );
+  const participantLayout = await devtools.evaluate(`(() => {
+    const first = document.querySelector('[data-testid="button-sim-engram-1"]');
+    const second = document.querySelector('[data-testid="button-sim-engram-2"]');
+    first?.parentElement?.scrollIntoView({ block: "center" });
+    const measure = (node) => {
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      return {
+        visible: node.getClientRects().length > 0,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        clientWidth: node.clientWidth,
+        scrollWidth: node.scrollWidth,
+        disabled: node.disabled === true
+      };
+    };
+    return {
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      pageWidth: document.documentElement.scrollWidth,
+      first: measure(first),
+      second: measure(second)
+    };
+  })()`);
+  const participantFitsViewport = (option) =>
+    option?.visible &&
+    option.width > 0 &&
+    option.left >= 0 &&
+    option.right <= participantLayout.viewport.width + 1 &&
+    option.top >= 0 &&
+    option.bottom <= participantLayout.viewport.height + 1 &&
+    option.scrollWidth <= option.clientWidth + 1 &&
+    !option.disabled;
+  if (
+    participantLayout.viewport.width !== 375 ||
+    participantLayout.pageWidth > participantLayout.viewport.width + 1 ||
+    !participantFitsViewport(participantLayout.first) ||
+    !participantFitsViewport(participantLayout.second)
+  ) {
+    throw new Error(
+      `Simulation participant controls are clipped or overflow at 375px: ${JSON.stringify(participantLayout)}`,
+    );
+  }
+
   await click(`document.querySelector('[data-testid="button-sim-engram-2"]')`, "second simulation participant");
   await waitFor(
     `document.querySelector('[data-testid="button-sim-engram-1"]')?.textContent?.includes("✓") &&
      document.querySelector('[data-testid="button-sim-engram-2"]')?.textContent?.includes("✓")`,
     "two selected simulation participants",
   );
+  await click(`document.querySelector('[data-testid="button-sim-engram-1"]')`, "first simulation participant");
+  await waitFor(
+    `!document.querySelector('[data-testid="button-sim-engram-1"]')?.textContent?.includes("✓") &&
+     document.querySelector('[data-testid="button-sim-engram-2"]')?.textContent?.includes("✓")`,
+    "first participant deselection at narrow width",
+  );
+  await click(`document.querySelector('[data-testid="button-sim-engram-1"]')`, "reselect first simulation participant");
+  await waitFor(
+    `document.querySelector('[data-testid="button-sim-engram-1"]')?.textContent?.includes("✓") &&
+     document.querySelector('[data-testid="button-sim-engram-2"]')?.textContent?.includes("✓")`,
+    "first participant selection at narrow width",
+  );
+  await click(`document.querySelector('[data-testid="button-sim-engram-2"]')`, "second participant deselection");
+  await waitFor(
+    `document.querySelector('[data-testid="button-sim-engram-1"]')?.textContent?.includes("✓") &&
+     !document.querySelector('[data-testid="button-sim-engram-2"]')?.textContent?.includes("✓")`,
+    "second participant deselection at narrow width",
+  );
+  await click(`document.querySelector('[data-testid="button-sim-engram-2"]')`, "reselect second simulation participant");
+  await waitFor(
+    `document.querySelector('[data-testid="button-sim-engram-1"]')?.textContent?.includes("✓") &&
+     document.querySelector('[data-testid="button-sim-engram-2"]')?.textContent?.includes("✓")`,
+    "participant selection restored at narrow width",
+  );
   await waitForText("2 engrams will alternate turns", "shared participant count");
+  await devtools.evaluate(
+    "document.querySelector('[data-testid=\"button-launch-simulation\"]')?.scrollIntoView({ block: 'center' })",
+  );
   await click(`document.querySelector('[data-testid="button-launch-simulation"]')`, "launch shared simulation");
   await waitFor(
     "window.__simulationBrowserFixture.createBodies.length === 1",
@@ -963,6 +1049,50 @@ try {
     "shared simulation card",
   );
   await waitForText("What if the guide and scout shared the evacuation plan?", "shared simulation premise");
+  const sharedCardLayout = await devtools.evaluate(`(() => {
+    const card = document.querySelector('[data-testid="simulation-43"]');
+    const participants = document.querySelector('[data-testid="simulation-participants-43"]');
+    card?.scrollIntoView({ block: "center" });
+    const measure = (node) => {
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      return {
+        visible: node.getClientRects().length > 0,
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        clientWidth: node.clientWidth,
+        scrollWidth: node.scrollWidth
+      };
+    };
+    return {
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      pageWidth: document.documentElement.scrollWidth,
+      card: measure(card),
+      participants: {
+        ...measure(participants),
+        text: participants?.textContent ?? ""
+      }
+    };
+  })()`);
+  const fitsNarrowWidth = (node, viewportWidth) =>
+    node?.visible &&
+    node.width > 0 &&
+    node.left >= 0 &&
+    node.right <= viewportWidth + 1 &&
+    node.scrollWidth <= node.clientWidth + 1;
+  if (
+    sharedCardLayout.viewport.width !== 375 ||
+    sharedCardLayout.pageWidth > sharedCardLayout.viewport.width + 1 ||
+    !fitsNarrowWidth(sharedCardLayout.card, sharedCardLayout.viewport.width) ||
+    !fitsNarrowWidth(sharedCardLayout.participants, sharedCardLayout.viewport.width) ||
+    !sharedCardLayout.participants.text.includes("Scenario Guide") ||
+    !sharedCardLayout.participants.text.includes("Route Scout")
+  ) {
+    throw new Error(
+      `Shared participant names overflow or are unavailable at 375px: ${JSON.stringify(sharedCardLayout)}`,
+    );
+  }
   const sharedCardText = await devtools.evaluate(
     `document.querySelector('[data-testid="simulation-43"]')?.innerText ?? ""`,
   );
@@ -971,6 +1101,9 @@ try {
       throw new Error(`Shared simulation card hid ${participant}: ${sharedCardText}`);
     }
   }
+  await devtools.evaluate(
+    "document.querySelector('[data-testid=\"button-steps-43\"]')?.scrollIntoView({ block: 'center' })",
+  );
   await click(`document.querySelector('[data-testid="button-steps-43"]')`, "shared simulation step log");
   await waitForText("The guide marks the safest route through the blackout.", "guide step narrative");
   await waitForText("The scout confirms the eastern passage is clear.", "scout step narrative");
@@ -984,6 +1117,74 @@ try {
   ) {
     throw new Error(`Shared step speakers were not rendered: ${JSON.stringify(speakerRows)}`);
   }
+  const narrowStepLayout = await devtools.evaluate(`(() => {
+    const measure = (node) => {
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      return {
+        visible: node.getClientRects().length > 0,
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        clientWidth: node.clientWidth,
+        scrollWidth: node.scrollWidth
+      };
+    };
+    const rows = [
+      { id: 102, narrative: "The guide marks the safest route through the blackout.", speaker: "Scenario Guide" },
+      { id: 103, narrative: "The scout confirms the eastern passage is clear.", speaker: "Route Scout" }
+    ].map((expected) => {
+      const row = document.querySelector('[data-testid="simulation-step-' + expected.id + '"]');
+      row?.scrollIntoView({ block: "center" });
+      const narrative = document.querySelector('[data-testid="simulation-step-narrative-' + expected.id + '"]');
+      const speaker = document.querySelector('[data-testid="simulation-step-speaker-' + expected.id + '"]');
+      return {
+        expected,
+        row: measure(row),
+        narrative: { ...measure(narrative), text: narrative?.textContent?.trim() ?? "" },
+        speaker: { ...measure(speaker), text: speaker?.textContent ?? "" }
+      };
+    });
+    return {
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      pageWidth: document.documentElement.scrollWidth,
+      rows
+    };
+  })()`);
+  const stepContentFits = (node) =>
+    node?.visible &&
+    node.width > 0 &&
+    node.left >= 0 &&
+    node.right <= narrowStepLayout.viewport.width + 1 &&
+    node.scrollWidth <= node.clientWidth + 1;
+  if (
+    narrowStepLayout.viewport.width !== 375 ||
+    narrowStepLayout.pageWidth > narrowStepLayout.viewport.width + 1 ||
+    narrowStepLayout.rows.length !== 2 ||
+    narrowStepLayout.rows.some(
+      ({ expected, row, narrative, speaker }) =>
+        !row?.visible ||
+        row.top < 0 ||
+        row.bottom > narrowStepLayout.viewport.height + 1 ||
+        !stepContentFits(narrative) ||
+        !stepContentFits(speaker) ||
+        !narrative.text.includes(expected.narrative) ||
+        !speaker.text.toLowerCase().includes(expected.speaker.toLowerCase()),
+    )
+  ) {
+    throw new Error(
+      `Shared simulation step content clips or overflows at 375px: ${JSON.stringify(narrowStepLayout)}`,
+    );
+  }
+  await devtools.call("Emulation.clearDeviceMetricsOverride");
+  await waitFor(
+    `window.innerWidth === ${originalViewport.width} && window.innerHeight === ${originalViewport.height}`,
+    "restore desktop viewport",
+  );
+  await devtools.evaluate("window.scrollTo({ top: 0, behavior: 'instant' })");
+  console.log("Narrow simulation participant, card, and step layouts passed at 375px");
 
   // The switch is present and enabled in the real Terminal UI. Use the same
   // page's PATCH contract for persistence; Radix's controlled switch event
