@@ -199,6 +199,20 @@ async function observationLinkCount(assetId: number): Promise<number> {
   return rows.length;
 }
 
+async function mediaRowsForAsset(assetId: number) {
+  return (await allWorldModelRows())
+    .filter((row) => row.source === `media:${assetId}`)
+    .sort((left, right) => left.id - right.id);
+}
+
+async function observationLinkEntryIds(assetId: number): Promise<number[]> {
+  const rows = await db
+    .select({ worldModelEntryId: mediaObservationsTable.worldModelEntryId })
+    .from(mediaObservationsTable)
+    .where(eq(mediaObservationsTable.assetId, assetId));
+  return rows.map((row) => row.worldModelEntryId).sort((left, right) => left - right);
+}
+
 // --- Full tick end-to-end ------------------------------------------------------
 describe("runMediaTick — full lifecycle against a real DB", () => {
   it("processes a pending asset to completed with exactly one set of OBSERVED entries", async () => {
@@ -380,6 +394,173 @@ describe("runMediaTick — full lifecycle against a real DB", () => {
     } finally {
       completionFailure.mockRestore();
     }
+  });
+
+  it("keeps another asset's observations intact when a retry completion fails", async () => {
+    const neighborEngramId = await insertEngram();
+    const retryEngramId = await insertEngram();
+    const neighborAsset = await seedPendingAsset(neighborEngramId);
+
+    const neighborPass = await runMediaTick();
+    expect(neighborPass.processed).toBe(1);
+    expect(h.extractFromMedia).toHaveBeenCalledTimes(1);
+    const neighborBefore = await reload(neighborAsset.id);
+    expect(neighborBefore.status).toBe("completed");
+    expect(neighborBefore.observationCount).toBe(2);
+
+    const assertObservationSet = async (
+      assetId: number,
+      engramId: number,
+      expectedContents: string[],
+    ) => {
+      const rows = await mediaRowsForAsset(assetId);
+      expect(rows).toHaveLength(expectedContents.length);
+      expect(rows.map((row) => row.content).sort()).toEqual([...expectedContents].sort());
+      expect(rows.every(
+        (row) =>
+          row.engramId === engramId &&
+          row.provenance === "observed" &&
+          row.source === `media:${assetId}`,
+      )).toBe(true);
+
+      const linkIds = await observationLinkEntryIds(assetId);
+      expect(linkIds).toHaveLength(rows.length);
+      expect(new Set(linkIds).size).toBe(rows.length);
+      expect(linkIds).toEqual(rows.map((row) => row.id).sort((left, right) => left - right));
+      return { rows, linkIds };
+    };
+
+    const neighborSetBefore = await assertObservationSet(
+      neighborAsset.id,
+      neighborEngramId,
+      ["A lighthouse blinks twice.", "A gull settles on the rail."],
+    );
+    expect(await allWorldModelRows()).toHaveLength(2);
+
+    h.extractFromMedia.mockResolvedValueOnce({
+      observations: ["Previous target observation one.", "Previous target observation two."],
+      summary: "Previous target result.",
+      transcript: null,
+    });
+    const retryAsset = await seedPendingAsset(retryEngramId);
+    const initialRetryPass = await runMediaTick();
+    expect(initialRetryPass.processed).toBe(1);
+    expect(h.extractFromMedia).toHaveBeenCalledTimes(2);
+    const retrySetBefore = await assertObservationSet(
+      retryAsset.id,
+      retryEngramId,
+      ["Previous target observation one.", "Previous target observation two."],
+    );
+    expect((await reload(retryAsset.id)).observationCount).toBe(2);
+    expect(await allWorldModelRows()).toHaveLength(4);
+
+    // Model an operator retry after a failure while keeping the previous derived
+    // rows present so the worker must clear only this asset's footprint.
+    await db
+      .update(mediaAssetsTable)
+      .set({
+        status: "failed",
+        error: "temporary retryable failure",
+        summary: null,
+        commentary: null,
+        transcript: null,
+        observationCount: 0,
+        completedAt: null,
+      })
+      .where(eq(mediaAssetsTable.id, retryAsset.id));
+    expect(await requeueMediaAsset(retryAsset.id)).toBeTruthy();
+    expect(await mediaRowsForAsset(retryAsset.id)).toEqual(retrySetBefore.rows);
+    expect(await observationLinkEntryIds(retryAsset.id)).toEqual(retrySetBefore.linkIds);
+
+    const completionError = "simulate retry completion failure";
+    h.extractFromMedia
+      .mockResolvedValueOnce({
+        observations: ["Uncommitted retry observation."],
+        summary: "Uncommitted retry result.",
+        transcript: "Uncommitted retry transcript.",
+      })
+      .mockResolvedValueOnce({
+        observations: [
+          "Final target observation one.",
+          "Final target observation two.",
+          "Final target observation three.",
+        ],
+        summary: "Final target result.",
+        transcript: "Final target transcript.",
+      });
+
+    const realUpdateMediaAsset = mediaStore.updateMediaAsset;
+    const completionFailure = vi
+      .spyOn(mediaStore, "updateMediaAsset")
+      .mockImplementation(async (id, patch, executor) => {
+        if (id === retryAsset.id && patch.status === "completed") {
+          throw new Error(completionError);
+        }
+        return realUpdateMediaAsset(id, patch, executor);
+      });
+
+    try {
+      const failedPass = await runMediaTick();
+      expect(failedPass.processed).toBe(1);
+      expect(h.extractFromMedia).toHaveBeenCalledTimes(3);
+      expect(completionFailure).toHaveBeenCalledWith(
+        retryAsset.id,
+        expect.objectContaining({ status: "completed", observationCount: 1 }),
+        expect.anything(),
+      );
+
+      const failedRetryAsset = await reload(retryAsset.id);
+      expect(failedRetryAsset.status).toBe("failed");
+      expect(failedRetryAsset.error).toContain(completionError);
+      expect(failedRetryAsset.observationCount).toBe(0);
+      expect(failedRetryAsset.completedAt).toBeNull();
+      expect(await mediaRowsForAsset(retryAsset.id)).toEqual([]);
+      expect(await observationLinkEntryIds(retryAsset.id)).toEqual([]);
+
+      expect(await reload(neighborAsset.id)).toEqual(neighborBefore);
+      expect(await mediaRowsForAsset(neighborAsset.id)).toEqual(neighborSetBefore.rows);
+      expect(await observationLinkEntryIds(neighborAsset.id)).toEqual(
+        neighborSetBefore.linkIds,
+      );
+      expect((await allWorldModelRows()).sort((left, right) => left.id - right.id)).toEqual(
+        neighborSetBefore.rows,
+      );
+    } finally {
+      completionFailure.mockRestore();
+    }
+
+    expect(await requeueMediaAsset(retryAsset.id)).toBeTruthy();
+    const finalPass = await runMediaTick();
+    expect(finalPass.processed).toBe(1);
+    expect(h.extractFromMedia).toHaveBeenCalledTimes(4);
+
+    const completedRetryAsset = await reload(retryAsset.id);
+    expect(completedRetryAsset.status).toBe("completed");
+    expect(completedRetryAsset.summary).toBe("Final target result.");
+    expect(completedRetryAsset.transcript).toBe("Final target transcript.");
+    expect(completedRetryAsset.observationCount).toBe(3);
+    expect(completedRetryAsset.completedAt).toBeInstanceOf(Date);
+    expect(completedRetryAsset.error).toBeNull();
+    const retrySetAfter = await assertObservationSet(
+      retryAsset.id,
+      retryEngramId,
+      [
+        "Final target observation one.",
+        "Final target observation two.",
+        "Final target observation three.",
+      ],
+    );
+
+    expect((await reload(neighborAsset.id))).toEqual(neighborBefore);
+    expect(await mediaRowsForAsset(neighborAsset.id)).toEqual(neighborSetBefore.rows);
+    expect(await observationLinkEntryIds(neighborAsset.id)).toEqual(
+      neighborSetBefore.linkIds,
+    );
+    expect((await allWorldModelRows()).sort((left, right) => left.id - right.id)).toEqual(
+      [...neighborSetBefore.rows, ...retrySetAfter.rows].sort(
+        (left, right) => left.id - right.id,
+      ),
+    );
   });
 
   it("replaces pre-existing partial observations on retry without duplicates", async () => {
