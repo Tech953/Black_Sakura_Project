@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { toFile } from "openai";
 import { llm, LLM_MODEL, normalizeLLMProviderError } from "./llm";
 import { MediaProcessingFailure } from "./media-failure";
+import { FFMPEG_BIN, FFPROBE_BIN } from "./media-toolchain";
 import type { MediaModality } from "@workspace/db";
 
 const execFileAsync = promisify(execFile);
@@ -15,15 +16,6 @@ const VISION_MODEL = process.env.LLM_VISION_MODEL ?? LLM_MODEL;
 /** Speech-to-text model. */
 const TRANSCRIBE_MODEL =
   process.env.LLM_TRANSCRIBE_MODEL ?? "gpt-4o-mini-transcribe";
-
-/**
- * ffmpeg/ffprobe binary paths. Resolved from env when set (the packaged desktop
- * app points these at its bundled binaries so video perception works offline with
- * no system install) and otherwise fall back to the names on PATH — unchanged for
- * Replit/dev/server, where ffmpeg/ffprobe are provided by the environment.
- */
-const FFMPEG_BIN = process.env.FFMPEG_PATH ?? "ffmpeg";
-const FFPROBE_BIN = process.env.FFPROBE_PATH ?? "ffprobe";
 
 const FFMPEG_TIMEOUT_MS = 60_000;
 const MAX_VIDEO_FRAMES = 4;
