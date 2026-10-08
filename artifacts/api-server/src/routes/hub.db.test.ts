@@ -197,6 +197,12 @@ async function readSseFrameWithin(
   }
 }
 
+function expectIsoTimestamp(value: unknown): void {
+  expect(typeof value).toBe("string");
+  if (typeof value !== "string") return;
+  expect(new Date(value).toISOString()).toBe(value);
+}
+
 async function expectNoSseFrame(
   readFrame: () => Promise<string | null>,
   quietMs: number,
@@ -249,14 +255,69 @@ describe("PUT /hub/controls", () => {
       .where(eq(hubControlsTable.ownerId, OWNER_ID));
     expect(persisted).toMatchObject({ paused: true, quietMode: true });
 
+    for (const event of events) {
+      expect(event.ownerId).toBe(OWNER_ID);
+      const data = event.data as Record<string, unknown>;
+      expect(data).toEqual({
+        id: persisted!.id,
+        paused: expect.any(Boolean),
+        quietMode: expect.any(Boolean),
+        updatedAt: expect.any(String),
+      });
+      expectIsoTimestamp(data.updatedAt);
+      expectIsoTimestamp(event.ts);
+    }
+
     const finalEvent = events.at(-1);
     expect(finalEvent?.ownerId).toBe(OWNER_ID);
-    expect(finalEvent?.data).toMatchObject({
+    expect(finalEvent?.data).toEqual({
       id: persisted!.id,
-      paused: persisted!.paused,
-      quietMode: persisted!.quietMode,
-      updatedAt: persisted!.updatedAt,
+      paused: true,
+      quietMode: true,
+      updatedAt: persisted!.updatedAt.toISOString(),
     });
+  });
+});
+
+describe("GET /events controls.changed", () => {
+  it("streams the same serialized controls shape as the Hub controls route", async () => {
+    const streamResponse = await fetch(`${base}/events`);
+    expect(streamResponse.status).toBe(200);
+    expect(streamResponse.headers.get("content-type")).toContain("text/event-stream");
+    if (!streamResponse.body) throw new Error("SSE response has no body");
+
+    const reader = streamResponse.body.getReader();
+    const readFrame = createSseFrameReader(reader);
+    try {
+      await readSseFrameWithin(readFrame, "retry directive");
+      await readSseFrameWithin(readFrame, "connection comment");
+
+      const updateResponse = await fetch(`${base}/hub/controls`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ paused: true, quietMode: true }),
+      });
+      expect(updateResponse.status).toBe(200);
+      const routeControls = await updateResponse.json();
+
+      const frame = await readSseFrameWithin(readFrame, "controls.changed");
+      expect(frame.startsWith("data: ")).toBe(true);
+      const event = JSON.parse(frame.slice("data: ".length)) as EngramEvent;
+      const data = event.data as Record<string, unknown>;
+
+      expect(event.type).toBe("controls.changed");
+      expect(event.ownerId).toBe(OWNER_ID);
+      expect(data).toEqual(routeControls);
+      expect(data).toMatchObject({
+        paused: true,
+        quietMode: true,
+        updatedAt: expect.any(String),
+      });
+      expectIsoTimestamp(data.updatedAt);
+      expectIsoTimestamp(event.ts);
+    } finally {
+      await reader.cancel().catch(() => undefined);
+    }
   });
 });
 

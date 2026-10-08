@@ -29,7 +29,7 @@ export interface EngramEvent {
   conversationId?: number | null;
   /** Clerk subject authorized to receive this event. Undefined events are private by default. */
   ownerId?: string;
-  /** Arbitrary serializable payload (already serialized shape — no Dates). */
+  /** API-shaped payload; serialize runtime values (including Dates) before publishing. */
   data?: unknown;
   /** ISO timestamp, stamped at publish time. */
   ts: string;

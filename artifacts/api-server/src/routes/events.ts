@@ -52,6 +52,8 @@ router.get("/events", async (req, res) => {
   res.write(": connected\n\n");
 
   const send = (event: EngramEvent) => {
+    // Keep this as a pass-through: in-process listeners and SSE clients receive
+    // the same already-normalized payload from the event producer.
     res.write(`data: ${JSON.stringify(event)}\n\n`);
   };
 

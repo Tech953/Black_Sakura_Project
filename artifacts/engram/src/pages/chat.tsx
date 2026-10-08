@@ -28,13 +28,14 @@ import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paper
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useEventStream, type EngramEvent } from "@/hooks/use-event-stream";
+import { useEventStream } from "@/hooks/use-event-stream";
 import { resolveReplyLanguage } from "@/i18n";
 import {
   buildMarkdownTranscript,
   buildPlainTextTranscript,
   buildTranscriptEntries,
 } from "@/lib/chat-export";
+import { describeSystemEvent, type SystemEvent } from "@/lib/system-event";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,8 +44,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-type EventTone = "info" | "warn" | "good";
 
 function describeDeleteFailure(error: unknown, t: TFunction): string {
   const status =
@@ -67,60 +66,6 @@ function describeDeleteFailure(error: unknown, t: TFunction): string {
     return t("toastDeleteUnavailable");
   }
   return t("toastDeleteUnexpected");
-}
-
-interface SystemEvent {
-  id: string;
-  label: string;
-  tone: EventTone;
-  ts: string;
-}
-
-/** Render a live system event as a one-line strip entry, or null to hide it. */
-function describeEvent(ev: EngramEvent, t: TFunction): { label: string; tone: EventTone } | null {
-  const d = (ev.data ?? {}) as Record<string, unknown>;
-  switch (ev.type) {
-    case "presence.changed":
-      return {
-        label: t("eventPresenceChanged", {
-          engramName: (d["engramName"] as string) ?? t("eventAnEngram"),
-          spaceName: (d["spaceName"] as string) ?? t("eventASpace"),
-        }),
-        tone: "info",
-      };
-    case "controls.changed": {
-      const bits = [d["paused"] ? t("eventControlsPaused") : t("eventControlsActive")];
-      if (d["quietMode"]) bits.push(t("eventControlsQuiet"));
-      return { label: t("eventControlsUpdated", { bits: bits.join(", ") }), tone: "warn" };
-    }
-    case "simulation.step":
-      return {
-        label: t("eventSimulationStep", {
-          step: (d["step"] as number) ?? "?",
-          maxSteps: (d["maxSteps"] as number) ?? "?",
-        }),
-        tone: "info",
-      };
-    case "media.completed":
-      return {
-        label: t("eventMediaCompleted", {
-          modality: (d["modality"] as string) ?? t("eventMediaFallback"),
-          filename: (d["filename"] as string) ?? "",
-        }),
-        tone: "good",
-      };
-    case "artifact.created":
-      return { label: t("eventArtifactCreated", { kind: (d["kind"] as string) ?? t("eventArtifactFallback"), title: (d["title"] as string) ?? "" }), tone: "info" };
-    case "artifact.completed":
-      return { label: t("eventArtifactCompleted", { kind: (d["kind"] as string) ?? t("eventArtifactFallback"), title: (d["title"] as string) ?? "" }), tone: "good" };
-    case "artifact.failed":
-      return { label: t("eventArtifactFailed", { title: (d["title"] as string) ?? "" }), tone: "warn" };
-    case "chat.self_initiated":
-      return { label: t("eventChatSelfInitiated"), tone: "good" };
-    case "artifact.updated":
-    case "message.created":
-      return null;
-  }
 }
 
 function continuationReasonLabel(reason: string | undefined, t: TFunction): string {
@@ -748,7 +693,7 @@ export default function Chat() {
           reloadMessages(activeId);
         }
       }
-      const described = describeEvent(ev, t);
+      const described = describeSystemEvent(ev, t);
       if (!described) return;
       setSysEvents((prev) =>
         [

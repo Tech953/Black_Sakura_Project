@@ -318,13 +318,23 @@ suite("updateControls — concurrent PostgreSQL sessions", () => {
 
       expect(persisted).toMatchObject({ paused: true, quietMode: true });
       expect(events).toHaveLength(2);
-      expect(events[0]?.data).toMatchObject(
-        first === "paused"
-          ? { paused: true, quietMode: false }
-          : { paused: false, quietMode: true },
-      );
+      const firstData = events[0]?.data as Record<string, unknown>;
+      expect(firstData).toEqual({
+        id: persisted!.id,
+        paused: first === "paused",
+        quietMode: first === "quietMode",
+        updatedAt: expect.any(String),
+      });
+      expect(new Date(firstData.updatedAt as string).toISOString()).toBe(firstData.updatedAt);
+      expect(new Date(events[0]!.ts).toISOString()).toBe(events[0]!.ts);
       expect(events.at(-1)?.ownerId).toBe(OWNER_ID);
-      expect(events.at(-1)?.data).toEqual(persisted);
+      expect(events.at(-1)?.data).toEqual({
+        id: persisted!.id,
+        paused: true,
+        quietMode: true,
+        updatedAt: persisted!.updatedAt.toISOString(),
+      });
+      expect(new Date(events.at(-1)!.ts).toISOString()).toBe(events.at(-1)!.ts);
     },
   );
 });

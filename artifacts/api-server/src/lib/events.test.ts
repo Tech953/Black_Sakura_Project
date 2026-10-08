@@ -6,7 +6,15 @@ import {
   type EngramEvent,
 } from "./events";
 
-const GLOBAL: Omit<EngramEvent, "ts"> = { type: "controls.changed" };
+const GLOBAL: Omit<EngramEvent, "ts"> = {
+  type: "controls.changed",
+  data: {
+    id: 1,
+    paused: false,
+    quietMode: false,
+    updatedAt: "2026-10-07T12:00:00.000Z",
+  },
+};
 const ENGRAM_1: Omit<EngramEvent, "ts"> = { type: "presence.changed", engramId: 1 };
 const CONV_7: Omit<EngramEvent, "ts"> = { type: "message.created", conversationId: 7 };
 const ENGRAM_1_CONV_7: Omit<EngramEvent, "ts"> = {
@@ -82,10 +90,16 @@ describe("publishEvent + subscribe", () => {
   it("delivers global events to all subscribers and stops after unsubscribe", () => {
     const listener = vi.fn();
     const unsubscribe = subscribe({ engramId: 3 }, listener);
-    publishEvent({ type: "controls.changed", data: { paused: true } });
+    publishEvent({
+      type: "controls.changed",
+      data: { id: 1, paused: true, quietMode: false, updatedAt: "2026-10-07T12:00:00.000Z" },
+    });
     expect(listener).toHaveBeenCalledTimes(1);
     unsubscribe();
-    publishEvent({ type: "controls.changed", data: { paused: false } });
+    publishEvent({
+      type: "controls.changed",
+      data: { id: 1, paused: false, quietMode: false, updatedAt: "2026-10-07T12:00:00.000Z" },
+    });
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
