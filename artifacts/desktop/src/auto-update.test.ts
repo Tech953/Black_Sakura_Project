@@ -23,16 +23,25 @@ class FakeUpdater {
   }
 }
 
-function createHarness(response: number, installError?: Error) {
+function createHarness(
+  response: number,
+  installError?: Error,
+  options: {
+    mainWindow?: UpdateWindow | null;
+    deferInstallOnQuit?: boolean;
+  } = {},
+) {
   const updater = new FakeUpdater();
   const window: UpdateWindow = {
     isDestroyed: () => false,
     setTitle: vi.fn(),
     setProgressBar: vi.fn(),
   };
+  const mainWindow =
+    options.mainWindow === undefined ? window : options.mainWindow;
   const dialogs: UpdateDialogOptions[] = [];
   const showMessageBox = vi.fn(
-    async (_window: UpdateWindow, options: UpdateDialogOptions) => {
+    async (_window: UpdateWindow | null, options: UpdateDialogOptions) => {
       dialogs.push(options);
       return { response };
     },
@@ -45,7 +54,7 @@ function createHarness(response: number, installError?: Error) {
   const controller = setupAutoUpdates({
     isPackaged: true,
     updater: updater as unknown as AutoUpdaterLike,
-    getMainWindow: () => window,
+    getMainWindow: () => mainWindow,
     showMessageBox,
     setStatus,
     resetWindowTitle: vi.fn(),
@@ -53,6 +62,9 @@ function createHarness(response: number, installError?: Error) {
     installDownloadedUpdate,
     markQuitting: vi.fn(),
     schedule: vi.fn(),
+    ...(options.deferInstallOnQuit === undefined
+      ? {}
+      : { deferInstallOnQuit: options.deferInstallOnQuit }),
   });
 
   return {
@@ -72,12 +84,19 @@ async function flushPromises(): Promise<void> {
 }
 
 describe("setupAutoUpdates", () => {
-  it("routes Restart now through the DB-safe installer", async () => {
-    const harness = createHarness(0);
+  it("uses the native ready prompt only when there is no renderer window", async () => {
+    const harness = createHarness(0, undefined, { mainWindow: null });
 
     harness.updater.emit("update-downloaded", { version: "1.2.3" });
     await flushPromises();
 
+    expect(harness.showMessageBox).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({
+        title: "Update ready",
+        buttons: ["Restart now", "Later"],
+      }),
+    );
     expect(harness.dialogs[0]).toMatchObject({
       title: "Update ready",
       buttons: ["Restart now", "Later"],
@@ -91,8 +110,51 @@ describe("setupAutoUpdates", () => {
     expect(harness.stopDesktopWork).toHaveBeenCalledTimes(1);
   });
 
-  it("defers Later without stopping the server", async () => {
-    const harness = createHarness(1);
+  it("does not publish the renderer decision while the native fallback is open", async () => {
+    const harness = createHarness(1, undefined, { mainWindow: null });
+    let resolveDialog:
+      | ((result: { response: number }) => void)
+      | undefined;
+    harness.showMessageBox.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDialog = resolve;
+        }),
+    );
+
+    harness.updater.emit("update-downloaded", { version: "1.2.3" });
+
+    expect(harness.showMessageBox).toHaveBeenCalledTimes(1);
+    expect(harness.setStatus).not.toHaveBeenCalledWith({
+      state: "downloaded",
+      version: "1.2.3",
+    });
+
+    resolveDialog?.({ response: 1 });
+    await flushPromises();
+
+    expect(harness.setStatus).toHaveBeenLastCalledWith({
+      state: "downloaded",
+      version: "1.2.3",
+    });
+  });
+
+  it("uses the in-app ready surface without opening a native dialog", () => {
+    const harness = createHarness(0);
+
+    harness.updater.emit("update-downloaded", { version: "1.2.3" });
+
+    expect(harness.showMessageBox).not.toHaveBeenCalled();
+    expect(harness.setStatus).toHaveBeenLastCalledWith({
+      state: "downloaded",
+      version: "1.2.3",
+    });
+    // The in-app Later action is presentation-only; normal quit still installs.
+    expect(harness.updater.autoInstallOnAppQuit).toBe(true);
+  });
+
+  it("defers the native fallback's Later choice without stopping the server", async () => {
+    const harness = createHarness(1, undefined, { mainWindow: null });
 
     harness.updater.emit("update-downloaded", { version: "1.2.3" });
     await flushPromises();
@@ -100,6 +162,16 @@ describe("setupAutoUpdates", () => {
     expect(harness.updater.autoInstallOnAppQuit).toBe(true);
     expect(harness.installDownloadedUpdate).not.toHaveBeenCalled();
     expect(harness.stopDesktopWork).not.toHaveBeenCalled();
+  });
+
+  it("keeps normal-quit installation disabled for the packaged update-feed smoke path", () => {
+    const harness = createHarness(1, undefined, {
+      deferInstallOnQuit: true,
+    });
+
+    harness.updater.emit("update-downloaded", { version: "1.2.3" });
+
+    expect(harness.updater.autoInstallOnAppQuit).toBe(false);
   });
 
   it("records a safe recovery status when a deferred install fails", async () => {
