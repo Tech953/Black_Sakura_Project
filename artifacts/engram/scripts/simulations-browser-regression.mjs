@@ -4,10 +4,27 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import {
+  cleanupDisposableClerkSession,
+  createDisposableClerkSession,
+} from "./real-clerk-browser-session.mjs";
 
-const appUrl = process.env.ENGRAM_BROWSER_TEST_URL ?? "http://127.0.0.1:5188";
+const realClerkMode = process.env.ENGRAM_BROWSER_REAL_CLERK === "true";
+const explicitAppUrl = process.env.ENGRAM_BROWSER_TEST_URL;
+if (realClerkMode && !explicitAppUrl && !process.env.REPLIT_DEV_DOMAIN) {
+  throw new Error(
+    "Real Clerk simulation checks require ENGRAM_BROWSER_TEST_URL or REPLIT_DEV_DOMAIN",
+  );
+}
+const appUrl = (
+  explicitAppUrl ??
+  (realClerkMode
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : "http://127.0.0.1:5188")
+).replace(/\/+$/, "");
 const debugPort = Number(process.env.ENGRAM_BROWSER_DEBUG_PORT ?? 9230);
 const profileDir = await mkdtemp(join(tmpdir(), "engram-simulations-profile-"));
+let disposableClerk;
 
 const chrome = spawn(
   "/repl/tools/bin/chromium",
@@ -533,6 +550,54 @@ const fixtureScript = String.raw`
 })();
 `;
 
+const realClerkAuditScript = String.raw`
+(() => {
+  window.__simulationBrowserErrors = [];
+  window.__simulationBrowserPatchAudit = [];
+  window.addEventListener("error", (event) => {
+    window.__simulationBrowserErrors.push(String(event.error?.stack ?? event.message));
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    window.__simulationBrowserErrors.push(String(event.reason?.stack ?? event.reason));
+  });
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input), location.origin);
+    const method = String(init.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
+    const pathMatch = url.pathname.match(/^\/api\/engrams\/(\d+)$/);
+    if (!pathMatch || method !== "PATCH") return originalFetch(input, init);
+
+    const headers = new Headers(input instanceof Request ? input.headers : undefined);
+    new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+    let requestBody = init.body;
+    if (requestBody == null && input instanceof Request) {
+      try {
+        requestBody = await input.clone().text();
+      } catch {}
+    }
+    let requestedSimulationEnabled = null;
+    try {
+      requestedSimulationEnabled = JSON.parse(requestBody ?? "{}").simulationEnabled ?? null;
+    } catch {}
+
+    const response = await originalFetch(input, init);
+    let responseSimulationEnabled = null;
+    try {
+      responseSimulationEnabled = (await response.clone().json()).simulationEnabled ?? null;
+    } catch {}
+    window.__simulationBrowserPatchAudit.push({
+      path: url.pathname,
+      method,
+      status: response.status,
+      requestedSimulationEnabled,
+      responseSimulationEnabled,
+      hasBearer: /^Bearer\s+\S+$/i.test(headers.get("authorization") ?? ""),
+    });
+    return response;
+  };
+})();
+`;
+
 async function waitFor(expression, label, timeout = 10000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
@@ -581,16 +646,270 @@ async function reloadFixtureDocument(label) {
   );
 }
 
+async function withTimeout(promise, label, timeoutMs = 5000) {
+  let timeoutId;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error(`Timed out during ${label}`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function evaluateReal(expression, label, timeoutMs = 5000) {
+  return withTimeout(devtools.evaluate(expression), `browser evaluation (${label})`, timeoutMs);
+}
+
+async function callReal(method, params, label, timeoutMs = 5000) {
+  return withTimeout(devtools.call(method, params), `browser command (${label})`, timeoutMs);
+}
+
+async function waitForReal(expression, label, timeout = 30000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    try {
+      if (await evaluateReal(expression, label, 3000)) return;
+    } catch {
+      // A navigation can briefly invalidate a Runtime evaluation; keep waiting.
+    }
+    await delay(150);
+  }
+  const state = await evaluateReal(
+    "JSON.stringify({ path: location.pathname, title: document.title, readyState: document.readyState })",
+    `${label} diagnostic`,
+    2000,
+  ).catch(() => "browser unavailable");
+  throw new Error(`Timed out waiting for ${label}: ${state}`);
+}
+
+async function clickSwitchWithRealPointer(selector) {
+  const bounds = await evaluateReal(`(() => {
+    const node = document.querySelector(${JSON.stringify(selector)});
+    if (!node) return null;
+    node.scrollIntoView({ block: "center", inline: "center" });
+    const rect = node.getBoundingClientRect();
+    return {
+      x: Math.round(rect.left + rect.width / 2),
+      y: Math.round(rect.top + rect.height / 2),
+      role: node.getAttribute("role"),
+      checked: node.getAttribute("aria-checked"),
+      disabled: node.disabled === true || node.getAttribute("aria-disabled") === "true",
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight
+    };
+  })()`, "simulation switch pointer target");
+  if (
+    !bounds ||
+    bounds.role !== "switch" ||
+    bounds.checked === null ||
+    bounds.disabled ||
+    bounds.x < 0 ||
+    bounds.y < 0 ||
+    bounds.x >= bounds.viewportWidth ||
+    bounds.y >= bounds.viewportHeight
+  ) {
+    throw new Error("The simulation control was not an enabled, visible switch");
+  }
+
+  const event = { x: bounds.x, y: bounds.y };
+  await callReal("Input.dispatchMouseEvent", { type: "mouseMoved", ...event }, "pointer move");
+  await callReal(
+    "Input.dispatchMouseEvent",
+    { type: "mousePressed", button: "left", buttons: 1, clickCount: 1, ...event },
+    "pointer press",
+  );
+  await callReal(
+    "Input.dispatchMouseEvent",
+    { type: "mouseReleased", button: "left", buttons: 0, clickCount: 1, ...event },
+    "pointer release",
+  );
+  return bounds.checked === "true";
+}
+
+async function runRealClerkRegression() {
+  disposableClerk = await createDisposableClerkSession();
+  await callReal(
+    "Page.addScriptToEvaluateOnNewDocument",
+    { source: realClerkAuditScript },
+    "install request audit",
+  );
+
+  const signInUrl =
+    `${appUrl}/sign-in?__clerk_ticket=${encodeURIComponent(disposableClerk.signInToken)}`;
+  await callReal("Page.navigate", { url: signInUrl }, "open disposable Clerk session");
+  await waitForReal(
+    "location.pathname === '/dashboard' && Boolean(window.Clerk?.user?.id)",
+    "disposable Clerk sign-in",
+  );
+  const signedInUserId = await evaluateReal(
+    "window.Clerk?.user?.id ?? null",
+    "confirm signed-in user",
+  );
+  if (signedInUserId !== disposableClerk.userId) {
+    throw new Error("The browser did not sign in as the disposable Clerk user");
+  }
+
+  const account = await evaluateReal(`(async () => {
+    const token = await window.Clerk.session.getToken();
+    const response = await fetch("/api/engrams", {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const body = await response.json();
+    return {
+      status: response.status,
+      rows: Array.isArray(body) ? body.map((engram) => ({
+        id: engram.id,
+        simulationEnabled: engram.simulationEnabled,
+        isArchival: engram.isArchival
+      })) : null
+    };
+  })()`, "load disposable account engrams");
+  if (account.status !== 200 || !Array.isArray(account.rows)) {
+    throw new Error(`Authenticated engram listing returned HTTP ${account.status}`);
+  }
+  const targetEngram = account.rows.find(
+    (engram) =>
+      Number.isSafeInteger(engram.id) &&
+      engram.isArchival !== true &&
+      typeof engram.simulationEnabled === "boolean",
+  );
+  if (!targetEngram) {
+    throw new Error("The disposable Clerk account has no editable engrams");
+  }
+
+  await callReal(
+    "Page.navigate",
+    { url: `${appUrl}/simulations` },
+    "open simulations route",
+  );
+  await waitForReal(
+    "location.pathname === '/simulations' && Boolean(document.querySelector('h2')?.textContent?.trim())",
+    "signed-in simulations route",
+  );
+  const simulationsRequest = await evaluateReal(`(async () => {
+    const token = await window.Clerk.session.getToken();
+    const response = await fetch("/api/simulations", {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const body = await response.json();
+    return { status: response.status, isList: Array.isArray(body) };
+  })()`, "check authenticated simulations API");
+  if (simulationsRequest.status !== 200 || !simulationsRequest.isList) {
+    throw new Error(
+      `Signed-in simulations API returned HTTP ${simulationsRequest.status}`,
+    );
+  }
+
+  await callReal("Page.navigate", { url: `${appUrl}/terminal` }, "open Terminal route");
+  const selector = `[data-testid="switch-simulation-${targetEngram.id}"]`;
+  await waitForReal(
+    `(() => { const node = document.querySelector(${JSON.stringify(selector)}); return Boolean(node && node.getAttribute("aria-checked") !== null); })()`,
+    "editable simulation switch on Terminal",
+  );
+  const initialState = await evaluateReal(`(() => {
+    const node = document.querySelector(${JSON.stringify(selector)});
+    return node ? {
+      checked: node.getAttribute("aria-checked"),
+      disabled: node.disabled === true || node.getAttribute("aria-disabled") === "true"
+    } : null;
+  })()`, "read initial switch state");
+  const initialEnabled = targetEngram.simulationEnabled;
+  if (
+    !initialState ||
+    initialState.checked !== String(initialEnabled) ||
+    initialState.disabled
+  ) {
+    throw new Error("Terminal did not render the editable simulation state from the API");
+  }
+
+  const desiredEnabled = !initialEnabled;
+  await clickSwitchWithRealPointer(selector);
+  await waitForReal(
+    `(window.__simulationBrowserPatchAudit ?? []).some((request) =>
+      request.path === "/api/engrams/${targetEngram.id}" &&
+      request.method === "PATCH" &&
+      request.status === 200 &&
+      request.requestedSimulationEnabled === ${desiredEnabled} &&
+      request.responseSimulationEnabled === ${desiredEnabled} &&
+      request.hasBearer)`,
+    "successful authenticated UI PATCH",
+  );
+  const patchAudit = await evaluateReal(
+    `(window.__simulationBrowserPatchAudit ?? []).findLast((request) => request.path === "/api/engrams/${targetEngram.id}" && request.method === "PATCH") ?? null`,
+    "read simulation PATCH audit",
+  );
+  if (
+    patchAudit?.status !== 200 ||
+    patchAudit.requestedSimulationEnabled !== desiredEnabled ||
+    patchAudit.responseSimulationEnabled !== desiredEnabled ||
+    patchAudit.hasBearer !== true
+  ) {
+    throw new Error("The UI did not send the expected authenticated simulation PATCH");
+  }
+
+  await waitForReal(
+    `document.querySelector(${JSON.stringify(selector)})?.getAttribute("aria-checked") === "${desiredEnabled}"`,
+    "Terminal switch updated after PATCH",
+  );
+  const persistedState = await evaluateReal(`(async () => {
+    const token = await window.Clerk.session.getToken();
+    const response = await fetch("/api/engrams", {
+      headers: { Authorization: "Bearer " + token }
+    });
+    const rows = await response.json();
+    const engram = Array.isArray(rows) ? rows.find((row) => row.id === ${targetEngram.id}) : null;
+    return {
+      status: response.status,
+      simulationEnabled: engram?.simulationEnabled ?? null
+    };
+  })()`, "verify persisted simulation state");
+  if (
+    persistedState.status !== 200 ||
+    persistedState.simulationEnabled !== desiredEnabled
+  ) {
+    throw new Error("The authenticated engram list did not persist the switch change");
+  }
+
+  await callReal("Page.reload", {}, "refresh Terminal after PATCH");
+  await waitForReal(
+    `location.pathname === '/terminal' &&
+      window.Clerk?.user?.id === ${JSON.stringify(disposableClerk.userId)} &&
+      document.querySelector(${JSON.stringify(selector)})?.getAttribute("aria-checked") === "${desiredEnabled}"`,
+    "refreshed Terminal simulation state",
+  );
+  const pageErrors = await evaluateReal(
+    "window.__simulationBrowserErrors ?? []",
+    "read browser errors",
+  );
+  if (pageErrors.length > 0) {
+    throw new Error(`Real Clerk simulation browser errors: ${JSON.stringify(pageErrors)}`);
+  }
+
+  console.log(
+    `Real Clerk simulations and Terminal browser check passed: engram ${targetEngram.id}, authenticated PATCH and refreshed state verified`,
+  );
+}
+
 try {
   await devtools.connect();
   await devtools.call("Page.enable");
   await devtools.call("Runtime.enable");
-  const encodedFixture = Buffer.from(fixtureScript).toString("base64");
-  await devtools.call("Page.addScriptToEvaluateOnNewDocument", {
-    source: `window.eval(atob(${JSON.stringify(encodedFixture)}));`,
-  });
+  if (realClerkMode) {
+    await runRealClerkRegression();
+  } else {
+    const encodedFixture = Buffer.from(fixtureScript).toString("base64");
+    await devtools.call("Page.addScriptToEvaluateOnNewDocument", {
+      source: `window.eval(atob(${JSON.stringify(encodedFixture)}));`,
+    });
 
-  await devtools.call("Page.navigate", { url: `${appUrl}/simulations` });
+    await devtools.call("Page.navigate", { url: `${appUrl}/simulations` });
   await waitForText("What if the vault lights failed during the evacuation?", "simulation premise");
   await waitForText("Proposed", "proposed simulation status");
   await waitForText("SIMULATION QUARANTINE ACTIVE", "quarantine notice");
@@ -984,14 +1303,24 @@ try {
     );
   }
 
-  console.log("Simulation, Hub activity layout, and media-memory browser regressions passed");
+    console.log("Simulation, Hub activity layout, and media-memory browser regressions passed");
+  }
 } finally {
+  let cleanupError;
   devtools.close();
   if (!chrome.killed) chrome.kill("SIGTERM");
   await Promise.race([
     new Promise((resolve) => chrome.once("exit", resolve)),
     delay(2000),
   ]);
+  if (realClerkMode && disposableClerk) {
+    try {
+      await cleanupDisposableClerkSession(appUrl, disposableClerk);
+    } catch (error) {
+      cleanupError = error;
+      console.error(error instanceof Error ? error.message : "Disposable account cleanup failed");
+    }
+  }
   for (let attempt = 0; attempt < 10; attempt += 1) {
     try {
       rmSync(profileDir, { recursive: true, force: true });
@@ -1001,4 +1330,5 @@ try {
       await delay(100);
     }
   }
+  if (cleanupError) throw cleanupError;
 }

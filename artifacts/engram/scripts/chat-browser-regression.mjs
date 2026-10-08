@@ -6,6 +6,11 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import {
+  cleanupDisposableClerkSession,
+  createDisposableClerkSession,
+  realApi,
+} from "./real-clerk-browser-session.mjs";
 
 const realClerkMode = process.env.ENGRAM_BROWSER_REAL_CLERK === "true";
 const appUrl =
@@ -380,91 +385,6 @@ const fixtureScript = String.raw`
 })();
 `;
 
-async function createDisposableClerkSession() {
-  const secret = process.env.CLERK_SECRET_KEY;
-  if (!secret || !process.env.REPLIT_DEV_DOMAIN) {
-    throw new Error("Real Clerk browser checks require Clerk and preview-domain configuration");
-  }
-  const clerkHeaders = {
-    Authorization: `Bearer ${secret}`,
-    "Content-Type": "application/json",
-  };
-  const email = `engram-browser-check-${randomUUID()}@example.com`;
-  const password = `E${randomUUID()}-browser-check-7!`;
-  let userId;
-  let sessionId;
-  let signInTokenId;
-  try {
-    const userResponse = await fetch("https://api.clerk.com/v1/users", {
-      method: "POST",
-      headers: clerkHeaders,
-      body: JSON.stringify({
-        email_address: [email],
-        password,
-        first_name: "ENGRAM",
-        last_name: "Browser Check",
-      }),
-    });
-    if (!userResponse.ok) throw new Error(`Could not create disposable Clerk user (${userResponse.status})`);
-    userId = (await userResponse.json()).id;
-
-    const sessionResponse = await fetch("https://api.clerk.com/v1/sessions", {
-      method: "POST",
-      headers: clerkHeaders,
-      body: JSON.stringify({ user_id: userId }),
-    });
-    if (!sessionResponse.ok) throw new Error(`Could not create disposable Clerk session (${sessionResponse.status})`);
-    sessionId = (await sessionResponse.json()).id;
-
-    const tokenResponse = await fetch(`https://api.clerk.com/v1/sessions/${sessionId}/tokens`, {
-      method: "POST",
-      headers: clerkHeaders,
-    });
-    if (!tokenResponse.ok) throw new Error(`Could not mint disposable Clerk API token (${tokenResponse.status})`);
-    const apiToken = (await tokenResponse.json()).jwt;
-
-    const signInTokenResponse = await fetch("https://api.clerk.com/v1/sign_in_tokens", {
-      method: "POST",
-      headers: clerkHeaders,
-      body: JSON.stringify({ user_id: userId, expires_in_seconds: 300 }),
-    });
-    if (!signInTokenResponse.ok) throw new Error(`Could not mint disposable Clerk sign-in token (${signInTokenResponse.status})`);
-    const signInTokenBody = await signInTokenResponse.json();
-    signInTokenId = signInTokenBody.id;
-
-    return {
-      userId,
-      sessionId,
-      signInTokenId,
-      signInToken: signInTokenBody.token,
-      apiToken,
-      clerkHeaders,
-    };
-  } catch (error) {
-    if (sessionId) {
-      await fetch(`https://api.clerk.com/v1/sessions/${sessionId}/revoke`, {
-        method: "POST",
-        headers: clerkHeaders,
-      });
-    }
-    if (userId) {
-      await fetch(`https://api.clerk.com/v1/users/${userId}`, {
-        method: "DELETE",
-        headers: clerkHeaders,
-      });
-    }
-    throw error;
-  }
-}
-
-async function realApi(path, session, init = {}) {
-  const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${session.apiToken}`);
-  if (init.body !== undefined) headers.set("Content-Type", "application/json");
-  const response = await fetch(`${appUrl}${path}`, { ...init, headers });
-  return response;
-}
-
 async function createRealConversation(label) {
   const title = `Real Clerk ${label} ${randomUUID().slice(0, 8)}`;
   const created = JSON.parse(await devtools.evaluate(`(async () => {
@@ -519,7 +439,7 @@ async function seedRealConversation(conversation, userContent, assistantContent)
 }
 
 async function readRealConversation(id, session) {
-  const response = await realApi(`/api/openai/conversations/${id}`, session);
+  const response = await realApi(appUrl, `/api/openai/conversations/${id}`, session);
   return {
     response,
     body: response.ok ? await response.json() : null,
@@ -540,65 +460,19 @@ async function assertRealUiRequest(method, path, label, minimumCount = 1) {
   }
 }
 
-async function cleanupDisposableAccount(session) {
-  const response = await realApi("/api/openai/browser-fixture/cleanup", session, {
-    method: "POST",
-    headers: { "X-Engram-Browser-Fixture": "chat-archive-export" },
-  });
-  if (!response.ok) {
-    throw new Error(`Disposable account cleanup returned HTTP ${response.status}`);
-  }
-}
-
 async function cleanupRealClerkAccount(session) {
-  const cleanupProblems = [];
-
   // Try per-conversation deletion first, then use the owner-scoped cleanup to
   // remove bootstrap rows and any conversation created before an assertion.
   for (const conversation of realConversations) {
     try {
-      await realApi(`/api/openai/conversations/${conversation.id}`, session, {
+      await realApi(appUrl, `/api/openai/conversations/${conversation.id}`, session, {
         method: "DELETE",
       });
     } catch {
       // The owner-scoped cleanup below is authoritative.
     }
   }
-  try {
-    await cleanupDisposableAccount(session);
-  } catch {
-    cleanupProblems.push("owner-scoped data cleanup");
-  }
-
-  const revoke = async (url) => {
-    try {
-      await fetch(url, { method: "POST", headers: session.clerkHeaders });
-    } catch {
-      // Deleting the user below also invalidates remaining Clerk sessions/tokens.
-    }
-  };
-  if (session.signInTokenId) {
-    await revoke(`https://api.clerk.com/v1/sign_in_tokens/${session.signInTokenId}/revoke`);
-  }
-  if (session.sessionId) {
-    await revoke(`https://api.clerk.com/v1/sessions/${session.sessionId}/revoke`);
-  }
-
-  try {
-    const response = await fetch(`https://api.clerk.com/v1/users/${session.userId}`, {
-      method: "DELETE",
-      headers: session.clerkHeaders,
-    });
-    if (!response.ok && response.status !== 404) cleanupProblems.push("Clerk user deletion");
-  } catch {
-    cleanupProblems.push("Clerk user deletion");
-  }
-
-  if (cleanupProblems.length > 0) {
-    throw new Error(
-      `Real Clerk browser check could not fully clean up: ${cleanupProblems.join(", ")}`,
-    );
-  }
+  await cleanupDisposableClerkSession(appUrl, session);
 }
 
 async function waitFor(expression, label, timeout = 10000) {
@@ -1136,6 +1010,7 @@ try {
       "inactive conversation delete",
     );
     const deletedState = await realApi(
+      appUrl,
       `/api/openai/conversations/${deleteConversation.id}`,
       disposableClerk,
     );
@@ -1258,6 +1133,7 @@ try {
   }
   if (realClerkMode) {
     const archivedSend = await realApi(
+      appUrl,
       `/api/openai/conversations/${exportConversation.id}/messages`,
       disposableClerk,
       {
@@ -1304,6 +1180,12 @@ try {
   console.log(`Browser regression passed: ${files.join(", ")}`);
 } finally {
   let cleanupError;
+  devtools.close();
+  if (!chrome.killed) chrome.kill("SIGTERM");
+  await Promise.race([
+    new Promise((resolve) => chrome.once("exit", resolve)),
+    delay(2000),
+  ]);
   if (realClerkMode && disposableClerk) {
     try {
       await cleanupRealClerkAccount(disposableClerk);
@@ -1312,12 +1194,6 @@ try {
       console.error(error instanceof Error ? error.message : "Disposable account cleanup failed");
     }
   }
-  devtools.close();
-  if (!chrome.killed) chrome.kill("SIGTERM");
-  await Promise.race([
-    new Promise((resolve) => chrome.once("exit", resolve)),
-    delay(2000),
-  ]);
   for (const directory of [profileDir, downloadsDir]) {
     for (let attempt = 0; attempt < 10; attempt += 1) {
       try {

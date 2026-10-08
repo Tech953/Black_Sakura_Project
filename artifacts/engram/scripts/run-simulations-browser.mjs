@@ -2,11 +2,25 @@ import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
+const realClerkMode = process.env.ENGRAM_BROWSER_REAL_CLERK === "true";
 const port = Number(process.env.WEB_BROWSER_TEST_PORT ?? 5188);
-const appUrl = process.env.ENGRAM_BROWSER_TEST_URL ?? `http://127.0.0.1:${port}`;
+if (
+  realClerkMode &&
+  !process.env.ENGRAM_BROWSER_TEST_URL &&
+  !process.env.REPLIT_DEV_DOMAIN
+) {
+  throw new Error(
+    "Real Clerk simulation checks require ENGRAM_BROWSER_TEST_URL or REPLIT_DEV_DOMAIN",
+  );
+}
+const appUrl =
+  process.env.ENGRAM_BROWSER_TEST_URL ??
+  (realClerkMode
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : `http://127.0.0.1:${port}`);
 const debugPort = Number(process.env.ENGRAM_BROWSER_DEBUG_PORT ?? 9230);
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-const ownsServer = !process.env.ENGRAM_BROWSER_TEST_URL;
+const ownsServer = !process.env.ENGRAM_BROWSER_TEST_URL && !realClerkMode;
 
 let server;
 let serverOutput = "";
