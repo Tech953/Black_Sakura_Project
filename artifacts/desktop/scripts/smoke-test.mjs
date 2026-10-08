@@ -1120,6 +1120,17 @@ async function main() {
       ENGRAM_SMOKE_DIAGNOSTICS_DIR: smokeDiagnosticsDir,
     },
   });
+  const electronMainProcess = app.process();
+  electronMainProcess?.stdout?.on("data", (chunk) => {
+    process.stdout.write(
+      `[electron-main] ${sanitizeSmokeText(chunk.toString())}`,
+    );
+  });
+  electronMainProcess?.stderr?.on("data", (chunk) => {
+    process.stderr.write(
+      `[electron-main] ${sanitizeSmokeText(chunk.toString())}`,
+    );
+  });
 
   try {
     // The main window only opens after the embedded server becomes healthy

@@ -7,8 +7,137 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import type { ChildProcess } from "node:child_process";
 
 export const MAX_SMOKE_DIAGNOSTIC_BYTES = 256 * 1024;
+
+export interface ChildOutputCaptureOptions {
+  stdoutFile: string;
+  stderrFile: string;
+  append: (filename: string, value: string) => void;
+  sanitize: (value: string) => string;
+  onStdout?: (value: string) => void;
+  onStderr?: (value: string) => void;
+}
+
+export interface ChildStartupHandlers {
+  onSpawnError: (error: Error) => Error;
+  onEarlyExit: (code: number | null, signal: NodeJS.Signals | null) => Error;
+  onUnexpectedExit?: (
+    code: number | null,
+    signal: NodeJS.Signals | null,
+  ) => void;
+}
+
+export interface HealthProbeResult {
+  healthy: boolean;
+  failure?: string;
+}
+
+export interface WaitForHealthProbeOptions {
+  probe: () => Promise<HealthProbeResult>;
+  timeoutMs: number;
+  retryIntervalMs: number;
+  failureMessage: string;
+  now?: () => number;
+  delay?: (milliseconds: number) => Promise<void>;
+  onTimeout?: (error: Error) => void;
+}
+
+export function captureChildOutput(
+  child: Pick<ChildProcess, "stdout" | "stderr">,
+  options: ChildOutputCaptureOptions,
+): void {
+  child.stdout?.on("data", (chunk: Buffer) => {
+    const output = options.sanitize(chunk.toString());
+    options.append(options.stdoutFile, output);
+    options.onStdout?.(output);
+  });
+  child.stderr?.on("data", (chunk: Buffer) => {
+    const output = options.sanitize(chunk.toString());
+    options.append(options.stderrFile, output);
+    options.onStderr?.(output);
+  });
+}
+
+export function raceChildStartup<T>(
+  child: Pick<ChildProcess, "on">,
+  readiness: Promise<T>,
+  handlers: ChildStartupHandlers,
+): Promise<T> {
+  let state: "waiting" | "ready" | "failed" = "waiting";
+  return new Promise<T>((resolve, reject) => {
+    child.on("error", (error) => {
+      if (state !== "waiting") return;
+      state = "failed";
+      reject(handlers.onSpawnError(error));
+    });
+    child.on("exit", (code, signal) => {
+      if (state === "waiting") {
+        state = "failed";
+        reject(handlers.onEarlyExit(code, signal));
+      } else if (state === "ready") {
+        handlers.onUnexpectedExit?.(code, signal);
+      }
+    });
+    void readiness.then(
+      (value) => {
+        if (state !== "waiting") return;
+        state = "ready";
+        resolve(value);
+      },
+      (error: unknown) => {
+        if (state !== "waiting") return;
+        state = "failed";
+        reject(error);
+      },
+    );
+  });
+}
+
+export async function waitForHealthProbe({
+  probe,
+  timeoutMs,
+  retryIntervalMs,
+  failureMessage,
+  now = () => Date.now(),
+  delay = (milliseconds) =>
+    new Promise<void>((resolve) => setTimeout(resolve, milliseconds)),
+  onTimeout,
+}: WaitForHealthProbeOptions): Promise<void> {
+  const startedAt = now();
+  let lastFailure = "no health response received";
+  while (true) {
+    try {
+      const result = await probe();
+      if (result.healthy) return;
+      lastFailure =
+        result.failure || "health endpoint returned an unhealthy response";
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error);
+    }
+
+    if (now() - startedAt >= timeoutMs) {
+      const timeoutError = new Error(
+        `${failureMessage}${lastFailure ? ` Last check: ${lastFailure}.` : ""}`,
+      );
+      onTimeout?.(timeoutError);
+      throw timeoutError;
+    }
+    await delay(retryIntervalMs);
+  }
+}
+
+export function recordStartupFailure(
+  appendDiagnostic: (filename: string, value: string) => void,
+  context: string,
+  error: unknown,
+): string {
+  const detail = error instanceof Error ? error.message : String(error);
+  const line = `${context}: ${detail}\n`;
+  appendDiagnostic("main.log", line);
+  return line.trimEnd();
+}
 
 export function sanitizeDiagnosticText(
   value: string,
