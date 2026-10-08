@@ -373,6 +373,17 @@ const fixtureScript = String.raw`
     createdAt: "2026-09-12T12:14:01.000Z",
     updatedAt: "2026-09-12T12:14:01.000Z"
   }];
+  const quietSurveyorWorldModelEntries = [{
+    id: 709,
+    engramId: 4,
+    provenance: "remembered",
+    content: "The surveyor keeps paper charts.",
+    confidence: 0.86,
+    scope: "private",
+    source: "engine",
+    createdAt: "2026-09-12T12:13:00.000Z",
+    updatedAt: "2026-09-12T12:13:00.000Z"
+  }];
   const worldModelStorageKey = "engram:simulations-browser:world-model-entries";
   const storedWorldModelEntries = localStorage.getItem(worldModelStorageKey);
   let currentWorldModelEntries = storedWorldModelEntries
@@ -492,7 +503,7 @@ const fixtureScript = String.raw`
       return response(routeScoutWorldModelEntries);
     }
     if (pathname === "/api/engrams/4/world-model" && method === "GET") {
-      return response([]);
+      return response(quietSurveyorWorldModelEntries);
     }
     if (pathname === "/api/engrams/3/world-model" && method === "GET") {
       return response(archivalWorldModelEntries);
@@ -1526,7 +1537,46 @@ try {
       Boolean(document.querySelector('[data-testid="recent-media-perception-empty"]'))`,
     "empty state for selected engram",
   );
-  await pressKey("ArrowUp");
+  await waitFor(
+    `document.querySelector('[data-testid="recent-media-perception-empty"]')?.textContent.trim() ===
+      "No media observations recorded yet"`,
+    "localized Recent Perception empty message",
+  );
+  await waitFor(
+    `!document.querySelector('[data-testid="recent-media-perception-processing"]')`,
+    "empty engram has no processing banner",
+  );
+  await waitFor(
+    `!document.querySelector('[data-testid="recent-media-observation-701"]') &&
+      !document.querySelector('[data-testid="recent-media-observation-708"]')`,
+    "empty engram has no media observations",
+  );
+
+  await devtools.call("Page.navigate", { url: `${appUrl}/world-model` });
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="select-engram-4"]'))`,
+    "Quiet Surveyor in the full world-model selector",
+  );
+  await click(
+    `document.querySelector('[data-testid="select-engram-4"]')`,
+    "Quiet Surveyor full world-model view",
+  );
+  await waitFor(
+    `Boolean(document.querySelector('[data-testid="card-entry-709"]')) &&
+      document.querySelector('[data-testid="card-entry-709"]')?.innerText.includes("The surveyor keeps paper charts.")`,
+    "non-media world-model activity remains visible",
+  );
+
+  await devtools.call("Page.navigate", { url: `${appUrl}/dashboard` });
+  await waitFor(
+    `document.querySelector('[data-testid="select-recent-perception-engram"]')?.value === "1" &&
+      Boolean(document.querySelector('[data-testid="recent-media-observation-701"]'))`,
+    "dashboard returns to the chat-active engram",
+  );
+  await devtools.evaluate(
+    `document.querySelector('[data-testid="select-recent-perception-engram"]')?.focus()`,
+  );
+  await pressKey("ArrowDown");
   await waitFor(
     `document.querySelector('[data-testid="select-recent-perception-engram"]')?.value === "2" &&
       Boolean(document.querySelector('[data-testid="recent-media-observation-708"]'))`,
