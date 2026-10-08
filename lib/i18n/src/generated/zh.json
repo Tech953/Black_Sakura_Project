@@ -725,6 +725,8 @@
     "selectEngram": "选择一个 engram",
     "mediaEmpty": "尚未记录任何媒体观察",
     "mediaEmptyForEngram": "未记录 {{name}} 的媒体观察",
+    "mediaSearchPlaceholder": "搜索观察结果或源文件名",
+    "mediaSearchEmpty": "没有符合搜索条件的媒体观察结果。",
     "openSource": "打开源文件",
     "openSourceAsset": "打开媒体源"
   },
@@ -920,6 +922,9 @@
       "makeActive": "设为激活",
       "mediaMemory": "媒体观察",
       "noMediaMemory": "暂无可用媒体观察。",
+      "searchMediaMemory": "搜索观察结果或源文件名",
+      "clearMediaMemorySearch": "清除搜索",
+      "noMediaMemoryMatches": "没有符合搜索条件的媒体观察结果。",
       "openMediaSource": "打开媒体源"
     },
     "environment": {

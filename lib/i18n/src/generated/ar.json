@@ -723,6 +723,8 @@
     "encodedView": "ذاكرة مشفرة",
     "mediaEmpty": "لم يتم تسجيل أي ملاحظات وسائط بعد",
     "mediaEmptyForEngram": "لم يتم تسجيل أي ملاحظات وسائط لـ {{name}}",
+    "mediaSearchPlaceholder": "البحث عن ملاحظات أو أسماء ملفات المصدر",
+    "mediaSearchEmpty": "لا توجد ملاحظات وسائط تطابق بحثك.",
     "mediaObservations": "ملاحظات الوسائط",
     "openSource": "فتح المصدر",
     "openSourceAsset": "فتح مصدر الوسائط",
@@ -920,6 +922,9 @@
       "makeActive": "تعيين كنشط",
       "mediaMemory": "ملاحظات الوسائط",
       "noMediaMemory": "لا تتوفر ملاحظات وسائط بعد.",
+      "searchMediaMemory": "البحث عن ملاحظات أو أسماء ملفات المصدر",
+      "clearMediaMemorySearch": "مسح البحث",
+      "noMediaMemoryMatches": "لا توجد ملاحظات وسائط تطابق بحثك.",
       "openMediaSource": "فتح مصدر الوسائط"
     },
     "environment": {

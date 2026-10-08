@@ -511,8 +511,16 @@ export default function MediaScreen() {
           tintColor={colors.primary}
         />
       }
-      onScrollToIndexFailed={({ index }) => {
-        setTimeout(() => listRef.current?.scrollToIndex({ index, animated: false }), 50);
+      onScrollToIndexFailed={({ index, averageItemLength }) => {
+        const approximateOffset = Math.max(1, averageItemLength) * index;
+        listRef.current?.scrollToOffset({ offset: approximateOffset, animated: false });
+        setTimeout(() => {
+          listRef.current?.scrollToIndex({
+            index,
+            animated: false,
+            viewPosition: 0.15,
+          });
+        }, 100);
       }}
       ListHeaderComponent={
         <View>

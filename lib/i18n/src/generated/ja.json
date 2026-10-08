@@ -723,6 +723,8 @@
     "encodedView": "エンコード済みメモリ",
     "mediaEmpty": "メディア観察はまだ記録されていません",
     "mediaEmptyForEngram": "{{name}}のメディア観察は記録されていません",
+    "mediaSearchPlaceholder": "観測結果またはソースファイル名を検索",
+    "mediaSearchEmpty": "検索条件に一致するメディア観測結果はありません。",
     "mediaObservations": "メディア観察",
     "openSource": "ソースを開く",
     "openSourceAsset": "メディアソースを開く",
@@ -920,6 +922,9 @@
       "makeActive": "有効化",
       "mediaMemory": "メディア観察",
       "noMediaMemory": "利用可能なメディア観察はまだありません。",
+      "searchMediaMemory": "観測結果またはソースファイル名を検索",
+      "clearMediaMemorySearch": "検索をクリア",
+      "noMediaMemoryMatches": "検索条件に一致するメディア観測結果はありません。",
       "openMediaSource": "メディアソースを開く"
     },
     "environment": {

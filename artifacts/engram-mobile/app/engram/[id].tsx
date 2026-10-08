@@ -1,17 +1,20 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 import { Glyph } from "@/components/glyph";
 import { Chip, MonoLabel, PrimaryButton, ScoreBar } from "@/components/ui";
@@ -49,6 +52,7 @@ export default function EngramDetailScreen() {
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
+  const [mediaSearch, setMediaSearch] = useState("");
   const offlineActive = useOfflineMode();
   const { selectedEngramId, setSelectedEngramId } = useEngram();
   const { data: memories } = useListMemories();
@@ -80,6 +84,23 @@ export default function EngramDetailScreen() {
       ),
     [worldModel],
   );
+  const normalizedMediaSearch = mediaSearch.trim().toLocaleLowerCase();
+  const filteredMediaObservations = useMemo(() => {
+    if (!normalizedMediaSearch) return mediaObservations;
+
+    return mediaObservations.filter((observation) => {
+      const assetId = mediaAssetId(observation.source);
+      const filename = assetId === null ? "" : mediaById.get(assetId)?.filename ?? "";
+      return (
+        observation.content.toLocaleLowerCase().includes(normalizedMediaSearch) ||
+        filename.toLocaleLowerCase().includes(normalizedMediaSearch)
+      );
+    });
+  }, [mediaById, mediaObservations, normalizedMediaSearch]);
+
+  useEffect(() => {
+    setMediaSearch("");
+  }, [id]);
 
   const { data: engram, isLoading, isError, refetch } = useGetEngram(id, {
     query: {
@@ -159,12 +180,19 @@ export default function EngramDetailScreen() {
           />
         </View>
       ) : (
+        <KeyboardAvoidingView
+          style={styles.keyboardContainer}
+          behavior="padding"
+          keyboardVerticalOffset={0}
+        >
         <ScrollView
           contentContainerStyle={[
             styles.scroll,
             { paddingBottom: (Platform.OS === "web" ? 34 : insets.bottom) + 120 },
           ]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <View style={styles.hero}>
             <Glyph symbol={engram.symbol} size={72} active={isActive} />
@@ -301,7 +329,41 @@ export default function EngramDetailScreen() {
           </Section>
 
           <Section label={t("detail.mediaMemory")} colors={colors}>
-            {mediaObservations.map((observation) => {
+            {mediaObservations.length > 0 ? (
+              <View
+                style={[
+                  styles.mediaSearchField,
+                  { borderColor: colors.border, backgroundColor: colors.background },
+                ]}
+              >
+                <Feather name="search" size={16} color={colors.mutedForeground} />
+                <TextInput
+                  testID="input-media-memory-search"
+                  accessibilityLabel={t("detail.searchMediaMemory")}
+                  value={mediaSearch}
+                  onChangeText={setMediaSearch}
+                  placeholder={t("detail.searchMediaMemory")}
+                  placeholderTextColor={colors.mutedForeground}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  selectionColor={colors.primary}
+                  style={[styles.mediaSearchInput, { color: colors.foreground }]}
+                />
+                {mediaSearch.length > 0 ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("detail.clearMediaMemorySearch")}
+                    hitSlop={10}
+                    onPress={() => setMediaSearch("")}
+                    style={styles.mediaSearchClear}
+                  >
+                    <Feather name="x" size={16} color={colors.mutedForeground} />
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+            {filteredMediaObservations.map((observation) => {
               const assetId = mediaAssetId(observation.source)!;
               const asset = mediaById.get(assetId);
               return (
@@ -324,6 +386,7 @@ export default function EngramDetailScreen() {
                         params: { asset: String(assetId) },
                       })
                     }
+                    testID={`engram-media-source-${observation.id}`}
                     style={{ marginTop: 10 }}
                   />
                 </View>
@@ -332,6 +395,10 @@ export default function EngramDetailScreen() {
             {!mediaObservations.length ? (
               <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
                 {t("detail.noMediaMemory")}
+              </Text>
+            ) : !filteredMediaObservations.length ? (
+              <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
+                {t("detail.noMediaMemoryMatches")}
               </Text>
             ) : null}
           </Section>
@@ -382,6 +449,7 @@ export default function EngramDetailScreen() {
             />
           </Section>
         </ScrollView>
+        </KeyboardAvoidingView>
       )}
 
       {engram ? (
@@ -471,6 +539,7 @@ function Metric({
 }
 
 const styles = StyleSheet.create({
+  keyboardContainer: { flex: 1 },
   container: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   errorState: {
@@ -535,6 +604,24 @@ const styles = StyleSheet.create({
   dataMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, textTransform: "uppercase" },
   localizedMeta: { fontSize: 10, flexShrink: 1 },
   emptyData: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 20 },
+  mediaSearchField: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  mediaSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 9,
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+  },
+  mediaSearchClear: { padding: 4 },
   driveRow: {
     flexDirection: "row",
     justifyContent: "space-between",

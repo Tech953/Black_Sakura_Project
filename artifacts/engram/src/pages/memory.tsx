@@ -15,12 +15,13 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Database, ExternalLink, Eye, Plus, ScanEye, Trash2 } from "lucide-react";
+import { Database, ExternalLink, Eye, Plus, ScanEye, Search, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 
@@ -202,6 +203,7 @@ export default function Memory() {
 
       {activeView === "media" ? (
         <MediaMemoryView
+          key={selectedEngramId ?? "none"}
           engrams={engrams ?? []}
           selectedEngramId={selectedEngramId}
           onSelectEngram={setSelectedEngramId}
@@ -289,6 +291,20 @@ function MediaMemoryView({
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   const selected = engrams.find((engram) => engram.id === selectedEngramId);
+  const [search, setSearch] = useState("");
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const filteredObservations = useMemo(() => {
+    if (!normalizedSearch) return observations;
+
+    return observations.filter((entry) => {
+      const assetId = mediaAssetId(entry.source);
+      const filename = assetId === null ? "" : assetsById.get(assetId)?.filename ?? "";
+      return (
+        entry.content.toLocaleLowerCase().includes(normalizedSearch) ||
+        filename.toLocaleLowerCase().includes(normalizedSearch)
+      );
+    });
+  }, [assetsById, normalizedSearch, observations]);
 
   return (
     <div className="space-y-5">
@@ -309,6 +325,24 @@ function MediaMemoryView({
         ))}
       </div>
 
+      {observations.length > 0 ? (
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t("mediaSearchPlaceholder")}
+            aria-label={t("mediaSearchPlaceholder")}
+            className="pl-9 font-mono text-sm"
+            data-testid="input-media-memory-search"
+          />
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, index) => (
@@ -324,9 +358,14 @@ function MediaMemoryView({
               : t("mediaEmpty")}
           </p>
         </div>
+      ) : !filteredObservations.length ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground font-mono">
+          <Search className="w-8 h-8 mb-4 opacity-30" />
+          <p className="text-xs uppercase tracking-widest">{t("mediaSearchEmpty")}</p>
+        </div>
       ) : (
         <div className="space-y-3">
-          {observations.map((entry) => {
+          {filteredObservations.map((entry) => {
             const assetId = mediaAssetId(entry.source)!;
             const asset = assetsById.get(assetId);
             return (
