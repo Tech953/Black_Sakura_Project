@@ -40,6 +40,7 @@ import {
   checkLlamaRuntime,
   checkLlamaRuntimeArchitecture,
 } from "./llama-runtime-check.mjs";
+import { runPackagedSettingsLocaleSmoke } from "./settings-locale-smoke.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const desktopDir = path.join(here, ".."); // artifacts/desktop
@@ -1224,6 +1225,19 @@ async function main() {
     process.env.ENGRAM_PACKAGED_GGUF_REAL_RUNTIME === "1" || !multiModelSmoke
       ? { ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: "1" }
       : {};
+  log("checking saved Settings language before dashboard startup…");
+  await runPackagedSettingsLocaleSmoke({
+    executablePath: exe,
+    baseArgs: args,
+    baseEnv: {
+      ...process.env,
+      CI: "true",
+      GITHUB_ACTIONS: "true",
+      ENGRAM_PACKAGED_GGUF_SMOKE: "1",
+      ENGRAM_SMOKE_DIAGNOSTICS_DIR: smokeDiagnosticsDir,
+      ...customRuntimeEnv,
+    },
+  });
   // CI Linux runs under xvfb as a privileged user with no GPU; these switches
   // keep Electron from refusing to start. They are no-ops on the runtime paths
   // this test exercises (embedded server + dashboard render).

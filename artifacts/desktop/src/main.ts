@@ -151,6 +151,9 @@ const packagedSmokeGgufRequestEnabled =
   process.env.ENGRAM_PACKAGED_GGUF_REQUEST_SMOKE === "1";
 const packagedSmokeUpdateEnabled =
   packagedSmokeEnabled && process.env.ENGRAM_PACKAGED_UPDATE_SMOKE === "1";
+const packagedSmokeSettingsLocaleEnabled =
+  packagedSmokeEnabled &&
+  process.env.ENGRAM_PACKAGED_SETTINGS_LOCALE_SMOKE === "1";
 const packagedSmokeUpdateFeedUrl =
   packagedSmokeUpdateEnabled &&
   process.env.ENGRAM_PACKAGED_UPDATE_FEED_URL?.trim();
@@ -2274,6 +2277,13 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     buildMenu();
     try {
+      if (packagedSmokeSettingsLocaleEnabled) {
+        // Exercise the real Settings window and preload bridge before the
+        // dashboard or embedded server exists.
+        setupAutoUpdates();
+        openSettingsWindow();
+        return;
+      }
       await customGgufStore().cleanStalePartials();
       await startServer();
       if (packagedSmokeSimulatedFailure) {
