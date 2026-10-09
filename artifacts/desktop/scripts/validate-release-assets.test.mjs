@@ -12,12 +12,21 @@ const workflow = readFileSync(
   new URL("../../../.github/workflows/desktop-build.yml", import.meta.url),
   "utf8",
 );
+const desktopBuildJob =
+  workflow
+    .split("\n  build:\n")[1]
+    ?.split("\n  llama-runtime-contract:\n")[0] ?? "";
+const electronBuilderConfig = readFileSync(
+  new URL("../electron-builder.yml", import.meta.url),
+  "utf8",
+);
 const releaseTag = "v1.2.3";
 const expectedAndroidApk = "ENGRAM-Mobile-1.2.3.apk";
 const completeAssetNames = [
   "ENGRAM-1.2.3-x64.AppImage",
   "engram_1.2.3-x64.deb",
   "ENGRAM-1.2.3-x64.dmg",
+  "ENGRAM-1.2.3-arm64.dmg",
   "ENGRAM Setup 1.2.3-x64.exe",
   "latest.yml",
   "latest-linux.yml",
@@ -113,7 +122,7 @@ describe("release asset gate", () => {
 
     expect(summary).toContain("- Tag: v1.2.3");
     expect(summary).toContain("- Draft release ID: release-123");
-    expect(summary).toContain("- Asset count: 8");
+    expect(summary).toContain("- Asset count: 9");
     expect(summary).toContain("- Result: passed");
     expect(summary).toContain("### Required assets present");
     expect(summary).toContain("- Android signed APK");
@@ -134,7 +143,7 @@ describe("release asset gate", () => {
 
     expect(summary).toContain("- Tag: v1.2.3");
     expect(summary).toContain("- Draft release ID: release-123");
-    expect(summary).toContain("- Asset count: 8");
+    expect(summary).toContain("- Asset count: 9");
     expect(summary).toContain("- Result: failed");
     expect(summary).toContain("- Android signed APK");
     expect(summary).not.toContain("FAKE_GH_TOKEN_SECRET_SENTINEL");
@@ -153,7 +162,52 @@ describe("release asset gate", () => {
 
     expect(result.ok).toBe(false);
     expect(result.missing).toContain("Linux x64 AppImage");
+    expect(result.missing).toContain("macOS x64 DMG");
     expect(result.missing).toContain("Windows x64 installer");
+  });
+
+  it("requires distinct macOS x64 and arm64 installers", () => {
+    const withoutArm64 = validateReleaseAssets({
+      releaseId: "release-123",
+      assetNames: completeAssetNames.filter(
+        (name) => name !== "ENGRAM-1.2.3-arm64.dmg",
+      ),
+      tag: releaseTag,
+    });
+    const withoutX64 = validateReleaseAssets({
+      releaseId: "release-123",
+      assetNames: completeAssetNames.filter(
+        (name) => name !== "ENGRAM-1.2.3-x64.dmg",
+      ),
+      tag: releaseTag,
+    });
+
+    expect(withoutArm64.missing).toContain("macOS arm64 DMG");
+    expect(withoutX64.missing).toContain("macOS x64 DMG");
+  });
+
+  it("keeps signed macOS arm64 packaging in the tagged release matrix", () => {
+    expect(desktopBuildJob).toMatch(
+      /- os: macos-14\s+platform: mac\s+arch: arm64/,
+    );
+    expect(electronBuilderConfig).toContain(
+      "artifactName: ${productName}-${version}-${arch}.${ext}",
+    );
+    expect(electronBuilderConfig).toMatch(/^mac:\s+target:\s+- dmg$/m);
+    expect(electronBuilderConfig).toContain("notarize: true");
+    expect(desktopBuildJob).toContain(
+      "if: github.event_name == 'push' && github.ref_type == 'tag' && matrix.platform != 'linux'",
+    );
+    expect(desktopBuildJob).toContain("CSC_LINK: ${{ secrets.CSC_LINK }}");
+    expect(desktopBuildJob).toContain("APPLE_ID: ${{ secrets.APPLE_ID }}");
+    expect(desktopBuildJob).toContain(
+      "- name: Verify macOS signature and notarization",
+    );
+    expect(desktopBuildJob).toContain("if: matrix.platform == 'mac'");
+    expect(desktopBuildJob).toContain('EXPECTED_ARCH="${{ matrix.arch }}"');
+    expect(desktopBuildJob).toContain(
+      "run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --${{ matrix.arch }}",
+    );
   });
 
   it("runs only for tag publication and validates assets before un-drafting", () => {

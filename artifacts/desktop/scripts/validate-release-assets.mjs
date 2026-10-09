@@ -14,10 +14,11 @@ export const RELEASE_TARGETS = [
     ],
   },
   {
-    id: "mac-x64",
+    id: "mac",
     requiredAssets: [
       { label: "macOS x64 DMG", suffix: "-x64.dmg" },
-      { label: "macOS x64 update manifest", name: "latest-mac.yml" },
+      { label: "macOS arm64 DMG", suffix: "-arm64.dmg" },
+      { label: "macOS update manifest", name: "latest-mac.yml" },
     ],
   },
   {
