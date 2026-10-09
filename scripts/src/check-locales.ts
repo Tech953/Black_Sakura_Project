@@ -10,6 +10,7 @@ import {
   DEFAULT_ENGLISH_LOCALE_DIR,
   DEFAULT_GENERATED_LOCALE_DIR,
   diffKeyTrees,
+  findMissingInstallGuidanceMarkers,
   findEnglishFallbackKeys,
   loadEnglish,
   TRACKED_MOBILE_FALLBACK_KEYS,
@@ -22,6 +23,7 @@ interface LocaleFailure {
   error?: string;
   diff?: KeyTreeDiff;
   englishFallbacks?: string[];
+  installGuidanceMarkers?: string[];
 }
 
 const englishDir =
@@ -31,6 +33,16 @@ const generatedDir =
 const english = loadEnglish(englishDir);
 const failures: LocaleFailure[] = [];
 const targets = LANGUAGES.filter((language) => language.code !== "en");
+const englishInstallGuidanceMarkers = findMissingInstallGuidanceMarkers(
+  "en",
+  english.download,
+);
+if (englishInstallGuidanceMarkers.length > 0) {
+  failures.push({
+    code: "en",
+    installGuidanceMarkers: englishInstallGuidanceMarkers,
+  });
+}
 
 for (const language of targets) {
   const localePath = path.join(generatedDir, `${language.code}.json`);
@@ -52,13 +64,23 @@ for (const language of targets) {
       generated.mobile,
       TRACKED_MOBILE_FALLBACK_KEYS,
     );
+    const installGuidanceMarkers = findMissingInstallGuidanceMarkers(
+      language.code,
+      generated.download,
+    );
     if (
       diff.missing.length > 0 ||
       diff.extra.length > 0 ||
       diff.typeMismatches.length > 0 ||
-      englishFallbacks.length > 0
+      englishFallbacks.length > 0 ||
+      installGuidanceMarkers.length > 0
     ) {
-      failures.push({ code: language.code, diff, englishFallbacks });
+      failures.push({
+        code: language.code,
+        diff,
+        englishFallbacks,
+        installGuidanceMarkers,
+      });
     }
   } catch (error) {
     failures.push({
@@ -72,7 +94,7 @@ for (const language of targets) {
 
 if (failures.length > 0) {
   console.error(
-    "Generated locales have structural differences or tracked English fallbacks.",
+    "Generated locales have structural differences, tracked English fallbacks, or missing install guidance markers.",
   );
   for (const failure of failures) {
     console.error(`\n[${failure.code}]`);
@@ -89,6 +111,9 @@ if (failures.length > 0) {
     for (const key of failure.englishFallbacks ?? []) {
       console.error(`  ENGLISH FALLBACK: mobile.${key}`);
     }
+    for (const marker of failure.installGuidanceMarkers ?? []) {
+      console.error(`  INSTALL GUIDANCE: ${marker}`);
+    }
     console.error(
       `  Fix: pnpm --filter @workspace/scripts run generate:locales ${failure.code}`,
     );
@@ -96,6 +121,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Locale key trees match English with no tracked mobile fallbacks across ${targets.length} generated languages.`,
+    `Locale key trees match English with no tracked mobile fallbacks or missing install guidance markers across ${targets.length} generated languages.`,
   );
 }
