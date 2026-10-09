@@ -1,4 +1,7 @@
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+const MAX_MANIFEST_BYTES = 256 * 1024;
 
 // Every electron-builder target that can be published must declare its
 // architecture-specific installer suffixes and updater manifest here. Adding a
@@ -10,7 +13,13 @@ export const RELEASE_TARGETS = [
     requiredAssets: [
       { label: "Linux x64 AppImage", suffix: "-x64.AppImage" },
       { label: "Linux x64 deb package", suffix: "-x64.deb" },
-      { label: "Linux x64 update manifest", name: "latest-linux.yml" },
+      {
+        label: "Linux x64 update manifest",
+        name: "latest-linux.yml",
+        manifestEntries: [
+          { label: "Linux x64 updater file", suffix: "-x64.AppImage" },
+        ],
+      },
     ],
   },
   {
@@ -18,19 +27,127 @@ export const RELEASE_TARGETS = [
     requiredAssets: [
       { label: "macOS x64 DMG", suffix: "-x64.dmg" },
       { label: "macOS arm64 DMG", suffix: "-arm64.dmg" },
-      { label: "macOS update manifest", name: "latest-mac.yml" },
+      {
+        label: "macOS update manifest",
+        name: "latest-mac.yml",
+        manifestEntries: [
+          { label: "macOS x64 update archive", suffix: "-x64.zip" },
+          { label: "macOS arm64 update archive", suffix: "-arm64.zip" },
+        ],
+      },
     ],
   },
   {
     id: "win-x64",
     requiredAssets: [
       { label: "Windows x64 installer", suffix: "-x64.exe" },
-      { label: "Windows x64 update manifest", name: "latest.yml" },
+      {
+        label: "Windows x64 update manifest",
+        name: "latest.yml",
+        manifestEntries: [
+          { label: "Windows x64 updater file", suffix: "-x64.exe" },
+        ],
+      },
     ],
   },
 ];
 
-export function validateReleaseAssets({ releaseId, assetNames, tag }) {
+function parseYamlString(value) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('"')) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return null;
+    }
+  }
+  if (trimmed.startsWith("'")) {
+    return trimmed.endsWith("'")
+      ? trimmed.slice(1, -1).replace(/''/g, "'")
+      : null;
+  }
+  return trimmed || null;
+}
+
+function getManifestFileName(url) {
+  try {
+    const pathname = new URL(url, "https://release.invalid/").pathname;
+    const encodedFileName = pathname.split("/").at(-1) ?? "";
+    return decodeURIComponent(encodedFileName);
+  } catch {
+    return url.split(/[\\/]/).at(-1) ?? "";
+  }
+}
+
+function parseManifestFileNames(contents) {
+  if (
+    typeof contents !== "string" ||
+    Buffer.byteLength(contents, "utf8") > MAX_MANIFEST_BYTES
+  ) {
+    return [];
+  }
+
+  const lines = contents.split(/\r?\n/);
+  const filesHeaderIndex = lines.findIndex((line) =>
+    /^files:\s*(?:#.*)?$/.test(line),
+  );
+  if (filesHeaderIndex < 0) {
+    return [];
+  }
+
+  const fileNames = [];
+  for (const line of lines.slice(filesHeaderIndex + 1)) {
+    if (line.trim() !== "" && !/^\s/.test(line)) {
+      break;
+    }
+    const match =
+      line.match(/^\s*-\s+url:\s*(.*?)\s*$/) ??
+      line.match(/^\s+url:\s*(.*?)\s*$/);
+    if (!match) {
+      continue;
+    }
+    const url = parseYamlString(match[1]);
+    if (url) {
+      fileNames.push(getManifestFileName(url));
+    }
+  }
+  return fileNames;
+}
+
+function readManifestContents(manifestDir) {
+  if (typeof manifestDir !== "string" || manifestDir.trim() === "") {
+    return {};
+  }
+
+  const manifestNames = new Set(
+    RELEASE_TARGETS.flatMap((target) =>
+      target.requiredAssets
+        .filter((asset) => asset.manifestEntries)
+        .map((asset) => asset.name),
+    ),
+  );
+  const contents = {};
+  for (const name of manifestNames) {
+    const filePath = join(manifestDir, name);
+    try {
+      if (statSync(filePath).size <= MAX_MANIFEST_BYTES) {
+        contents[name] = readFileSync(filePath, "utf8");
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        throw error;
+      }
+    }
+  }
+  return contents;
+}
+
+export function validateReleaseAssets({
+  releaseId,
+  assetNames,
+  tag,
+  manifestContents = {},
+}) {
   const normalizedReleaseId =
     typeof releaseId === "string" && releaseId.trim() !== ""
       ? releaseId.trim()
@@ -70,6 +187,23 @@ export function validateReleaseAssets({ releaseId, assetNames, tag }) {
         passed.push(asset.label);
       } else {
         missing.push(asset.label);
+      }
+      if (assetPresent && asset.manifestEntries) {
+        const manifestFileNames = parseManifestFileNames(
+          manifestContents[asset.name],
+        );
+        for (const entry of asset.manifestEntries) {
+          const entryPresent = manifestFileNames.some(
+            (name) =>
+              name.endsWith(entry.suffix) &&
+              normalizedAssetNames.includes(name),
+          );
+          if (entryPresent) {
+            passed.push(entry.label);
+          } else {
+            missing.push(entry.label);
+          }
+        }
       }
     }
   }
@@ -137,6 +271,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     releaseId: process.env.RELEASE_ID,
     assetNames,
     tag,
+    manifestContents: readManifestContents(process.env.RELEASE_MANIFEST_DIR),
   });
   appendReleaseAssetsSummary(process.env.GITHUB_STEP_SUMMARY, {
     tag,

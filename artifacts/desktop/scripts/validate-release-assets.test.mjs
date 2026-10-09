@@ -26,13 +26,46 @@ const completeAssetNames = [
   "ENGRAM-1.2.3-x64.AppImage",
   "engram_1.2.3-x64.deb",
   "ENGRAM-1.2.3-x64.dmg",
+  "ENGRAM-1.2.3-x64.zip",
   "ENGRAM-1.2.3-arm64.dmg",
+  "ENGRAM-1.2.3-arm64.zip",
   "ENGRAM Setup 1.2.3-x64.exe",
   "latest.yml",
   "latest-linux.yml",
   "latest-mac.yml",
   expectedAndroidApk,
 ];
+const manifestFileUrls = {
+  "latest-linux.yml": ["ENGRAM-1.2.3-x64.AppImage"],
+  "latest-mac.yml": ["ENGRAM-1.2.3-x64.zip", "ENGRAM-1.2.3-arm64.zip"],
+  "latest.yml": ["ENGRAM Setup 1.2.3-x64.exe"],
+};
+
+function createManifest(fileUrls) {
+  return [
+    "version: 1.2.3",
+    "files:",
+    ...fileUrls.map((url) => `  - url: ${JSON.stringify(url)}`),
+    "releaseDate: '2026-10-08T12:00:00.000Z'",
+  ].join("\n");
+}
+
+const completeManifestContents = Object.fromEntries(
+  Object.entries(manifestFileUrls).map(([name, urls]) => [
+    name,
+    createManifest(urls),
+  ]),
+);
+
+function validateCompleteRelease(overrides = {}) {
+  return validateReleaseAssets({
+    releaseId: "release-123",
+    assetNames: completeAssetNames,
+    tag: releaseTag,
+    manifestContents: completeManifestContents,
+    ...overrides,
+  });
+}
 
 function createSummary(result, tag = releaseTag) {
   const summaryDir = mkdtempSync(join(tmpdir(), "release-assets-summary-"));
@@ -47,14 +80,46 @@ function createSummary(result, tag = releaseTag) {
 
 describe("release asset gate", () => {
   it("accepts a complete draft release", () => {
-    const result = validateReleaseAssets({
-      releaseId: "release-123",
-      assetNames: completeAssetNames,
-      tag: releaseTag,
-    });
+    const result = validateCompleteRelease();
 
     expect(result.ok).toBe(true);
     expect(result.missing).toEqual([]);
+  });
+
+  it.each(
+    RELEASE_TARGETS.flatMap((target) =>
+      target.requiredAssets.flatMap((asset) =>
+        (asset.manifestEntries ?? []).map((entry) => ({ asset, entry })),
+      ),
+    ),
+  )("rejects a manifest missing $entry.label", ({ asset, entry }) => {
+    const manifestContents = { ...completeManifestContents };
+    manifestContents[asset.name] = createManifest(
+      manifestFileUrls[asset.name].filter((url) => !url.endsWith(entry.suffix)),
+    );
+    const result = validateCompleteRelease({ manifestContents });
+
+    expect(result.ok).toBe(false);
+    expect(result.missing).toContain(entry.label);
+  });
+
+  it("requires manifest update URLs to name assets present in the draft", () => {
+    const manifestContents = {
+      ...completeManifestContents,
+      "latest-mac.yml": createManifest([
+        "ENGRAM-1.2.3-x64.zip",
+        "ENGRAM-1.2.3-arm64.zip",
+      ]),
+    };
+    const result = validateCompleteRelease({
+      assetNames: completeAssetNames.filter(
+        (name) => name !== "ENGRAM-1.2.3-arm64.zip",
+      ),
+      manifestContents,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.missing).toContain("macOS arm64 update archive");
   });
 
   it.each(
@@ -65,10 +130,8 @@ describe("release asset gate", () => {
     const assetNames = completeAssetNames.filter((name) =>
       "name" in asset ? name === asset.name : name.endsWith(asset.suffix),
     );
-    const result = validateReleaseAssets({
-      releaseId: "release-123",
+    const result = validateCompleteRelease({
       assetNames: completeAssetNames.filter((name) => name !== assetNames[0]),
-      tag: releaseTag,
     });
 
     expect(result.ok).toBe(false);
@@ -76,23 +139,17 @@ describe("release asset gate", () => {
   });
 
   it("rejects a complete asset list when the draft release is missing", () => {
-    const result = validateReleaseAssets({
-      releaseId: null,
-      assetNames: completeAssetNames,
-      tag: releaseTag,
-    });
+    const result = validateCompleteRelease({ releaseId: null });
 
     expect(result.ok).toBe(false);
     expect(result.missing).toEqual(["draft release"]);
   });
 
   it("rejects a release missing its tag-versioned Android APK", () => {
-    const result = validateReleaseAssets({
-      releaseId: "release-123",
+    const result = validateCompleteRelease({
       assetNames: completeAssetNames.filter(
         (name) => name !== expectedAndroidApk,
       ),
-      tag: releaseTag,
     });
 
     expect(result.ok).toBe(false);
@@ -100,12 +157,10 @@ describe("release asset gate", () => {
   });
 
   it("does not let an APK for another version satisfy the release", () => {
-    const result = validateReleaseAssets({
-      releaseId: "release-123",
+    const result = validateCompleteRelease({
       assetNames: completeAssetNames
         .filter((name) => name !== expectedAndroidApk)
         .concat("ENGRAM-Mobile-1.2.2.apk"),
-      tag: releaseTag,
     });
 
     expect(result.ok).toBe(false);
@@ -113,16 +168,12 @@ describe("release asset gate", () => {
   });
 
   it("writes a success summary with fixed labels and release metadata", () => {
-    const result = validateReleaseAssets({
-      releaseId: "release-123",
-      assetNames: completeAssetNames,
-      tag: releaseTag,
-    });
+    const result = validateCompleteRelease();
     const summary = createSummary(result);
 
     expect(summary).toContain("- Tag: v1.2.3");
     expect(summary).toContain("- Draft release ID: release-123");
-    expect(summary).toContain("- Asset count: 9");
+    expect(summary).toContain("- Asset count: 11");
     expect(summary).toContain("- Result: passed");
     expect(summary).toContain("### Required assets present");
     expect(summary).toContain("- Android signed APK");
@@ -132,18 +183,16 @@ describe("release asset gate", () => {
 
   it("summarizes missing labels without copying unbounded API asset data", () => {
     const sensitiveApiValue = `FAKE_GH_TOKEN_SECRET_SENTINEL${"x".repeat(16_384)}`;
-    const result = validateReleaseAssets({
-      releaseId: "release-123",
+    const result = validateCompleteRelease({
       assetNames: completeAssetNames
         .filter((name) => name !== expectedAndroidApk)
         .concat(sensitiveApiValue),
-      tag: releaseTag,
     });
     const summary = createSummary(result);
 
     expect(summary).toContain("- Tag: v1.2.3");
     expect(summary).toContain("- Draft release ID: release-123");
-    expect(summary).toContain("- Asset count: 9");
+    expect(summary).toContain("- Asset count: 11");
     expect(summary).toContain("- Result: failed");
     expect(summary).toContain("- Android signed APK");
     expect(summary).not.toContain("FAKE_GH_TOKEN_SECRET_SENTINEL");
@@ -152,12 +201,10 @@ describe("release asset gate", () => {
   });
 
   it("does not let an arm64 installer satisfy the x64 target", () => {
-    const result = validateReleaseAssets({
-      releaseId: "release-123",
+    const result = validateCompleteRelease({
       assetNames: completeAssetNames.map((name) =>
         name.replace(/-x64(?=\.)/, "-arm64"),
       ),
-      tag: releaseTag,
     });
 
     expect(result.ok).toBe(false);
@@ -167,19 +214,15 @@ describe("release asset gate", () => {
   });
 
   it("requires distinct macOS x64 and arm64 installers", () => {
-    const withoutArm64 = validateReleaseAssets({
-      releaseId: "release-123",
+    const withoutArm64 = validateCompleteRelease({
       assetNames: completeAssetNames.filter(
         (name) => name !== "ENGRAM-1.2.3-arm64.dmg",
       ),
-      tag: releaseTag,
     });
-    const withoutX64 = validateReleaseAssets({
-      releaseId: "release-123",
+    const withoutX64 = validateCompleteRelease({
       assetNames: completeAssetNames.filter(
         (name) => name !== "ENGRAM-1.2.3-x64.dmg",
       ),
-      tag: releaseTag,
     });
 
     expect(withoutArm64.missing).toContain("macOS arm64 DMG");
@@ -219,6 +262,7 @@ describe("release asset gate", () => {
     );
     const unDraftStepIndex = publishJob.indexOf("- name: Un-draft the release");
     const verifyStep = publishJob.slice(verifyStepIndex, unDraftStepIndex);
+    const checkoutIndex = publishJob.indexOf("actions/checkout@v4");
     const publishCondition = publishJob.match(/^\s*if: ([^\n]+)/m)?.[1] ?? "";
     const publishApiCallIndex = publishJob.indexOf(
       'gh api -X PATCH "repos/$REPO/releases/$RELEASE_ID"',
@@ -228,6 +272,8 @@ describe("release asset gate", () => {
     expect(publishCondition).toContain("github.ref_type == 'tag'");
     expect(publishCondition).not.toContain("workflow_dispatch");
     expect(verifyStepIndex).toBeGreaterThanOrEqual(0);
+    expect(checkoutIndex).toBeGreaterThanOrEqual(0);
+    expect(checkoutIndex).toBeLessThan(verifyStepIndex);
     expect(unDraftStepIndex).toBeGreaterThan(verifyStepIndex);
     expect(publishApiCallIndex).toBeGreaterThan(unDraftStepIndex);
     expect(verifyStep).toContain("set -euo pipefail");
@@ -236,5 +282,12 @@ describe("release asset gate", () => {
     expect(verifyStep).toContain(
       "node artifacts/desktop/scripts/validate-release-assets.mjs",
     );
+    expect(verifyStep).toContain("Accept: application/octet-stream");
+    expect(verifyStep).toContain('RELEASE_MANIFEST_DIR="$MANIFEST_DIR"');
+    for (const asset of RELEASE_TARGETS.flatMap((target) =>
+      target.requiredAssets.filter((candidate) => candidate.manifestEntries),
+    )) {
+      expect(verifyStep).toContain(asset.name);
+    }
   });
 });

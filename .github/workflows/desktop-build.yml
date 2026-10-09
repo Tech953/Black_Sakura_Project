@@ -1306,6 +1306,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       # Verify every required installer, updater manifest, and versioned signed
       # Android APK on the exact attempt-owned release before making it public.
       - name: Verify draft release assets
@@ -1332,11 +1334,26 @@ jobs:
             echo "Draft release $RELEASE_ID is not owned by workflow attempt $OWNER_ID for '$TAG'." >&2
             exit 1
           fi
-          ASSET_NAMES="$(gh api "repos/$REPO/releases/$RELEASE_ID/assets" --paginate \
-            --jq '.[].name')"
+          ASSETS_JSON="$(gh api --paginate --slurp \
+            "repos/$REPO/releases/$RELEASE_ID/assets")"
+          ASSET_NAMES="$(jq -r '.[][] | .name' <<< "$ASSETS_JSON")"
           echo "Assets in draft release $RELEASE_ID:"
           printf '%s\n' "$ASSET_NAMES"
+          MANIFEST_DIR="$RUNNER_TEMP/release-updater-manifests"
+          mkdir -p "$MANIFEST_DIR"
+          # Keep this list aligned with the manifest entries in RELEASE_TARGETS.
+          for MANIFEST_NAME in latest-linux.yml latest-mac.yml latest.yml; do
+            ASSET_ID="$(jq -r --arg name "$MANIFEST_NAME" \
+              '[.[][] | select(.name == $name) | .id][0] // empty' \
+              <<< "$ASSETS_JSON")"
+            if [ -n "$ASSET_ID" ]; then
+              gh api -H "Accept: application/octet-stream" \
+                "repos/$REPO/releases/assets/$ASSET_ID" \
+                > "$MANIFEST_DIR/$MANIFEST_NAME"
+            fi
+          done
           printf '%s\n' "$ASSET_NAMES" | RELEASE_ID="$RELEASE_ID" TAG="$TAG" \
+            RELEASE_MANIFEST_DIR="$MANIFEST_DIR" \
             node artifacts/desktop/scripts/validate-release-assets.mjs
 
           echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
