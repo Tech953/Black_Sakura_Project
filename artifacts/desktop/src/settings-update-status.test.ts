@@ -234,6 +234,44 @@ describe("Settings update status renderer", () => {
     );
   });
 
+  it("allows a zero-byte start and a temporary zero transfer speed", () => {
+    const { renderUpdateStatus, elements } = loadRenderer();
+
+    renderUpdateStatus(
+      { updatesSupported: true },
+      {
+        state: "downloading",
+        percent: 0,
+        transferred: 0,
+        total: 2048,
+        bytesPerSecond: 0,
+      },
+    );
+
+    expect(elements["update-progress-details"].textContent).toBe(
+      "0 B / 2 KB · 0 B/s",
+    );
+  });
+
+  it("allows a finite fractional transfer rate", () => {
+    const { renderUpdateStatus, elements } = loadRenderer();
+
+    renderUpdateStatus(
+      { updatesSupported: true },
+      {
+        state: "downloading",
+        percent: 10,
+        transferred: 1024,
+        total: 2048,
+        bytesPerSecond: 12.5,
+      },
+    );
+
+    expect(elements["update-progress-details"].textContent).toBe(
+      "1 KB / 2 KB · 12.5 B/s",
+    );
+  });
+
   it("shows recovery actions for a deferred install failure", () => {
     const { renderUpdateStatus, elements } = loadRenderer();
 
@@ -275,6 +313,80 @@ describe("Settings update status renderer", () => {
     );
     expect(details.textContent).toBe("");
     expect(details.classList.add).toHaveBeenCalledWith("hidden");
+  });
+
+  it.each([
+    { name: "NaN transferred", metrics: { transferred: Number.NaN } },
+    {
+      name: "infinite transferred",
+      metrics: { transferred: Number.POSITIVE_INFINITY },
+    },
+    { name: "negative transferred", metrics: { transferred: -1 } },
+    { name: "transferred above total", metrics: { transferred: 2049 } },
+    {
+      name: "oversized transferred",
+      metrics: { transferred: Number.MAX_SAFE_INTEGER + 1 },
+    },
+    { name: "NaN total", metrics: { total: Number.NaN } },
+    { name: "infinite total", metrics: { total: Number.POSITIVE_INFINITY } },
+    { name: "negative total", metrics: { total: -1 } },
+    { name: "zero total", metrics: { total: 0 } },
+    {
+      name: "oversized total",
+      metrics: { total: Number.MAX_SAFE_INTEGER + 1 },
+    },
+    { name: "NaN download speed", metrics: { bytesPerSecond: Number.NaN } },
+    {
+      name: "infinite download speed",
+      metrics: { bytesPerSecond: Number.POSITIVE_INFINITY },
+    },
+    { name: "negative download speed", metrics: { bytesPerSecond: -1 } },
+    {
+      name: "oversized download speed",
+      metrics: { bytesPerSecond: Number.MAX_SAFE_INTEGER + 1 },
+    },
+  ])("keeps percentage-only progress for $name", ({ metrics }) => {
+    const { renderUpdateStatus, elements } = loadRenderer();
+    const progress = elements["update-progress"];
+    const fill = elements["update-progress-fill"];
+    const details = elements["update-progress-details"];
+
+    renderUpdateStatus(
+      { updatesSupported: true },
+      {
+        state: "downloading",
+        percent: 20,
+        transferred: 1024,
+        total: 2048,
+        bytesPerSecond: 512,
+      },
+    );
+    expect(details.textContent).not.toBe("");
+
+    renderUpdateStatus(
+      { updatesSupported: true },
+      {
+        state: "downloading",
+        percent: 37,
+        transferred: 1024,
+        total: 2048,
+        bytesPerSecond: 512,
+        ...metrics,
+      },
+    );
+
+    expect(progress.classList.remove).toHaveBeenCalledWith("hidden");
+    expect(elements["update-status"].textContent).toBe(
+      "Downloading update… 37%",
+    );
+    expect(fill.style.width).toBe("37%");
+    expect(progress.setAttribute).toHaveBeenLastCalledWith(
+      "aria-valuenow",
+      "37",
+    );
+    expect(details.classList.add).toHaveBeenCalledWith("hidden");
+    expect(details.textContent).toBe("");
+    expect(details.textContent).not.toMatch(/NaN|Infinity|-\d|\/s/);
   });
 
   it("disables updates and hides progress when the build is unpackaged", () => {

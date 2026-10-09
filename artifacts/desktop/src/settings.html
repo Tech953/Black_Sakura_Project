@@ -1427,9 +1427,9 @@
             break;
           case "downloading":
             const percent = Math.min(100, Math.max(0, Number(s.percent) || 0));
-            const transferred = Number(s.transferred);
-            const total = Number(s.total);
-            const bytesPerSecond = Number(s.bytesPerSecond);
+            const transferred = s.transferred;
+            const total = s.total;
+            const bytesPerSecond = s.bytesPerSecond;
             el.textContent = copy.downloading.replace(
               "{{percent}}",
               String(percent),
@@ -1439,12 +1439,14 @@
             progressFill.style.width = `${percent}%`;
             progress.setAttribute("aria-valuenow", String(percent));
             if (
-              Number.isFinite(transferred) &&
+              Number.isSafeInteger(transferred) &&
               transferred >= 0 &&
-              Number.isFinite(total) &&
+              Number.isSafeInteger(total) &&
               total > 0 &&
+              transferred <= total &&
               Number.isFinite(bytesPerSecond) &&
-              bytesPerSecond >= 0
+              bytesPerSecond >= 0 &&
+              bytesPerSecond <= Number.MAX_SAFE_INTEGER
             ) {
               const formatTransferBytes = (bytes) => {
                 if (bytes === 0) return "0 B";

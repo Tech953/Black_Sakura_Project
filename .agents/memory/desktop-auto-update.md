@@ -45,3 +45,9 @@ In standalone Settings, download size and speed belong in a separate, non-live d
 **Why:** Transfer values can change on every download tick. A live region would repeat the same kind of announcement rapidly; a non-live description still exposes the latest values when assistive-technology users inspect the progressbar without changing keyboard focus order.
 
 **How to apply:** Keep the progressbar's accessible name focused on percentage progress, update the localized size/speed description as values change, and preserve the sibling relationship because progressbar descendants are presentational.
+
+Only show transfer metadata when transferred and total are nonnegative safe integers, total is positive, transferred does not exceed total, and bytes-per-second is finite, nonnegative, and no greater than `Number.MAX_SAFE_INTEGER`. Otherwise hide only the metadata and preserve percentage progress; do not coerce malformed values into plausible numbers.
+
+**Why:** NaN, infinities, precision-losing magnitudes, negative values, and transferred counts beyond the total can render as convincing but false status text. A transfer rate may legitimately be fractional, unlike byte counts.
+
+**How to apply:** Validate the renderer-facing stats before formatting them, allow zero transferred bytes, zero speed, and fractional speed when total is positive, and keep the percentage bar visible for downloading states with rejected details.
