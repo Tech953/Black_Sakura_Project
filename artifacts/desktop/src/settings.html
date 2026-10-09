@@ -675,10 +675,23 @@
       );
       const $ = (id) => document.getElementById(id);
 
-      function getSettingsCopy(language) {
-        const code = String(language || "en")
+      function languageCode(language) {
+        return String(language || "")
           .toLowerCase()
           .split("-")[0];
+      }
+
+      function resolveSettingsLanguage(language) {
+        const hasLocale = (code) =>
+          Object.prototype.hasOwnProperty.call(settingsLocaleData, code);
+        const storedCode = languageCode(language);
+        if (hasLocale(storedCode)) return storedCode;
+        const systemCode = languageCode(navigator.language);
+        return hasLocale(systemCode) ? systemCode : "en";
+      }
+
+      function getSettingsCopy(language) {
+        const code = resolveSettingsLanguage(language);
         const localized = settingsLocaleData[code] || {};
         const fallback = settingsLocaleData.en;
         return {
@@ -1568,9 +1581,10 @@
       async function initLocale() {
         const language = await window.engram
           .getUiLanguage()
-          .catch(() => navigator.language);
-        activeSettingsCopy = getSettingsCopy(language);
-        document.documentElement.lang = String(language || "en").split("-")[0];
+          .catch(() => "");
+        const resolvedLanguage = resolveSettingsLanguage(language);
+        activeSettingsCopy = getSettingsCopy(resolvedLanguage);
+        document.documentElement.lang = resolvedLanguage;
       }
 
       (async () => {
