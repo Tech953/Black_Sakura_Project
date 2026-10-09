@@ -265,6 +265,137 @@ describe("Settings update status renderer", () => {
     }
   });
 
+  it.each([
+    { name: "missing status", status: undefined },
+    { name: "null status", status: null },
+    { name: "unknown state", status: { state: "future-state" } },
+    { name: "numeric state", status: { state: 42 } },
+    { name: "symbol state", status: { state: Symbol("downloading") } },
+  ])("falls back safely for $name and clears stale progress", ({ status }) => {
+    const { renderUpdateStatus, elements } = loadRenderer();
+    const info = { updatesSupported: true };
+    const renderAtBoundary = renderUpdateStatus as unknown as (
+      info: { updatesSupported: boolean },
+      status: unknown,
+    ) => void;
+
+    renderUpdateStatus(info, {
+      state: "downloading",
+      percent: 61,
+      transferred: 1024,
+      total: 2048,
+      bytesPerSecond: 512,
+    });
+
+    expect(() => renderAtBoundary(info, status)).not.toThrow();
+
+    expect(elements["update-status"].textContent).toBe("Update check failed");
+    expect(elements["check-updates"].disabled).toBe(false);
+    expect(elements["update-progress"].classList.add).toHaveBeenLastCalledWith(
+      "hidden",
+    );
+    expect(elements["update-progress-fill"].style.width).toBe("0%");
+    expect(elements["update-progress"].setAttribute).toHaveBeenLastCalledWith(
+      "aria-valuenow",
+      "0",
+    );
+    expect(
+      elements["update-progress-details"].classList.add,
+    ).toHaveBeenLastCalledWith("hidden");
+    expect(elements["update-progress-details"].textContent).toBe("");
+  });
+
+  it.each([
+    {
+      name: "string download percentage",
+      status: { state: "downloading", percent: "42" },
+      expected: "Update check failed",
+      remainsDownloading: false,
+    },
+    {
+      name: "symbol download percentage",
+      status: { state: "downloading", percent: Symbol("invalid") },
+      expected: "Update check failed",
+      remainsDownloading: false,
+    },
+    {
+      name: "non-finite download percentage",
+      status: { state: "downloading", percent: Number.POSITIVE_INFINITY },
+      expected: "Update check failed",
+      remainsDownloading: false,
+    },
+    {
+      name: "non-numeric transfer fields",
+      status: {
+        state: "downloading",
+        percent: 42,
+        transferred: "1024",
+        total: "2048",
+        bytesPerSecond: "512",
+      },
+      expected: "Downloading update… 42%",
+      remainsDownloading: true,
+    },
+    {
+      name: "symbol update version",
+      status: { state: "available", version: Symbol("invalid") },
+      expected: "Update found — downloading…",
+      remainsDownloading: false,
+    },
+    {
+      name: "non-boolean recovery flags",
+      status: { state: "error", deferred: "true", retryable: "true" },
+      expected: "Update check failed",
+      remainsDownloading: false,
+    },
+  ])("handles $name without leaving stale details", ({
+    status,
+    expected,
+    remainsDownloading,
+  }) => {
+    const { renderUpdateStatus, elements } = loadRenderer();
+    const info = { updatesSupported: true };
+    const renderAtBoundary = renderUpdateStatus as unknown as (
+      info: { updatesSupported: boolean },
+      status: unknown,
+    ) => void;
+
+    renderUpdateStatus(info, {
+      state: "downloading",
+      percent: 61,
+      transferred: 1024,
+      total: 2048,
+      bytesPerSecond: 512,
+    });
+
+    expect(() => renderAtBoundary(info, status)).not.toThrow();
+    expect(elements["update-status"].textContent).toBe(expected);
+    expect(elements["update-progress-details"].textContent).toBe("");
+    expect(
+      elements["update-progress-details"].classList.add,
+    ).toHaveBeenLastCalledWith("hidden");
+
+    if (remainsDownloading) {
+      expect(
+        elements["update-progress"].classList.remove,
+      ).toHaveBeenLastCalledWith("hidden");
+      expect(elements["update-progress-fill"].style.width).toBe("42%");
+      expect(elements["update-progress"].setAttribute).toHaveBeenLastCalledWith(
+        "aria-valuenow",
+        "42",
+      );
+    } else {
+      expect(elements["update-progress"].classList.add).toHaveBeenLastCalledWith(
+        "hidden",
+      );
+      expect(elements["update-progress-fill"].style.width).toBe("0%");
+      expect(elements["update-progress"].setAttribute).toHaveBeenLastCalledWith(
+        "aria-valuenow",
+        "0",
+      );
+    }
+  });
+
   it("renders the supplied locale copy without changing updater behavior", () => {
     const { renderUpdateStatus, elements } = loadRenderer();
     const copy = {

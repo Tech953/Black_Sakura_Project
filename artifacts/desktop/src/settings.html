@@ -1405,6 +1405,13 @@
           retry.disabled = false;
           release.disabled = false;
         };
+        const showInvalidStatus = () => {
+          el.textContent = copy.error;
+          btn.disabled = false;
+          hideProgress();
+          hideProgressDetails();
+          hideRecovery();
+        };
         if (!info.updatesSupported) {
           el.textContent = copy.notAvailableInBuild;
           btn.disabled = true;
@@ -1413,20 +1420,34 @@
           hideRecovery();
           return;
         }
-        const s = status || { state: "idle" };
+        const isStatusObject =
+          status !== null && typeof status === "object" && !Array.isArray(status);
+        const s = isStatusObject ? status : null;
+        if (!s || typeof s.state !== "string") {
+          showInvalidStatus();
+          return;
+        }
         switch (s.state) {
           case "checking":
             el.textContent = copy.checking;
             btn.disabled = true;
             break;
           case "available":
-            el.textContent = s.version
-              ? copy.availableWithVersion.replace("{{version}}", s.version)
-              : copy.available;
+            el.textContent =
+              typeof s.version === "string" && s.version
+                ? copy.availableWithVersion.replace("{{version}}", s.version)
+                : copy.available;
             btn.disabled = true;
             break;
           case "downloading":
-            const percent = Math.min(100, Math.max(0, Number(s.percent) || 0));
+            if (
+              typeof s.percent !== "number" ||
+              !Number.isFinite(s.percent)
+            ) {
+              showInvalidStatus();
+              return;
+            }
+            const percent = Math.min(100, Math.max(0, s.percent));
             const transferred = s.transferred;
             const total = s.total;
             const bytesPerSecond = s.bytesPerSecond;
@@ -1476,7 +1497,7 @@
             hideRecovery();
             break;
           case "error":
-            if (s.deferred && s.retryable) {
+            if (s.deferred === true && s.retryable === true) {
               el.textContent = copy.deferredInstallFailed;
               recoveryMessage.textContent = copy.deferredInstallMessage;
               recovery.classList.remove("hidden");
@@ -1488,17 +1509,19 @@
             break;
           case "not-available":
           case "idle":
-          default:
             el.textContent = copy.upToDate;
             btn.disabled = false;
             hideProgress();
             break;
+          default:
+            showInvalidStatus();
+            return;
         }
         if (s.state !== "downloading") {
           hideProgress();
           hideProgressDetails();
         }
-        if (s.state !== "error" || !s.deferred || !s.retryable) {
+        if (s.state !== "error" || s.deferred !== true || s.retryable !== true) {
           hideRecovery();
         }
       }
