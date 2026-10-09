@@ -66,6 +66,7 @@ const cleanupScript = getStepRunScript(
 const cleanupTag = "v9.9.9";
 const cleanupOwnerId = "987654321-2";
 const cleanupOwnerMarker = `<!-- engram-draft-owner:${cleanupOwnerId} -->`;
+const sensitiveApiMarker = "TEST_GH_ERROR_BODY_TOKEN_SENTINEL";
 const shellBehaviorTest = process.platform === "linux" ? it : it.skip;
 
 function createOwnedDraft(id) {
@@ -94,20 +95,40 @@ const fakeGhScript = [
   "    fs.appendFileSync(process.env.GH_DELETE_LOG_PATH, `${releaseId}\\n`);",
   "  }",
   "} else if (endpoint.includes('/releases?')) {",
-  "  for (const page of fixture.pages) process.stdout.write(`${JSON.stringify(page)}\\n`);",
-  "} else {",
-  "  const releaseId = endpoint.split('/').at(-1);",
-  "  const release = fixture.releases.find((item) => String(item.id) === releaseId);",
-  "  if (!release) {",
-  "    process.stderr.write(`HTTP 404 release ${releaseId} not found\\n`);",
+  "  if (fixture.failListMessage) {",
+  "    if (fixture.failListOutput) process.stdout.write(fixture.failListOutput);",
+  "    process.stderr.write(fixture.failListMessage);",
   "    process.exitCode = 1;",
   "  } else {",
-  "    process.stdout.write(JSON.stringify(release));",
+  "    for (const page of fixture.pages) process.stdout.write(`${JSON.stringify(page)}\\n`);",
+  "  }",
+  "} else {",
+  "  const releaseId = endpoint.split('/').at(-1);",
+  "  if (fixture.failGetIds.includes(releaseId)) {",
+  "    if (fixture.failGetOutput) process.stdout.write(fixture.failGetOutput);",
+  "    process.stderr.write(fixture.failGetMessage);",
+  "    process.exitCode = 1;",
+  "  } else {",
+  "    const release = fixture.releases.find((item) => String(item.id) === releaseId);",
+  "    if (!release) {",
+  "      process.stderr.write(`HTTP 404 release ${releaseId} not found\\n`);",
+  "      process.exitCode = 1;",
+  "    } else {",
+  "      process.stdout.write(JSON.stringify(release));",
+  "    }",
   "  }",
   "}",
 ].join("\n");
 
-function runCleanupScenario({ pages, failDeleteIds = [] }) {
+function runCleanupScenario({
+  pages,
+  failDeleteIds = [],
+  failListMessage = "",
+  failListOutput = "",
+  failGetIds = [],
+  failGetMessage = "",
+  failGetOutput = "",
+}) {
   const tempRoot = mkdtempSync(join(tmpdir(), "desktop-cleanup-test-"));
   const binDir = join(tempRoot, "bin");
   const fixturePath = join(tempRoot, "fixture.json");
@@ -121,7 +142,16 @@ function runCleanupScenario({ pages, failDeleteIds = [] }) {
     chmodSync(join(binDir, "gh"), 0o755);
     writeFileSync(
       fixturePath,
-      JSON.stringify({ pages, releases, failDeleteIds }),
+      JSON.stringify({
+        pages,
+        releases,
+        failDeleteIds,
+        failListMessage,
+        failListOutput,
+        failGetIds,
+        failGetMessage,
+        failGetOutput,
+      }),
     );
 
     const result = spawnSync("bash", ["-c", cleanupScript], {
@@ -331,7 +361,7 @@ describe("desktop release workflow concurrency", () => {
       /\.draft == true and \.tag_name == \$tag and \(\(\.body \/\/ ""\) \| contains\(\$owner\)\)/,
     );
     expect(cleanupJob).toMatch(
-      /CURRENT_RELEASE="\$\(gh api "repos\/\$REPO\/releases\/\$RELEASE_ID"\)[\s\S]*contains\(\$owner\)[\s\S]*gh api -X DELETE/s,
+      /CURRENT_RELEASE="\$\(gh api "repos\/\$REPO\/releases\/\$RELEASE_ID" 2>\/dev\/null\)"[\s\S]*contains\(\$owner\)[\s\S]*gh api -X DELETE/s,
     );
   });
 
@@ -368,7 +398,9 @@ describe("desktop release workflow concurrency", () => {
     expect(workflow).toContain('>> "$GITHUB_STEP_SUMMARY"');
     expect(workflow).toMatch(/Owned drafts found:/);
     expect(workflow).toMatch(/Release IDs deleted:/);
+    expect(workflow).toMatch(/Release IDs with failed ownership lookup:/);
     expect(workflow).toMatch(/already clean/);
+    expect(workflow).toContain('write_summary "lookup failed" "unknown"');
     expect(workflow).toMatch(
       /if gh api -X DELETE "repos\/\$REPO\/releases\/\$RELEASE_ID"; then/,
     );
@@ -443,6 +475,60 @@ describe("desktop release workflow concurrency", () => {
           "- Release IDs that failed deletion: 802",
         );
         expect(result.summary).toContain("- Result: failed");
+      },
+    );
+
+    shellBehaviorTest(
+      "summarizes release-list lookup failures without leaking API output",
+      () => {
+        const sensitivePayload = `${sensitiveApiMarker}${"x".repeat(8192)}`;
+        const result = runCleanupScenario({
+          pages: [],
+          failListMessage: `HTTP 403 ${sensitivePayload}`,
+          failListOutput: `{"message":"${sensitivePayload}"}`,
+        });
+
+        expect(result.exitCode).toBe(1);
+        expect(result.summary).toContain("- Tag: v9.9.9");
+        expect(result.summary).toContain("- Owned drafts found: unknown");
+        expect(result.summary).toContain("- Result: lookup failed");
+        expect(result.summary.length).toBeLessThan(1000);
+        expect(result.summary).not.toContain(sensitiveApiMarker);
+        expect(result.stderr).toContain(
+          "Failed to list release drafts for tag 'v9.9.9'.",
+        );
+        expect(result.stderr).not.toContain(sensitiveApiMarker);
+        expect(result.stdout).not.toContain(sensitiveApiMarker);
+      },
+    );
+
+    shellBehaviorTest(
+      "records per-release lookup failures and still safely processes other drafts",
+      () => {
+        const sensitivePayload = `${sensitiveApiMarker}${"x".repeat(8192)}`;
+        const result = runCleanupScenario({
+          pages: [[createOwnedDraft(811), createOwnedDraft(812)]],
+          failGetIds: ["811"],
+          failGetMessage: `HTTP 403 ${sensitivePayload}`,
+          failGetOutput: `{"message":"${sensitivePayload}"}`,
+        });
+
+        expect(result.exitCode).toBe(1);
+        expect(result.deletedIds).toEqual(["812"]);
+        expect(result.summary).toContain("- Tag: v9.9.9");
+        expect(result.summary).toContain("- Owned drafts found: 2");
+        expect(result.summary).toContain("- Release IDs deleted: 812");
+        expect(result.summary).toContain(
+          "- Release IDs with failed ownership lookup: 811",
+        );
+        expect(result.summary).toContain("- Result: lookup failed");
+        expect(result.summary.length).toBeLessThan(1000);
+        expect(result.summary).not.toContain(sensitiveApiMarker);
+        expect(result.stderr).toContain(
+          "Failed to recheck ownership for release ID 811.",
+        );
+        expect(result.stderr).not.toContain(sensitiveApiMarker);
+        expect(result.stdout).not.toContain(sensitiveApiMarker);
       },
     );
   });

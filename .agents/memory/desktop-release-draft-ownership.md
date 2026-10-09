@@ -20,3 +20,9 @@ Cleanup observability belongs in the workflow step summary via the runner-provid
 **Why:** The summary path is injected as a default runner environment variable; resolving it through the workflow `env` context can produce an empty path and hide the audit result.
 
 **How to apply:** write only tag, counts, release IDs, and outcome text to the summary; keep API credentials exclusively in the step environment used by `gh`.
+
+When release-list or per-release ownership lookups fail, write a bounded summary with the tag and a generic `lookup failed` result. Never copy `gh` stderr or API response bodies into the summary.
+
+**Why:** GitHub error output can contain sensitive response data and may be unbounded; cleanup still needs an audit signal without exposing it.
+
+**How to apply:** capture lookup output only for processing, suppress raw API error output, and record only known release IDs plus a static failure result.
