@@ -1306,8 +1306,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      # Verify every required installer and electron-updater manifest on the
-      # exact attempt-owned release before making it public.
+      # Verify every required installer, updater manifest, and versioned signed
+      # Android APK on the exact attempt-owned release before making it public.
       - name: Verify draft release assets
         id: verify_assets
         env:
@@ -1336,7 +1336,7 @@ jobs:
             --jq '.[].name')"
           echo "Assets in draft release $RELEASE_ID:"
           printf '%s\n' "$ASSET_NAMES"
-          printf '%s\n' "$ASSET_NAMES" | RELEASE_ID="$RELEASE_ID" \
+          printf '%s\n' "$ASSET_NAMES" | RELEASE_ID="$RELEASE_ID" TAG="$TAG" \
             node artifacts/desktop/scripts/validate-release-assets.mjs
 
           echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
