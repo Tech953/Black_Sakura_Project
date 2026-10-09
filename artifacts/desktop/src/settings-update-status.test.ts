@@ -184,6 +184,56 @@ describe("Settings update status renderer", () => {
     ).toHaveBeenLastCalledWith("hidden");
   });
 
+  it("exposes transfer details as a non-live progress description", () => {
+    const html = readFileSync(
+      new URL("./settings.html", import.meta.url),
+      "utf8",
+    );
+    const progressMarkup = html.match(
+      /<div\b(?=[^>]*\bid="update-progress")[^>]*>/,
+    )?.[0];
+    const detailsMarkup = html.match(
+      /<div\b(?=[^>]*\bid="update-progress-details")[^>]*>/,
+    )?.[0];
+
+    expect(progressMarkup).toContain('role="progressbar"');
+    expect(progressMarkup).toContain(
+      'aria-describedby="update-progress-details"',
+    );
+    expect(progressMarkup).not.toMatch(/\btabindex=/);
+    expect(detailsMarkup).toContain('aria-live="off"');
+    expect(detailsMarkup).not.toMatch(/aria-live="(?:polite|assertive)"/);
+    expect(detailsMarkup).not.toContain('role="status"');
+  });
+
+  it("keeps the latest transfer details available across rapid updates", () => {
+    const { renderUpdateStatus, elements } = loadRenderer();
+    const info = { updatesSupported: true };
+
+    renderUpdateStatus(info, {
+      state: "downloading",
+      percent: 20,
+      transferred: 1_048_576,
+      total: 5_242_880,
+      bytesPerSecond: 262_144,
+    });
+    renderUpdateStatus(info, {
+      state: "downloading",
+      percent: 40,
+      transferred: 2_097_152,
+      total: 5_242_880,
+      bytesPerSecond: 524_288,
+    });
+
+    expect(elements["update-progress-details"].textContent).toBe(
+      "2 MB / 5 MB · 512 KB/s",
+    );
+    expect(elements["update-progress"].setAttribute).toHaveBeenLastCalledWith(
+      "aria-valuenow",
+      "40",
+    );
+  });
+
   it("shows recovery actions for a deferred install failure", () => {
     const { renderUpdateStatus, elements } = loadRenderer();
 

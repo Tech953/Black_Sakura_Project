@@ -39,3 +39,9 @@ For the transient renderer notice, do not auto-focus the banner. Capture the foc
 **Why:** Moving focus to a transient update message interrupts dashboard work, while a live region around every download tick creates repetitive announcements. Users need a predictable way back to the control they were using.
 
 **How to apply:** keep silent background states out of the DOM, use manual-status flags to decide which notices render, make Escape and native buttons dismiss the notice, and preserve a separate polite/assertive announcement node from the progressbar.
+
+In standalone Settings, download size and speed belong in a separate, non-live description of the progressbar, not in its label or a live region. Keep the details node outside the progressbar, reference it with `aria-describedby`, and do not add a tab stop.
+
+**Why:** Transfer values can change on every download tick. A live region would repeat the same kind of announcement rapidly; a non-live description still exposes the latest values when assistive-technology users inspect the progressbar without changing keyboard focus order.
+
+**How to apply:** Keep the progressbar's accessible name focused on percentage progress, update the localized size/speed description as values change, and preserve the sibling relationship because progressbar descendants are presentational.
