@@ -1394,17 +1394,13 @@ jobs:
           set -euo pipefail
           OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
           echo "Looking for draft release(s) owned by attempt $OWNER_ID for '$TAG' in $REPO"
-          RELEASES_JSON="$(gh api "repos/$REPO/releases?per_page=100" --paginate)"
-          RELEASE_IDS="$(printf '%s\n' "$RELEASES_JSON" | jq -sr \
-            --arg tag "$TAG" \
-            --arg owner "$OWNER_MARKER" \
-            '[.[][] | select(.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))) | .id] | .[]')"
           write_summary() {
             local result="$1"
             local found="$2"
             local deleted="$3"
             local failed="$4"
             local skipped="$5"
+            local lookup_failed="$6"
             {
               echo "## Failed draft release cleanup"
               echo
@@ -1418,13 +1414,26 @@ jobs:
               if [ -n "$skipped" ]; then
                 printf '%s\n' "- Release IDs kept after ownership changed: $skipped"
               fi
+              if [ -n "$lookup_failed" ]; then
+                printf '%s\n' "- Release IDs with failed ownership lookup: $lookup_failed"
+              fi
               printf '%s\n' "- Result: $result"
             } >> "$GITHUB_STEP_SUMMARY"
           }
 
+          if ! RELEASES_JSON="$(gh api "repos/$REPO/releases?per_page=100" --paginate 2>/dev/null)"; then
+            echo "Failed to list release drafts for tag '$TAG'." >&2
+            write_summary "lookup failed" "unknown" "" "" "" ""
+            exit 1
+          fi
+          RELEASE_IDS="$(printf '%s\n' "$RELEASES_JSON" | jq -sr \
+            --arg tag "$TAG" \
+            --arg owner "$OWNER_MARKER" \
+            '[.[][] | select(.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))) | .id] | .[]')"
+
           if [ -z "$RELEASE_IDS" ]; then
             echo "No draft owned by attempt $OWNER_ID found for tag '$TAG'."
-            write_summary "already clean" "0" "" "" ""
+            write_summary "already clean" "0" "" "" "" ""
             exit 0
           fi
 
@@ -1433,9 +1442,14 @@ jobs:
           DELETED_IDS=()
           FAILED_IDS=()
           SKIPPED_IDS=()
+          LOOKUP_FAILED_IDS=()
           for RELEASE_ID in "${RELEASE_ID_LIST[@]}"; do
             [ -n "$RELEASE_ID" ] || continue
-            CURRENT_RELEASE="$(gh api "repos/$REPO/releases/$RELEASE_ID")"
+            if ! CURRENT_RELEASE="$(gh api "repos/$REPO/releases/$RELEASE_ID" 2>/dev/null)"; then
+              echo "Failed to recheck ownership for release ID $RELEASE_ID." >&2
+              LOOKUP_FAILED_IDS+=("$RELEASE_ID")
+              continue
+            fi
             if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
               '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
               <<< "$CURRENT_RELEASE" >/dev/null; then
@@ -1455,8 +1469,18 @@ jobs:
           DELETED_LIST="$(IFS=', '; echo "${DELETED_IDS[*]}")"
           FAILED_LIST="$(IFS=', '; echo "${FAILED_IDS[*]}")"
           SKIPPED_LIST="$(IFS=', '; echo "${SKIPPED_IDS[*]}")"
+          LOOKUP_FAILED_LIST="$(IFS=', '; echo "${LOOKUP_FAILED_IDS[*]}")"
+          if [ "${#LOOKUP_FAILED_IDS[@]}" -gt 0 ]; then
+            RESULT="lookup failed"
+            if [ "${#FAILED_IDS[@]}" -gt 0 ]; then
+              RESULT="lookup and deletion failed"
+            fi
+            write_summary "$RESULT" "$FOUND_COUNT" "$DELETED_LIST" "$FAILED_LIST" "$SKIPPED_LIST" "$LOOKUP_FAILED_LIST"
+            echo "Could not verify ownership of every matching draft for attempt $OWNER_ID on '$TAG'." >&2
+            exit 1
+          fi
           if [ "${#FAILED_IDS[@]}" -gt 0 ]; then
-            write_summary "failed" "$FOUND_COUNT" "$DELETED_LIST" "$FAILED_LIST" "$SKIPPED_LIST"
+            write_summary "failed" "$FOUND_COUNT" "$DELETED_LIST" "$FAILED_LIST" "$SKIPPED_LIST" ""
             echo "Failed draft release cleanup for attempt $OWNER_ID on '$TAG'." >&2
             exit 1
           fi
@@ -1465,5 +1489,5 @@ jobs:
           if [ "${#SKIPPED_IDS[@]}" -gt 0 ]; then
             RESULT="kept release(s) whose owner changed"
           fi
-          write_summary "$RESULT" "$FOUND_COUNT" "$DELETED_LIST" "" "$SKIPPED_LIST"
+          write_summary "$RESULT" "$FOUND_COUNT" "$DELETED_LIST" "" "$SKIPPED_LIST" ""
           echo "Draft cleanup complete for attempt $OWNER_ID on '$TAG'."
