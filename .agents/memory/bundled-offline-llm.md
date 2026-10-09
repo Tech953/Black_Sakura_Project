@@ -52,3 +52,9 @@ The pinned native runtime contract is target-specific: Linux x64/ARM64 depend on
 **Why:** The same archive layout can be inspected on another host, but ELF dependency resolution and macOS runtime tooling are target-specific; NixOS also needs explicit compatible loader paths for Linux checks.
 
 **How to apply:** Keep `ldd`/`otool` checks in release staging and smoke validation, pass the target architecture explicitly, and document equivalent distro packages instead of treating a non-native host failure as a packaged-runtime failure.
+
+Release-matrix support must be evaluated across every bundled native resource for the exact OS/architecture pair, not just `llama-server`. The current `ffprobe-static` package has no Linux ARM64 binary, and the llama runtime checker supports Windows x64 only.
+
+**Why:** Adding an architecture based on llama.cpp support alone can leave media processing or the local-model runtime broken in the shipped app.
+
+**How to apply:** Before adding an OS/architecture row, verify ffmpeg, ffprobe, llama.cpp, package tooling, and native preflight coverage for that exact target; defer the row until all required binaries can be staged and checked.
