@@ -52,14 +52,18 @@ try {
     "DocumentPicker.getDocumentAsync",
     'type: ["text/*", "image/*", "audio/*", "video/*", "application/json"]',
     "copyToCacheDirectory: true",
+    "setFile({",
+    "uri: picked.uri",
+    "name: picked.name",
     "normalizeMediaUploadMimeType(picked.name, picked.mimeType)",
     'testID="media-file-picker"',
+    'testID="media-selected-filename"',
     'testID="media-selected-mime"',
     'testID="media-upload"',
     'testID={`media-asset-mime-${asset.id}`}',
     'body.append("engramId", String(selectedId))',
     'body.append("file", {',
-    "type: file.mimeType",
+    "type: normalizeMediaUploadMimeType(",
   ]);
   requireSource(workspaceRoot, "artifacts/api-server/src/routes/media.ts", [
     'const uploadSingle = upload.single("file")',
@@ -97,27 +101,33 @@ Use the same four valid files on every device:
   - clip.mp4   -> expected video/mp4
 
 1. Build and install the current native app on a physical ${deviceLabel} device.
-2. Sign in, open Media, select an engram, and keep the device online. Open the
-   native picker from the media upload card (testID media-file-picker).
-3. Select each sample one at a time from the platform's real provider:
-   Android Files/DocumentsUI and iOS Files/iCloud Drive. Before uploading,
-   confirm the selected MIME shown in the app (testID media-selected-mime)
-   matches the expected value above. On Android, repeat voice.m4a from a
-   provider that reports application/octet-stream; the app must still show
-   audio/mp4 by extension.
-4. Tap Perceive (testID media-upload). Confirm the request succeeds without
-   an error alert and a new asset card appears for the selected filename.
-   The card must show the server-returned normalized MIME (testID
-   media-asset-mime-<id>) and a Queued or Perceived status. This proves the
-   API received the normalized MIME and created the asset, rather than only
-   proving that a URI was returned by the picker.
-5. Repeat all four uploads on the same device, then repeat all four on the
-   other platform when running both. Confirm the filename, MIME, modality icon,
+2. Sign in, open Media, select an engram, and keep the device online. Make the
+   four sample files available in the platform's real provider:
+   Android Files/DocumentsUI and iOS Files/iCloud Drive.
+3. For each sample, open the native picker (testID media-file-picker). While
+   the picker is still open, background ENGRAM with Home or the app switcher
+   for at least 60 seconds; do not force-quit the app. Return to the picker
+   through the app switcher/provider and select the sample. If the picker or
+   app has disappeared, record that case rather than restarting and treating
+   it as a pass.
+4. After returning to ENGRAM, confirm the selected filename
+   (testID media-selected-filename) and normalized MIME (testID
+   media-selected-mime) are still correct before uploading. On Android, repeat
+   voice.m4a from a provider that reports application/octet-stream; the app
+   must still show audio/mp4 by extension.
+5. Tap Perceive (testID media-upload). Confirm the request succeeds without
+   an error alert and a new asset card appears for the selected filename. The
+   card must show the server-returned normalized MIME (testID
+   media-asset-mime-<id>) and a Queued or Perceived status. This proves the API
+   received the selected URI and normalized MIME and created the asset.
+6. Repeat the background-and-return sequence for all four samples on each
+   physical platform being tested. Confirm the filename, MIME, modality icon,
    and byte size remain correct after leaving and reopening the Media screen.
-6. Record device model/OS, Files provider, picker-reported MIME when visible,
-   normalized MIME, asset ID, and result for all eight platform/sample cases
-   in the release QA record. Do not treat a browser upload or simulator-only
-   picker as a real-device pass.
+7. Record device model/OS, Files provider, background duration, picker-reported
+   MIME when visible, normalized MIME, asset ID, and result for each
+   platform/sample case in the release QA record. A cold relaunch that loses
+   the selection or a failed upload is a failure. Do not treat browser uploads
+   or simulator-only pickers as a real-device pass.
 
 Run this command again with --ci for the non-interactive source and test gate
 used by release automation.
