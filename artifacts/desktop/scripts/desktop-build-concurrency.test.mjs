@@ -1,5 +1,15 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const workflowPath = resolve(
@@ -34,6 +44,115 @@ function getStepSection(jobName, stepNamePrefix) {
     0,
     nextStep < 0 ? undefined : marker.length + nextStep,
   );
+}
+
+function getStepRunScript(jobName, stepNamePrefix) {
+  const stepLines = getStepSection(jobName, stepNamePrefix).split("\n");
+  const runIndex = stepLines.findIndex((line) => line.trim() === "run: |");
+  if (runIndex < 0) return "";
+
+  const scriptLines = [];
+  for (const line of stepLines.slice(runIndex + 1)) {
+    if (line.trim() && !line.startsWith("          ")) break;
+    scriptLines.push(line.trim() ? line.slice(10) : "");
+  }
+  return `${scriptLines.join("\n").replace(/\n*$/, "")}\n`;
+}
+
+const cleanupScript = getStepRunScript(
+  "cleanup-draft",
+  "Delete failed draft release(s)",
+);
+const cleanupTag = "v9.9.9";
+const cleanupOwnerId = "987654321-2";
+const cleanupOwnerMarker = `<!-- engram-draft-owner:${cleanupOwnerId} -->`;
+const shellBehaviorTest = process.platform === "linux" ? it : it.skip;
+
+function createOwnedDraft(id) {
+  return {
+    id: Number(id),
+    tag_name: cleanupTag,
+    draft: true,
+    body: `Release notes\n${cleanupOwnerMarker}`,
+  };
+}
+
+const fakeGhScript = [
+  "#!/usr/bin/env node",
+  "const fs = require('node:fs');",
+  "const args = process.argv.slice(2);",
+  "const fixture = JSON.parse(fs.readFileSync(process.env.GH_FIXTURE_PATH, 'utf8'));",
+  "const endpoint = args.find((arg) => arg.startsWith('repos/'));",
+  "const methodIndex = args.indexOf('-X');",
+  "const method = methodIndex < 0 ? 'GET' : args[methodIndex + 1];",
+  "if (method === 'DELETE') {",
+  "  const releaseId = endpoint.split('/').at(-1);",
+  "  if (fixture.failDeleteIds.includes(releaseId)) {",
+  "    process.stderr.write(`HTTP 500 deleting release ${releaseId}\\n`);",
+  "    process.exitCode = 1;",
+  "  } else {",
+  "    fs.appendFileSync(process.env.GH_DELETE_LOG_PATH, `${releaseId}\\n`);",
+  "  }",
+  "} else if (endpoint.includes('/releases?')) {",
+  "  for (const page of fixture.pages) process.stdout.write(`${JSON.stringify(page)}\\n`);",
+  "} else {",
+  "  const releaseId = endpoint.split('/').at(-1);",
+  "  const release = fixture.releases.find((item) => String(item.id) === releaseId);",
+  "  if (!release) {",
+  "    process.stderr.write(`HTTP 404 release ${releaseId} not found\\n`);",
+  "    process.exitCode = 1;",
+  "  } else {",
+  "    process.stdout.write(JSON.stringify(release));",
+  "  }",
+  "}",
+].join("\n");
+
+function runCleanupScenario({ pages, failDeleteIds = [] }) {
+  const tempRoot = mkdtempSync(join(tmpdir(), "desktop-cleanup-test-"));
+  const binDir = join(tempRoot, "bin");
+  const fixturePath = join(tempRoot, "fixture.json");
+  const deleteLogPath = join(tempRoot, "deleted-ids.txt");
+  const summaryPath = join(tempRoot, "step-summary.md");
+  const releases = pages.flat();
+
+  try {
+    mkdirSync(binDir);
+    writeFileSync(join(binDir, "gh"), fakeGhScript);
+    chmodSync(join(binDir, "gh"), 0o755);
+    writeFileSync(
+      fixturePath,
+      JSON.stringify({ pages, releases, failDeleteIds }),
+    );
+
+    const result = spawnSync("bash", ["-c", cleanupScript], {
+      encoding: "utf8",
+      env: {
+        PATH: `${binDir}:${process.env.PATH ?? ""}`,
+        GH_TOKEN: "test-token",
+        GH_FIXTURE_PATH: fixturePath,
+        GH_DELETE_LOG_PATH: deleteLogPath,
+        GITHUB_STEP_SUMMARY: summaryPath,
+        OWNER_ID: cleanupOwnerId,
+        REPO: "pyri-ai/engram",
+        TAG: cleanupTag,
+      },
+    });
+
+    return {
+      exitCode: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      summary: readFileSync(summaryPath, "utf8"),
+      deletedIds: existsSync(deleteLogPath)
+        ? readFileSync(deleteLogPath, "utf8")
+            .trim()
+            .split(/\r?\n/)
+            .filter(Boolean)
+        : [],
+    };
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
 }
 
 const failedTagAttemptWithQueuedRetry = {
@@ -257,6 +376,75 @@ describe("desktop release workflow concurrency", () => {
       /write_summary "failed" "\$FOUND_COUNT" "\$DELETED_LIST" "\$FAILED_LIST" "\$SKIPPED_LIST"/,
     );
     expect(workflow).toMatch(/exit 1/);
+  });
+
+  describe("failed draft cleanup shell behavior", () => {
+    shellBehaviorTest(
+      "writes an already-clean summary when no drafts match",
+      () => {
+        expect(cleanupScript).toContain("set -euo pipefail");
+        const result = runCleanupScenario({
+          pages: [
+            [
+              { ...createOwnedDraft(901), tag_name: "v9.9.8" },
+              { ...createOwnedDraft(902), draft: false },
+              { ...createOwnedDraft(903), body: "owned by another attempt" },
+            ],
+          ],
+        });
+
+        expect(result.exitCode).toBe(0);
+        expect(result.deletedIds).toEqual([]);
+        expect(result.summary).toContain("- Tag: v9.9.9");
+        expect(result.summary).toContain("- Owned drafts found: 0");
+        expect(result.summary).toContain("- Release IDs deleted: none");
+        expect(result.summary).toContain("- Result: already clean");
+      },
+    );
+
+    shellBehaviorTest(
+      "deletes multiple matching drafts and summarizes every deleted ID",
+      () => {
+        const result = runCleanupScenario({
+          pages: [[createOwnedDraft(701)], [createOwnedDraft(702)]],
+        });
+
+        expect(result.exitCode).toBe(0);
+        expect(result.deletedIds).toEqual(["701", "702"]);
+        expect(result.summary).toContain("- Tag: v9.9.9");
+        expect(result.summary).toContain("- Owned drafts found: 2");
+        expect(result.summary).toMatch(/- Release IDs deleted: 701, ?702/);
+        expect(result.summary).toContain("- Result: deleted owned draft(s)");
+        expect(result.summary).not.toContain("failed deletion");
+      },
+    );
+
+    shellBehaviorTest(
+      "keeps the summary and exits nonzero after a partial API deletion failure",
+      () => {
+        const result = runCleanupScenario({
+          pages: [
+            [
+              createOwnedDraft(801),
+              createOwnedDraft(802),
+              createOwnedDraft(803),
+            ],
+          ],
+          failDeleteIds: ["802"],
+        });
+
+        expect(result.exitCode).toBe(1);
+        expect(result.deletedIds).toEqual(["801", "803"]);
+        expect(result.stderr).toContain("HTTP 500 deleting release 802");
+        expect(result.summary).toContain("- Tag: v9.9.9");
+        expect(result.summary).toContain("- Owned drafts found: 3");
+        expect(result.summary).toMatch(/- Release IDs deleted: 801, ?803/);
+        expect(result.summary).toContain(
+          "- Release IDs that failed deletion: 802",
+        );
+        expect(result.summary).toContain("- Result: failed");
+      },
+    );
   });
 
   it("rejects a signed macOS app from an unexpected Apple team", () => {
