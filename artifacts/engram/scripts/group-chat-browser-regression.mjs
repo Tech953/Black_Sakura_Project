@@ -387,7 +387,10 @@ const fixtureScript = String.raw`
       };
       hubMoveRequests.push(moveRequest);
       if (hubMoveRequests.length === 1) {
-        return response({ error: "Could not record this move." }, 500);
+        return response({ error: "The server blocked this move." }, 500);
+      }
+      if (hubMoveRequests.length === 2) {
+        return response({ error: "   " }, 500);
       }
       const previous = hubPresence.find((entry) => entry.engramId === moveRequest.engramId);
       const updated = {
@@ -928,34 +931,101 @@ try {
     "browser retry note",
     "Hub move note",
   );
+  const hubQueriesBeforeMove = await devtools.evaluate(`({
+    presenceReads: window.__groupChatFixture.requests.filter(
+      ({ pathname, method }) => pathname === "/api/hub/presence" && method === "GET",
+    ).length,
+    activityReads: window.__groupChatFixture.requests.filter(
+      ({ pathname, method }) => pathname === "/api/hub/activity" && method === "GET",
+    ).length,
+    activityRows: Array.from(document.querySelectorAll('[data-testid^="activity-"]'))
+      .map((row) => row.textContent?.trim() ?? "")
+  })`);
   await click(
     `document.querySelector('[data-testid="button-confirm-move"]')`,
     "submit Hub move",
   );
   await waitFor(
-    `Boolean(document.querySelector('[data-testid="hub-move-error"]')) && window.__hubMoveFixture.moveRequests.length === 1`,
-    "retryable Hub move failure",
+    `Boolean(document.querySelector('[data-testid="hub-move-error"]')) &&
+      window.__hubMoveFixture.moveRequests.length === 1 &&
+      Array.from(document.querySelectorAll('[data-state="open"].destructive'))
+        .some((toast) => toast.innerText.includes("The server blocked this move."))`,
+    "retryable Hub move failure toast",
   );
   const failedMoveState = await devtools.evaluate(`({
     error: document.querySelector('[data-testid="hub-move-error"]')?.innerText,
+    toastText: Array.from(document.querySelectorAll('[data-state="open"].destructive'))
+      .map((toast) => toast.innerText)
+      .join(" "),
+    dialogOpen: Boolean(document.querySelector('[role="dialog"]')),
     alphaHasMira: Boolean(document.querySelector('[data-testid="card-space-commons-alpha"] [data-testid="occupant-1"]')),
     betaHasMira: Boolean(document.querySelector('[data-testid="card-space-commons-beta"] [data-testid="occupant-1"]')),
-    presence: window.__hubMoveFixture.presence
+    presence: window.__hubMoveFixture.presence,
+    presenceReads: window.__groupChatFixture.requests.filter(
+      ({ pathname, method }) => pathname === "/api/hub/presence" && method === "GET",
+    ).length,
+    activityReads: window.__groupChatFixture.requests.filter(
+      ({ pathname, method }) => pathname === "/api/hub/activity" && method === "GET",
+    ).length,
+    activityRows: Array.from(document.querySelectorAll('[data-testid^="activity-"]'))
+      .map((row) => row.textContent?.trim() ?? "")
   })`);
   if (
     !failedMoveState.error?.includes("last confirmed location") ||
+    !failedMoveState.toastText.includes("Failed to move engram") ||
+    !failedMoveState.toastText.includes("The server blocked this move.") ||
+    !failedMoveState.dialogOpen ||
     !failedMoveState.alphaHasMira ||
     failedMoveState.betaHasMira ||
-    failedMoveState.presence[0]?.spaceId !== 101
+    failedMoveState.presence[0]?.spaceId !== 101 ||
+    failedMoveState.presenceReads !== hubQueriesBeforeMove.presenceReads ||
+    failedMoveState.activityReads !== hubQueriesBeforeMove.activityReads ||
+    JSON.stringify(failedMoveState.activityRows) !== JSON.stringify(hubQueriesBeforeMove.activityRows)
   ) {
     throw new Error(`Failed Hub move changed the confirmed location or hid its explanation: ${JSON.stringify(failedMoveState)}`);
   }
   await click(
     `document.querySelector('[data-testid="button-retry-move"]')`,
-    "retry Hub move",
+    "retry Hub move after server error",
   );
   await waitFor(
-    `window.__hubMoveFixture.moveRequests.length === 2 &&
+    `Boolean(document.querySelector('[data-testid="hub-move-error"]')) &&
+      window.__hubMoveFixture.moveRequests.length === 2 &&
+      Array.from(document.querySelectorAll('[data-state="open"].destructive'))
+        .some((toast) => toast.innerText.includes("The move was not recorded."))`,
+    "translated fallback Hub move error toast",
+  );
+  const fallbackMoveState = await devtools.evaluate(`({
+    dialogOpen: Boolean(document.querySelector('[role="dialog"]')),
+    toastText: Array.from(document.querySelectorAll('[data-state="open"].destructive'))
+      .map((toast) => toast.innerText)
+      .join(" "),
+    presence: window.__hubMoveFixture.presence,
+    presenceReads: window.__groupChatFixture.requests.filter(
+      ({ pathname, method }) => pathname === "/api/hub/presence" && method === "GET",
+    ).length,
+    activityReads: window.__groupChatFixture.requests.filter(
+      ({ pathname, method }) => pathname === "/api/hub/activity" && method === "GET",
+    ).length,
+    activityRows: Array.from(document.querySelectorAll('[data-testid^="activity-"]'))
+      .map((row) => row.textContent?.trim() ?? "")
+  })`);
+  if (
+    !fallbackMoveState.dialogOpen ||
+    !fallbackMoveState.toastText.includes("The move was not recorded.") ||
+    fallbackMoveState.presence[0]?.spaceId !== 101 ||
+    fallbackMoveState.presenceReads !== hubQueriesBeforeMove.presenceReads ||
+    fallbackMoveState.activityReads !== hubQueriesBeforeMove.activityReads ||
+    JSON.stringify(fallbackMoveState.activityRows) !== JSON.stringify(hubQueriesBeforeMove.activityRows)
+  ) {
+    throw new Error(`Hub fallback failure changed confirmed state or hid the retry: ${JSON.stringify(fallbackMoveState)}`);
+  }
+  await click(
+    `document.querySelector('[data-testid="button-retry-move"]')`,
+    "retry Hub move after fallback error",
+  );
+  await waitFor(
+    `window.__hubMoveFixture.moveRequests.length === 3 &&
       window.__hubMoveFixture.presence[0]?.spaceId === 202 &&
       Boolean(document.querySelector('[data-testid="card-space-commons-beta"] [data-testid="occupant-1"]')) &&
       !document.querySelector('[role="dialog"]')`,
@@ -968,6 +1038,7 @@ try {
   })`);
   if (
     JSON.stringify(retriedMoveState.requests[0]) !== JSON.stringify(retriedMoveState.requests[1]) ||
+    JSON.stringify(retriedMoveState.requests[1]) !== JSON.stringify(retriedMoveState.requests[2]) ||
     retriedMoveState.alphaHasMira ||
     !retriedMoveState.betaHasMira
   ) {

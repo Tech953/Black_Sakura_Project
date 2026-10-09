@@ -92,6 +92,29 @@ type MovePresenceRequest = {
   data: MovePresenceInput;
 };
 
+function getMoveErrorMessage(error: unknown): string | undefined {
+  if (!error || typeof error !== "object") return undefined;
+
+  const apiError = error as { data?: unknown; response?: unknown };
+  const responseData =
+    apiError.response && typeof apiError.response === "object"
+      ? (apiError.response as { data?: unknown }).data
+      : undefined;
+
+  for (const body of [apiError.data, responseData]) {
+    if (typeof body === "string" && body.trim()) return body.trim();
+    if (!body || typeof body !== "object") continue;
+
+    const payload = body as Record<string, unknown>;
+    for (const key of ["error", "message", "detail"]) {
+      const message = payload[key];
+      if (typeof message === "string" && message.trim()) return message.trim();
+    }
+  }
+
+  return undefined;
+}
+
 type TranscriptScrollSnapshot = {
   scrollTop: number;
   atNewestTurn: boolean;
@@ -223,7 +246,14 @@ export default function Hub() {
         setOpen(false);
         setMoveNote("");
       },
-      onError: () => setFailedMove(request),
+      onError: (error) => {
+        setFailedMove(request);
+        toast({
+          title: t("toastMoveFailed"),
+          description: getMoveErrorMessage(error) ?? t("moveFailureDetails"),
+          variant: "destructive",
+        });
+      },
     });
   }
 
