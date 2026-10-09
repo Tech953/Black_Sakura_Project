@@ -622,7 +622,11 @@ export default function MediaScreen() {
               style={[styles.filePicker, { borderColor: colors.border }]}
             >
               <Feather name="paperclip" size={17} color={colors.primary} />
-              <Text numberOfLines={1} style={[styles.fileName, { color: colors.foreground }]}>
+              <Text
+                numberOfLines={1}
+                testID="media-selected-filename"
+                style={[styles.fileName, { color: colors.foreground }]}
+              >
                 {file?.name ?? t("selectEngram")}
               </Text>
             </Pressable>
