@@ -29,11 +29,13 @@ export const RELEASE_TARGETS = [
   },
 ];
 
-export function validateReleaseAssets({ releaseId, assetNames }) {
+export function validateReleaseAssets({ releaseId, assetNames, tag }) {
   const normalizedReleaseId =
     typeof releaseId === "string" && releaseId.trim() !== ""
       ? releaseId.trim()
       : null;
+  const normalizedTag =
+    typeof tag === "string" && tag.trim() !== "" ? tag.trim() : null;
   const normalizedAssetNames = Array.from(
     new Set(
       assetNames
@@ -46,6 +48,14 @@ export function validateReleaseAssets({ releaseId, assetNames }) {
 
   if (!normalizedReleaseId) {
     missing.push("draft release");
+  }
+  const apkVersion = normalizedTag?.replace(/^v/, "");
+  if (!apkVersion) {
+    missing.push("release tag");
+  } else if (
+    !normalizedAssetNames.includes(`ENGRAM-Mobile-${apkVersion}.apk`)
+  ) {
+    missing.push("Android signed APK");
   }
   for (const target of RELEASE_TARGETS) {
     for (const asset of target.requiredAssets) {
@@ -71,6 +81,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const result = validateReleaseAssets({
     releaseId: process.env.RELEASE_ID,
     assetNames,
+    tag: process.env.TAG,
   });
 
   if (!result.ok) {
