@@ -94,20 +94,26 @@ describe("desktop renderer bridge", () => {
     expect(listeners.has("update:status")).toBe(false);
   });
 
-  it("forwards the app info contract without reshaping its update status", async () => {
+  it("hydrates an in-progress update status through app info unchanged", async () => {
     const { ipc, invoke } = fakeIpc();
     const appInfo: AppInfo = {
       version: "1.2.3",
       updatesSupported: true,
-      updateStatus: { state: "downloading", percent: 42 },
+      updateStatus: {
+        state: "downloading",
+        percent: 42,
+        transferred: 1572864,
+        total: 5242880,
+        bytesPerSecond: 262144,
+      },
     };
     invoke.mockResolvedValueOnce(appInfo);
 
     const bridge = createEngramDesktopBridge(ipc);
 
-    await bridge.installDownloadedUpdate();
+    await expect(bridge.getAppInfo()).resolves.toBe(appInfo);
 
-    expect(invoke).toHaveBeenCalledWith("update:install");
+    expect(invoke).toHaveBeenCalledWith("app:info");
   });
 
   it("opens the fixed release page through the main-process bridge", async () => {

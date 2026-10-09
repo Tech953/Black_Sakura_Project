@@ -9,6 +9,7 @@ type FakeElement = {
     add: ReturnType<typeof vi.fn>;
     remove: ReturnType<typeof vi.fn>;
   };
+  addEventListener: ReturnType<typeof vi.fn>;
   setAttribute: ReturnType<typeof vi.fn>;
 };
 
@@ -34,6 +35,7 @@ function createFakeElement(): FakeElement {
     disabled: false,
     style: { width: "" },
     classList: { add: vi.fn(), remove: vi.fn() },
+    addEventListener: vi.fn(),
     setAttribute: vi.fn(),
   };
 }
@@ -66,6 +68,7 @@ function loadRenderer(): {
   const source = html.slice(start, end);
 
   const elements: Record<string, FakeElement> = {
+    "app-version": createFakeElement(),
     "update-status": createFakeElement(),
     "check-updates": createFakeElement(),
     "update-progress": createFakeElement(),
@@ -89,7 +92,156 @@ function loadRenderer(): {
   return { renderUpdateStatus, elements };
 }
 
+function loadAboutInitializer(
+  elements: Record<string, FakeElement>,
+  renderUpdateStatus: RenderUpdateStatus,
+  bridge: unknown,
+  updateCopy: Record<string, string>,
+): () => Promise<void> {
+  const html = readFileSync(
+    new URL("./settings.html", import.meta.url),
+    "utf8",
+  );
+  const start = html.indexOf("async function initAbout()");
+  const end = html.indexOf('\n      $("cancel")', start);
+  if (start < 0 || end < 0) throw new Error("initAbout was not found");
+  const source = html.slice(start, end);
+  const dollar = (id: string): FakeElement => {
+    const element = elements[id];
+    if (!element) throw new Error(`Unknown fake element: ${id}`);
+    return element;
+  };
+
+  return new Function(
+    "$",
+    "window",
+    "renderUpdateStatus",
+    "activeSettingsCopy",
+    `${source}; return initAbout;`,
+  )(
+    dollar,
+    { engram: bridge },
+    renderUpdateStatus,
+    { update: updateCopy },
+  ) as () => Promise<void>;
+}
+
 describe("Settings update status renderer", () => {
+  it("hydrates an active download before subscribing and applies live updates once", async () => {
+    const { renderUpdateStatus: baseRenderUpdateStatus, elements } =
+      loadRenderer();
+    const updateCopy = {
+      checkForUpdates: "Check for updates",
+      progressLabel: "Update download progress",
+      retryUpdate: "Retry update",
+      downloadLatestRelease: "Download latest release",
+      downloading: "Downloading update… {{percent}}%",
+      downloadDetails: "{{transferred}} / {{total}} · {{speed}}",
+    };
+    const callOrder: string[] = [];
+    const renderCalls: Parameters<RenderUpdateStatus>[] = [];
+    const renderUpdateStatus: RenderUpdateStatus = (info, status, copy) => {
+      callOrder.push(`render:${status.percent}`);
+      renderCalls.push([info, status, copy]);
+      baseRenderUpdateStatus(info, status, copy);
+    };
+    const hydratedStatus = {
+      state: "downloading",
+      percent: 24,
+      transferred: 512 * 1024,
+      total: 2 * 1024 * 1024,
+      bytesPerSecond: 64 * 1024,
+    };
+    const appInfo = {
+      version: "1.2.3",
+      updatesSupported: true,
+      updateStatus: hydratedStatus,
+    };
+    let updateListener:
+      | ((status: Parameters<RenderUpdateStatus>[1]) => void)
+      | undefined;
+    const bridge = {
+      getAppInfo: vi.fn(async () => {
+        callOrder.push("app-info");
+        return appInfo;
+      }),
+      onUpdateStatus: vi.fn(
+        (callback: (status: Parameters<RenderUpdateStatus>[1]) => void) => {
+          callOrder.push("subscribe");
+          updateListener = callback;
+          return vi.fn();
+        },
+      ),
+      checkForUpdates: vi.fn(),
+      openReleaseDownloadPage: vi.fn(async () => ({ ok: true })),
+    };
+    const initAbout = loadAboutInitializer(
+      elements,
+      renderUpdateStatus,
+      bridge,
+      updateCopy,
+    );
+
+    await initAbout();
+
+    expect(callOrder).toEqual(["app-info", "render:24", "subscribe"]);
+    expect(elements["app-version"].textContent).toBe("1.2.3");
+    expect(elements["update-status"].textContent).toBe(
+      "Downloading update… 24%",
+    );
+    expect(elements["update-progress-fill"].style.width).toBe("24%");
+    expect(elements["update-progress"].classList.remove).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(elements["update-progress"].setAttribute).toHaveBeenLastCalledWith(
+      "aria-valuenow",
+      "24",
+    );
+    expect(elements["update-progress-details"].textContent).toBe(
+      "512 KB / 2 MB · 64 KB/s",
+    );
+    expect(
+      elements["update-progress-details"].classList.remove,
+    ).toHaveBeenCalledTimes(1);
+    expect(bridge.onUpdateStatus).toHaveBeenCalledTimes(1);
+
+    const liveStatus = {
+      state: "downloading",
+      percent: 48,
+      transferred: 1024 * 1024,
+      total: 2 * 1024 * 1024,
+      bytesPerSecond: 128 * 1024,
+    };
+    updateListener?.(liveStatus);
+
+    expect(callOrder).toEqual([
+      "app-info",
+      "render:24",
+      "subscribe",
+      "render:48",
+    ]);
+    expect(renderCalls).toHaveLength(2);
+    expect(renderCalls[0]?.[1]).toBe(hydratedStatus);
+    expect(renderCalls[1]?.[1]).toBe(liveStatus);
+    expect(elements["update-status"].textContent).toBe(
+      "Downloading update… 48%",
+    );
+    expect(elements["update-progress-fill"].style.width).toBe("48%");
+    expect(elements["update-progress"].classList.remove).toHaveBeenCalledTimes(
+      2,
+    );
+    expect(elements["update-progress"].setAttribute).toHaveBeenLastCalledWith(
+      "aria-valuenow",
+      "48",
+    );
+    expect(elements["update-progress-details"].textContent).toBe(
+      "1 MB / 2 MB · 128 KB/s",
+    );
+    expect(
+      elements["update-progress-details"].classList.remove,
+    ).toHaveBeenCalledTimes(2);
+  });
+
   it("maps every updater state to its expected label", () => {
     const { renderUpdateStatus, elements } = loadRenderer();
     const info = { updatesSupported: true };
