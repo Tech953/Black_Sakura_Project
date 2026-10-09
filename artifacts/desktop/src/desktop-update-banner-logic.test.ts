@@ -16,6 +16,9 @@ describe("desktop update banner accessibility contracts", () => {
     expect(clampProgress(-12)).toBe(0);
     expect(clampProgress(42.6)).toBe(43);
     expect(clampProgress(140)).toBe(100);
+    expect(clampProgress(Number.NaN)).toBe(0);
+    expect(clampProgress(Number.POSITIVE_INFINITY)).toBe(100);
+    expect(clampProgress(Number.NEGATIVE_INFINITY)).toBe(0);
   });
 
   it("uses the shared Settings copy for every updater state", () => {

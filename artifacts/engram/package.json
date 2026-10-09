@@ -12,6 +12,7 @@
     "test:browser:chat:real-clerk": "ENGRAM_BROWSER_REAL_CLERK=true node scripts/chat-browser-regression.mjs",
     "test:browser:analytics": "node scripts/run-analytics-browser.mjs",
     "test:browser:download": "node scripts/download-browser-regression.mjs",
+    "test:browser:update-banner-accessibility": "node ../desktop/scripts/update-banner-accessibility-browser.mjs",
     "test:browser:settings": "node scripts/settings-browser-regression.mjs",
     "test:browser:simulations": "node scripts/run-simulations-browser.mjs",
     "test:browser:simulations:real-clerk": "ENGRAM_BROWSER_REAL_CLERK=true node scripts/run-simulations-browser.mjs",
