@@ -14,11 +14,26 @@ const builderConfigPath = resolve(
 const builderConfig = readFileSync(builderConfigPath, "utf8");
 
 function getJobSection(name) {
-  const jobs = [...workflow.matchAll(/^  [a-z][a-z0-9-]*:/gm)];
+  const jobs = [...workflow.matchAll(/^  [a-z][a-z0-9_-]*:/gm)];
   const start = jobs.find((match) => match[0] === `  ${name}:`)?.index;
   if (start == null) return "";
   const nextStart = jobs.find((match) => match.index > start)?.index;
   return workflow.slice(start, nextStart ?? workflow.length);
+}
+
+function getStepSection(jobName, stepNamePrefix) {
+  const job = getJobSection(jobName);
+  const marker = `      - name: ${stepNamePrefix}`;
+  const start = job.indexOf(marker);
+  if (start < 0) return "";
+  const remaining = job.slice(start);
+  const nextStep = remaining
+    .slice(marker.length)
+    .search(/\n      - (?:name|uses):/);
+  return remaining.slice(
+    0,
+    nextStep < 0 ? undefined : marker.length + nextStep,
+  );
 }
 
 const failedTagAttemptWithQueuedRetry = {
@@ -37,6 +52,38 @@ const failedTagAttemptWithQueuedRetry = {
 };
 
 describe("desktop release workflow concurrency", () => {
+  it("validates workflow syntax and trigger guards before release preparation", () => {
+    const validationJob = getJobSection("validate_workflow_guards");
+    const prepareJob = getJobSection("prepare-draft");
+
+    expect(validationJob).toContain(
+      "go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7",
+    );
+    expect(validationJob).toContain(
+      'actionlint" .github/workflows/desktop-build.yml',
+    );
+    expect(validationJob).toContain(
+      "vitest run scripts/desktop-build-concurrency.test.mjs",
+    );
+    expect(prepareJob).toContain("needs: validate_workflow_guards");
+    for (const jobName of ["build", "android", "publish", "cleanup-draft"]) {
+      expect(getJobSection(jobName)).toContain("validate_workflow_guards");
+    }
+
+    const pushTriggers = workflow.slice(
+      workflow.indexOf("  push:"),
+      workflow.indexOf("  pull_request:"),
+    );
+    const pullRequestTriggers = workflow.slice(
+      workflow.indexOf("  pull_request:"),
+      workflow.indexOf("\nconcurrency:"),
+    );
+    expect(pushTriggers).toContain('".github/workflows/desktop-build.yml"');
+    expect(pullRequestTriggers).toContain(
+      '".github/workflows/desktop-build.yml"',
+    );
+  });
+
   it("creates one workflow-attempt-owned draft before the build matrix", () => {
     const prepareJob = getJobSection("prepare-draft");
     const buildJob = getJobSection("build");
@@ -55,13 +102,93 @@ describe("desktop release workflow concurrency", () => {
       /Refusing to reuse same-tag draft\(s\).*not uniquely owned/s,
     );
     expect(prepareJob).toContain("a published release already uses this tag");
-    expect(buildJob).toMatch(/needs:\s*prepare-draft/);
+    expect(buildJob).toContain(
+      "needs: [prepare-draft, validate_workflow_guards]",
+    );
     expect(buildJob).toContain("github.event_name == 'workflow_dispatch'");
     expect(getJobSection("android")).toContain(
       "github.event_name == 'workflow_dispatch'",
     );
     expect(builderConfig).toContain("releaseType: draft");
     expect(builderConfig).toContain("workflow-attempt owner marker");
+  });
+
+  it("allows desktop publishing only for a tag push", () => {
+    const buildJob = getJobSection("build");
+    const packageStep = getStepSection("build", "Package installer");
+
+    expect(buildJob).toContain("github.event_name == 'workflow_dispatch'");
+    expect(packageStep).toMatch(
+      /--publish \$\{\{\s*github\.event_name == 'push'\s*&&\s*github\.ref_type == 'tag'\s*&&\s*'always'\s*\|\|\s*'never'\s*\}\}/,
+    );
+  });
+
+  it("attaches Android APKs only for a tag push", () => {
+    const androidJob = getJobSection("android");
+    const apkReleaseStep = getStepSection(
+      "android",
+      "Publish APK to draft release",
+    );
+
+    expect(androidJob).toContain("github.event_name == 'workflow_dispatch'");
+    expect(apkReleaseStep).toContain(
+      "if: github.event_name == 'push' && github.ref_type == 'tag'",
+    );
+    expect(apkReleaseStep).toContain(
+      "RELEASE_ID: ${{ needs.prepare-draft.outputs.release_id }}",
+    );
+  });
+
+  it("publishes publicly only after successful tag-push uploads", () => {
+    const publishJob = getJobSection("publish");
+    expect(publishJob).toContain(
+      "needs: [build, android, prepare-draft, validate_workflow_guards]",
+    );
+    expect(publishJob).toMatch(
+      /if: github\.event_name == 'push' && github\.ref_type == 'tag' && needs\.build\.result == 'success' && needs\.android\.result == 'success' && needs\.prepare-draft\.result == 'success' && needs\.validate_workflow_guards\.result == 'success'/,
+    );
+    expect(getStepSection("publish", "Un-draft the release")).toContain(
+      "draft=false",
+    );
+  });
+
+  it("requires native release signing credentials only for tagged desktop releases", () => {
+    const signingStep = getStepSection(
+      "build",
+      "Require native release signing credentials",
+    );
+    expect(signingStep).toContain(
+      "if: github.event_name == 'push' && github.ref_type == 'tag' && matrix.platform != 'linux'",
+    );
+    expect(signingStep).toContain(
+      "required=(WIN_CSC_LINK WIN_CSC_KEY_PASSWORD)",
+    );
+    expect(signingStep).toContain(
+      "required=(CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID)",
+    );
+  });
+
+  it("requires Android release signing while keeping manual tag dispatch artifact-only", () => {
+    const androidJob = getJobSection("android");
+    const signingStep = getStepSection(
+      "android",
+      "Require release signing secrets",
+    );
+    const apkReleaseStep = getStepSection(
+      "android",
+      "Publish APK to draft release",
+    );
+
+    expect(androidJob).toContain("github.event_name == 'workflow_dispatch'");
+    expect(signingStep).toContain("ANDROID_KEYSTORE_BASE64");
+    expect(signingStep).toContain("ANDROID_KEYSTORE_PASSWORD");
+    expect(signingStep).not.toMatch(/^\s+if:/m);
+    expect(apkReleaseStep).toContain(
+      "if: github.event_name == 'push' && github.ref_type == 'tag'",
+    );
+    expect(getJobSection("publish")).toContain(
+      "if: github.event_name == 'push' && github.ref_type == 'tag'",
+    );
   });
 
   it("makes Android attachment, publication, and cleanup verify the same owner", () => {

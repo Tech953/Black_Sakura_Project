@@ -13,10 +13,9 @@ name: Desktop & Android builds
 #
 # Native signing/notarization credentials are mandatory for tag releases.
 # Manual workflow builds may remain unsigned for engineering validation. The
-# Android APK is signed
-# with the private release keystore when the ANDROID_KEYSTORE_* secrets are set
-# (update-safe in-place installs); with no secrets it falls back to the debug
-# signature — installable via sideload but NOT update-safe.
+# Android APK requires the private release keystore for every build, including
+# manual artifact-only runs; missing secrets fail the job rather than producing
+# a debug-signed APK.
 
 on:
   workflow_dispatch: {}
@@ -26,12 +25,14 @@ on:
     tags:
       - "v*"
     paths:
+      - ".github/workflows/desktop-build.yml"
       - "artifacts/desktop/**"
       - "artifacts/api-server/**"
       - "artifacts/engram/**"
       - "lib/db/**"
   pull_request:
     paths:
+      - ".github/workflows/desktop-build.yml"
       - "artifacts/desktop/**"
       - "artifacts/api-server/**"
       - "artifacts/engram/**"
@@ -45,11 +46,49 @@ concurrency:
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 jobs:
+  validate_workflow_guards:
+    name: Validate desktop workflow guards
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: false
+
+      # Newer actionlint releases reject the existing macos-13 matrix labels.
+      # Upgrade this pin together with the runner migration.
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
+      - name: Validate workflow YAML and expressions
+        run: |
+          "$(go env GOPATH)/bin/actionlint" .github/workflows/desktop-build.yml
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check release trigger guards
+        run: pnpm --filter @workspace/desktop exec vitest run scripts/desktop-build-concurrency.test.mjs
+
   # Create a draft once, before the native matrix begins. electron-builder's
   # GitHub publisher reuses drafts by tag, so refusing a draft owned by another
   # attempt prevents a retry from uploading into that attempt's release.
   prepare-draft:
     name: Prepare owned draft release
+    needs: validate_workflow_guards
     if: github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
@@ -112,10 +151,11 @@ jobs:
   # use the Linux-only pre-release-smoke job below instead.
   build:
     name: ${{ matrix.platform }}-${{ matrix.arch }}
-    needs: prepare-draft
+    needs: [prepare-draft, validate_workflow_guards]
     if: >-
       always() &&
       !cancelled() &&
+      needs.validate_workflow_guards.result == 'success' &&
       (github.event_name == 'workflow_dispatch' ||
        (github.event_name == 'push' && github.ref_type == 'tag' &&
         needs.prepare-draft.result == 'success'))
@@ -997,17 +1037,16 @@ jobs:
   # the same attempt-owned draft as the desktop installers. On a tag, the APK
   # upload verifies and uses the exact release ID from prepare-draft.
   #
-  # Signing: when the ANDROID_KEYSTORE_* repository secrets are set (see the
-  # "Prepare release keystore" step), the APK is signed with the private release
-  # keystore, making in-place updates work. Without them, Gradle falls back to
-  # the debug signing config — sideloadable, but NOT update-safe across builds.
+  # Signing: tag and manual APK builds both require the private release keystore
+  # so downloadable APKs support update-safe in-place installs.
   android:
     name: android
-    needs: [build, prepare-draft]
+    needs: [build, prepare-draft, validate_workflow_guards]
     if: >-
       always() &&
       !cancelled() &&
       needs.build.result == 'success' &&
+      needs.validate_workflow_guards.result == 'success' &&
       (github.event_name == 'workflow_dispatch' ||
        (github.event_name == 'push' && github.ref_type == 'tag' &&
         needs.prepare-draft.result == 'success'))
@@ -1260,8 +1299,8 @@ jobs:
   # selected ref is a tag.
   publish:
     name: Publish release
-    needs: [build, android, prepare-draft]
-    if: github.event_name == 'push' && github.ref_type == 'tag' && needs.build.result == 'success' && needs.android.result == 'success' && needs.prepare-draft.result == 'success'
+    needs: [build, android, prepare-draft, validate_workflow_guards]
+    if: github.event_name == 'push' && github.ref_type == 'tag' && needs.build.result == 'success' && needs.android.result == 'success' && needs.prepare-draft.result == 'success' && needs.validate_workflow_guards.result == 'success'
     runs-on: ubuntu-latest
     # Required to flip the draft Release to public via the GitHub API.
     permissions:
@@ -1334,7 +1373,7 @@ jobs:
   # marker. A newer same-tag draft is never deleted by stale cleanup.
   cleanup-draft:
     name: Clean up failed draft release
-    needs: [prepare-draft, build, android]
+    needs: [prepare-draft, build, android, validate_workflow_guards]
     if: >-
       always() &&
       github.event_name == 'push' &&
