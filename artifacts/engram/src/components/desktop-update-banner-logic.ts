@@ -34,6 +34,7 @@ export type DesktopUpdateBannerRect = {
 export type DesktopUpdateBannerPosition = "top" | "bottom";
 
 export function clampProgress(percent: number): number {
+  if (!Number.isFinite(percent)) return percent > 0 ? 100 : 0;
   return Math.max(0, Math.min(100, Math.round(percent)));
 }
 
