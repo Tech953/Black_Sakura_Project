@@ -1,6 +1,9 @@
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import {
+  appendReleaseAssetsSummary,
   RELEASE_TARGETS,
   validateReleaseAssets,
 } from "./validate-release-assets.mjs";
@@ -21,6 +24,17 @@ const completeAssetNames = [
   "latest-mac.yml",
   expectedAndroidApk,
 ];
+
+function createSummary(result, tag = releaseTag) {
+  const summaryDir = mkdtempSync(join(tmpdir(), "release-assets-summary-"));
+  const summaryPath = join(summaryDir, "summary.md");
+  try {
+    appendReleaseAssetsSummary(summaryPath, { tag, result });
+    return readFileSync(summaryPath, "utf8");
+  } finally {
+    rmSync(summaryDir, { recursive: true, force: true });
+  }
+}
 
 describe("release asset gate", () => {
   it("accepts a complete draft release", () => {
@@ -87,6 +101,45 @@ describe("release asset gate", () => {
 
     expect(result.ok).toBe(false);
     expect(result.missing).toContain("Android signed APK");
+  });
+
+  it("writes a success summary with fixed labels and release metadata", () => {
+    const result = validateReleaseAssets({
+      releaseId: "release-123",
+      assetNames: completeAssetNames,
+      tag: releaseTag,
+    });
+    const summary = createSummary(result);
+
+    expect(summary).toContain("- Tag: v1.2.3");
+    expect(summary).toContain("- Draft release ID: release-123");
+    expect(summary).toContain("- Asset count: 8");
+    expect(summary).toContain("- Result: passed");
+    expect(summary).toContain("### Required assets present");
+    expect(summary).toContain("- Android signed APK");
+    expect(summary).toContain("- Missing requirements: none");
+    expect(summary).not.toContain("ENGRAM-1.2.3-x64.AppImage");
+  });
+
+  it("summarizes missing labels without copying unbounded API asset data", () => {
+    const sensitiveApiValue = `FAKE_GH_TOKEN_SECRET_SENTINEL${"x".repeat(16_384)}`;
+    const result = validateReleaseAssets({
+      releaseId: "release-123",
+      assetNames: completeAssetNames
+        .filter((name) => name !== expectedAndroidApk)
+        .concat(sensitiveApiValue),
+      tag: releaseTag,
+    });
+    const summary = createSummary(result);
+
+    expect(summary).toContain("- Tag: v1.2.3");
+    expect(summary).toContain("- Draft release ID: release-123");
+    expect(summary).toContain("- Asset count: 8");
+    expect(summary).toContain("- Result: failed");
+    expect(summary).toContain("- Android signed APK");
+    expect(summary).not.toContain("FAKE_GH_TOKEN_SECRET_SENTINEL");
+    expect(summary).not.toContain(sensitiveApiValue);
+    expect(summary.length).toBeLessThan(2000);
   });
 
   it("does not let an arm64 installer satisfy the x64 target", () => {

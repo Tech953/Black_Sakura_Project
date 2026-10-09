@@ -15,11 +15,11 @@ The workflow guard CI pins actionlint to v1.7.7 until the legacy `macos-13` runn
 
 **How to apply:** upgrade actionlint together with the runner-label migration rather than suppressing or overlooking the diagnostic.
 
-Cleanup observability belongs in the workflow step summary via the runner-provided `$GITHUB_STEP_SUMMARY` shell variable, not an `env` expression lookup.
+Cleanup and release-asset gate observability belongs in the workflow step summary via the runner-provided `$GITHUB_STEP_SUMMARY` shell variable, not an `env` expression lookup.
 
 **Why:** The summary path is injected as a default runner environment variable; resolving it through the workflow `env` context can produce an empty path and hide the audit result.
 
-**How to apply:** write only tag, counts, release IDs, and outcome text to the summary; keep API credentials exclusively in the step environment used by `gh`.
+**How to apply:** write only tags, counts, release IDs, fixed asset labels, and outcome text to the summary; never include raw asset lists or API response bodies, and keep credentials in the step environment used by `gh`.
 
 When release-list or per-release ownership lookups fail, write a bounded summary with the tag and a generic `lookup failed` result. Never copy `gh` stderr or API response bodies into the summary.
 
