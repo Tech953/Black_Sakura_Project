@@ -425,7 +425,7 @@ export default function DownloadPage() {
                     +
                   </span>
                 </summary>
-                <div className="grid gap-3 border-t border-border/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground md:grid-cols-2">
+                <div className="grid gap-3 border-t border-border/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground lg:grid-cols-2">
                   <p>
                     <strong className="mr-1 text-foreground">
                       {t("howToInstall")}:
