@@ -39,21 +39,89 @@ on:
 
 concurrency:
   group: desktop-build-${{ github.ref }}
-  # Tag runs must finish their cleanup before a retry for the same tag can
-  # start. Otherwise an older failed run can delete the newer run's draft,
-  # because GitHub draft releases are initially identified by tag/name.
-  # Branch and PR validation runs can still be superseded immediately.
+  # Keep same-tag builds serialized because electron-builder selects drafts by
+  # tag. The owner marker below separately prevents cleanup from deleting a
+  # draft belonging to another workflow attempt.
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 jobs:
+  # Create a draft once, before the native matrix begins. electron-builder's
+  # GitHub publisher reuses drafts by tag, so refusing a draft owned by another
+  # attempt prevents a retry from uploading into that attempt's release.
+  prepare-draft:
+    name: Prepare owned draft release
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.prepare.outputs.release_id }}
+    steps:
+      - name: Create or confirm attempt-owned draft
+        id: prepare
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          TARGET_COMMITISH: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
+          RELEASES_JSON="$(gh api "repos/$REPO/releases?per_page=100" --paginate)"
+          SAME_TAG_RELEASES="$(printf '%s\n' "$RELEASES_JSON" | jq -s --arg tag "$TAG" '[.[][] | select(.tag_name == $tag)]')"
+          DRAFT_COUNT="$(jq -r '[.[] | select(.draft == true)] | length' <<< "$SAME_TAG_RELEASES")"
+          PUBLISHED_COUNT="$(jq -r '[.[] | select(.draft != true)] | length' <<< "$SAME_TAG_RELEASES")"
+
+          if [ "$PUBLISHED_COUNT" -gt 0 ]; then
+            echo "Refusing to prepare '$TAG': a published release already uses this tag." >&2
+            exit 1
+          fi
+
+          if [ "$DRAFT_COUNT" -gt 0 ]; then
+            OWNED_IDS="$(jq -r --arg owner "$OWNER_MARKER" '[.[] | select(.draft == true and ((.body // "") | contains($owner))) | .id] | .[]' <<< "$SAME_TAG_RELEASES")"
+            if [ "$DRAFT_COUNT" -ne 1 ] || [ -z "$OWNED_IDS" ]; then
+              EXISTING_IDS="$(jq -r '[.[] | select(.draft == true) | .id] | join(", ")' <<< "$SAME_TAG_RELEASES")"
+              echo "Refusing to reuse same-tag draft(s) $EXISTING_IDS; they are not uniquely owned by workflow attempt $OWNER_ID." >&2
+              exit 1
+            fi
+            RELEASE_ID="$OWNED_IDS"
+            echo "Reusing attempt-owned draft release $RELEASE_ID for '$TAG'."
+          else
+            echo "Creating attempt-owned draft release for '$TAG' (attempt $OWNER_ID)."
+            CREATED_RELEASE="$(gh api -X POST "repos/$REPO/releases" \
+              -f tag_name="$TAG" \
+              -f target_commitish="$TARGET_COMMITISH" \
+              -f name="$TAG" \
+              -f body="$OWNER_MARKER" \
+              -F draft=true \
+              -F prerelease=false)"
+            if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+              '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+              <<< "$CREATED_RELEASE" >/dev/null; then
+              echo "GitHub did not create an attempt-owned draft for '$TAG'." >&2
+              exit 1
+            fi
+            RELEASE_ID="$(jq -er '.id' <<< "$CREATED_RELEASE")"
+          fi
+
+          printf 'release_id=%s\n' "$RELEASE_ID" >> "$GITHUB_OUTPUT"
+
   # Release packaging remains a full native matrix. Ordinary branch/PR changes
   # use the Linux-only pre-release-smoke job below instead.
   build:
     name: ${{ matrix.platform }}-${{ matrix.arch }}
-    if: github.event_name == 'workflow_dispatch' || github.ref_type == 'tag'
+    needs: prepare-draft
+    if: >-
+      always() &&
+      !cancelled() &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.ref_type == 'tag' &&
+        needs.prepare-draft.result == 'success'))
     runs-on: ${{ matrix.os }}
-    # Required so electron-builder's GitHub publisher can create the Release and
-    # upload installers + update manifests using the default GITHUB_TOKEN.
+    # Required so electron-builder's GitHub publisher can upload installers and
+    # update manifests into the prepared draft with the default GITHUB_TOKEN.
     permissions:
       contents: write
     strategy:
@@ -926,10 +994,8 @@ jobs:
           path: artifacts/desktop/.ci-smoke/diagnostics
 
   # Build the Expo mobile app into an installable Android .apk and attach it to
-  # the SAME release as the desktop installers. Runs after `build` so the draft
-  # release electron-builder creates already exists; on a tag the APK is uploaded
-  # into that draft (resolved by name, like the publish job) before the release
-  # is un-drafted.
+  # the same attempt-owned draft as the desktop installers. On a tag, the APK
+  # upload verifies and uses the exact release ID from prepare-draft.
   #
   # Signing: when the ANDROID_KEYSTORE_* repository secrets are set (see the
   # "Prepare release keystore" step), the APK is signed with the private release
@@ -937,9 +1003,16 @@ jobs:
   # the debug signing config — sideloadable, but NOT update-safe across builds.
   android:
     name: android
-    needs: build
+    needs: [build, prepare-draft]
+    if: >-
+      always() &&
+      !cancelled() &&
+      needs.build.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.ref_type == 'tag' &&
+        needs.prepare-draft.result == 'success'))
     runs-on: ubuntu-latest
-    # Required so the GitHub token can upload the APK asset into the draft release.
+    # Required so the GitHub token can upload the APK to the owned draft release.
     permissions:
       contents: write
     steps:
@@ -1136,29 +1209,33 @@ jobs:
           if-no-files-found: error
           path: artifacts/engram-mobile/dist-apk/*.apk
 
-      # On a tag push, attach the APK to the draft release electron-builder made.
-      # The draft isn't tied to a real git tag yet, so resolve it by name (same
-      # as the publish job), drop any same-named asset for idempotent re-runs,
-      # then upload via the uploads API (gh release upload can't target a draft).
+      # On a tag push, attach the APK to the attempt-owned draft prepared before
+      # the build matrix. Verify its tag and owner before replacing any asset.
       - name: Publish APK to draft release
         if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
+          RELEASE_ID: ${{ needs.prepare-draft.outputs.release_id }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "Resolving draft release named '$TAG' in $REPO"
-          RELEASE_ID="$(gh api "repos/$REPO/releases" --paginate \
-            --jq ".[] | select(.draft == true and (.tag_name == \"$TAG\" or .name == \"$TAG\")) | .id" \
-            | head -n1)"
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
           if [ -z "$RELEASE_ID" ]; then
-            echo "No draft release found for tag '$TAG' (did the desktop build create it?)." >&2
+            echo "The draft preparation job did not provide a release ID for '$TAG'." >&2
+            exit 1
+          fi
+          RELEASE_JSON="$(gh api "repos/$REPO/releases/$RELEASE_ID")"
+          if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+            '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+            <<< "$RELEASE_JSON" >/dev/null; then
+            echo "Draft release $RELEASE_ID is not owned by workflow attempt $OWNER_ID for '$TAG'." >&2
             exit 1
           fi
           APK_NAME="$(basename "$APK_PATH")"
-          echo "Draft release id $RELEASE_ID; uploading $APK_NAME"
+          echo "Uploading $APK_NAME to attempt-owned draft release $RELEASE_ID"
           EXISTING="$(gh api "repos/$REPO/releases/$RELEASE_ID/assets" --paginate \
             --jq ".[] | select(.name == \"$APK_NAME\") | .id" | head -n1)"
           if [ -n "$EXISTING" ]; then
@@ -1183,31 +1260,37 @@ jobs:
   # selected ref is a tag.
   publish:
     name: Publish release
-    needs: [build, android]
-    if: github.event_name == 'push' && github.ref_type == 'tag' && needs.build.result == 'success' && needs.android.result == 'success'
+    needs: [build, android, prepare-draft]
+    if: github.event_name == 'push' && github.ref_type == 'tag' && needs.build.result == 'success' && needs.android.result == 'success' && needs.prepare-draft.result == 'success'
     runs-on: ubuntu-latest
     # Required to flip the draft Release to public via the GitHub API.
     permissions:
       contents: write
     steps:
-      # Find the draft Release for this tag and verify every required installer
-      # and electron-updater manifest before making it public. electron-builder
-      # drafts are not yet attached to a real git tag, so resolve by name too.
+      # Verify every required installer and electron-updater manifest on the
+      # exact attempt-owned release before making it public.
       - name: Verify draft release assets
         id: verify_assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
+          DRAFT_RELEASE_ID: ${{ needs.prepare-draft.outputs.release_id }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "Looking for draft release named '$TAG' in $REPO"
-          RELEASE_ID="$(gh api "repos/$REPO/releases" --paginate \
-            --jq ".[] | select(.draft == true and (.tag_name == \"$TAG\" or .name == \"$TAG\")) | .id" \
-            | head -n1)"
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
+          RELEASE_ID="$DRAFT_RELEASE_ID"
           if [ -z "$RELEASE_ID" ]; then
-            echo "No draft release found for tag '$TAG'." >&2
+            echo "The draft preparation job did not provide a release ID for '$TAG'." >&2
+            exit 1
+          fi
+          RELEASE_JSON="$(gh api "repos/$REPO/releases/$RELEASE_ID")"
+          if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+            '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+            <<< "$RELEASE_JSON" >/dev/null; then
+            echo "Draft release $RELEASE_ID is not owned by workflow attempt $OWNER_ID for '$TAG'." >&2
             exit 1
           fi
           ASSET_NAMES="$(gh api "repos/$REPO/releases/$RELEASE_ID/assets" --paginate \
@@ -1227,26 +1310,36 @@ jobs:
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
           RELEASE_ID: ${{ steps.verify_assets.outputs.release_id }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "Publishing draft release id $RELEASE_ID"
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
+          RELEASE_JSON="$(gh api "repos/$REPO/releases/$RELEASE_ID")"
+          if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+            '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+            <<< "$RELEASE_JSON" >/dev/null; then
+            echo "Refusing to publish release $RELEASE_ID because its tag, draft state, or owner changed." >&2
+            exit 1
+          fi
+          echo "Publishing attempt-owned draft release $RELEASE_ID"
           gh api -X PATCH "repos/$REPO/releases/$RELEASE_ID" \
             -F draft=false \
             -f tag_name="$TAG" \
+            -f name="$TAG" \
             -f make_latest=true >/dev/null
           echo "Release '$TAG' is now public."
 
-  # A failed native build leaves any already-uploaded installers in the draft
-  # release created by electron-builder. Remove every matching draft so a
-  # subsequent retry starts cleanly and no partial release is mistaken for a
-  # real one. Tag runs are serialized above, so a newer same-tag draft cannot
-  # exist while this cleanup runs. Manual runs never create drafts and are
-  # excluded by the tag-push guard.
+  # A failed or cancelled tag attempt removes only the draft carrying its own
+  # marker. A newer same-tag draft is never deleted by stale cleanup.
   cleanup-draft:
     name: Clean up failed draft release
-    needs: [build, android]
-    if: github.event_name == 'push' && github.ref_type == 'tag' && failure()
+    needs: [prepare-draft, build, android]
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      github.ref_type == 'tag' &&
+      (failure() || cancelled())
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1256,33 +1349,43 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "Looking for failed draft release(s) named '$TAG' in $REPO"
-          RELEASE_IDS="$(gh api "repos/$REPO/releases" --paginate \
-            --jq ".[] | select(.draft == true and (.tag_name == \"$TAG\" or .name == \"$TAG\")) | .id")"
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
+          echo "Looking for draft release(s) owned by attempt $OWNER_ID for '$TAG' in $REPO"
+          RELEASES_JSON="$(gh api "repos/$REPO/releases?per_page=100" --paginate)"
+          RELEASE_IDS="$(printf '%s\n' "$RELEASES_JSON" | jq -sr \
+            --arg tag "$TAG" \
+            --arg owner "$OWNER_MARKER" \
+            '[.[][] | select(.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))) | .id] | .[]')"
           write_summary() {
             local result="$1"
             local found="$2"
             local deleted="$3"
             local failed="$4"
+            local skipped="$5"
             {
               echo "## Failed draft release cleanup"
               echo
               printf '%s\n' "- Tag: $TAG"
-              printf '%s\n' "- Matching drafts found: $found"
+              printf '%s\n' "- Workflow attempt: $OWNER_ID"
+              printf '%s\n' "- Owned drafts found: $found"
               printf '%s\n' "- Release IDs deleted: ${deleted:-none}"
               if [ -n "$failed" ]; then
                 printf '%s\n' "- Release IDs that failed deletion: $failed"
+              fi
+              if [ -n "$skipped" ]; then
+                printf '%s\n' "- Release IDs kept after ownership changed: $skipped"
               fi
               printf '%s\n' "- Result: $result"
             } >> "$GITHUB_STEP_SUMMARY"
           }
 
           if [ -z "$RELEASE_IDS" ]; then
-            echo "No matching draft release found for tag '$TAG'."
-            write_summary "already clean" "0" "" ""
+            echo "No draft owned by attempt $OWNER_ID found for tag '$TAG'."
+            write_summary "already clean" "0" "" "" ""
             exit 0
           fi
 
@@ -1290,9 +1393,18 @@ jobs:
           FOUND_COUNT="${#RELEASE_ID_LIST[@]}"
           DELETED_IDS=()
           FAILED_IDS=()
+          SKIPPED_IDS=()
           for RELEASE_ID in "${RELEASE_ID_LIST[@]}"; do
             [ -n "$RELEASE_ID" ] || continue
-            echo "Deleting failed draft release id $RELEASE_ID"
+            CURRENT_RELEASE="$(gh api "repos/$REPO/releases/$RELEASE_ID")"
+            if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+              '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+              <<< "$CURRENT_RELEASE" >/dev/null; then
+              echo "Keeping release $RELEASE_ID because it is no longer owned by attempt $OWNER_ID."
+              SKIPPED_IDS+=("$RELEASE_ID")
+              continue
+            fi
+            echo "Deleting attempt-owned draft release id $RELEASE_ID"
             if gh api -X DELETE "repos/$REPO/releases/$RELEASE_ID"; then
               DELETED_IDS+=("$RELEASE_ID")
             else
@@ -1303,11 +1415,16 @@ jobs:
 
           DELETED_LIST="$(IFS=', '; echo "${DELETED_IDS[*]}")"
           FAILED_LIST="$(IFS=', '; echo "${FAILED_IDS[*]}")"
+          SKIPPED_LIST="$(IFS=', '; echo "${SKIPPED_IDS[*]}")"
           if [ "${#FAILED_IDS[@]}" -gt 0 ]; then
-            write_summary "failed" "$FOUND_COUNT" "$DELETED_LIST" "$FAILED_LIST"
-            echo "Failed draft release cleanup for '$TAG'." >&2
+            write_summary "failed" "$FOUND_COUNT" "$DELETED_LIST" "$FAILED_LIST" "$SKIPPED_LIST"
+            echo "Failed draft release cleanup for attempt $OWNER_ID on '$TAG'." >&2
             exit 1
           fi
 
-          write_summary "deleted all matching drafts" "$FOUND_COUNT" "$DELETED_LIST" ""
-          echo "Failed draft release cleanup complete for '$TAG'."
+          RESULT="deleted owned draft(s)"
+          if [ "${#SKIPPED_IDS[@]}" -gt 0 ]; then
+            RESULT="kept release(s) whose owner changed"
+          fi
+          write_summary "$RESULT" "$FOUND_COUNT" "$DELETED_LIST" "" "$SKIPPED_LIST"
+          echo "Draft cleanup complete for attempt $OWNER_ID on '$TAG'."

@@ -22,12 +22,11 @@ artifactName: ${productName}-${version}-${arch}.${ext}
 # pushed tag. owner/repo are left unset so they are auto-detected from the git
 # remote / GITHUB_REPOSITORY in CI; set them explicitly here if you fork/rename.
 #
-# releaseType is `draft` (not `release`): each OS matrix job uploads into a
-# hidden draft Release, so a partially-uploaded release is never publicly
-# visible and concurrent first-creators don't race a public release into
-# existence. A final CI job (`publish`, needs: build) flips the draft to public
-# once all three OS installers + manifests are attached. The published release
-# is still public and requires no GitHub login to download.
+# releaseType is `draft` (not `release`). The workflow's prepare-draft job
+# creates one hidden draft with a workflow-attempt owner marker before the OS
+# matrix starts. Each matrix publisher finds that draft by tag and uploads its
+# assets; the final `publish` job makes it public only after all required
+# installers, manifests, and the Android APK are attached.
 publish:
   provider: github
   releaseType: draft

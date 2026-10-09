@@ -7,6 +7,19 @@ const workflowPath = resolve(
   "../../../.github/workflows/desktop-build.yml",
 );
 const workflow = readFileSync(workflowPath, "utf8");
+const builderConfigPath = resolve(
+  import.meta.dirname,
+  "../electron-builder.yml",
+);
+const builderConfig = readFileSync(builderConfigPath, "utf8");
+
+function getJobSection(name) {
+  const jobs = [...workflow.matchAll(/^  [a-z][a-z0-9-]*:/gm)];
+  const start = jobs.find((match) => match[0] === `  ${name}:`)?.index;
+  if (start == null) return "";
+  const nextStart = jobs.find((match) => match.index > start)?.index;
+  return workflow.slice(start, nextStart ?? workflow.length);
+}
 
 const failedTagAttemptWithQueuedRetry = {
   failedAttempt: {
@@ -24,6 +37,58 @@ const failedTagAttemptWithQueuedRetry = {
 };
 
 describe("desktop release workflow concurrency", () => {
+  it("creates one workflow-attempt-owned draft before the build matrix", () => {
+    const prepareJob = getJobSection("prepare-draft");
+    const buildJob = getJobSection("build");
+
+    expect(prepareJob).toContain(
+      "if: github.event_name == 'push' && github.ref_type == 'tag'",
+    );
+    expect(prepareJob).toMatch(
+      /OWNER_ID:\s*\$\{\{\s*github\.run_id\s*\}\}-\$\{\{\s*github\.run_attempt\s*\}\}/,
+    );
+    expect(prepareJob).toContain(
+      'OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"',
+    );
+    expect(prepareJob).toMatch(/-f body="\$OWNER_MARKER"/);
+    expect(prepareJob).toMatch(
+      /Refusing to reuse same-tag draft\(s\).*not uniquely owned/s,
+    );
+    expect(prepareJob).toContain("a published release already uses this tag");
+    expect(buildJob).toMatch(/needs:\s*prepare-draft/);
+    expect(buildJob).toContain("github.event_name == 'workflow_dispatch'");
+    expect(getJobSection("android")).toContain(
+      "github.event_name == 'workflow_dispatch'",
+    );
+    expect(builderConfig).toContain("releaseType: draft");
+    expect(builderConfig).toContain("workflow-attempt owner marker");
+  });
+
+  it("makes Android attachment, publication, and cleanup verify the same owner", () => {
+    const androidJob = getJobSection("android");
+    const publishJob = getJobSection("publish");
+    const cleanupJob = getJobSection("cleanup-draft");
+
+    expect(androidJob).toContain(
+      "RELEASE_ID: ${{ needs.prepare-draft.outputs.release_id }}",
+    );
+    expect(androidJob).toMatch(
+      /\.draft == true and \.tag_name == \$tag and \(\(\.body \/\/ ""\) \| contains\(\$owner\)\)/,
+    );
+    expect(publishJob).toContain(
+      "DRAFT_RELEASE_ID: ${{ needs.prepare-draft.outputs.release_id }}",
+    );
+    expect(publishJob).toMatch(
+      /\.draft == true and \.tag_name == \$tag and \(\(\.body \/\/ ""\) \| contains\(\$owner\)\)/,
+    );
+    expect(cleanupJob).toMatch(
+      /\.draft == true and \.tag_name == \$tag and \(\(\.body \/\/ ""\) \| contains\(\$owner\)\)/,
+    );
+    expect(cleanupJob).toMatch(
+      /CURRENT_RELEASE="\$\(gh api "repos\/\$REPO\/releases\/\$RELEASE_ID"\)[\s\S]*contains\(\$owner\)[\s\S]*gh api -X DELETE/s,
+    );
+  });
+
   it("keeps a same-tag retry behind failed draft cleanup", () => {
     expect(workflow).toMatch(
       /group:\s*desktop-build-\$\{\{\s*github\.ref\s*\}\}/,
@@ -43,27 +108,26 @@ describe("desktop release workflow concurrency", () => {
   });
 
   it("keeps manual runs excluded from draft cleanup", () => {
-    expect(workflow).toMatch(
-      /if:\s*github\.event_name\s*==\s*'push'\s*&&\s*github\.ref_type\s*==\s*'tag'\s*&&\s*failure\(\)/,
-    );
+    const cleanupJob = getJobSection("cleanup-draft");
+    expect(cleanupJob).toContain("github.event_name == 'push'");
+    expect(cleanupJob).toContain("github.ref_type == 'tag'");
+    expect(cleanupJob).toMatch(/\(failure\(\) \|\| cancelled\(\)\)/);
+    expect(cleanupJob).not.toContain("workflow_dispatch");
     expect(workflow).toMatch(
       /if:\s*github\.event_name\s*==\s*'push'\s*&&\s*github\.ref_type\s*==\s*'tag'\s*&&\s*needs\.build\.result\s*==\s*'success'/,
-    );
-    expect(workflow).toMatch(
-      /github\.event_name\s*==\s*'push'\s*&&\s*github\.ref_type\s*==\s*'tag'\s*&&\s*'always'/,
     );
   });
 
   it("summarizes cleanup outcomes and fails on deletion errors", () => {
     expect(workflow).toContain('>> "$GITHUB_STEP_SUMMARY"');
-    expect(workflow).toMatch(/Matching drafts found:/);
+    expect(workflow).toMatch(/Owned drafts found:/);
     expect(workflow).toMatch(/Release IDs deleted:/);
     expect(workflow).toMatch(/already clean/);
     expect(workflow).toMatch(
       /if gh api -X DELETE "repos\/\$REPO\/releases\/\$RELEASE_ID"; then/,
     );
     expect(workflow).toMatch(
-      /write_summary "failed" "\$FOUND_COUNT" "\$DELETED_LIST" "\$FAILED_LIST"/,
+      /write_summary "failed" "\$FOUND_COUNT" "\$DELETED_LIST" "\$FAILED_LIST" "\$SKIPPED_LIST"/,
     );
     expect(workflow).toMatch(/exit 1/);
   });
@@ -75,9 +139,7 @@ describe("desktop release workflow concurrency", () => {
     expect(workflow).toMatch(
       /ACTUAL_APPLE_TEAM_ID=.*sed -n 's\/\^TeamIdentifier=\/\/p'/,
     );
-    expect(workflow).toMatch(
-      /if \[ -n "\$\{APPLE_TEAM_ID:-\}" \]; then/,
-    );
+    expect(workflow).toMatch(/if \[ -n "\$\{APPLE_TEAM_ID:-\}" \]; then/);
     expect(workflow).toMatch(
       /if \[ "\$ACTUAL_APPLE_TEAM_ID" != "\$APPLE_TEAM_ID" \]; then/,
     );
@@ -117,9 +179,7 @@ describe("desktop release workflow concurrency", () => {
     expect(workflow).toMatch(
       /- name: Verify installed NSIS video tool signatures/,
     );
-    expect(workflow).toMatch(
-      /-ArgumentList @\("\/S", "\/D=\$installDir"\)/,
-    );
+    expect(workflow).toMatch(/-ArgumentList @\("\/S", "\/D=\$installDir"\)/);
     expect(workflow).toMatch(
       /Join-Path \$installDir "resources\\bin\\ffmpeg\.exe"/,
     );
