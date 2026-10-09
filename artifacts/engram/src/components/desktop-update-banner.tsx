@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  chooseDesktopUpdateBannerPosition,
   clampProgress,
   isRetryableInstallFailure,
   statusText,
@@ -33,6 +34,7 @@ export default function DesktopUpdateBanner() {
   const [status, setStatus] = useState<DesktopUpdateStatus>({ state: "idle" });
   const [dismissed, setDismissed] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [bannerPosition, setBannerPosition] = useState<"top" | "bottom">("top");
   const previousState = useRef<DesktopUpdateStatus["state"]>("idle");
   const bannerRef = useRef<HTMLElement | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -85,6 +87,8 @@ export default function DesktopUpdateBanner() {
   const isError = status.state === "error";
   const isReady = status.state === "downloaded";
   const retryableInstallFailure = isRetryableInstallFailure(status);
+  const bannerPositionClass =
+    bannerPosition === "bottom" ? "bottom-4 !top-auto" : "top-16 lg:top-4";
   const isProgress =
     status.state === "available" || status.state === "downloading";
   const isDownloading = status.state === "downloading";
@@ -109,17 +113,77 @@ export default function DesktopUpdateBanner() {
   };
 
   useEffect(() => {
-    if (visible && !wasVisibleRef.current) {
-      const activeElement = document.activeElement;
-      if (
-        activeElement instanceof HTMLElement &&
-        !bannerRef.current?.contains(activeElement)
-      ) {
-        returnFocusRef.current = activeElement;
-      }
+    if (!visible) {
+      wasVisibleRef.current = false;
+      setBannerPosition("top");
+      return;
     }
-    wasVisibleRef.current = visible;
-  }, [visible]);
+
+    if (!wasVisibleRef.current) {
+      const activeElement = document.activeElement;
+      returnFocusRef.current =
+        activeElement instanceof HTMLElement &&
+        activeElement !== document.body &&
+        activeElement !== document.documentElement &&
+        !bannerRef.current?.contains(activeElement)
+          ? activeElement
+          : null;
+      wasVisibleRef.current = true;
+    }
+
+    let frame = 0;
+    const reposition = (): void => {
+      const banner = bannerRef.current;
+      const target = returnFocusRef.current;
+      if (!banner || !target?.isConnected) {
+        setBannerPosition("top");
+        return;
+      }
+
+      const rem = Number.parseFloat(
+        window.getComputedStyle(document.documentElement).fontSize,
+      );
+      const remSize = Number.isFinite(rem) && rem > 0 ? rem : 16;
+      const top = window.matchMedia("(min-width: 1024px)").matches
+        ? remSize
+        : remSize * 4;
+      const rect = banner.getBoundingClientRect();
+      setBannerPosition(
+        chooseDesktopUpdateBannerPosition(
+          {
+            left: rect.left,
+            right: rect.right,
+            top,
+            bottom: top + rect.height,
+          },
+          target.getBoundingClientRect(),
+          window.innerHeight,
+          remSize,
+        ),
+      );
+    };
+    const scheduleReposition = (): void => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(reposition);
+    };
+
+    const banner = bannerRef.current;
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(scheduleReposition);
+    if (banner) resizeObserver?.observe(banner);
+
+    scheduleReposition();
+    window.addEventListener("resize", scheduleReposition);
+    window.addEventListener("scroll", scheduleReposition, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", scheduleReposition);
+      window.removeEventListener("scroll", scheduleReposition, true);
+      resizeObserver?.disconnect();
+    };
+  }, [visible, status.state]);
 
   useEffect(() => {
     if (!visible) return;
@@ -169,12 +233,14 @@ export default function DesktopUpdateBanner() {
   return (
     <aside
       ref={bannerRef}
-      className="fixed left-1/2 top-4 z-[100] w-[min(94vw,30rem)] -translate-x-1/2 border border-cyan-400/35 bg-slate-950/95 px-4 py-3 text-slate-100 shadow-[0_0_28px_rgba(34,211,238,0.16)] backdrop-blur-md"
+      className={`fixed left-1/2 md:left-[calc(50%_+_8rem)] lg:left-1/2 ${bannerPositionClass} z-[100] w-[min(94vw,30rem)] max-h-[40vh] -translate-x-1/2 overflow-x-hidden overflow-y-auto overscroll-contain border border-cyan-400/35 bg-slate-950/95 px-4 py-3 text-slate-100 shadow-[0_0_28px_rgba(34,211,238,0.16)] backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300`}
       aria-label="Desktop update notification"
       data-testid="desktop-update-banner"
+      data-update-state={status.state}
+      tabIndex={0}
     >
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 text-cyan-300" aria-hidden="true">
+      <div className="flex items-start gap-2 sm:gap-3">
+        <span className="mt-0.5 shrink-0 text-cyan-300" aria-hidden="true">
           {isError ? (
             <AlertCircle className="h-4 w-4" />
           ) : isReady ? (
@@ -188,7 +254,7 @@ export default function DesktopUpdateBanner() {
         <div className="min-w-0 flex-1">
           <p
             id="desktop-update-status"
-            className="font-mono text-xs uppercase tracking-[0.12em] text-cyan-100"
+            className="break-words font-mono text-xs uppercase tracking-[0.12em] text-cyan-100"
             role={isError ? "alert" : isDownloading ? undefined : "status"}
             aria-live={isError ? "assertive" : isDownloading ? "off" : "polite"}
             aria-atomic="true"
@@ -200,7 +266,7 @@ export default function DesktopUpdateBanner() {
             <>
               <p
                 id="desktop-update-error"
-                className="mt-1 text-xs text-slate-300"
+                className="mt-1 break-words text-xs text-slate-300"
               >
                 {status.message}
               </p>
@@ -214,7 +280,7 @@ export default function DesktopUpdateBanner() {
                   </p>
                 )
               ) : (
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 break-words text-xs text-slate-400">
                   Try “Check for Updates…” again from the app menu.
                 </p>
               )}
@@ -241,10 +307,10 @@ export default function DesktopUpdateBanner() {
             </div>
           )}
           {(isReady || retryableInstallFailure) && (
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="rounded-sm bg-cyan-300 px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-950 transition-colors hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 disabled:cursor-wait disabled:opacity-60"
+                className="min-h-9 max-w-full whitespace-normal break-words rounded-sm bg-cyan-300 px-2.5 py-2 text-center font-mono text-[10px] font-semibold uppercase leading-tight tracking-[0.1em] text-slate-950 transition-colors hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 disabled:cursor-wait disabled:opacity-60"
                 onClick={() => void handleRestart()}
                 disabled={installing}
                 data-testid={
@@ -261,7 +327,7 @@ export default function DesktopUpdateBanner() {
               </button>
               <button
                 type="button"
-                className="rounded-sm px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                className="min-h-9 max-w-full whitespace-normal break-words rounded-sm px-2.5 py-2 font-mono text-[10px] uppercase leading-tight tracking-[0.1em] text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-300"
                 onClick={dismissNotice}
                 data-testid="later-desktop-update"
               >
@@ -272,7 +338,7 @@ export default function DesktopUpdateBanner() {
         </div>
         <button
           type="button"
-          className="shrink-0 rounded-sm p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+          className="sticky top-0 min-h-9 min-w-9 shrink-0 rounded-sm p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-300"
           onClick={dismissNotice}
           aria-label="Dismiss update notification"
           data-testid="dismiss-desktop-update"

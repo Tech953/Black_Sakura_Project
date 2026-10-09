@@ -464,6 +464,22 @@ async function runPackagedUpdateSmoke(
   healthUrl,
   diagnosticsDir,
 ) {
+  // A 520px CSS viewport approximates a 1040px desktop window at 200% zoom.
+  await bridgeWindow.bringToFront();
+  await bridgeWindow.setViewportSize({ width: 520, height: 420 });
+  const focusTargetCaptured = await bridgeWindow.evaluate(() => {
+    const target = document.querySelector("header button");
+    if (!(target instanceof HTMLElement)) return false;
+    window.__updateSmokeFocusTarget = target;
+    target.focus();
+    return document.activeElement === target;
+  });
+  if (!focusTargetCaptured) {
+    throw new Error(
+      "download handling phase failed: could not focus a dashboard control before showing the update notice",
+    );
+  }
+
   let updateResult;
   try {
     updateResult = await bridgeWindow.evaluate(async () => {
@@ -543,6 +559,86 @@ async function runPackagedUpdateSmoke(
       `download handling phase failed: in-app ready surface was missing, incomplete, or took focus: ${JSON.stringify(readySurface)}`,
     );
   }
+  const responsiveReadySurface = await bridgeWindow.evaluate(() => {
+    const banner = document.querySelector(
+      '[data-testid="desktop-update-banner"]',
+    );
+    const target = window.__updateSmokeFocusTarget;
+    if (!(banner instanceof HTMLElement) || !(target instanceof HTMLElement)) {
+      return null;
+    }
+    const bannerRect = banner.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const overlapsTarget =
+      bannerRect.left < targetRect.right &&
+      bannerRect.right > targetRect.left &&
+      bannerRect.top < targetRect.bottom &&
+      bannerRect.bottom > targetRect.top;
+    const controls = [
+      ...banner.querySelectorAll(
+        '[data-testid="restart-desktop-update"], [data-testid="later-desktop-update"], [data-testid="dismiss-desktop-update"]',
+      ),
+    ].map((control) => {
+      const rect = control.getBoundingClientRect();
+      return (
+        rect.left >= bannerRect.left &&
+        rect.right <= bannerRect.right &&
+        rect.top >= bannerRect.top &&
+        rect.bottom <= bannerRect.bottom &&
+        rect.left >= 0 &&
+        rect.right <= window.innerWidth &&
+        rect.top >= 0 &&
+        rect.bottom <= window.innerHeight
+      );
+    });
+    return {
+      state: banner.dataset.updateState,
+      fitsViewport:
+        bannerRect.left >= 0 &&
+        bannerRect.right <= window.innerWidth &&
+        bannerRect.top >= 0 &&
+        bannerRect.bottom <= window.innerHeight,
+      hasNoHorizontalOverflow: banner.scrollWidth <= banner.clientWidth,
+      controlsVisible: controls.length === 3 && controls.every(Boolean),
+      canReceiveKeyboardFocus: banner.tabIndex === 0,
+      avoidsReturnFocusTarget: !overlapsTarget,
+    };
+  });
+  if (
+    responsiveReadySurface?.state !== "downloaded" ||
+    !responsiveReadySurface?.fitsViewport ||
+    !responsiveReadySurface.hasNoHorizontalOverflow ||
+    !responsiveReadySurface.controlsVisible ||
+    !responsiveReadySurface.canReceiveKeyboardFocus ||
+    !responsiveReadySurface.avoidsReturnFocusTarget
+  ) {
+    throw new Error(
+      `download handling phase failed: ready notice did not fit the narrow/200% zoom viewport or avoid the dashboard control: ${JSON.stringify(responsiveReadySurface)}`,
+    );
+  }
+  await bridgeWindow
+    .locator('[data-testid="restart-desktop-update"]')
+    .focus();
+  await bridgeWindow.keyboard.press("Tab");
+  const actionsAreKeyboardReachable = await bridgeWindow.evaluate(
+    () =>
+      document.activeElement ===
+      document.querySelector('[data-testid="later-desktop-update"]'),
+  );
+  if (!actionsAreKeyboardReachable) {
+    throw new Error(
+      "download handling phase failed: update actions were not reachable by keyboard",
+    );
+  }
+  await bridgeWindow
+    .locator('[data-testid="later-desktop-update"]')
+    .click();
+  await bridgeWindow.waitForFunction(
+    () => document.activeElement === window.__updateSmokeFocusTarget,
+    null,
+    { timeout: 2_000 },
+  );
+
   let healthBeforeInstall;
   try {
     const response = await fetch(healthUrl);
@@ -2006,8 +2102,9 @@ async function main() {
       });
       log("offline model cancellation-safe lifecycle completed through IPC");
       if (process.env.ENGRAM_PACKAGED_UPDATE_SMOKE === "1") {
+        await upgradedSettings.close();
         await runPackagedUpdateSmoke(
-          upgradedSettings,
+          upgradedWindow,
           `${new URL(upgradedWindow.url()).origin}/api/healthz`,
           smokeDiagnosticsDir,
         );

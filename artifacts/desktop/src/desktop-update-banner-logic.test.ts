@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import settings from "../../../lib/i18n/src/en/settings.json";
 import {
+  chooseDesktopUpdateBannerPosition,
   clampProgress,
   isRetryableInstallFailure,
   statusText,
@@ -62,5 +63,25 @@ describe("desktop update banner accessibility contracts", () => {
         deferred: true,
       }),
     ).toBe(false);
+  });
+
+  it("moves the notice away from the dashboard control that must regain focus", () => {
+    expect(
+      chooseDesktopUpdateBannerPosition(
+        { left: 140, right: 620, top: 64, bottom: 180 },
+        { left: 280, right: 320, top: 80, bottom: 112 },
+        600,
+      ),
+    ).toBe("bottom");
+  });
+
+  it("keeps the top placement when the focused control is outside the banner", () => {
+    expect(
+      chooseDesktopUpdateBannerPosition(
+        { left: 140, right: 620, top: 64, bottom: 180 },
+        { left: 16, right: 48, top: 80, bottom: 112 },
+        600,
+      ),
+    ).toBe("top");
   });
 });
