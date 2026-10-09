@@ -17,6 +17,6 @@ The workspace-wide React type pins must stay compatible with Expo's expected Rea
 
 Run the full mobile unit suite and the release preflight serially when verifying a release-related dependency change manually; the automatic completion gate may still run them concurrently.
 
-**Why:** The preflight launches browser-heavy regressions; running it beside Vitest can make the account-isolation test exceed its default time limit despite passing when run alone.
+**Why:** The preflight launches browser-heavy regressions; concurrent validation has caused account-isolation timeouts and Chromium remote-debugging startup failures, while isolated runs passed.
 
 **How to apply:** A timeout during concurrent verification is not evidence that the native dependency change broke account isolation. Finish preflight, then run the mobile test suite without competing browser workloads. Tests that must survive automatic parallel verification need an explicit realistic per-test time limit rather than relying on Vitest's short default.

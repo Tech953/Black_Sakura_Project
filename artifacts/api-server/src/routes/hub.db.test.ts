@@ -862,7 +862,7 @@ describe("PUT /hub/presence/:engramId", () => {
     }
   });
 
-  it("returns a stable failure when activity logging fails without changing Hub reads", async () => {
+  it("publishes no presence on an activity-write failure and one committed event after retry", async () => {
     const engramId = await insertEngram();
     const sourceSpaceId = await insertSpace(OWNER_ID, "Route Atomic Source");
     const targetSpaceId = await insertSpace(OWNER_ID, "Route Atomic Target");
@@ -881,33 +881,91 @@ describe("PUT /hub/presence/:engramId", () => {
     const beforePresence = await beforePresenceResponse.json();
     const beforeActivity = await beforeActivityResponse.json();
 
+    const events: EngramEvent[] = [];
+    const unsubscribe = subscribe({ ownerId: OWNER_ID, engramId }, (event) => {
+      if (event.type === "presence.changed") events.push(event);
+    });
     const constraintName = "hub_route_activity_failure_test";
-    await db.execute(
-      sql.raw(
-        `ALTER TABLE "hub_activity_log" ADD CONSTRAINT "${constraintName}" CHECK (summary <> 'Route Test Engram moved from Route Atomic Source to Route Atomic Target.')`,
-      ),
-    );
     try {
-      const failedResponse = await fetch(`${base}/hub/presence/${engramId}`, {
+      await db.execute(
+        sql.raw(
+          `ALTER TABLE "hub_activity_log" ADD CONSTRAINT "${constraintName}" CHECK (summary <> 'Route Test Engram moved from Route Atomic Source to Route Atomic Target.')`,
+        ),
+      );
+      try {
+        const failedResponse = await fetch(`${base}/hub/presence/${engramId}`, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ spaceId: targetSpaceId, note: "should not persist" }),
+        });
+
+        expect(failedResponse.status).toBe(500);
+        expect(await failedResponse.json()).toEqual({ error: "Could not move engram." });
+      } finally {
+        await db.execute(
+          sql.raw(`ALTER TABLE "hub_activity_log" DROP CONSTRAINT "${constraintName}"`),
+        );
+      }
+
+      expect(events).toHaveLength(0);
+
+      const afterFailurePresenceResponse = await fetch(`${base}/hub/presence`);
+      const afterFailureActivityResponse = await fetch(`${base}/hub/activity`);
+      expect(afterFailurePresenceResponse.status).toBe(200);
+      expect(afterFailureActivityResponse.status).toBe(200);
+      expect(await afterFailurePresenceResponse.json()).toEqual(beforePresence);
+      expect(await afterFailureActivityResponse.json()).toEqual(beforeActivity);
+
+      const retryResponse = await fetch(`${base}/hub/presence/${engramId}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ spaceId: targetSpaceId, note: "should not persist" }),
+        body: JSON.stringify({
+          spaceId: targetSpaceId,
+          note: "committed after retry",
+        }),
+      });
+      expect(retryResponse.status).toBe(200);
+      const retryPresence = (await retryResponse.json()) as {
+        id: number;
+        engramId: number;
+        spaceId: number;
+        status: string;
+        note: string | null;
+        enteredAt: string;
+        updatedAt: string;
+      };
+      expect(retryPresence).toMatchObject({
+        engramId,
+        spaceId: targetSpaceId,
+        status: "active",
+        note: "committed after retry",
       });
 
-      expect(failedResponse.status).toBe(500);
-      expect(await failedResponse.json()).toEqual({ error: "Could not move engram." });
-    } finally {
-      await db.execute(
-        sql.raw(`ALTER TABLE "hub_activity_log" DROP CONSTRAINT "${constraintName}"`),
-      );
-    }
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        type: "presence.changed",
+        ownerId: OWNER_ID,
+        engramId,
+      });
+      expect(events[0]!.data).toEqual({
+        presence: retryPresence,
+        spaceName: "Route Atomic Target",
+        engramName: "Route Test Engram",
+      });
 
-    const afterPresenceResponse = await fetch(`${base}/hub/presence`);
-    const afterActivityResponse = await fetch(`${base}/hub/activity`);
-    expect(afterPresenceResponse.status).toBe(200);
-    expect(afterActivityResponse.status).toBe(200);
-    expect(await afterPresenceResponse.json()).toEqual(beforePresence);
-    expect(await afterActivityResponse.json()).toEqual(beforeActivity);
+      const committedPresence = await db
+        .select()
+        .from(engramPresenceTable)
+        .where(eq(engramPresenceTable.engramId, engramId));
+      expect(committedPresence).toHaveLength(1);
+      expect({
+        ...committedPresence[0],
+        enteredAt: committedPresence[0]!.enteredAt.toISOString(),
+        updatedAt: committedPresence[0]!.updatedAt.toISOString(),
+      }).toMatchObject(retryPresence);
+    } finally {
+      unsubscribe();
+    }
   });
 
   it("returns 404 for an unknown engram", async () => {
