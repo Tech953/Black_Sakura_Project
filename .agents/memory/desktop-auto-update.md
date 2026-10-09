@@ -51,3 +51,9 @@ Only show transfer metadata when transferred and total are nonnegative safe inte
 **Why:** NaN, infinities, precision-losing magnitudes, negative values, and transferred counts beyond the total can render as convincing but false status text. A transfer rate may legitimately be fractional, unlike byte counts.
 
 **How to apply:** Validate the renderer-facing stats before formatting them, allow zero transferred bytes, zero speed, and fractional speed when total is positive, and keep the percentage bar visible for downloading states with rejected details.
+
+Treat update-status IPC payloads as runtime-untrusted even though the bridge exposes a typed callback. Missing or malformed status shapes should use localized fallback copy and clear stale progress; validate fields before formatting or branching, without expanding the bridge API.
+
+**Why:** TypeScript assertions do not validate IPC data at runtime, so a malformed main-process event can otherwise throw or leave misleading download UI behind.
+
+**How to apply:** Keep payload validation at the Settings renderer boundary, preserve the allowlisted bridge contract, and never coerce unexpected field types into plausible update values.

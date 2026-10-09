@@ -94,6 +94,23 @@ describe("desktop renderer bridge", () => {
     expect(listeners.has("update:status")).toBe(false);
   });
 
+  it("forwards runtime-malformed status through the existing update channel", () => {
+    const { ipc, listeners } = fakeIpc();
+    const bridge = createEngramDesktopBridge(ipc);
+    const onStatus = vi.fn();
+    const malformedPayload = {
+      state: "downloading",
+      percent: "42",
+    } as unknown as UpdateStatus;
+    const unsubscribe = bridge.onUpdateStatus(onStatus);
+
+    listeners.get("update:status")?.({}, malformedPayload);
+
+    expect(onStatus).toHaveBeenCalledTimes(1);
+    expect(onStatus).toHaveBeenCalledWith(malformedPayload);
+    unsubscribe();
+  });
+
   it("hydrates an in-progress update status through app info unchanged", async () => {
     const { ipc, invoke } = fakeIpc();
     const appInfo: AppInfo = {
