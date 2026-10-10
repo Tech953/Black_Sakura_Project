@@ -270,7 +270,9 @@ let updateController: ReturnType<typeof setupAutoUpdateFlow> = {
   },
 };
 
-const RELEASE_DOWNLOAD_URL = "https://github.com/Tech953/Ch-IO/releases/latest";
+const RELEASE_DOWNLOAD_REPO =
+  process.env.VITE_GITHUB_REPO?.trim() || "Tech953/Ch-IO";
+const RELEASE_DOWNLOAD_URL = `https://github.com/${RELEASE_DOWNLOAD_REPO}/releases/latest`;
 const UPDATE_STATUS_FILE = "deferred-update-failure.json";
 
 function updateStatusFilePath(): string {
@@ -697,6 +699,7 @@ function buildServerEnv(settings: Settings, port: number): NodeJS.ProcessEnv {
     ...process.env,
     ELECTRON_RUN_AS_NODE: "1",
     NODE_ENV: "production",
+    VITE_GITHUB_REPO: RELEASE_DOWNLOAD_REPO,
     ENGRAM_DB_DRIVER: "pglite",
     PGLITE_DATA_DIR: userDataPath("db"),
     DRIZZLE_MIGRATIONS_DIR: migrationsDir,

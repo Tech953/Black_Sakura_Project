@@ -2,10 +2,12 @@ import esbuild from "esbuild";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveReleaseRepo } from "../../scripts/validate-download-release.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const outdir = path.join(here, "dist");
 mkdirSync(outdir, { recursive: true });
+const releaseRepo = resolveReleaseRepo(process.env);
 
 await esbuild.build({
   entryPoints: {
@@ -19,6 +21,9 @@ await esbuild.build({
   target: "node20",
   format: "cjs",
   external: ["electron"],
+  define: {
+    "process.env.VITE_GITHUB_REPO": JSON.stringify(releaseRepo),
+  },
   sourcemap: false,
   logLevel: "info",
 });

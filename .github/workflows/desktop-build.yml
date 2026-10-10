@@ -81,7 +81,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check release trigger guards
-        run: pnpm --filter @workspace/desktop exec vitest run scripts/desktop-build-concurrency.test.mjs
+        env:
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
+        run: |
+          pnpm --filter @workspace/desktop exec vitest run scripts/desktop-build-concurrency.test.mjs
+          node --test scripts/validate-release-repository.test.mjs
+
+      - name: Validate release repository ownership
+        env:
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
+          RELEASE_SOURCE_REPO: ${{ github.repository }}
+          RELEASE_EVENT_NAME: ${{ github.event_name }}
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+        run: node scripts/validate-release-repository.mjs
 
   # Create a draft once, before the native matrix begins. electron-builder's
   # GitHub publisher reuses drafts by tag, so refusing a draft owned by another
@@ -240,7 +252,7 @@ jobs:
         run: pnpm --filter @workspace/api-server run build
 
       - name: Validate configured desktop release link
-        if: matrix.platform == 'linux'
+        if: matrix.platform == 'linux' && (github.repository == 'Tech953/Ch-IO' || vars.VITE_GITHUB_REPO != '')
         env:
           VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
         run: pnpm run validate:release-links
@@ -275,6 +287,7 @@ jobs:
 
       - name: Build desktop main + stage resources
         env:
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
           # Keep Windows installers browser-downloadable. The app remains
           # offline-capable through Ollama/LM Studio/local OpenAI-compatible
           # servers; Linux/macOS retain the optional bundled-model behavior.
@@ -945,6 +958,7 @@ jobs:
           PORT: "5000"
           BASE_PATH: "/"
           NODE_ENV: "production"
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
         run: pnpm --filter @workspace/engram run build
 
       - name: Install Chromium for web validation
@@ -968,6 +982,7 @@ jobs:
         env:
           DESKTOP_BUNDLE_LLM: "1"
           DESKTOP_REQUIRE_LLAMA_RUNTIME: "1"
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
         run: pnpm --filter @workspace/desktop run build
 
       - name: Package Linux installer

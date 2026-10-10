@@ -22,6 +22,14 @@ const builderConfigPath = resolve(
   "../electron-builder.yml",
 );
 const builderConfig = readFileSync(builderConfigPath, "utf8");
+const desktopMain = readFileSync(
+  resolve(import.meta.dirname, "../src/main.ts"),
+  "utf8",
+);
+const desktopBuildScript = readFileSync(
+  resolve(import.meta.dirname, "../build.mjs"),
+  "utf8",
+);
 
 function getJobSection(name) {
   const jobs = [...workflow.matchAll(/^  [a-z][a-z0-9_-]*:/gm)];
@@ -230,6 +238,29 @@ describe("desktop release workflow concurrency", () => {
     expect(pushTriggers).toContain('".github/workflows/desktop-build.yml"');
     expect(pullRequestTriggers).toContain(
       '".github/workflows/desktop-build.yml"',
+    );
+  });
+
+  it("keeps release links aligned for staging and fork builds", () => {
+    const configuredRepo =
+      "VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}";
+
+    expect(workflow).toContain("node scripts/validate-release-repository.mjs");
+    expect(workflow).toContain("RELEASE_SOURCE_REPO: ${{ github.repository }}");
+    expect(workflow).toContain("RELEASE_EVENT_NAME: ${{ github.event_name }}");
+    expect(workflow).toContain("RELEASE_REF_TYPE: ${{ github.ref_type }}");
+    expect(workflow).toContain(configuredRepo);
+    expect(workflow).toContain(
+      "if: matrix.platform == 'linux' && (github.repository == 'Tech953/Ch-IO' || vars.VITE_GITHUB_REPO != '')",
+    );
+    expect(desktopBuildScript).toContain(
+      '"process.env.VITE_GITHUB_REPO": JSON.stringify(releaseRepo)',
+    );
+    expect(desktopMain).toContain(
+      "process.env.VITE_GITHUB_REPO?.trim() || \"Tech953/Ch-IO\"",
+    );
+    expect(desktopMain).toContain(
+      "VITE_GITHUB_REPO: RELEASE_DOWNLOAD_REPO",
     );
   });
 

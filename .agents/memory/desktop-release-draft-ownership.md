@@ -9,6 +9,12 @@ description: Concurrency and trigger rules that prevent failed tag retries from 
 
 **How to apply:** keep tag concurrency `cancel-in-progress` false; run workflow guard validation before draft preparation; require `github.event_name == 'push' && github.ref_type == 'tag'` for release-only actions; keep manual dispatches artifact-only even when the selected ref is a tag.
 
+Fork and staging builds should use the same `VITE_GITHUB_REPO` across web and packaged desktop/API as the repository that runs the build.
+
+**Why:** falling back inconsistently makes web links, the packaged app, the embedded API, and electron-updater target different repositories; staging overrides must not silently diverge.
+
+**How to apply:** default CI builds to their source repository, pass configured values into web and desktop builds plus the embedded API child, and validate source/config equality before any release side effects. Skip network availability checks for unconfigured fork repositories.
+
 The workflow guard CI pins actionlint to v1.7.7 until the legacy `macos-13` runner labels are migrated.
 
 **Why:** actionlint v1.7.12 reports `macos-13` as an unknown runner label in both desktop matrices, even though the current release configuration still uses it.
