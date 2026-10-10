@@ -715,7 +715,8 @@
     "webmAudioOption": "Come audio",
     "webmVideoOption": "Come video",
     "uploadingFile": "Caricamento file…",
-    "uploadProgress": "Caricamento file: {{percent}}%"
+    "uploadProgress": "Caricamento file: {{percent}}%",
+    "cancelUpload": "Annulla caricamento"
   },
   "memory": {
     "title": "ARCHITETTURA DELLA MEMORIA",

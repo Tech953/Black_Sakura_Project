@@ -715,7 +715,8 @@
     "webmAudioOption": "音声として",
     "webmVideoOption": "動画として",
     "uploadingFile": "ファイルをアップロード中…",
-    "uploadProgress": "ファイルをアップロード中: {{percent}}%"
+    "uploadProgress": "ファイルをアップロード中: {{percent}}%",
+    "cancelUpload": "アップロードをキャンセル"
   },
   "memory": {
     "title": "メモリアーキテクチャ",

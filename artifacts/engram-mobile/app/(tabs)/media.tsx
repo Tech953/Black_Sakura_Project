@@ -380,6 +380,8 @@ export default function MediaScreen() {
   const [webmModality, setWebmModality] = useState<WebmModality | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [canCancelUpload, setCanCancelUpload] = useState(false);
+  const activeUploadRef = useRef<XMLHttpRequest | null>(null);
   const [serverUrl, setServerUrl] = useState("");
   const [authToken, setAuthToken] = useState<string | null>(null);
   const needsWebmChoice = file
@@ -434,6 +436,13 @@ export default function MediaScreen() {
     };
   }, [getToken]);
 
+  useEffect(
+    () => () => {
+      activeUploadRef.current?.abort();
+    },
+    [],
+  );
+
   const pickFile = useCallback(async () => {
     const result = await DocumentPicker.getDocumentAsync({
       type: ["text/*", "image/*", "audio/*", "video/*", "application/json"],
@@ -477,6 +486,7 @@ export default function MediaScreen() {
       } as unknown as Blob);
       const response = await new Promise<XMLHttpRequest>((resolve, reject) => {
         const request = new XMLHttpRequest();
+        activeUploadRef.current = request;
         request.open("POST", `${serverUrl}/api/media`);
         if (token) request.setRequestHeader("Authorization", `Bearer ${token}`);
         request.upload.onprogress = (event) => {
@@ -484,15 +494,22 @@ export default function MediaScreen() {
             setUploadProgress(getMediaUploadPercent(event.loaded, event.total));
           }
         };
-        request.upload.onload = () => setUploadProgress(100);
+        request.upload.onload = () => {
+          setUploadProgress(100);
+          setCanCancelUpload(false);
+        };
         request.onload = () => {
           setUploadProgress(100);
           resolve(request);
         };
         request.onerror = () =>
           reject(new Error(t("unknownError", { defaultValue: "Unknown error" })));
-        request.onabort = () =>
-          reject(new Error(t("unknownError", { defaultValue: "Unknown error" })));
+        request.onabort = () => {
+          const error = new Error("Upload cancelled");
+          error.name = "AbortError";
+          reject(error);
+        };
+        setCanCancelUpload(true);
         request.send(body);
       });
       if (response.status < 200 || response.status >= 300) {
@@ -531,15 +548,23 @@ export default function MediaScreen() {
       setWebmModality(null);
       await queryClient.invalidateQueries({ queryKey: getListMediaQueryKey() });
     } catch (error) {
-      Alert.alert(
-        t("uploadFailed", { defaultValue: "Upload failed" }),
-        error instanceof Error ? error.message : t("unknownError", { defaultValue: "Unknown error" }),
-      );
+      if (!(error instanceof Error && error.name === "AbortError")) {
+        Alert.alert(
+          t("uploadFailed", { defaultValue: "Upload failed" }),
+          error instanceof Error ? error.message : t("unknownError", { defaultValue: "Unknown error" }),
+        );
+      }
     } finally {
+      activeUploadRef.current = null;
+      setCanCancelUpload(false);
       setUploading(false);
       setUploadProgress(null);
     }
   }, [file, getToken, queryClient, selectedId, t, webmModality]);
+
+  const cancelUpload = useCallback(() => {
+    activeUploadRef.current?.abort();
+  }, []);
 
   if (mediaQuery.isError || engramsQuery.isError) {
     return (
@@ -759,6 +784,25 @@ export default function MediaScreen() {
                     />
                   </View>
                 )}
+                {canCancelUpload ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("cancelUpload", {
+                      defaultValue: "Cancel upload",
+                    })}
+                    testID="media-upload-cancel"
+                    onPress={cancelUpload}
+                    style={[
+                      styles.uploadCancel,
+                      { borderColor: colors.destructive + "88" },
+                    ]}
+                  >
+                    <Feather name="x-circle" size={14} color={colors.destructive} />
+                    <Text style={[styles.actionText, { color: colors.destructive }]}>
+                      {t("cancelUpload", { defaultValue: "Cancel upload" })}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
           </View>
@@ -811,6 +855,16 @@ const styles = StyleSheet.create({
   uploadProgress: { marginTop: 10, gap: 7 },
   uploadProgressTrack: { height: 5, borderRadius: 3, overflow: "hidden" },
   uploadProgressFill: { height: "100%", borderRadius: 3 },
+  uploadCancel: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+  },
   webmChoice: { marginTop: 12, gap: 8 },
   webmChoicePrompt: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 },
   webmChoiceOptions: { flexDirection: "row", gap: 8 },

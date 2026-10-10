@@ -715,7 +715,8 @@
     "webmAudioOption": "Как аудио",
     "webmVideoOption": "Как видео",
     "uploadingFile": "Загрузка файла…",
-    "uploadProgress": "Загрузка файла: {{percent}}%"
+    "uploadProgress": "Загрузка файла: {{percent}}%",
+    "cancelUpload": "Отменить загрузку"
   },
   "memory": {
     "title": "АРХИТЕКТУРА ПАМЯТИ",

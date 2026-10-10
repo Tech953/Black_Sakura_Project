@@ -715,7 +715,8 @@
     "webmAudioOption": "Als Audio",
     "webmVideoOption": "Als Video",
     "uploadingFile": "Datei wird hochgeladen…",
-    "uploadProgress": "Datei wird hochgeladen: {{percent}}%"
+    "uploadProgress": "Datei wird hochgeladen: {{percent}}%",
+    "cancelUpload": "Upload abbrechen"
   },
   "memory": {
     "title": "GEDÄCHTNISARCHITEKTUR",

@@ -715,7 +715,8 @@
     "webmAudioOption": "Comme audio",
     "webmVideoOption": "Comme vidéo",
     "uploadingFile": "Envoi du fichier…",
-    "uploadProgress": "Envoi du fichier : {{percent}}%"
+    "uploadProgress": "Envoi du fichier : {{percent}}%",
+    "cancelUpload": "Annuler l’envoi"
   },
   "memory": {
     "title": "ARCHITECTURE MÉMOIRE",

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
+import { request as httpRequest } from "node:http";
 import express from "express";
 
 // Mocks the data layer (store + db engram lookup) but runs the REAL media router,
@@ -385,6 +386,28 @@ describe("DELETE /media/:id", () => {
 
 // --- POST /media (multipart upload) --------------------------------------------
 describe("POST /media (upload)", () => {
+  it("does not create an asset when the multipart client disconnects mid-upload", async () => {
+    const boundary = "media-cancel-test";
+    const request = httpRequest(base, {
+      method: "POST",
+      headers: {
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+    });
+    request.on("error", () => {});
+    request.write(
+      `--${boundary}\r\nContent-Disposition: form-data; name="engramId"\r\n\r\n3\r\n`,
+    );
+    request.write(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="notes.txt"\r\nContent-Type: text/plain\r\n\r\n`,
+    );
+    request.write("part of a file");
+    request.destroy();
+
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(h.createMediaAsset).not.toHaveBeenCalled();
+  });
+
   it("accepts an allowlisted file and creates a pending asset", async () => {
     h.createMediaAsset.mockResolvedValueOnce(makeAsset({ status: "pending" }));
     const form = new FormData();

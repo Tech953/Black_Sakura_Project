@@ -715,7 +715,8 @@
     "webmAudioOption": "كصوت",
     "webmVideoOption": "كفيديو",
     "uploadingFile": "جارٍ رفع الملف…",
-    "uploadProgress": "رفع الملف: {{percent}}%"
+    "uploadProgress": "رفع الملف: {{percent}}%",
+    "cancelUpload": "إلغاء الرفع"
   },
   "memory": {
     "title": "بنية الذاكرة",

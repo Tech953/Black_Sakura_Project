@@ -715,7 +715,8 @@
     "webmAudioOption": "作为音频",
     "webmVideoOption": "作为视频",
     "uploadingFile": "正在上传文件…",
-    "uploadProgress": "正在上传文件：{{percent}}%"
+    "uploadProgress": "正在上传文件：{{percent}}%",
+    "cancelUpload": "取消上传"
   },
   "memory": {
     "title": "记忆架构",

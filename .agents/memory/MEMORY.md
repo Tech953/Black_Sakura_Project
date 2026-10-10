@@ -66,3 +66,4 @@
 - [Media recovery contract](media-recovery-contract.md) — recovered timeouts are distinct from provider failures; explain transactional rollback and safe idempotent retry.
 - [Media upload MIME handling](media-upload-mime.md) — infer only generic picker MIME values from unambiguous extensions; preserve specific unsupported claims for clear server rejection.
 - [Media binary structure validation](media-structure-validation.md) — validate complete container structure at upload and again before worker extraction.
+- [Multipart upload cancellation](media-upload-cancellation.md) — use `req.aborted`, not `req.destroyed`, to distinguish a client abort from a completed Multer request.

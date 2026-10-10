@@ -11,6 +11,7 @@
   "shareMedia": "Share a piece of media",
   "selectEngram": "Select engram…",
   "perceive": "Perceive",
+  "cancelUpload": "Cancel upload",
   "uploadingFile": "Uploading file…",
   "uploadProgress": "Uploading file: {{percent}}%",
   "webmModalityPrompt": "Choose how this WebM should be perceived.",

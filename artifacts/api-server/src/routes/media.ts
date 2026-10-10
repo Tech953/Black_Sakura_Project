@@ -97,6 +97,11 @@ function serializeObservation(e: EngramWorldModelEntry) {
  */
 router.post("/media", (req, res) => {
   uploadSingle(req, res, async (err: unknown) => {
+    // Multer buffers uploads in memory and persistence starts only after it has
+    // parsed the complete multipart body. Never continue work for a cancelled
+    // or disconnected client.
+    if (req.aborted || res.destroyed) return;
+
     if (err) {
       if (err instanceof multer.MulterError) {
         const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
@@ -143,6 +148,7 @@ router.post("/media", (req, res) => {
 
     try {
       const engram = await loadOwnedEngram(engramId, req.userId!);
+      if (req.aborted || res.destroyed) return;
       if (!engram) {
         res.status(404).json({ error: "Engram not found" });
         return;
@@ -151,6 +157,7 @@ router.post("/media", (req, res) => {
         res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
         return;
       }
+      if (req.aborted || res.destroyed) return;
       const asset = await createMediaAsset({
         ownerId: req.userId!,
         engramId,

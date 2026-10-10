@@ -65,11 +65,14 @@ try {
     'body.append("file", {',
     "type: normalizeMediaUploadMimeType(",
     "request.upload.onprogress",
+    "activeUploadRef.current?.abort()",
+    'testID="media-upload-cancel"',
     'testID="media-upload-progress"',
     'testID="media-upload-progressbar"',
   ]);
   requireSource(workspaceRoot, "artifacts/api-server/src/routes/media.ts", [
     'const uploadSingle = upload.single("file")',
+    "if (req.aborted || res.destroyed) return;",
     "const mimeType = normalizeMediaMimeType(file.mimetype)",
     "const modality = detectModality(mimeType)",
     "contentMatchesMime(file.buffer, mimeType)",
@@ -136,6 +139,9 @@ Use the same four valid files on every device:
    sending, reach 100% when transfer completes, then disappear after the asset
    is accepted. On failure, confirm the progress indicator clears and the
    selected file remains ready for another attempt.
+9. Start another large upload and cancel it before transfer completes
+   (testID media-upload-cancel). Confirm no error alert appears, the selected
+   file remains in the picker row, and no new asset card is created.
 
 Run this command again with --ci for the non-interactive source and test gate
 used by release automation.

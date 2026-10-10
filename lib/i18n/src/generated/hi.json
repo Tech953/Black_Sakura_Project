@@ -715,7 +715,8 @@
     "webmAudioOption": "ऑडियो के रूप में",
     "webmVideoOption": "वीडियो के रूप में",
     "uploadingFile": "फ़ाइल अपलोड हो रही है…",
-    "uploadProgress": "फ़ाइल अपलोड हो रही है: {{percent}}%"
+    "uploadProgress": "फ़ाइल अपलोड हो रही है: {{percent}}%",
+    "cancelUpload": "अपलोड रद्द करें"
   },
   "memory": {
     "title": "स्मृति आर्किटेक्चर",
