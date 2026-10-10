@@ -713,7 +713,9 @@
     "diagnosticLabel": "Detalhe técnico",
     "webmModalityPrompt": "Escolha como este WebM deve ser processado.",
     "webmAudioOption": "Como áudio",
-    "webmVideoOption": "Como vídeo"
+    "webmVideoOption": "Como vídeo",
+    "uploadingFile": "Enviando arquivo…",
+    "uploadProgress": "Enviando arquivo: {{percent}}%"
   },
   "memory": {
     "title": "ARQUITETURA DE MEMÓRIA",

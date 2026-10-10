@@ -40,6 +40,7 @@ import {
   normalizeMediaUploadMimeType,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { getMediaUploadPercent } from "@/lib/media-upload-progress";
 
 type PickedFile = {
   uri: string;
@@ -378,6 +379,7 @@ export default function MediaScreen() {
   const [file, setFile] = useState<PickedFile | null>(null);
   const [webmModality, setWebmModality] = useState<WebmModality | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [serverUrl, setServerUrl] = useState("");
   const [authToken, setAuthToken] = useState<string | null>(null);
   const needsWebmChoice = file
@@ -458,6 +460,7 @@ export default function MediaScreen() {
       return;
     }
     setUploading(true);
+    setUploadProgress(null);
     try {
       const serverUrl = await resolveServerUrl();
       const token = await getToken();
@@ -472,13 +475,34 @@ export default function MediaScreen() {
           webmModality,
         ),
       } as unknown as Blob);
-      const response = await fetch(`${serverUrl}/api/media`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        body,
+      const response = await new Promise<XMLHttpRequest>((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open("POST", `${serverUrl}/api/media`);
+        if (token) request.setRequestHeader("Authorization", `Bearer ${token}`);
+        request.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setUploadProgress(getMediaUploadPercent(event.loaded, event.total));
+          }
+        };
+        request.upload.onload = () => setUploadProgress(100);
+        request.onload = () => {
+          setUploadProgress(100);
+          resolve(request);
+        };
+        request.onerror = () =>
+          reject(new Error(t("unknownError", { defaultValue: "Unknown error" })));
+        request.onabort = () =>
+          reject(new Error(t("unknownError", { defaultValue: "Unknown error" })));
+        request.send(body);
       });
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (response.status < 200 || response.status >= 300) {
+        const payload = (() => {
+          try {
+            return JSON.parse(response.responseText) as { error?: string };
+          } catch {
+            return null;
+          }
+        })();
         if (response.status === 413) {
           throw new Error(
             t("fileTooLarge", {
@@ -513,6 +537,7 @@ export default function MediaScreen() {
       );
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   }, [file, getToken, queryClient, selectedId, t, webmModality]);
 
@@ -697,6 +722,45 @@ export default function MediaScreen() {
               onPress={() => void upload()}
               style={{ marginTop: 12 }}
             />
+            {uploading ? (
+              <View testID="media-upload-progress" style={styles.uploadProgress}>
+                <Text
+                  testID="media-upload-progress-label"
+                  style={[styles.fileMeta, { color: colors.mutedForeground }]}
+                >
+                  {uploadProgress === null
+                    ? t("uploadingFile", { defaultValue: "Uploading file…" })
+                    : t("uploadProgress", {
+                        percent: uploadProgress,
+                        defaultValue: "Uploading file: {{percent}}%",
+                      })}
+                </Text>
+                {uploadProgress === null ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <View
+                    accessibilityRole="progressbar"
+                    accessibilityLabel={t("uploadProgress", {
+                      percent: uploadProgress,
+                      defaultValue: "Uploading file: {{percent}}%",
+                    })}
+                    accessibilityValue={{ min: 0, max: 100, now: uploadProgress }}
+                    testID="media-upload-progressbar"
+                    style={[styles.uploadProgressTrack, { backgroundColor: colors.border }]}
+                  >
+                    <View
+                      style={[
+                        styles.uploadProgressFill,
+                        {
+                          width: `${uploadProgress}%`,
+                          backgroundColor: colors.primary,
+                        },
+                      ]}
+                    />
+                  </View>
+                )}
+              </View>
+            ) : null}
           </View>
           <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
             {t("assetsCount", { count: mediaQuery.data?.length ?? 0 })}
@@ -744,6 +808,9 @@ const styles = StyleSheet.create({
   filePicker: { flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderRadius: 6, padding: 12 },
   fileName: { flex: 1, fontFamily: "Inter_400Regular", fontSize: 13 },
   fileMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, marginTop: 7 },
+  uploadProgress: { marginTop: 10, gap: 7 },
+  uploadProgressTrack: { height: 5, borderRadius: 3, overflow: "hidden" },
+  uploadProgressFill: { height: "100%", borderRadius: 3 },
   webmChoice: { marginTop: 12, gap: 8 },
   webmChoicePrompt: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 },
   webmChoiceOptions: { flexDirection: "row", gap: 8 },

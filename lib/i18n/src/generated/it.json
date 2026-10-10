@@ -713,7 +713,9 @@
     "diagnosticLabel": "Dettaglio tecnico",
     "webmModalityPrompt": "Scegli come elaborare questo WebM.",
     "webmAudioOption": "Come audio",
-    "webmVideoOption": "Come video"
+    "webmVideoOption": "Come video",
+    "uploadingFile": "Caricamento file…",
+    "uploadProgress": "Caricamento file: {{percent}}%"
   },
   "memory": {
     "title": "ARCHITETTURA DELLA MEMORIA",

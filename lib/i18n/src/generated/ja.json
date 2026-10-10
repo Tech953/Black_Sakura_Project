@@ -713,7 +713,9 @@
     "diagnosticLabel": "技術詳細",
     "webmModalityPrompt": "この WebM をどの形式として認識するか選択してください。",
     "webmAudioOption": "音声として",
-    "webmVideoOption": "動画として"
+    "webmVideoOption": "動画として",
+    "uploadingFile": "ファイルをアップロード中…",
+    "uploadProgress": "ファイルをアップロード中: {{percent}}%"
   },
   "memory": {
     "title": "メモリアーキテクチャ",

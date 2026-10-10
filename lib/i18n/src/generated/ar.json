@@ -713,7 +713,9 @@
     "diagnosticLabel": "تفاصيل تقنية",
     "webmModalityPrompt": "اختر كيفية معالجة ملف WebM هذا.",
     "webmAudioOption": "كصوت",
-    "webmVideoOption": "كفيديو"
+    "webmVideoOption": "كفيديو",
+    "uploadingFile": "جارٍ رفع الملف…",
+    "uploadProgress": "رفع الملف: {{percent}}%"
   },
   "memory": {
     "title": "بنية الذاكرة",

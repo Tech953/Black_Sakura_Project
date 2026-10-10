@@ -713,7 +713,9 @@
     "diagnosticLabel": "Technische Details",
     "webmModalityPrompt": "Wählen Sie, wie diese WebM-Datei verarbeitet werden soll.",
     "webmAudioOption": "Als Audio",
-    "webmVideoOption": "Als Video"
+    "webmVideoOption": "Als Video",
+    "uploadingFile": "Datei wird hochgeladen…",
+    "uploadProgress": "Datei wird hochgeladen: {{percent}}%"
   },
   "memory": {
     "title": "GEDÄCHTNISARCHITEKTUR",

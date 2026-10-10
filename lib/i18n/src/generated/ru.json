@@ -713,7 +713,9 @@
     "diagnosticLabel": "Техническая информация",
     "webmModalityPrompt": "Выберите, как обрабатывать этот файл WebM.",
     "webmAudioOption": "Как аудио",
-    "webmVideoOption": "Как видео"
+    "webmVideoOption": "Как видео",
+    "uploadingFile": "Загрузка файла…",
+    "uploadProgress": "Загрузка файла: {{percent}}%"
   },
   "memory": {
     "title": "АРХИТЕКТУРА ПАМЯТИ",

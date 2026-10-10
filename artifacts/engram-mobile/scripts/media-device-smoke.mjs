@@ -64,6 +64,9 @@ try {
     'body.append("engramId", String(selectedId))',
     'body.append("file", {',
     "type: normalizeMediaUploadMimeType(",
+    "request.upload.onprogress",
+    'testID="media-upload-progress"',
+    'testID="media-upload-progressbar"',
   ]);
   requireSource(workspaceRoot, "artifacts/api-server/src/routes/media.ts", [
     'const uploadSingle = upload.single("file")',
@@ -128,6 +131,11 @@ Use the same four valid files on every device:
    platform/sample case in the release QA record. A cold relaunch that loses
    the selection or a failed upload is a failure. Do not treat browser uploads
    or simulator-only pickers as a real-device pass.
+8. Also upload a valid 15–24 MB media file when it fits below the configured
+   API limit. Confirm the progress label and bar advance while bytes are
+   sending, reach 100% when transfer completes, then disappear after the asset
+   is accepted. On failure, confirm the progress indicator clears and the
+   selected file remains ready for another attempt.
 
 Run this command again with --ci for the non-interactive source and test gate
 used by release automation.
