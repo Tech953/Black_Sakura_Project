@@ -15,6 +15,12 @@ Fork and staging builds should use the same `VITE_GITHUB_REPO` across web and pa
 
 **How to apply:** default CI builds to their source repository, pass configured values into web and desktop builds plus the embedded API child, and validate source/config equality before any release side effects. Skip network availability checks for unconfigured fork repositories.
 
+Desktop installer verification must execute the staged ffmpeg and ffprobe from each native installer output, not just check that package staging found source binaries.
+
+**Why:** valid source binaries can still be omitted or misplaced by installer configuration; native package checks block a broken draft from becoming public.
+
+**How to apply:** after packaging on Linux, macOS, and Windows, verify both tools are present and start successfully before the job uploads artifacts or reports success.
+
 The workflow guard CI pins actionlint to v1.7.7 until the legacy `macos-13` runner labels are migrated.
 
 **Why:** actionlint v1.7.12 reports `macos-13` as an unknown runner label in both desktop matrices, even though the current release configuration still uses it.

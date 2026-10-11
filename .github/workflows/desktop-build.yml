@@ -351,6 +351,54 @@ jobs:
         #     an accidental Release.
         run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish ${{ github.event_name == 'push' && github.ref_type == 'tag' && 'always' || 'never' }}
 
+      - name: Verify packaged video tools (Linux/macOS)
+        if: matrix.platform != 'win'
+        shell: bash
+        env:
+          DESKTOP_PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          if [ "$DESKTOP_PLATFORM" = "linux" ]; then
+            BIN_DIR="artifacts/desktop/release/linux-unpacked/resources/bin"
+          else
+            APP="$(find artifacts/desktop/release -type d -name ENGRAM.app -print -quit)"
+            test -n "$APP" || { echo "No packaged ENGRAM.app found for media-tool verification." >&2; exit 1; }
+            BIN_DIR="$APP/Contents/Resources/bin"
+          fi
+
+          for tool in ffmpeg ffprobe; do
+            FILE="$BIN_DIR/$tool"
+            test -s "$FILE" || {
+              echo "Packaged video tool is missing or empty: $FILE" >&2
+              exit 1
+            }
+            "$FILE" -version >/dev/null 2>&1 || {
+              echo "Packaged video tool failed to start: $FILE" >&2
+              exit 1
+            }
+            echo "Verified packaged video tool: $FILE"
+          done
+
+      - name: Verify packaged video tools (Windows)
+        if: matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $binDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\desktop\release\win-unpacked\resources\bin"
+          foreach ($name in @("ffmpeg.exe", "ffprobe.exe")) {
+            $file = Join-Path $binDir $name
+            if (-not (Test-Path $file -PathType Leaf)) {
+              throw "Packaged video tool is missing: $file"
+            }
+            if ((Get-Item $file).Length -eq 0) {
+              throw "Packaged video tool is missing or empty: $file"
+            }
+            $version = (& $file -version 2>&1 | Out-String).Trim()
+            if ($LASTEXITCODE -ne 0 -or -not $version) {
+              throw "Packaged video tool failed to start: $file"
+            }
+            Write-Host "Verified packaged video tool: $file"
+          }
+
       - name: Verify Windows HTTPS smoke certificate tool
         if: matrix.platform == 'win'
         shell: pwsh

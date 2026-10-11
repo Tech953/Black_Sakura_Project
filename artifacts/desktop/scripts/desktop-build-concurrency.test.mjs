@@ -629,6 +629,15 @@ describe("desktop release workflow concurrency", () => {
     );
   });
 
+  it("runs packaged video tools on every native installer runner", () => {
+    expect(workflow).toMatch(
+      /- name: Verify packaged video tools \(Linux\/macOS\)\s+if: matrix\.platform != 'win'[\s\S]*linux-unpacked\/resources\/bin[\s\S]*Contents\/Resources\/bin[\s\S]*"\$FILE" -version/,
+    );
+    expect(workflow).toMatch(
+      /- name: Verify packaged video tools \(Windows\)\s+if: matrix\.platform == 'win'[\s\S]*win-unpacked\\resources\\bin[\s\S]*"ffmpeg\.exe", "ffprobe\.exe"[\s\S]*& \$file -version/,
+    );
+  });
+
   it("requires timestamp signer certificates for Windows video tools", () => {
     const timestampChecks =
       workflow.match(/\$signature\.TimeStamperCertificate/g) ?? [];
