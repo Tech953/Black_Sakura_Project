@@ -3235,7 +3235,7 @@ describe("human contact messages route", () => {
       isDigest: false,
       digestedAt: null,
       deliveredAt: new Date(),
-      createdAt: new Date(),
+      createdAt: new Date(Date.now() - 1_000),
     });
 
     const response = await fetch(`${base}/api/messages/1/reply`, {
