@@ -11,6 +11,7 @@ import fs from "node:fs";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import router from "./routes";
+import healthRouter from "./routes/health";
 import { logger } from "./lib/logger";
 import {
   CLERK_PROXY_PATH,
@@ -69,6 +70,10 @@ app.use(
 // but valid history batches can exceed Express's 100 KB default.
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
+// This probe intentionally needs neither Clerk credentials nor a signed-in
+// account. Mount it before Clerk middleware, which can reject local/offline
+// requests before the public route is reached.
+app.use("/api", healthRouter);
 app.use(
   clerkMiddleware((req) => ({
     publishableKey: publishableKeyFromHost(
