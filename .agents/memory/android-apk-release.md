@@ -25,14 +25,32 @@ unchanged regardless of how the page fetches.
   idempotent by deleting any same-named asset first. Order the job `needs: build`
   (so the draft exists) and make the `publish` job `needs: [build, android]`.
 
-## No-Expo-account, no-secrets APK signing
-- `expo prebuild --platform android` + Gradle `:app:assembleRelease` yields an
-  **installable** APK because the RN/Expo template's `release` build type falls back to
-  the **debug** signing config when no release keystore exists.
-- **Why it matters:** a debug/ephemeral signature is **not update-safe** — installing a
-  newer build over an older install can require an uninstall first. Fine for sideload
-  distribution; add an optional release keystore (via secrets) for seamless in-place
-  updates. Never commit a keystore.
+## Release keystore signing (current setup)
+- A private release keystore lives at `.keys/engram-release.keystore` (gitignored;
+  creds in `.keys/android-signing.env`). Gradle reads `ANDROID_KEYSTORE_PATH/…PASSWORD/
+  …ALIAS/…KEY_PASSWORD` **at build time** via an Expo config plugin
+  (`plugins/withAndroidReleaseSigning.js`, registered in app.json) so the signing
+  config survives `expo prebuild --clean`. With the env unset, `signingConfigs.release`
+  falls back to the debug key (sideloadable, not update-safe).
+- **Groovy trap:** `signingConfig (cond) ? a : b` parses as a method call on the
+  boolean and crashes AGP ("Boolean cannot be cast to SigningConfig"). Put the
+  fallback inside the signingConfig block instead of a ternary at the buildType.
+- CI (android job) requires all four `ANDROID_KEYSTORE_*` Actions secrets, decodes
+  and opens the keystore, then pins the APK certificate fingerprint. It fails
+  rather than silently shipping a debug-signed or rotated-key APK.
+- The local installer script sources `.keys/android-signing.env`, requires the
+  keystore, checks the APK certificate against that keystore, and checks that the
+  APK `versionCode` matches `app.json`. **Never lose or commit the keystore** —
+  losing it permanently breaks in-place updates for existing installs.
+
+### Memory-constrained release builds
+- **Why:** an unrestricted Gradle release build can have its daemon killed while
+  Metro and native CMake compilation run concurrently in the workspace. With
+  Gradle 8.14/Kotlin 2.1, the older 384 MB metaspace limit can also produce a
+  misleading app Kotlin compile failure while parallel release tasks exhaust it.
+- **How to apply:** local installer builds use one worker, a 1536 MB Gradle heap,
+  640 MB metaspace, and a 768 MB Node heap; retrying without these limits is
+  likely to fail before packaging.
 
 ## OS/device detection ordering
 - An Android browser User-Agent string also contains the substring `linux`.
@@ -45,3 +63,11 @@ unchanged regardless of how the page fetches.
   resolves. Build shared libs (codegen + `typecheck:libs`) before Gradle so Metro can
   bundle the workspace-lib imports for the release APK. `android/` is gitignored
   (prebuild output) so CI must regenerate it (`--clean`).
+
+## Local release verification timing
+- The authenticated history browser regression can time out during a cold Metro/Chromium run and pass on an immediate retry. For artifact-only verification, retry that check independently before using `--skip-history-e2e` for the APK-specific preflight.
+- The constrained native release build can take more than ten minutes in this workspace, especially on a cold CMake/Metro cache. Use a durable background build rather than treating a shell timeout as a Gradle failure.
+
+**Why:** A cold release run once stopped before Gradle because the history browser gate timed out, and a foreground shell timeout interrupted native compilation even though the eventual constrained build completed successfully.
+
+**How to apply:** Preserve the first failure in the release record, retry the browser gate, and only stage an APK after the remaining preflight and the APK verifier pass. Keep signing credentials private while using the background build.

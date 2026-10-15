@@ -6,7 +6,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
-    "./seed": "./src/seed/index.ts"
+    "./seed": "./src/seed/index.ts",
+    "./seed/expressions": "./src/seed/expressions.ts",
+    "./seed/engram-data": "./src/seed/engram-data.ts",
+    "./seed/rebecca-adaptive-data": "./src/seed/rebecca-adaptive-data.ts",
+    "./seed/full-rezz-data": "./src/seed/full-rezz-data.ts",
+    "./seed/full-rezz-live-data": "./src/seed/full-rezz-live-data.ts"
   },
   "scripts": {
     "generate": "drizzle-kit generate --config ./drizzle.config.ts",
@@ -15,6 +20,8 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.3",
+    "@workspace/expression-role-policy": "workspace:*",
+    "@workspace/rebecca-source-registry": "workspace:*",
     "drizzle-orm": "catalog:",
     "drizzle-zod": "^0.8.3",
     "pg": "^8.22.0",

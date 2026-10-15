@@ -2,14 +2,14 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { engramsTable } from "@workspace/db/schema";
 import type { HubSpace, EngramPresence, HubActivity } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   MoveEngramPresenceParams,
   MoveEngramPresenceBody,
   ListHubActivityQueryParams,
+  ListHubSpaceTranscriptParams,
   UpdateHubControlsBody,
 } from "@workspace/api-zod";
-import type { HubControls } from "@workspace/db";
 import {
   loadSpaces,
   loadSpaceById,
@@ -17,8 +17,14 @@ import {
   loadActivity,
   movePresence,
 } from "../lib/hub-store";
-import { loadControls, updateControls } from "../lib/controls-store";
+import { loadSpaceMessages } from "../lib/messages-store";
+import {
+  loadControls,
+  serializeHubControls,
+  updateControls,
+} from "../lib/controls-store";
 import { publishEvent } from "../lib/events";
+import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 
 const router = Router();
 
@@ -64,22 +70,34 @@ function serializeActivity(a: HubActivity) {
   };
 }
 
-function serializeControls(c: HubControls) {
+function serializeMessage(m: Awaited<ReturnType<typeof loadSpaceMessages>>[number]) {
   return {
-    id: c.id,
-    paused: c.paused,
-    quietMode: c.quietMode,
-    updatedAt: c.updatedAt.toISOString(),
+    id: m.id,
+    fromEngramId: m.fromEngramId,
+    toEngramId: m.toEngramId ?? null,
+    spaceId: m.spaceId ?? null,
+    channel: m.channel,
+    author: m.author,
+    priority: m.priority,
+    status: m.status,
+    content: m.content,
+    reason: m.reason ?? null,
+    seen: m.seen,
+    isDigest: m.isDigest,
+    // Commons messages are not human-channel digest rows.
+    digestGroupId: null,
+    deliveredAt: m.deliveredAt ? m.deliveredAt.toISOString() : null,
+    createdAt: m.createdAt.toISOString(),
   };
 }
 
-router.get("/hub/spaces", async (_req, res) => {
-  const spaces = await loadSpaces();
+router.get("/hub/spaces", async (req, res) => {
+  const spaces = await loadSpaces(req.userId!);
   res.json(spaces.map(serializeSpace));
 });
 
-router.get("/hub/presence", async (_req, res) => {
-  const presence = await loadPresence();
+router.get("/hub/presence", async (req, res) => {
+  const presence = await loadPresence(req.userId!);
   res.json(presence.map(serializePresence));
 });
 
@@ -92,28 +110,40 @@ router.put("/hub/presence/:engramId", async (req, res) => {
   }
 
   const [engram] = await db
-    .select({ id: engramsTable.id, name: engramsTable.name })
+    .select({ id: engramsTable.id, name: engramsTable.name, isArchival: engramsTable.isArchival })
     .from(engramsTable)
-    .where(eq(engramsTable.id, parsedParams.data.engramId));
+    .where(and(eq(engramsTable.id, parsedParams.data.engramId), eq(engramsTable.ownerId, req.userId!)));
   if (!engram) {
     res.status(404).json({ error: "Engram not found" });
     return;
   }
+  if (engram.isArchival) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+    return;
+  }
 
-  const targetSpace = await loadSpaceById(parsedBody.data.spaceId);
+  const targetSpace = await loadSpaceById(parsedBody.data.spaceId, req.userId!);
   if (!targetSpace) {
     res.status(404).json({ error: "Space not found" });
     return;
   }
 
-  const presence = await movePresence({
-    engram,
-    targetSpace,
-    note: parsedBody.data.note ?? null,
-  });
+  let presence: EngramPresence;
+  try {
+    presence = await movePresence({
+      ownerId: req.userId!,
+      engram,
+      targetSpace,
+      note: parsedBody.data.note ?? null,
+    });
+  } catch {
+    res.status(500).json({ error: "Could not move engram." });
+    return;
+  }
   const serialized = serializePresence(presence);
   publishEvent({
     type: "presence.changed",
+    ownerId: req.userId!,
     engramId: presence.engramId,
     data: { presence: serialized, spaceName: targetSpace.name, engramName: engram.name },
   });
@@ -126,16 +156,40 @@ router.get("/hub/activity", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const rows = await loadActivity({
+  if (
+    parsed.data.spaceId !== undefined &&
+    !(await loadSpaceById(parsed.data.spaceId, req.userId!))
+  ) {
+    res.status(404).json({ error: "Space not found" });
+    return;
+  }
+  const rows = await loadActivity(req.userId!, {
     spaceId: parsed.data.spaceId,
     limit: parsed.data.limit,
   });
   res.json(rows.map(serializeActivity));
 });
 
-router.get("/hub/controls", async (_req, res) => {
-  const controls = await loadControls();
-  res.json(serializeControls(controls));
+router.get("/hub/spaces/:spaceId/transcript", async (req, res) => {
+  const parsed = ListHubSpaceTranscriptParams.safeParse({
+    spaceId: req.params.spaceId,
+  });
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const space = await loadSpaceById(parsed.data.spaceId, req.userId!);
+  if (!space) {
+    res.status(404).json({ error: "Space not found" });
+    return;
+  }
+  const rows = await loadSpaceMessages(req.userId!, space.id, 20);
+  res.json(rows.map(serializeMessage));
+});
+
+router.get("/hub/controls", async (req, res) => {
+  const controls = await loadControls(req.userId!);
+  res.json(serializeHubControls(controls));
 });
 
 router.put("/hub/controls", async (req, res) => {
@@ -144,11 +198,11 @@ router.put("/hub/controls", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const controls = await updateControls({
+  const controls = await updateControls(req.userId!, {
     paused: parsed.data.paused,
     quietMode: parsed.data.quietMode,
   });
-  res.json(serializeControls(controls));
+  res.json(serializeHubControls(controls));
 });
 
 export default router;

@@ -29,6 +29,118 @@
       "when": 1782556311510,
       "tag": "0003_oval_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785814034532,
+      "tag": "0004_silent_gladiator",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788566094826,
+      "tag": "0005_pretty_harry_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788581774804,
+      "tag": "0006_curly_ultimatum",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788581878188,
+      "tag": "0007_pale_speed_demon",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788583053202,
+      "tag": "0008_tiny_prism",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788616170409,
+      "tag": "0009_striped_thaddeus_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788625991307,
+      "tag": "0010_old_shen",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788879589245,
+      "tag": "0011_sour_tenebrous",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789046751579,
+      "tag": "0012_many_william_stryker",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789175929621,
+      "tag": "0013_special_bloodstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789218202128,
+      "tag": "0014_spooky_clea",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1789218771623,
+      "tag": "0015_purple_cassandra_nova",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789219986675,
+      "tag": "0016_futuristic_ghost_rider",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789344394298,
+      "tag": "0017_brown_anthem",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789578365322,
+      "tag": "0018_sharp_mystique",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790190337172,
+      "tag": "0019_mixed_jubilee",
+      "breakpoints": true
     }
   ]
 }

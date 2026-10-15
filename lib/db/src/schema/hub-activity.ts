@@ -12,7 +12,15 @@ import { engramsTable } from "./engrams";
 import { hubSpacesTable } from "./hub-spaces";
 
 /** The kind of Hub event recorded in the archive. */
-export const HUB_ACTIVITY_KINDS = ["enter", "move", "rest", "wake", "system"] as const;
+export const HUB_ACTIVITY_KINDS = [
+  "enter",
+  "move",
+  "rest",
+  "wake",
+  "converse",
+  "simulate",
+  "system",
+] as const;
 export type HubActivityKind = (typeof HUB_ACTIVITY_KINDS)[number];
 
 /**

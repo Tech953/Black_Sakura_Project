@@ -1,0 +1,60 @@
+---
+name: Bundled offline LLM (desktop)
+description: How the desktop app ships a built-in llama.cpp model server for zero-setup offline mode, and the non-obvious constraints.
+---
+
+The desktop app's "bundled" LLM mode spawns a llama.cpp `llama-server` shipped in `resources/llama/` (bin/ + model.gguf) and points the embedded api-server at it via `LLM_BASE_URL` — chat/analysis/simulation run fully offline with zero setup.
+
+**Rules & gotchas:**
+- The fixed llama.cpp runtime is a separate trust boundary from any model. Release builds download a pinned archive, verify its SHA-256, re-extract the exact version, and stage only that verified runtime; never accept an arbitrary cached `llama-b*` directory.
+- **Windows release policy:** the browser-downloadable build intentionally omits the default GGUF and must remain below 300 MiB, but it still ships the small trusted llama.cpp runtime so app-managed custom GGUFs work. Both local and CI release paths must set slim mode explicitly and enforce runtime-present/model-absent plus the size ceiling.
+- Only `llama-server(.exe)` + shared libs are staged — release archives contain a dozen CLI tools that bloat size and widen macOS signing surface. llama-server must be listed in `mac.binaries` for notarization.
+- Spawn with `cwd` = the bin dir or DLL/.so resolution fails. On NixOS workspace testing, `LD_LIBRARY_PATH` must point at a gcc-lib store path for `libgomp.so.1`.
+- Lifecycle: llama startup is transactional (spawn error/early exit rejects → kill + fall back to offline settings); it must be stopped on quit AND in the auto-update install path, or a multi-GB orphan survives the update.
+- Slim builds may download the pinned default GGUF into app userData; verify the complete file before launch, keep cancellation partials resumable, and never place the managed model under installed resources.
+- Offline model download failures are user-recovery states, not just logs: preserve whether the outcome was verification, network, cancellation, or storage-related so Settings can tell the user to retry versus resume. A failed or unverified file must never activate.
+- Model load takes 1–3 min; wait on llama `/health` == ok BEFORE starting the api-server, else engine ticks log 503 "Loading model".
+- User GGUFs live in owner-only app user-data storage, never resources. Copy, fingerprint, and verify them before launch; stop the API before llama changes; persist provider/model settings only after llama and the restarted API are healthy, otherwise restore the prior runtime.
+- LAN access for the mobile app is opt-in (`allowLan` setting → HOST 0.0.0.0); llama itself always binds loopback. Mobile has a persisted AsyncStorage server-URL override (origin-only http(s), normalized), applied before splash-hide so first queries hit the right server.
+
+**Why:** bundled mode can fully emulate online mode with no setup, but embedding the 2.4 GB model makes the Windows browser download impractical; process ownership and shutdown ordering are required to prevent orphaned runtimes across updates.
+
+**Workspace quirks:** /tmp has a ~32 GB quota — stage multi-GB downloads under the workspace, not /tmp. `wget -c -O file` does NOT resume (use natural filename); electron-builder's final zip step of a ~2.7 GB app exceeds a 300 s shell window — zip `release/win-unpacked` manually instead.
+
+## Cross-platform packaging lessons
+- llama.cpp Linux releases ship soname symlink chains (`libX.so -> .so.0 -> .so.0.N`); naive recursive/dereferencing copies choke on them — resolve to the real file when staging.
+- The Windows llama runtime archive is a ZIP; cross-platform staging must use a ZIP extractor rather than GNU tar, even when the archive hash is valid.
+- When cross-packaging a Windows desktop build from Linux, EVERY platform-specific binary (llama server, ffmpeg, ffprobe) must be the Windows one, named `.exe`; a build that silently falls back to host-OS binaries ships a broken app. Fail the build if a target binary can't be sourced.
+- The packaged smoke test can validate the slim Windows downloader without a multi-GB transfer by setting a CI-only model-spec override and serving a tiny Range-capable GGUF fixture; Windows staging must use a short-lived localhost HTTPS certificate trusted only through `NODE_EXTRA_CA_CERTS`, plus a redirect, while still exercising userData placement, verification, activation, and removal.
+- The same packaged smoke can simulate an upgrade by relaunching the app against the unchanged userData directory with the CI-only custom-model bootstrap disabled; version B must see the downloaded model active before cleanup.
+- The upgrade smoke also launches an intentional CI-only failed startup between versions A and B; a later healthy launch must still verify the model, proving rollback/startup failure does not trigger cleanup of userData.
+
+**Why:** Windows is the release platform where the managed model is intentionally absent, and Linux full-model smoke cannot prove that userData-backed activation works.
+
+**How to apply:** Keep the fixture override opt-in to packaged CI smoke only; production always uses the immutable pinned model metadata.
+
+## Linux runtime dependency contract
+
+The pinned Linux llama.cpp binary is dynamically linked against host-provided `libstdc++`, OpenSSL 3, and OpenMP. Debian packages declare `libstdc++6`, `libssl3`, and `libgomp1`; AppImage users need equivalent libraries. Packaged smoke runs `ldd` before Electron launch and reports unresolved libraries instead of waiting for a code-127 child exit.
+
+**Why:** The NixOS workspace does not expose these libraries through the default loader path, while copying Nix store paths into a release would not be portable or reproducible.
+
+**How to apply:** Keep Linux dependency resolution as a release preflight contract, use `LD_LIBRARY_PATH` only for compatible local smoke hosts, and keep the Windows runtime self-contained with adjacent DLLs.
+
+Local llama startup failures must remain structured through fallback and Settings activation: preserve the failure code, platform, and missing libraries, persist it for the next Settings view, and clear it only after a healthy provider activation. The app should keep the embedded server usable with another provider instead of exiting.
+
+**Why:** A generic fallback hides the actionable reason, while persisting a failed candidate instead of the previous healthy provider can make recovery impossible.
+
+**How to apply:** Treat local-model startup errors as recoverable Settings state; show platform-specific manual guidance when automatic repair is unavailable, and keep Online/Local server activation transactional.
+
+The pinned native runtime contract is target-specific: Linux x64/ARM64 depend on distro-provided C++/OpenSSL/OpenMP libraries, while macOS x64/ARM64 bundles adjacent dylibs and ARM64 additionally requires the Metal backend. Native preflight is authoritative; cross-target staging must defer to a matching runner.
+
+**Why:** The same archive layout can be inspected on another host, but ELF dependency resolution and macOS runtime tooling are target-specific; NixOS also needs explicit compatible loader paths for Linux checks.
+
+**How to apply:** Keep `ldd`/`otool` checks in release staging and smoke validation, pass the target architecture explicitly, and document equivalent distro packages instead of treating a non-native host failure as a packaged-runtime failure.
+
+Release-matrix support must be evaluated across every bundled native resource for the exact OS/architecture pair, not just `llama-server`. The current `ffprobe-static` package has no Linux ARM64 binary, and the llama runtime checker supports Windows x64 only.
+
+**Why:** Adding an architecture based on llama.cpp support alone can leave media processing or the local-model runtime broken in the shipped app.
+
+**How to apply:** Before adding an OS/architecture row, verify ffmpeg, ffprobe, llama.cpp, package tooling, and native preflight coverage for that exact target; defer the row until all required binaries can be staged and checked.

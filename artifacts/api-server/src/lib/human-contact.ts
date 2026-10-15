@@ -30,17 +30,18 @@ export interface HumanContactOutcome {
  * the companion transmission's `wasDelivered` flag by the caller.
  */
 export async function attemptHumanContact(opts: {
+  ownerId: string;
   engram: Engram;
   capabilities: Capabilities;
   charge: number;
   content: string;
   now?: Date;
 }): Promise<HumanContactOutcome> {
-  const { engram, capabilities, charge, content } = opts;
+  const { ownerId, engram, capabilities, charge, content } = opts;
   const now = opts.now ?? new Date();
 
   const priority = classifyPriority(charge);
-  const { hour, day } = await recentHumanCounts(engram.id, now);
+  const { hour, day } = await recentHumanCounts(ownerId, engram.id, now);
   const decision = decideHumanContact({
     priority,
     capabilities,
@@ -51,7 +52,7 @@ export async function attemptHumanContact(opts: {
   });
 
   const delivered = decision.status === "delivered";
-  const message = await recordMessage({
+  const message = await recordMessage(ownerId, {
     fromEngramId: engram.id,
     toEngramId: null,
     spaceId: null,

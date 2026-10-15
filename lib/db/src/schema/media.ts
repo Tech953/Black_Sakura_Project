@@ -13,6 +13,7 @@ import { engramsTable } from "./engrams";
 import { engramWorldModelTable } from "./engram-world-model";
 import { conversations } from "./conversations";
 import { messages } from "./messages";
+import { SYSTEM_OWNER_ID } from "./accounts";
 
 /**
  * Perceptual modality of an uploaded media asset. Detected from MIME type on
@@ -63,6 +64,8 @@ export const mediaAssetsTable = pgTable(
   "media_assets",
   {
     id: serial("id").primaryKey(),
+    /** Account that owns this durable upload, including default-PYRI uploads. */
+    ownerId: text("owner_id").notNull().default(SYSTEM_OWNER_ID),
     engramId: integer("engram_id").references(() => engramsTable.id, {
       onDelete: "cascade",
     }),
@@ -100,6 +103,7 @@ export const mediaAssetsTable = pgTable(
   },
   (t) => [
     index("media_assets_engram_idx").on(t.engramId),
+    index("media_assets_owner_idx").on(t.ownerId),
     index("media_assets_status_idx").on(t.status),
     index("media_assets_conversation_idx").on(t.conversationId),
   ],

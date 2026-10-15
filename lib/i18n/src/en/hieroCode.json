@@ -1,0 +1,28 @@
+{
+  "title": "HIERO-CODE SYSTEM",
+  "subtitle": "Symbolic internal language — glyphs, meanings, compound expressions",
+  "primaryGlyphs": "Primary Glyphs — select up to 3 to build compound",
+  "selected": "Selected",
+  "compoundBuilder": "Compound Expression Builder",
+  "builderEmpty": "Select glyphs from the left to build a compound expression",
+  "expression": "Expression",
+  "interpretation": "Interpretation",
+  "clearSelection": "Clear selection",
+  "knownCompounds": "Known Compounds",
+  "emotiveLayerTitle": "EMOTIVE EXPRESSION LAYER",
+  "emotiveLayerSubtitle": "QUERTY micro-expressions — ASCII affect glyphs PYRI uses to make her felt state observable in chat",
+  "emotiveLayerBody": "Each glyph encodes eyes + mouth + optional gesture, mapped to a valence (positive / neutral / negative) and an arousal level. PYRI draws on this vocabulary to color her delivery by mode — freely in COMPANION, sparingly in INFORMATIONAL, never in SILENT.",
+  "valence": "Valence",
+  "arousal": "Arousal",
+  "filters": {
+    "all": "All",
+    "positive": "Positive",
+    "neutral": "Neutral",
+    "negative": "Negative",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High"
+  },
+  "noExpressionsMatch": "No expressions match the selected filters",
+  "arousalTooltip": "{{level}} arousal"
+}

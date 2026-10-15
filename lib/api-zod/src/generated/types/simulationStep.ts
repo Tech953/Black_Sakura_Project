@@ -10,6 +10,8 @@ export interface SimulationStep {
   id: number;
   simulationId: number;
   stepNumber: number;
+  /** @nullable */
+  speakerEngramId: number | null;
   narrative: string;
   /** @nullable */
   worldModelEntryId: number | null;

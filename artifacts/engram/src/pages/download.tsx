@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation, Trans } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { trackEvent } from "@/lib/analytics";
 import {
   Download,
   Apple,
@@ -14,15 +16,17 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-// GitHub repository (owner/repo) that hosts the releases produced by
-// .github/workflows/desktop-build.yml. Used here ONLY for the external
-// "release notes" link; the actual downloads are served same-origin by this
-// app's API (see below), so the browser never calls the GitHub API directly.
-const GITHUB_REPO =
-  (import.meta.env.VITE_GITHUB_REPO as string | undefined)?.trim() ||
-  "Tech953/Ch-IO";
-
-const RELEASES_PAGE = `https://github.com/${GITHUB_REPO}/releases`;
+// Fallback only: the API metadata response supplies its effective release
+// repository so this link cannot drift from same-origin installer resolution.
+const GITHUB_REPO_RE = /^[\w.-]+\/[\w.-]+$/;
+const configuredReleaseRepo = (
+  import.meta.env.VITE_GITHUB_REPO as string | undefined
+)?.trim();
+const RELEASE_REPO =
+  configuredReleaseRepo && GITHUB_REPO_RE.test(configuredReleaseRepo)
+    ? configuredReleaseRepo
+    : "Tech953/Ch-IO";
+const RELEASES_PAGE = `https://github.com/${RELEASE_REPO}/releases/latest`;
 
 // Same-origin download endpoints served by this app's API
 // (artifacts/api-server routes/download.ts). Each meta endpoint reports
@@ -46,8 +50,10 @@ type DesktopInstaller = {
 
 type DesktopMeta = {
   available: boolean;
-  source: "bundled" | "github" | null;
+  source: "bundled" | "storage" | "github" | null;
   version: string | null;
+  publishedAt: string | null;
+  releaseNotesUrl?: string;
   installers: DesktopInstaller[];
 };
 
@@ -57,36 +63,56 @@ type AndroidMeta = {
   version: string | null;
   filename: string | null;
   sizeBytes: number | null;
+  publishedAt: string | null;
   downloadPath: string | null;
+  releaseNotesUrl?: string;
 };
 
 type DownloadLink = {
   key: string;
   href: string;
   label: string;
+  installerType: string;
   size?: number;
 };
 
-const OS_META: Record<Os, { name: string; icon: typeof Apple; note: string }> = {
-  mac: { name: "macOS", icon: Apple, note: "Apple Silicon & Intel (.dmg)" },
-  win: {
-    name: "Windows",
-    icon: MonitorDown,
-    note: "Windows 10/11 — installer (.exe, auto-updates) or portable (.zip)",
-  },
-  linux: {
-    name: "Linux",
-    icon: TerminalIcon,
-    note: "AppImage (portable) or .deb (Debian/Ubuntu)",
-  },
+const OS_META: Record<
+  Os,
+  { nameKey: string; icon: typeof Apple; noteKey: string }
+> = {
+  mac: { nameKey: "osMacName", icon: Apple, noteKey: "osMacNote" },
+  win: { nameKey: "osWinName", icon: MonitorDown, noteKey: "osWinSlimNote" },
+  linux: { nameKey: "osLinuxName", icon: TerminalIcon, noteKey: "osLinuxNote" },
   android: {
-    name: "Android",
+    nameKey: "osAndroidName",
     icon: Smartphone,
-    note: "Android 8+ — sideload the .apk (enable unknown sources)",
+    noteKey: "osAndroidNote",
   },
 };
 
 const OS_ORDER: Os[] = ["mac", "win", "linux", "android"];
+
+const INSTALL_GUIDE_META: Record<
+  Os,
+  { installKey: string; requirementsKey: string }
+> = {
+  mac: {
+    installKey: "installMac",
+    requirementsKey: "requirementsMac",
+  },
+  win: {
+    installKey: "installWin",
+    requirementsKey: "requirementsWin",
+  },
+  linux: {
+    installKey: "installLinux",
+    requirementsKey: "requirementsLinux",
+  },
+  android: {
+    installKey: "installAndroid",
+    requirementsKey: "requirementsAndroid",
+  },
+};
 
 function detectOs(): Os | null {
   if (typeof navigator === "undefined") return null;
@@ -106,6 +132,15 @@ function formatSize(bytes?: number | null): string {
   return `${mb.toFixed(mb >= 100 ? 0 : 1)} MB`;
 }
 
+function formatReleaseDate(date: string | null | undefined): string | null {
+  if (!date) return null;
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+    parsed,
+  );
+}
+
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`${url} responded ${res.status}`);
@@ -113,6 +148,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export default function DownloadPage() {
+  const { t } = useTranslation("download");
   const detectedOs = useMemo(detectOs, []);
 
   // Desktop installers (mac/win/linux) — same-origin meta from this app's API.
@@ -132,13 +168,18 @@ export default function DownloadPage() {
   });
 
   const desktopByOs = useMemo(() => {
-    const map: Record<DesktopOs, DownloadLink[]> = { mac: [], win: [], linux: [] };
+    const map: Record<DesktopOs, DownloadLink[]> = {
+      mac: [],
+      win: [],
+      linux: [],
+    };
     for (const inst of desktopQuery.data?.installers ?? []) {
       if (!map[inst.os]) continue;
       map[inst.os].push({
         key: inst.filename,
         href: inst.downloadPath,
-        label: `Download ${inst.ext}`,
+        label: t("downloadExt", { ext: inst.ext }),
+        installerType: inst.ext.replace(/^\./, "").toLowerCase(),
         size: inst.sizeBytes,
       });
     }
@@ -147,7 +188,7 @@ export default function DownloadPage() {
       map[os].sort((a, b) => a.label.localeCompare(b.label));
     }
     return map;
-  }, [desktopQuery.data]);
+  }, [desktopQuery.data, t]);
 
   const android = androidQuery.data;
   const androidLinks: DownloadLink[] = useMemo(() => {
@@ -156,11 +197,12 @@ export default function DownloadPage() {
       {
         key: android.filename ?? "engram.apk",
         href: android.downloadPath ?? ANDROID_APK_URL,
-        label: "Install APK",
+        label: t("installApk"),
+        installerType: "apk",
         size: android.sizeBytes ?? undefined,
       },
     ];
-  }, [android]);
+  }, [android, t]);
 
   const linksByOs: Record<Os, DownloadLink[]> = {
     mac: desktopByOs.mac,
@@ -174,6 +216,13 @@ export default function DownloadPage() {
   const isError = desktopQuery.isError && androidQuery.isError;
 
   const version = desktopQuery.data?.version ?? android?.version ?? null;
+  const publishedAt =
+    desktopQuery.data?.publishedAt ?? android?.publishedAt ?? null;
+  const releaseNotesPage =
+    desktopQuery.data?.releaseNotesUrl ??
+    android?.releaseNotesUrl ??
+    RELEASES_PAGE;
+  const releaseDate = formatReleaseDate(publishedAt);
 
   const orderedOs = useMemo(
     () =>
@@ -190,20 +239,28 @@ export default function DownloadPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-widest text-primary">
-            DOWNLOAD PYRI
+            {t("title")}
           </h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            Native desktop app (runs fully offline) — every installer served
-            straight from this app
+            {t("subtitleSlim")}
           </p>
         </div>
         <div className="flex items-center gap-3 font-mono text-xs">
           {isLoading ? (
             <Skeleton className="h-6 w-28 bg-primary/10" />
-          ) : version ? (
-            <span className="px-3 py-1.5 border border-primary/30 text-primary uppercase tracking-widest bg-primary/5">
-              Latest&nbsp;v{version}
-            </span>
+          ) : version || releaseDate ? (
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {version ? (
+                <span className="px-3 py-1.5 border border-primary/30 text-primary uppercase tracking-widest bg-primary/5">
+                  {t("latestVersion", { version })}
+                </span>
+              ) : null}
+              {releaseDate ? (
+                <span className="text-muted-foreground">
+                  {t("publishedOn", { date: releaseDate })}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -214,11 +271,9 @@ export default function DownloadPage() {
           <RefreshCw className="w-4 h-4 text-primary mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground">
             <span className="text-foreground font-medium">
-              Install once — the desktop app keeps itself current.
+              {t("autoUpdateHeadline")}
             </span>{" "}
-            On every launch it checks for a newer release and updates silently in
-            the background when online. The Android APK is sideloaded — grab the
-            newest build here whenever you want to update.
+            {t("autoUpdateBody")}
           </p>
         </CardContent>
       </Card>
@@ -251,16 +306,16 @@ export default function DownloadPage() {
                 <CardHeader className="pb-3">
                   <CardTitle className="font-display tracking-widest text-sm text-primary/90 flex items-center gap-2">
                     <Icon className="w-5 h-5" />
-                    {meta.name}
+                    {t(meta.nameKey)}
                     {isRecommended && (
                       <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-primary font-mono uppercase tracking-widest">
                         <CheckCircle2 className="w-3 h-3" />{" "}
-                        {os === "android" ? "Your device" : "Your OS"}
+                        {os === "android" ? t("yourDevice") : t("yourOs")}
                       </span>
                     )}
                   </CardTitle>
                   <p className="text-xs font-mono text-muted-foreground">
-                    {meta.note}
+                    {t(meta.noteKey)}
                   </p>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-2 mt-auto">
@@ -269,6 +324,13 @@ export default function DownloadPage() {
                       key={link.key}
                       href={link.href}
                       download={link.key}
+                      onClick={() =>
+                        trackEvent("installer_clicked", {
+                          location: "download_page",
+                          os,
+                          installer_type: link.installerType,
+                        })
+                      }
                       className={`flex items-center gap-2 px-3 py-2.5 font-mono text-xs uppercase tracking-wider transition-colors border ${
                         isRecommended
                           ? "border-primary/50 text-primary bg-primary/10 hover:bg-primary/20"
@@ -305,43 +367,95 @@ export default function DownloadPage() {
             />
             {isError ? (
               <p className="text-sm text-muted-foreground max-w-md">
-                Couldn't reach the download service right now. You can browse all
-                installers directly on the GitHub Releases page.
+                {t("errorReach")}
               </p>
             ) : (
               <p className="text-sm text-muted-foreground max-w-lg">
-                No installers are published yet. Installers
-                (.dmg/.exe/.AppImage/.deb/.apk) have to be built on their target
-                OS — this app can't build them itself. Once a build is committed
-                to the deploy's <code className="text-primary/80">downloads/</code>{" "}
-                folder or attached to a GitHub Release, it appears here
-                automatically and stays up to date.
+                <Trans
+                  t={t}
+                  i18nKey="noInstallers"
+                  components={[<code className="text-primary/80" />]}
+                />
               </p>
             )}
             <a
-              href={RELEASES_PAGE}
+              href={releaseNotesPage}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 border border-primary/40 text-primary font-mono text-xs uppercase tracking-widest hover:bg-primary/10 transition-colors"
             >
-              <ExternalLink className="w-4 h-4" /> Open Releases
+              <ExternalLink className="w-4 h-4" /> {t("openReleases")}
             </a>
           </CardContent>
         </Card>
       )}
 
+      <Card className="bg-card/40 border-primary/20 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-display tracking-widest text-sm text-primary/90">
+            {t("installGuideTitle")}
+          </CardTitle>
+          <p className="text-xs font-mono text-muted-foreground">
+            {t("installGuideIntro")}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {orderedOs.map((os) => {
+            const meta = OS_META[os];
+            const guide = INSTALL_GUIDE_META[os];
+            const Icon = meta.icon;
+            const isRecommended = os === detectedOs;
+            return (
+              <details
+                key={os}
+                className="group border border-border/50 bg-background/20"
+              >
+                <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-mono text-foreground hover:bg-white/5 [&::-webkit-details-marker]:hidden">
+                  <Icon className="h-4 w-4 shrink-0 text-primary" />
+                  <span>{t(meta.nameKey)}</span>
+                  {isRecommended && (
+                    <span className="ml-auto text-[10px] uppercase tracking-widest text-primary">
+                      {os === "android" ? t("yourDevice") : t("yourOs")}
+                    </span>
+                  )}
+                  <span
+                    aria-hidden="true"
+                    className="ml-auto text-lg leading-none text-primary/70 transition-transform group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <div className="grid gap-3 border-t border-border/40 px-4 py-3 text-sm leading-relaxed text-muted-foreground lg:grid-cols-2">
+                  <p>
+                    <strong className="mr-1 text-foreground">
+                      {t("howToInstall")}:
+                    </strong>
+                    {t(guide.installKey)}
+                  </p>
+                  <p>
+                    <strong className="mr-1 text-foreground">
+                      {t("systemRequirements")}:
+                    </strong>
+                    {t(guide.requirementsKey)}
+                  </p>
+                </div>
+              </details>
+            );
+          })}
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-between flex-wrap gap-3 pt-2 border-t border-border/40">
         <p className="text-xs font-mono text-muted-foreground/70">
-          Every installer is served directly by this app — bundled if present,
-          otherwise proxied from the latest release.
+          {t("servedNote")}
         </p>
         <a
-          href={RELEASES_PAGE}
+          href={releaseNotesPage}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-2 text-xs font-mono text-primary/80 hover:text-primary uppercase tracking-widest transition-colors"
         >
-          All versions & release notes <ExternalLink className="w-3.5 h-3.5" />
+          {t("allVersions")} <ExternalLink className="w-3.5 h-3.5" />
         </a>
       </div>
     </div>

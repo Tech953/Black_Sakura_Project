@@ -3,35 +3,177 @@ name: Desktop & Android builds
 # Builds the ENGRAM desktop app (Electron) on each native OS so the produced
 # installers match their platform:
 #   - ubuntu-latest  -> .AppImage + .deb
-#   - macos-latest   -> .dmg
+#   - macos-13       -> Intel .dmg
+#   - macos-14       -> Apple Silicon .dmg
 #   - windows-latest -> .exe (NSIS)
 # and builds the ENGRAM mobile app (Expo) into an installable Android .apk on
 # ubuntu (the `android` job below). All artifacts publish to the SAME GitHub
 # Release for a tag, so the Download page (driven by /releases/latest) lists the
 # desktop installers and the APK side by side.
 #
-# Code signing / notarization are opt-in: set the documented repository secrets
-# and electron-builder picks them up automatically. With no secrets set, each
-# OS still produces a working (unsigned) installer. The Android APK is
-# debug-signed when no release keystore is configured — installable via sideload
-# with no Expo account (see the android job for the in-place-update caveat).
+# Native signing/notarization credentials are mandatory for tag releases.
+# Manual workflow builds may remain unsigned for engineering validation. The
+# Android APK requires the private release keystore for every build, including
+# manual artifact-only runs; missing secrets fail the job rather than producing
+# a debug-signed APK.
 
 on:
   workflow_dispatch: {}
   push:
+    branches:
+      - "**"
     tags:
       - "v*"
+    paths:
+      - ".github/workflows/desktop-build.yml"
+      - "artifacts/desktop/**"
+      - "artifacts/api-server/**"
+      - "artifacts/engram/**"
+      - "lib/db/**"
+  pull_request:
+    paths:
+      - ".github/workflows/desktop-build.yml"
+      - "artifacts/desktop/**"
+      - "artifacts/api-server/**"
+      - "artifacts/engram/**"
+      - "lib/db/**"
 
 concurrency:
   group: desktop-build-${{ github.ref }}
-  cancel-in-progress: true
+  # Keep same-tag builds serialized because electron-builder selects drafts by
+  # tag. The owner marker below separately prevents cleanup from deleting a
+  # draft belonging to another workflow attempt.
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 jobs:
+  validate_workflow_guards:
+    name: Validate desktop workflow guards
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: false
+
+      # Newer actionlint releases reject the existing macos-13 matrix labels.
+      # Upgrade this pin together with the runner migration.
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+
+      - name: Validate workflow YAML and expressions
+        run: |
+          "$(go env GOPATH)/bin/actionlint" .github/workflows/desktop-build.yml
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check release trigger guards
+        env:
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
+        run: |
+          pnpm --filter @workspace/desktop exec vitest run scripts/desktop-build-concurrency.test.mjs
+          node --test scripts/validate-release-repository.test.mjs
+
+      - name: Validate release repository ownership
+        env:
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
+          RELEASE_SOURCE_REPO: ${{ github.repository }}
+          RELEASE_EVENT_NAME: ${{ github.event_name }}
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+        run: node scripts/validate-release-repository.mjs
+
+  # Create a draft once, before the native matrix begins. electron-builder's
+  # GitHub publisher reuses drafts by tag, so refusing a draft owned by another
+  # attempt prevents a retry from uploading into that attempt's release.
+  prepare-draft:
+    name: Prepare owned draft release
+    needs: validate_workflow_guards
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.prepare.outputs.release_id }}
+    steps:
+      - name: Create or confirm attempt-owned draft
+        id: prepare
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          TARGET_COMMITISH: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
+          RELEASES_JSON="$(gh api "repos/$REPO/releases?per_page=100" --paginate)"
+          SAME_TAG_RELEASES="$(printf '%s\n' "$RELEASES_JSON" | jq -s --arg tag "$TAG" '[.[][] | select(.tag_name == $tag)]')"
+          DRAFT_COUNT="$(jq -r '[.[] | select(.draft == true)] | length' <<< "$SAME_TAG_RELEASES")"
+          PUBLISHED_COUNT="$(jq -r '[.[] | select(.draft != true)] | length' <<< "$SAME_TAG_RELEASES")"
+
+          if [ "$PUBLISHED_COUNT" -gt 0 ]; then
+            echo "Refusing to prepare '$TAG': a published release already uses this tag." >&2
+            exit 1
+          fi
+
+          if [ "$DRAFT_COUNT" -gt 0 ]; then
+            OWNED_IDS="$(jq -r --arg owner "$OWNER_MARKER" '[.[] | select(.draft == true and ((.body // "") | contains($owner))) | .id] | .[]' <<< "$SAME_TAG_RELEASES")"
+            if [ "$DRAFT_COUNT" -ne 1 ] || [ -z "$OWNED_IDS" ]; then
+              EXISTING_IDS="$(jq -r '[.[] | select(.draft == true) | .id] | join(", ")' <<< "$SAME_TAG_RELEASES")"
+              echo "Refusing to reuse same-tag draft(s) $EXISTING_IDS; they are not uniquely owned by workflow attempt $OWNER_ID." >&2
+              exit 1
+            fi
+            RELEASE_ID="$OWNED_IDS"
+            echo "Reusing attempt-owned draft release $RELEASE_ID for '$TAG'."
+          else
+            echo "Creating attempt-owned draft release for '$TAG' (attempt $OWNER_ID)."
+            CREATED_RELEASE="$(gh api -X POST "repos/$REPO/releases" \
+              -f tag_name="$TAG" \
+              -f target_commitish="$TARGET_COMMITISH" \
+              -f name="$TAG" \
+              -f body="$OWNER_MARKER" \
+              -F draft=true \
+              -F prerelease=false)"
+            if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+              '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+              <<< "$CREATED_RELEASE" >/dev/null; then
+              echo "GitHub did not create an attempt-owned draft for '$TAG'." >&2
+              exit 1
+            fi
+            RELEASE_ID="$(jq -er '.id' <<< "$CREATED_RELEASE")"
+          fi
+
+          printf 'release_id=%s\n' "$RELEASE_ID" >> "$GITHUB_OUTPUT"
+
+  # Release packaging remains a full native matrix. Ordinary branch/PR changes
+  # use the Linux-only pre-release-smoke job below instead.
   build:
-    name: ${{ matrix.platform }}
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
+    needs: [prepare-draft, validate_workflow_guards]
+    if: >-
+      always() &&
+      !cancelled() &&
+      needs.validate_workflow_guards.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.ref_type == 'tag' &&
+        needs.prepare-draft.result == 'success'))
     runs-on: ${{ matrix.os }}
-    # Required so electron-builder's GitHub publisher can create the Release and
-    # upload installers + update manifests using the default GITHUB_TOKEN.
+    # Required so electron-builder's GitHub publisher can upload installers and
+    # update manifests into the prepared draft with the default GITHUB_TOKEN.
     permissions:
       contents: write
     strategy:
@@ -40,10 +182,16 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
-          - os: macos-latest
+            arch: x64
+          - os: macos-14
             platform: mac
+            arch: arm64
+          - os: macos-13
+            platform: mac
+            arch: x64
           - os: windows-latest
             platform: win
+            arch: x64
 
     steps:
       - uses: actions/checkout@v4
@@ -62,12 +210,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify localized locale key trees
+        if: matrix.platform == 'linux'
+        run: pnpm --filter @workspace/scripts run check:locales
+
       # On a tag push (v1.2.3) set the desktop package version to match the tag,
       # so the published release + update manifest carry the right version and
       # installed apps can tell a newer release apart. Non-tag (manual) runs keep
       # the package.json version as-is.
       - name: Sync desktop version from tag
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -76,28 +228,99 @@ jobs:
         env:
           VERSION: ${{ github.ref_name }}
 
+      - name: Check OpenAPI-generated artifacts are current
+        if: matrix.platform == 'linux'
+        run: pnpm --filter @workspace/api-server run check:openapi
+
       - name: Generate API client + Zod (codegen)
         run: pnpm --filter @workspace/api-spec run codegen
 
       - name: Build shared libraries
         run: pnpm run typecheck:libs
 
+      - name: Run desktop unit tests
+        run: pnpm --filter @workspace/desktop run test
+
+      - name: Run desktop Settings browser regression
+        if: matrix.platform == 'linux'
+        run: pnpm --filter @workspace/desktop run test:settings-browser
+
+      - name: Typecheck desktop
+        run: pnpm --filter @workspace/desktop run typecheck
+
       - name: Build API server bundle
         run: pnpm --filter @workspace/api-server run build
+
+      - name: Validate configured desktop release link
+        if: matrix.platform == 'linux' && (github.repository == 'Tech953/Ch-IO' || vars.VITE_GITHUB_REPO != '')
+        env:
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
+        run: pnpm run validate:release-links
 
       - name: Build web dashboard
         env:
           PORT: "5000"
           BASE_PATH: "/"
           NODE_ENV: "production"
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
         run: pnpm --filter @workspace/engram run build
 
+      - name: Install Chromium for web validation
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium
+
+      - name: Verify DEV browser fixture is absent from production web bundle
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if rg -n 'browser-test-user|browser-test-session' artifacts/engram/dist/public; then
+            echo "The DEV-only browser fixture was included in the production web bundle." >&2
+            exit 1
+          fi
+
+      - name: Run web archive/export browser validation
+        if: matrix.platform == 'linux'
+        run: pnpm run test:web
+
       - name: Build desktop main + stage resources
+        env:
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
+          # Keep Windows installers browser-downloadable. The app remains
+          # offline-capable through Ollama/LM Studio/local OpenAI-compatible
+          # servers; Linux/macOS retain the optional bundled-model behavior.
+          DESKTOP_BUNDLE_LLM: ${{ matrix.platform == 'win' && '0' || '1' }}
+          DESKTOP_REQUIRE_LLAMA_RUNTIME: "1"
+          LLAMA_ARCH: ${{ matrix.arch }}
         run: pnpm --filter @workspace/desktop run build
+
+      - name: Require native release signing credentials
+        if: github.event_name == 'push' && github.ref_type == 'tag' && matrix.platform != 'linux'
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.platform }}" = "win" ]; then
+            required=(WIN_CSC_LINK WIN_CSC_KEY_PASSWORD)
+          else
+            required=(CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID)
+          fi
+          for name in "${required[@]}"; do
+            test -n "${!name:-}" || { echo "Missing required native release credential: $name" >&2; exit 1; }
+          done
 
       - name: Package installer (${{ matrix.platform }})
         env:
-          # macOS signing + notarization (optional)
+          # macOS signing + notarization (required on tag releases)
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           # When no Developer ID cert is supplied, disable keychain identity
@@ -108,7 +331,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows signing (optional)
+          # Windows signing (required on tag releases)
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
           # Avoids GitHub API rate limits when electron-builder fetches tooling
@@ -126,7 +349,370 @@ jobs:
         #   - manual run (workflow_dispatch) -> `--publish never`: only the
         #     workflow-artifact upload below runs, so manual builds never create
         #     an accidental Release.
-        run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --publish ${{ github.ref_type == 'tag' && 'always' || 'never' }}
+        run: pnpm --filter @workspace/desktop exec electron-builder --${{ matrix.platform }} --${{ matrix.arch }} --publish ${{ github.event_name == 'push' && github.ref_type == 'tag' && 'always' || 'never' }}
+
+      - name: Verify packaged video tools (Linux/macOS)
+        if: matrix.platform != 'win'
+        shell: bash
+        env:
+          DESKTOP_PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          if [ "$DESKTOP_PLATFORM" = "linux" ]; then
+            BIN_DIR="artifacts/desktop/release/linux-unpacked/resources/bin"
+          else
+            APP="$(find artifacts/desktop/release -type d -name ENGRAM.app -print -quit)"
+            test -n "$APP" || { echo "No packaged ENGRAM.app found for media-tool verification." >&2; exit 1; }
+            BIN_DIR="$APP/Contents/Resources/bin"
+          fi
+
+          for tool in ffmpeg ffprobe; do
+            FILE="$BIN_DIR/$tool"
+            test -s "$FILE" || {
+              echo "Packaged video tool is missing or empty: $FILE" >&2
+              exit 1
+            }
+            "$FILE" -version >/dev/null 2>&1 || {
+              echo "Packaged video tool failed to start: $FILE" >&2
+              exit 1
+            }
+            echo "Verified packaged video tool: $FILE"
+          done
+
+      - name: Verify packaged video tools (Windows)
+        if: matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $binDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\desktop\release\win-unpacked\resources\bin"
+          foreach ($name in @("ffmpeg.exe", "ffprobe.exe")) {
+            $file = Join-Path $binDir $name
+            if (-not (Test-Path $file -PathType Leaf)) {
+              throw "Packaged video tool is missing: $file"
+            }
+            if ((Get-Item $file).Length -eq 0) {
+              throw "Packaged video tool is missing or empty: $file"
+            }
+            $version = (& $file -version 2>&1 | Out-String).Trim()
+            if ($LASTEXITCODE -ne 0 -or -not $version) {
+              throw "Packaged video tool failed to start: $file"
+            }
+            Write-Host "Verified packaged video tool: $file"
+          }
+
+      - name: Verify Windows HTTPS smoke certificate tool
+        if: matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $candidates = @()
+          $pathOpenSsl = Get-Command openssl.exe -ErrorAction SilentlyContinue
+          if ($null -ne $pathOpenSsl) {
+            $candidates += $pathOpenSsl.Source
+          }
+          if ($env:OPENSSL_BIN) {
+            $candidates += $env:OPENSSL_BIN
+          }
+          foreach ($root in @($env:ProgramW6432, $env:ProgramFiles)) {
+            if ($root) {
+              $candidates += (Join-Path $root "OpenSSL-Win64\bin\openssl.exe")
+              $candidates += (Join-Path $root "Git\usr\bin\openssl.exe")
+              $candidates += (Join-Path $root "Git\mingw64\bin\openssl.exe")
+            }
+          }
+          if ($env:OPENSSL_HOME) {
+            $candidates += (Join-Path $env:OPENSSL_HOME "bin\openssl.exe")
+          }
+          if ($env:LOCALAPPDATA) {
+            $candidates += (Join-Path $env:LOCALAPPDATA "Programs\Git\usr\bin\openssl.exe")
+          }
+          if ($env:ChocolateyInstall) {
+            $candidates += (Join-Path $env:ChocolateyInstall "bin\openssl.exe")
+          }
+
+          foreach ($candidate in ($candidates | Where-Object { $_ } | Select-Object -Unique)) {
+            if (-not (Test-Path $candidate -PathType Leaf)) {
+              continue
+            }
+            try {
+              $version = (& $candidate version 2>&1 | Out-String).Trim()
+              if ($LASTEXITCODE -eq 0 -and $version) {
+                Write-Host "Windows HTTPS smoke OpenSSL: $version ($candidate)"
+                "OPENSSL_BIN=$candidate" >> $env:GITHUB_ENV
+                exit 0
+              }
+            } catch {
+              # Try the next known runner location.
+            }
+          }
+
+          throw "OpenSSL is required for the Windows HTTPS smoke fixture but was not found. Install OpenSSL on the runner, or set OPENSSL_BIN to a working openssl.exe path; TLS verification must remain enabled."
+
+      - name: Verify Windows Authenticode signatures
+        if: github.event_name == 'push' && github.ref_type == 'tag' && matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $videoTools = @(
+            "artifacts/desktop/release/win-unpacked/resources/bin/ffmpeg.exe",
+            "artifacts/desktop/release/win-unpacked/resources/bin/ffprobe.exe"
+          )
+          foreach ($file in $videoTools) {
+            if (-not (Test-Path $file -PathType Leaf)) {
+              throw "Expected bundled video tool is missing: $file"
+            }
+            $signature = Get-AuthenticodeSignature (Resolve-Path $file).Path
+            if ($signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
+              throw "Bundled video tool Authenticode verification failed for $file`: $($signature.Status)"
+            }
+            if ($null -eq $signature.TimeStamperCertificate) {
+              throw "Bundled video tool is missing an Authenticode timestamp signer certificate: $file"
+            }
+            Write-Host "Verified bundled video tool: $file ($($signature.SignerCertificate.Subject)); timestamp signer: $($signature.TimeStamperCertificate.Subject)"
+          }
+
+          $files = Get-ChildItem artifacts/desktop/release -Recurse -File -Filter *.exe
+          if ($files.Count -eq 0) { throw "No Windows executables found to verify." }
+          foreach ($file in $files) {
+            $signature = Get-AuthenticodeSignature $file.FullName
+            if ($signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
+              throw "Authenticode verification failed for $($file.FullName): $($signature.Status)"
+            }
+            Write-Host "Verified Authenticode: $($file.Name) ($($signature.SignerCertificate.Subject))"
+          }
+
+      - name: Verify installed NSIS video tool signatures
+        if: github.event_name == 'push' && github.ref_type == 'tag' && matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $installerPath = $null
+          $installDir = Join-Path $env:RUNNER_TEMP ("engram-nsis-install-" + [guid]::NewGuid().ToString("N"))
+          try {
+            $installer = Get-ChildItem -LiteralPath "artifacts/desktop/release" -File -Filter "*.exe" |
+              Where-Object { $_.Name -notmatch "uninstaller" } |
+              Select-Object -First 1
+            if ($null -eq $installer) {
+              throw "No top-level NSIS installer was produced in artifacts/desktop/release."
+            }
+            $installerPath = $installer.FullName
+            New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+
+            Write-Host "Installing NSIS package $installerPath into $installDir"
+            $process = Start-Process `
+              -FilePath $installerPath `
+              -ArgumentList @("/S", "/D=$installDir") `
+              -Wait `
+              -PassThru
+            if ($process.ExitCode -ne 0) {
+              throw "NSIS installer exited with code $($process.ExitCode)."
+            }
+
+            $installedTools = @(
+              (Join-Path $installDir "resources\bin\ffmpeg.exe"),
+              (Join-Path $installDir "resources\bin\ffprobe.exe")
+            )
+            foreach ($file in $installedTools) {
+              if (-not (Test-Path $file -PathType Leaf)) {
+                throw "Installed video tool is missing: $file"
+              }
+              $signature = Get-AuthenticodeSignature (Resolve-Path $file).Path
+              if ($signature.Status -ne 'Valid' -or $null -eq $signature.SignerCertificate) {
+                throw "Installed video tool Authenticode verification failed for $file`: $($signature.Status)"
+              }
+              if ($null -eq $signature.TimeStamperCertificate) {
+                throw "Installed video tool is missing an Authenticode timestamp signer certificate: $file"
+              }
+              Write-Host "Verified installed video tool: $file ($($signature.SignerCertificate.Subject)); timestamp signer: $($signature.TimeStamperCertificate.Subject)"
+            }
+          } catch {
+            $reportedInstaller = if ($installerPath) { $installerPath } else { "<not found>" }
+            throw "NSIS installed video-tool verification failed (installer: $reportedInstaller): $($_.Exception.Message)"
+          } finally {
+            Get-Process -Name "engram" -ErrorAction SilentlyContinue |
+              Stop-Process -Force -ErrorAction SilentlyContinue
+            if (Test-Path $installDir) {
+              Remove-Item -LiteralPath $installDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+      - name: Verify macOS signature and notarization
+        if: matrix.platform == 'mac'
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          APP="$(find artifacts/desktop/release -type d -name ENGRAM.app -print -quit)"
+          test -n "$APP" || { echo "macOS packaging failure: no packaged ENGRAM.app found" >&2; exit 1; }
+          EXPECTED_ARCH="${{ matrix.arch }}"
+          EXPECTED_MACH_ARCH="$([ "$EXPECTED_ARCH" = "x64" ] && echo "x86_64" || echo "$EXPECTED_ARCH")"
+          ACTUAL_ARCHS="$(lipo -archs "$APP/Contents/MacOS/engram" 2>&1)" || {
+            echo "macOS packaging failure: could not inspect app architecture for $APP: $ACTUAL_ARCHS" >&2
+            exit 1
+          }
+          printf 'macOS packaged app architectures: %s (expected %s)\n' "$ACTUAL_ARCHS" "$EXPECTED_MACH_ARCH"
+          printf '%s\n' "$ACTUAL_ARCHS" | tr ' ' '\n' | grep -Fxq "$EXPECTED_MACH_ARCH" || {
+            echo "macOS packaging failure: expected $EXPECTED_MACH_ARCH app, found $ACTUAL_ARCHS." >&2
+            exit 1
+          }
+          if [ -z "${CSC_LINK:-}" ]; then
+            echo "No macOS signing certificate configured; skipping signature verification for this unsigned build."
+            exit 0
+          fi
+
+          DMG="$(find artifacts/desktop/release -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          test -n "$APP" || { echo "No packaged ENGRAM.app found" >&2; exit 1; }
+          test -n "$DMG" || { echo "No DMG found for notarization validation" >&2; exit 1; }
+
+          echo "Verifying the signed ENGRAM app bundle..."
+          codesign --verify --deep --strict --verbose=2 "$APP" || {
+            echo "macOS signing failure: app signature verification failed for $APP." >&2
+            exit 1
+          }
+          APP_DETAILS="$(codesign -dv --verbose=4 "$APP" 2>&1)"
+          printf '%s\n' "$APP_DETAILS"
+          APP_SIGNING_IDENTITY="$(printf '%s\n' "$APP_DETAILS" | sed -n 's/^Authority=//p' | head -n1)"
+          ACTUAL_APPLE_TEAM_ID="$(printf '%s\n' "$APP_DETAILS" | sed -n 's/^TeamIdentifier=//p' | head -n1)"
+          if [ -n "${APPLE_TEAM_ID:-}" ]; then
+            if [ -z "$APP_SIGNING_IDENTITY" ] || [ -z "$ACTUAL_APPLE_TEAM_ID" ]; then
+              echo "Could not read the macOS app signing identity or Apple team ID." >&2
+              exit 1
+            fi
+            if [ "$ACTUAL_APPLE_TEAM_ID" != "$APPLE_TEAM_ID" ]; then
+              echo "macOS app signing identity '$APP_SIGNING_IDENTITY' uses Apple team '$ACTUAL_APPLE_TEAM_ID', expected '$APPLE_TEAM_ID'." >&2
+              exit 1
+            fi
+            echo "Verified macOS app signing identity '$APP_SIGNING_IDENTITY' for Apple team '$APPLE_TEAM_ID'."
+          else
+            echo "APPLE_TEAM_ID is not configured; skipping expected Apple team identity verification."
+          fi
+
+          BUNDLED_BINARIES=(
+            "$APP/Contents/Resources/bin/ffmpeg"
+            "$APP/Contents/Resources/bin/ffprobe"
+          )
+          LLAMA_SERVER="$APP/Contents/Resources/llama/bin/llama-server"
+          if [ -f "$LLAMA_SERVER" ]; then
+            BUNDLED_BINARIES+=("$LLAMA_SERVER")
+          fi
+
+          for BINARY in "${BUNDLED_BINARIES[@]}"; do
+            test -f "$BINARY" || {
+              echo "Expected signed bundled binary is missing: $BINARY" >&2
+              exit 1
+            }
+            codesign --verify --strict --verbose=2 "$BINARY" || {
+              echo "macOS signing failure: nested executable signature verification failed for $BINARY." >&2
+              exit 1
+            }
+            DETAILS="$(codesign -dv --verbose=4 "$BINARY" 2>&1)"
+            printf '%s\n' "$DETAILS"
+            printf '%s\n' "$DETAILS" | grep -Eq 'flags=.*\(runtime\)' || {
+              echo "Hardened runtime flag is missing from $BINARY" >&2
+              exit 1
+            }
+            BINARY_SIGNING_IDENTITY="$(printf '%s\n' "$DETAILS" | sed -n 's/^Authority=//p' | head -n1)"
+            BINARY_APPLE_TEAM_ID="$(printf '%s\n' "$DETAILS" | sed -n 's/^TeamIdentifier=//p' | head -n1)"
+            if [ -z "$BINARY_SIGNING_IDENTITY" ] || [ -z "$BINARY_APPLE_TEAM_ID" ]; then
+              echo "Could not read the signing identity or Apple team ID for $BINARY." >&2
+              exit 1
+            fi
+            if [ "$BINARY_SIGNING_IDENTITY" != "$APP_SIGNING_IDENTITY" ] ||
+              [ "$BINARY_APPLE_TEAM_ID" != "$ACTUAL_APPLE_TEAM_ID" ]; then
+              echo "Nested executable '$BINARY' uses signer '$BINARY_SIGNING_IDENTITY' / Apple team '$BINARY_APPLE_TEAM_ID'; expected app signer '$APP_SIGNING_IDENTITY' / Apple team '$ACTUAL_APPLE_TEAM_ID'." >&2
+              exit 1
+            fi
+            echo "Verified bundled executable '$BINARY' uses the app signing identity."
+          done
+
+          APPLE_CREDENTIAL_COUNT=0
+          for name in APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            [ -n "${!name:-}" ] && APPLE_CREDENTIAL_COUNT=$((APPLE_CREDENTIAL_COUNT + 1))
+          done
+          if [ "$APPLE_CREDENTIAL_COUNT" -ne 0 ] &&
+            [ "$APPLE_CREDENTIAL_COUNT" -ne 3 ]; then
+            echo "Incomplete Apple notarization credentials; expected all three or none." >&2
+            exit 1
+          fi
+
+          if [ "$APPLE_CREDENTIAL_COUNT" -eq 3 ]; then
+            echo "Verifying Gatekeeper assessment and notarization staples..."
+            spctl --assess --type execute --verbose=4 "$APP"
+            xcrun stapler validate "$APP"
+            xcrun stapler validate "$DMG"
+          else
+            echo "Apple notarization credentials are not configured; skipping stapler verification."
+          fi
+
+      - name: Enforce slim Windows download size
+        if: matrix.platform == 'win'
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require("fs");
+          const path = require("path");
+          const releaseDir = "artifacts/desktop/release";
+          const limit = 300 * 1024 * 1024;
+          const zips = fs.readdirSync(releaseDir).filter((name) => name.endsWith(".zip"));
+          if (zips.length === 0) throw new Error("No Windows portable zip was produced");
+          for (const name of zips) {
+            const file = path.join(releaseDir, name);
+            const bytes = fs.statSync(file).size;
+            console.log(`${name}: ${bytes} bytes`);
+            if (bytes >= limit) {
+              throw new Error(`${name} exceeds the 300 MiB slim-release limit`);
+            }
+          }
+          NODE
+
+      - name: Verify Windows portable ZIP completeness
+        id: windows_zip_check
+        if: matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $releaseDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\desktop\release"
+          $zip = Get-ChildItem -LiteralPath $releaseDir -File -Filter "*.zip" |
+            Select-Object -First 1
+          if ($null -eq $zip) {
+            throw "No Windows portable ZIP was produced in $releaseDir."
+          }
+
+          $extractDir = Join-Path $env:RUNNER_TEMP ("engram-windows-zip-" + [guid]::NewGuid().ToString("N"))
+          $diagnosticsDir = Join-Path $env:GITHUB_WORKSPACE "artifacts\desktop\.ci-smoke\diagnostics"
+          $diagnosticsPath = Join-Path $diagnosticsDir "windows-zip-check.json"
+          New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
+          New-Item -ItemType Directory -Path $diagnosticsDir -Force | Out-Null
+          $zipSha256 = (Get-FileHash -LiteralPath $zip.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          @{
+            ok = $false
+            stage = "zip-extraction"
+            zipPath = $zip.FullName
+            zipSha256 = $zipSha256
+          } | ConvertTo-Json | Set-Content -LiteralPath $diagnosticsPath
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath $extractDir -Force
+
+          Write-Host "Extracted Windows portable ZIP $($zip.FullName) to $extractDir"
+          pnpm --filter @workspace/desktop run verify:windows-zip -- `
+            --zip $zip.FullName `
+            --unpacked (Join-Path $releaseDir "win-unpacked") `
+            --extracted $extractDir `
+            --diagnostics $diagnosticsPath
+
+      # Download a small, pinned real GGUF only after packaging. It exercises
+      # the custom-model picker/import/runtime path without ever entering the
+      # installer resources or the published installer artifact.
+      - name: Cache compatible GGUF smoke fixture
+        uses: actions/cache@v4
+        with:
+          path: artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          key: desktop-gguf-smoke-2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d
+
+      - name: Download compatible GGUF smoke fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @workspace/desktop exec node scripts/download-smoke-gguf.mjs \
+            "${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf"
 
       # Confirm the packaged app actually LAUNCHES, not just that an installer was
       # produced. Launches the unpacked build via Playwright's Electron driver and
@@ -135,20 +721,131 @@ jobs:
       # runtime break (stripped wasm, bad migrate/seed) fails the job here. On
       # Linux the Electron GUI needs a virtual display (xvfb).
       - name: Smoke test packaged app
+        id: packaged_smoke
         shell: bash
+        env:
+          EXPECT_SLIM_LLM: ${{ matrix.platform == 'win' && '1' || '0' }}
+          ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          ENGRAM_PACKAGED_GGUF_MULTI_MODEL: "1"
+          ENGRAM_PACKAGED_GGUF_REAL_RUNTIME: ${{ matrix.platform == 'mac' && '1' || '0' }}
+          ENGRAM_PACKAGED_GGUF_REQUEST_SMOKE: ${{ matrix.platform == 'mac' && '1' || '0' }}
+          ENGRAM_EXPECTED_ARCH: ${{ matrix.arch }}
+          ENGRAM_SMOKE_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/diagnostics
+          # Windows must prove the slim downloader against HTTPS, a redirect,
+          # and a real Electron userData directory. Linux/macOS keep the fast
+          # loopback fixture for their packaged smoke.
+          ENGRAM_PACKAGED_OFFLINE_MODEL_HTTPS: ${{ matrix.platform == 'win' && '1' || '0' }}
+          # The CI-only updater fixture is platform-neutral and must exercise
+          # the native Windows/macOS handoff paths as well as Linux. The
+          # disposable real-feed check below remains Linux-only because its
+          # artifact is intentionally an AppImage.
+          ENGRAM_PACKAGED_UPDATE_SMOKE: "1"
+          ENGRAM_PACKAGED_UPDATE_FEED_SMOKE: ${{ matrix.platform == 'linux' && '1' || '0' }}
         run: |
+          set -o pipefail
+          mkdir -p artifacts/desktop/.ci-smoke/diagnostics
+          set +e
           if [ "${{ matrix.platform }}" = "linux" ]; then
             sudo apt-get update
             sudo apt-get install -y xvfb
-            xvfb-run -a pnpm --filter @workspace/desktop run smoke
+            xvfb-run -a pnpm --filter @workspace/desktop run smoke 2>&1 |
+              tee artifacts/desktop/.ci-smoke/diagnostics/smoke.log
           else
-            pnpm --filter @workspace/desktop run smoke
+            pnpm --filter @workspace/desktop run smoke 2>&1 |
+              tee artifacts/desktop/.ci-smoke/diagnostics/smoke.log
           fi
+          status=${PIPESTATUS[0]}
+          if ! node artifacts/desktop/scripts/sanitize-smoke-log.mjs \
+            artifacts/desktop/.ci-smoke/diagnostics/smoke.log; then
+            rm -f artifacts/desktop/.ci-smoke/diagnostics/smoke.log
+            echo "Could not sanitize packaged smoke log; removed it to avoid uploading unsafe diagnostics." >&2
+            exit 1
+          fi
+          set -e
+          exit "$status"
+
+      - name: Probe packaged failure diagnostics
+        id: packaged_diagnostics_probe
+        if: always() && steps.packaged_smoke.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          EXPECT_SLIM_LLM: ${{ matrix.platform == 'win' && '1' || '0' }}
+          ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          ENGRAM_PACKAGED_GGUF_MULTI_MODEL: "1"
+          ENGRAM_EXPECTED_ARCH: ${{ matrix.arch }}
+          ENGRAM_PACKAGED_DIAGNOSTICS_PROBE: "1"
+          ENGRAM_SMOKE_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/diagnostics/failure-probe
+        run: |
+          set -uo pipefail
+          PROBE_DIR="artifacts/desktop/.ci-smoke/diagnostics/failure-probe"
+          mkdir -p "$PROBE_DIR"
+          set +e
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            xvfb-run -a pnpm --filter @workspace/desktop run smoke 2>&1 |
+              tee "$PROBE_DIR/smoke.log"
+          else
+            pnpm --filter @workspace/desktop run smoke 2>&1 |
+              tee "$PROBE_DIR/smoke.log"
+          fi
+          status=${PIPESTATUS[0]}
+          if [ -f "$PROBE_DIR/smoke.log" ]; then
+            node artifacts/desktop/scripts/sanitize-smoke-log.mjs \
+              "$PROBE_DIR/smoke.log"
+            sanitize_status=$?
+          else
+            sanitize_status=1
+          fi
+          set -e
+          if [ "$sanitize_status" -ne 0 ]; then
+            rm -f "$PROBE_DIR/smoke.log"
+            exit "$sanitize_status"
+          fi
+          if [ "$status" -eq 0 ]; then
+            echo "The packaged diagnostics probe unexpectedly passed." >&2
+            exit 1
+          fi
+          if ! grep -Fq "intentional diagnostics probe: health check failure" "$PROBE_DIR/smoke.log"; then
+            echo "The smoke process failed before reaching the intentional health-check probe." >&2
+            exit 1
+          fi
+          echo "Observed and sanitized the expected packaged health-check failure (exit $status)."
+          exit "$status"
+
+      - name: Collect packaged smoke diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIAGNOSTICS="artifacts/desktop/.ci-smoke/diagnostics"
+          node artifacts/desktop/scripts/collect-smoke-diagnostics.mjs \
+            "${{ matrix.platform }}" \
+            "artifacts/desktop/release" \
+            "$DIAGNOSTICS/resource-listing.txt"
+
+      - name: Verify packaged failure diagnostics
+        if: always() && steps.packaged_diagnostics_probe.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node artifacts/desktop/scripts/verify-smoke-diagnostics.mjs \
+            "artifacts/desktop/.ci-smoke/diagnostics/failure-probe" \
+            "${{ matrix.platform }}" \
+            "artifacts/desktop/.ci-smoke/diagnostics/resource-listing.txt"
+
+      - name: Upload packaged smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-smoke-diagnostics-${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: warn
+          retention-days: 7
+          path: artifacts/desktop/.ci-smoke/diagnostics
 
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
-          name: engram-${{ matrix.platform }}
+          name: engram-${{ matrix.platform }}-${{ matrix.arch }}
           if-no-files-found: error
           path: |
             artifacts/desktop/release/*.AppImage
@@ -157,22 +854,267 @@ jobs:
             artifacts/desktop/release/*.exe
             artifacts/desktop/release/*.zip
 
+  # Runtime archives for Linux ARM64 and both macOS architectures are checked
+  # independently of the full Electron packaging matrix. Linux ARM64 runs its
+  # ELF check on a native ARM runner; macOS can inspect either Mach-O target
+  # with otool even when the host architecture differs.
+  llama-runtime-contract:
+    name: llama runtime ${{ matrix.platform }}-${{ matrix.arch }}
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || github.ref_type == 'tag' || (github.event_name == 'push' && github.ref_type != 'tag')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+            sha256: c79ae4262304cdab2698201b1bba01648fcff8f8aada237b64797bc97ebe452d
+          - os: macos-13
+            platform: darwin
+            arch: x64
+            sha256: d7ccf0251ff9087ee4f4c0ea6c8c7f4f3575aa187b2c2e755d2d4c5d234490ba
+          - os: macos-14
+            platform: darwin
+            arch: arm64
+            sha256: fd93f5c97086b434d17855eaaf95ba56758ade7a4af3a4ad74714bb70784c8b9
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Cache pinned target runtime
+        uses: actions/cache@v4
+        with:
+          path: .llama
+          key: llama-runtime-${{ matrix.platform }}-${{ matrix.arch }}-b10242-${{ matrix.sha256 }}
+
+      - name: Download pinned target runtime
+        env:
+          LLAMA_TARGET: ${{ matrix.platform }}
+          LLAMA_ARCH: ${{ matrix.arch }}
+        run: pnpm --filter @workspace/desktop run prepare:llama-runtime
+
+      - name: Verify target runtime dependencies
+        env:
+          LLAMA_TARGET: ${{ matrix.platform }}
+          LLAMA_ARCH: ${{ matrix.arch }}
+        run: pnpm --filter @workspace/desktop run verify:llama-runtime
+
+  # Fast pre-release signal for the packaged runtime. This intentionally uses
+  # the same Linux build/staging/smoke path as the release matrix, but omits
+  # release publishing, native OS builds, Android, and release-only checks.
+  pre-release-smoke:
+    name: pre-release desktop smoke
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type != 'tag')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: engram_concurrency_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d engram_concurrency_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache pinned Linux llama runtime
+        uses: actions/cache@v4
+        with:
+          path: .llama
+          key: llama-runtime-linux-x64-b10242-fb13c9fa97a605c6bba16a99b2f54eff6874d58bdbe5b94ece6e358eaa270088
+
+      - name: Check OpenAPI-generated artifacts are current
+        run: pnpm --filter @workspace/api-server run check:openapi
+
+      - name: Generate API client + Zod (codegen)
+        run: pnpm --filter @workspace/api-spec run codegen
+
+      - name: Build shared libraries
+        run: pnpm run typecheck:libs
+
+      - name: Run desktop fixture cache tests
+        run: pnpm --filter @workspace/desktop run test
+
+      - name: Run API suite with configured provider environment
+        env:
+          ENGRAM_DB_DRIVER: pglite
+        run: pnpm --filter @workspace/api-server run test
+
+      - name: Run API suite without cloud provider variables
+        shell: bash
+        env:
+          API_TEST_NO_CLOUD_PROVIDER: "1"
+          ENGRAM_DB_DRIVER: pglite
+        run: |
+          set -euo pipefail
+          env -u GENERATION_BASE_URL \
+            -u GENERATION_API_KEY \
+            -u LLM_BASE_URL \
+            -u LLM_API_KEY \
+            -u AI_INTEGRATIONS_OPENAI_BASE_URL \
+            -u AI_INTEGRATIONS_OPENAI_API_KEY \
+            pnpm --filter @workspace/api-server run test
+
+      - name: Run Hub concurrency checks against disposable PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/engram_concurrency_test
+          ENGRAM_REQUIRE_HUB_CONCURRENCY_PG: "1"
+        run: pnpm --filter @workspace/api-server run test:hub-concurrency-pg
+
+      - name: Run message cursor checks against disposable PostgreSQL
+        env:
+          ENGRAM_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/engram_concurrency_test
+        run: pnpm --filter @workspace/api-server run test:messages-pagination-pg
+
+      - name: Build API server bundle
+        run: pnpm --filter @workspace/api-server run build
+
+      - name: Build web dashboard
+        env:
+          PORT: "5000"
+          BASE_PATH: "/"
+          NODE_ENV: "production"
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
+        run: pnpm --filter @workspace/engram run build
+
+      - name: Install Chromium for web validation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium
+
+      - name: Verify DEV browser fixture is absent from production web bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          if rg -n 'browser-test-user|browser-test-session' artifacts/engram/dist/public; then
+            echo "The DEV-only browser fixture was included in the production web bundle." >&2
+            exit 1
+          fi
+
+      - name: Run web archive/export browser validation
+        run: pnpm run test:web
+
+      - name: Build desktop main + stage resources
+        env:
+          DESKTOP_BUNDLE_LLM: "1"
+          DESKTOP_REQUIRE_LLAMA_RUNTIME: "1"
+          VITE_GITHUB_REPO: ${{ vars.VITE_GITHUB_REPO || github.repository }}
+        run: pnpm --filter @workspace/desktop run build
+
+      - name: Package Linux installer
+        run: pnpm --filter @workspace/desktop exec electron-builder --linux --publish never
+
+      - name: Cache compatible GGUF smoke fixture
+        uses: actions/cache@v4
+        with:
+          path: artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          key: desktop-gguf-smoke-2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d
+
+      - name: Stage compatible GGUF smoke fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @workspace/desktop exec node scripts/download-smoke-gguf.mjs \
+            "${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf"
+
+      - name: Smoke test packaged app
+        shell: bash
+        env:
+          EXPECT_SLIM_LLM: "0"
+          ENGRAM_PACKAGED_GGUF_FIXTURE: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/SmolLM2-135M-Instruct-Q4_K_M.gguf
+          ENGRAM_PACKAGED_GGUF_MULTI_MODEL: "1"
+          ENGRAM_SMOKE_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop/.ci-smoke/diagnostics
+          ENGRAM_PACKAGED_UPDATE_SMOKE: "1"
+          ENGRAM_PACKAGED_UPDATE_FEED_SMOKE: "1"
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          mkdir -p artifacts/desktop/.ci-smoke/diagnostics
+          set +e
+          xvfb-run -a pnpm --filter @workspace/desktop run smoke 2>&1 |
+            tee artifacts/desktop/.ci-smoke/diagnostics/smoke.log
+          status=${PIPESTATUS[0]}
+          if ! node artifacts/desktop/scripts/sanitize-smoke-log.mjs \
+            artifacts/desktop/.ci-smoke/diagnostics/smoke.log; then
+            rm -f artifacts/desktop/.ci-smoke/diagnostics/smoke.log
+            echo "Could not sanitize packaged smoke log; removed it to avoid uploading unsafe diagnostics." >&2
+            exit 1
+          fi
+          set -e
+          exit "$status"
+
+      - name: Collect packaged smoke diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIAGNOSTICS="artifacts/desktop/.ci-smoke/diagnostics"
+          node artifacts/desktop/scripts/collect-smoke-diagnostics.mjs \
+            linux \
+            "artifacts/desktop/release" \
+            "$DIAGNOSTICS/resource-listing.txt"
+
+      - name: Upload packaged smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-smoke-diagnostics-linux
+          if-no-files-found: warn
+          retention-days: 7
+          path: artifacts/desktop/.ci-smoke/diagnostics
+
   # Build the Expo mobile app into an installable Android .apk and attach it to
-  # the SAME release as the desktop installers. Runs after `build` so the draft
-  # release electron-builder creates already exists; on a tag the APK is uploaded
-  # into that draft (resolved by name, like the publish job) before the release
-  # is un-drafted.
+  # the same attempt-owned draft as the desktop installers. On a tag, the APK
+  # upload verifies and uses the exact release ID from prepare-draft.
   #
-  # Signing: with no release keystore, Gradle's assembleRelease falls back to the
-  # Android debug signing config, so the APK is installable via sideload with no
-  # secrets/Expo account. Caveat: a debug signature is NOT update-safe across
-  # builds — installing a newer APK over an older one can require uninstalling
-  # first. Wire a real keystore (via secrets) later if in-place updates matter.
+  # Signing: tag and manual APK builds both require the private release keystore
+  # so downloadable APKs support update-safe in-place installs.
   android:
     name: android
-    needs: build
+    needs: [build, prepare-draft, validate_workflow_guards]
+    if: >-
+      always() &&
+      !cancelled() &&
+      needs.build.result == 'success' &&
+      needs.validate_workflow_guards.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && github.ref_type == 'tag' &&
+        needs.prepare-draft.result == 'success'))
     runs-on: ubuntu-latest
-    # Required so the GitHub token can upload the APK asset into the draft release.
+    # Required so the GitHub token can upload the APK to the owned draft release.
     permissions:
       contents: write
     steps:
@@ -201,10 +1143,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run mobile offline reliability checks
+        run: pnpm run test:mobile-offline
+
       # Sync the mobile app version from the pushed tag (mirroring the desktop
-      # version sync) and stamp an integer versionCode from the CI run number so
-      # successive published builds are ordered. Exports APK_VERSION for the
-      # artifact name. Non-tag (manual) runs keep app.json's current version.
+      # version sync) and stamp a monotonic integer versionCode. The run number
+      # alone is not safe for a first release because app.json may already have
+      # a higher code. Exports APK_VERSION for the artifact name. Non-tag
+      # (manual) runs keep app.json's current version and code.
       - name: Sync mobile version
         shell: bash
         env:
@@ -217,14 +1163,18 @@ jobs:
             const fs = require("fs");
             const f = "artifacts/engram-mobile/app.json";
             const j = JSON.parse(fs.readFileSync(f, "utf8"));
-            const current = j.expo.version || "1.0.0";
+             const current = j.expo.version || "1.0.0";
+             const currentCode = Number(j.expo.android?.versionCode) || 1;
             const version =
               process.env.REF_TYPE === "tag"
                 ? (process.env.REF_NAME || "").replace(/^v/, "")
                 : current;
             j.expo.version = version;
             j.expo.android = j.expo.android || {};
-            j.expo.android.versionCode = Number(process.env.RUN_NUMBER) || 1;
+             j.expo.android.versionCode =
+               process.env.REF_TYPE === "tag"
+                 ? Math.max(currentCode + 1, Number(process.env.RUN_NUMBER) || 1)
+                 : currentCode;
             fs.writeFileSync(f, JSON.stringify(j, null, 2) + "\n");
             fs.appendFileSync(process.env.GITHUB_ENV, "APK_VERSION=" + version + "\n");
             console.log("mobile version " + version + " (code " + j.expo.android.versionCode + ")");
@@ -242,14 +1192,99 @@ jobs:
       # Generate the native android/ project from app.json (gitignored output).
       # --no-install: deps already installed at the workspace root.
       # --clean: regenerate from a fresh template each run.
+      - name: Verify mobile release dependencies
+        run: pnpm --filter @workspace/engram-mobile run release:preflight
+
+      - name: Test APK artifact freshness gate
+        run: pnpm --filter @workspace/engram-mobile run test:release-preflight
+
       - name: Expo prebuild (android)
         run: pnpm --filter @workspace/engram-mobile exec expo prebuild --platform android --no-install --clean
 
+      # Release signing is required for every downloadable APK. A debug-signed
+      # fallback is not update-safe and must never reach a release artifact.
+      # Required secrets: ANDROID_KEYSTORE_BASE64 (base64 of the .keystore
+      # file), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+      - name: Require release signing secrets
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "Missing required Android release signing secret: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Prepare release keystore
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          KEYSTORE="$RUNNER_TEMP/engram-release.keystore"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null
+          echo "ANDROID_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "Release keystore staged; APK will be release-signed."
+
       - name: Build release APK
         working-directory: artifacts/engram-mobile/android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
           ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Verify merged Android manifest privacy policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          MERGED_MANIFEST="$(find artifacts/engram-mobile/android/app/build/intermediates/merged_manifests/release \
+            -type f -name AndroidManifest.xml -print -quit)"
+          if [ -z "$MERGED_MANIFEST" ]; then
+            echo "Merged Android manifest was not produced under the release build intermediates." >&2
+            exit 1
+          fi
+          node --input-type=module -e '
+            import { verifyMergedAndroidManifest } from "./artifacts/engram-mobile/scripts/release-preflight.mjs";
+            verifyMergedAndroidManifest(process.argv[1]);
+          ' "$MERGED_MANIFEST"
+
+      - name: Verify packaged llama native libraries
+        run: pnpm --filter @workspace/engram-mobile run release:verify-apk
+
+      # Fail loudly if secrets were provided but the APK is not signed with
+      # the EXPECTED release certificate. The SHA-256 fingerprint below is the
+      # public fingerprint of the ENGRAM release key (.keys/engram-release.keystore
+      # in the workspace — see .keys/README.md); it is not a secret. Pinning it
+      # catches both a debug-signed fallback and a wrong/rotated keystore, either
+      # of which would strand existing installs without in-place updates.
+      - name: Verify APK signature
+        shell: bash
+        env:
+          EXPECTED_CERT_SHA256: "bddee3e52a4251d0ce9c01fd2b47bb12f10c8d510c09de8cde29092fb00703e6"
+        run: |
+          set -euo pipefail
+          APK="artifacts/engram-mobile/android/app/build/outputs/apk/release/app-release.apk"
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          SIGNER="$("$BT/apksigner" verify --print-certs "$APK")"
+          echo "$SIGNER"
+          ACTUAL="$(echo "$SIGNER" | grep -i 'SHA-256 digest' | head -n1 | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')"
+          if [ "$ACTUAL" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "APK signer cert SHA-256 '$ACTUAL' does not match the expected release key '$EXPECTED_CERT_SHA256'" >&2
+            exit 1
+          fi
+          echo "APK is signed with the expected ENGRAM release key."
 
       # Rename the Gradle output to a versioned asset name. The Download page
       # matches Android purely by the .apk extension.
@@ -276,29 +1311,33 @@ jobs:
           if-no-files-found: error
           path: artifacts/engram-mobile/dist-apk/*.apk
 
-      # On a tag push, attach the APK to the draft release electron-builder made.
-      # The draft isn't tied to a real git tag yet, so resolve it by name (same
-      # as the publish job), drop any same-named asset for idempotent re-runs,
-      # then upload via the uploads API (gh release upload can't target a draft).
+      # On a tag push, attach the APK to the attempt-owned draft prepared before
+      # the build matrix. Verify its tag and owner before replacing any asset.
       - name: Publish APK to draft release
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
+          RELEASE_ID: ${{ needs.prepare-draft.outputs.release_id }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "Resolving draft release named '$TAG' in $REPO"
-          RELEASE_ID="$(gh api "repos/$REPO/releases" --paginate \
-            --jq ".[] | select(.draft == true and (.tag_name == \"$TAG\" or .name == \"$TAG\")) | .id" \
-            | head -n1)"
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
           if [ -z "$RELEASE_ID" ]; then
-            echo "No draft release found for tag '$TAG' (did the desktop build create it?)." >&2
+            echo "The draft preparation job did not provide a release ID for '$TAG'." >&2
+            exit 1
+          fi
+          RELEASE_JSON="$(gh api "repos/$REPO/releases/$RELEASE_ID")"
+          if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+            '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+            <<< "$RELEASE_JSON" >/dev/null; then
+            echo "Draft release $RELEASE_ID is not owned by workflow attempt $OWNER_ID for '$TAG'." >&2
             exit 1
           fi
           APK_NAME="$(basename "$APK_PATH")"
-          echo "Draft release id $RELEASE_ID; uploading $APK_NAME"
+          echo "Uploading $APK_NAME to attempt-owned draft release $RELEASE_ID"
           EXISTING="$(gh api "repos/$REPO/releases/$RELEASE_ID/assets" --paginate \
             --jq ".[] | select(.name == \"$APK_NAME\") | .id" | head -n1)"
           if [ -n "$EXISTING" ]; then
@@ -319,40 +1358,216 @@ jobs:
   # manifests, so users never land on a half-finished release. Runs only on a
   # `v*` tag push (the build jobs only create a draft on a tag); manual
   # (workflow_dispatch) runs publish nothing, so there is no draft to un-draft
-  # and this job is skipped.
+  # and this job is skipped. Manual dispatches remain excluded even when the
+  # selected ref is a tag.
   publish:
     name: Publish release
-    needs: [build, android]
-    if: github.ref_type == 'tag'
+    needs: [build, android, prepare-draft, validate_workflow_guards]
+    if: github.event_name == 'push' && github.ref_type == 'tag' && needs.build.result == 'success' && needs.android.result == 'success' && needs.prepare-draft.result == 'success' && needs.validate_workflow_guards.result == 'success'
     runs-on: ubuntu-latest
     # Required to flip the draft Release to public via the GitHub API.
     permissions:
       contents: write
     steps:
-      # Find the draft Release for this tag and un-draft it. electron-builder
-      # draft releases are not yet attached to a real git tag, so resolve the
-      # draft by its name (electron-builder names it after the tag/version) and
-      # edit that release id to draft=false. Setting draft=false makes the
+      - uses: actions/checkout@v4
+
+      # Verify every required installer, updater manifest, and versioned signed
+      # Android APK on the exact attempt-owned release before making it public.
+      - name: Verify draft release assets
+        id: verify_assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          DRAFT_RELEASE_ID: ${{ needs.prepare-draft.outputs.release_id }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
+          RELEASE_ID="$DRAFT_RELEASE_ID"
+          if [ -z "$RELEASE_ID" ]; then
+            echo "The draft preparation job did not provide a release ID for '$TAG'." >&2
+            exit 1
+          fi
+          RELEASE_JSON="$(gh api "repos/$REPO/releases/$RELEASE_ID")"
+          if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+            '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+            <<< "$RELEASE_JSON" >/dev/null; then
+            echo "Draft release $RELEASE_ID is not owned by workflow attempt $OWNER_ID for '$TAG'." >&2
+            exit 1
+          fi
+          ASSETS_JSON="$(gh api --paginate --slurp \
+            "repos/$REPO/releases/$RELEASE_ID/assets")"
+          ASSET_NAMES="$(jq -r '.[][] | .name' <<< "$ASSETS_JSON")"
+          echo "Assets in draft release $RELEASE_ID:"
+          printf '%s\n' "$ASSET_NAMES"
+          MANIFEST_DIR="$RUNNER_TEMP/release-updater-manifests"
+          mkdir -p "$MANIFEST_DIR"
+          # Keep this list aligned with the manifest entries in RELEASE_TARGETS.
+          for MANIFEST_NAME in latest-linux.yml latest-mac.yml latest.yml; do
+            ASSET_ID="$(jq -r --arg name "$MANIFEST_NAME" \
+              '[.[][] | select(.name == $name) | .id][0] // empty' \
+              <<< "$ASSETS_JSON")"
+            if [ -n "$ASSET_ID" ]; then
+              gh api -H "Accept: application/octet-stream" \
+                "repos/$REPO/releases/assets/$ASSET_ID" \
+                > "$MANIFEST_DIR/$MANIFEST_NAME"
+            fi
+          done
+          printf '%s\n' "$ASSET_NAMES" | RELEASE_ID="$RELEASE_ID" TAG="$TAG" \
+            RELEASE_MANIFEST_DIR="$MANIFEST_DIR" \
+            node artifacts/desktop/scripts/validate-release-assets.mjs
+
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+
+      # The draft is now known to be complete. Setting draft=false makes the
       # release public; downloads need no GitHub login.
       - name: Un-draft the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
+          RELEASE_ID: ${{ steps.verify_assets.outputs.release_id }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "Looking for draft release named '$TAG' in $REPO"
-          RELEASE_ID="$(gh api "repos/$REPO/releases" --paginate \
-            --jq ".[] | select(.draft == true and (.tag_name == \"$TAG\" or .name == \"$TAG\")) | .id" \
-            | head -n1)"
-          if [ -z "$RELEASE_ID" ]; then
-            echo "No draft release found for tag '$TAG' — nothing to publish." >&2
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
+          RELEASE_JSON="$(gh api "repos/$REPO/releases/$RELEASE_ID")"
+          if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+            '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+            <<< "$RELEASE_JSON" >/dev/null; then
+            echo "Refusing to publish release $RELEASE_ID because its tag, draft state, or owner changed." >&2
             exit 1
           fi
-          echo "Publishing draft release id $RELEASE_ID"
+          echo "Publishing attempt-owned draft release $RELEASE_ID"
           gh api -X PATCH "repos/$REPO/releases/$RELEASE_ID" \
             -F draft=false \
             -f tag_name="$TAG" \
+            -f name="$TAG" \
             -f make_latest=true >/dev/null
           echo "Release '$TAG' is now public."
+
+  # A failed or cancelled tag attempt removes only the draft carrying its own
+  # marker. A newer same-tag draft is never deleted by stale cleanup.
+  cleanup-draft:
+    name: Clean up failed draft release
+    needs: [prepare-draft, build, android, validate_workflow_guards]
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      github.ref_type == 'tag' &&
+      (failure() || cancelled())
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete failed draft release(s)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          OWNER_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
+          echo "Looking for draft release(s) owned by attempt $OWNER_ID for '$TAG' in $REPO"
+          write_summary() {
+            local result="$1"
+            local found="$2"
+            local deleted="$3"
+            local failed="$4"
+            local skipped="$5"
+            local lookup_failed="$6"
+            {
+              echo "## Failed draft release cleanup"
+              echo
+              printf '%s\n' "- Tag: $TAG"
+              printf '%s\n' "- Workflow attempt: $OWNER_ID"
+              printf '%s\n' "- Owned drafts found: $found"
+              printf '%s\n' "- Release IDs deleted: ${deleted:-none}"
+              if [ -n "$failed" ]; then
+                printf '%s\n' "- Release IDs that failed deletion: $failed"
+              fi
+              if [ -n "$skipped" ]; then
+                printf '%s\n' "- Release IDs kept after ownership changed: $skipped"
+              fi
+              if [ -n "$lookup_failed" ]; then
+                printf '%s\n' "- Release IDs with failed ownership lookup: $lookup_failed"
+              fi
+              printf '%s\n' "- Result: $result"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          if ! RELEASES_JSON="$(gh api "repos/$REPO/releases?per_page=100" --paginate 2>/dev/null)"; then
+            echo "Failed to list release drafts for tag '$TAG'." >&2
+            write_summary "lookup failed" "unknown" "" "" "" ""
+            exit 1
+          fi
+          RELEASE_IDS="$(printf '%s\n' "$RELEASES_JSON" | jq -sr \
+            --arg tag "$TAG" \
+            --arg owner "$OWNER_MARKER" \
+            '[.[][] | select(.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))) | .id] | .[]')"
+
+          if [ -z "$RELEASE_IDS" ]; then
+            echo "No draft owned by attempt $OWNER_ID found for tag '$TAG'."
+            write_summary "already clean" "0" "" "" "" ""
+            exit 0
+          fi
+
+          mapfile -t RELEASE_ID_LIST <<< "$RELEASE_IDS"
+          FOUND_COUNT="${#RELEASE_ID_LIST[@]}"
+          DELETED_IDS=()
+          FAILED_IDS=()
+          SKIPPED_IDS=()
+          LOOKUP_FAILED_IDS=()
+          for RELEASE_ID in "${RELEASE_ID_LIST[@]}"; do
+            [ -n "$RELEASE_ID" ] || continue
+            if ! CURRENT_RELEASE="$(gh api "repos/$REPO/releases/$RELEASE_ID" 2>/dev/null)"; then
+              echo "Failed to recheck ownership for release ID $RELEASE_ID." >&2
+              LOOKUP_FAILED_IDS+=("$RELEASE_ID")
+              continue
+            fi
+            if ! jq -e --arg tag "$TAG" --arg owner "$OWNER_MARKER" \
+              '.draft == true and .tag_name == $tag and ((.body // "") | contains($owner))' \
+              <<< "$CURRENT_RELEASE" >/dev/null; then
+              echo "Keeping release $RELEASE_ID because it is no longer owned by attempt $OWNER_ID."
+              SKIPPED_IDS+=("$RELEASE_ID")
+              continue
+            fi
+            echo "Deleting attempt-owned draft release id $RELEASE_ID"
+            if gh api -X DELETE "repos/$REPO/releases/$RELEASE_ID"; then
+              DELETED_IDS+=("$RELEASE_ID")
+            else
+              echo "Failed to delete draft release id $RELEASE_ID" >&2
+              FAILED_IDS+=("$RELEASE_ID")
+            fi
+          done
+
+          DELETED_LIST="$(IFS=', '; echo "${DELETED_IDS[*]}")"
+          FAILED_LIST="$(IFS=', '; echo "${FAILED_IDS[*]}")"
+          SKIPPED_LIST="$(IFS=', '; echo "${SKIPPED_IDS[*]}")"
+          LOOKUP_FAILED_LIST="$(IFS=', '; echo "${LOOKUP_FAILED_IDS[*]}")"
+          if [ "${#LOOKUP_FAILED_IDS[@]}" -gt 0 ]; then
+            RESULT="lookup failed"
+            if [ "${#FAILED_IDS[@]}" -gt 0 ]; then
+              RESULT="lookup and deletion failed"
+            fi
+            write_summary "$RESULT" "$FOUND_COUNT" "$DELETED_LIST" "$FAILED_LIST" "$SKIPPED_LIST" "$LOOKUP_FAILED_LIST"
+            echo "Could not verify ownership of every matching draft for attempt $OWNER_ID on '$TAG'." >&2
+            exit 1
+          fi
+          if [ "${#FAILED_IDS[@]}" -gt 0 ]; then
+            write_summary "failed" "$FOUND_COUNT" "$DELETED_LIST" "$FAILED_LIST" "$SKIPPED_LIST" ""
+            echo "Failed draft release cleanup for attempt $OWNER_ID on '$TAG'." >&2
+            exit 1
+          fi
+
+          RESULT="deleted owned draft(s)"
+          if [ "${#SKIPPED_IDS[@]}" -gt 0 ]; then
+            RESULT="kept release(s) whose owner changed"
+          fi
+          write_summary "$RESULT" "$FOUND_COUNT" "$DELETED_LIST" "" "$SKIPPED_LIST" ""
+          echo "Draft cleanup complete for attempt $OWNER_ID on '$TAG'."

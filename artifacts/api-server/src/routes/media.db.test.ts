@@ -17,6 +17,12 @@ vi.hoisted(() => {
   process.env["MEDIA_MAX_BYTES"] = "1024";
 });
 
+const TEST_OWNER_ID = "media-route-test-owner";
+const validPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACAQMAAABIeJ9nAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAADUExURf8AABniCTcAAAAMSURBVAjXY2BgYAAAAAQAASc0JwoAAAAASUVORK5CYII=",
+  "base64",
+);
+
 import {
   db,
   ensureDatabaseReady,
@@ -43,6 +49,10 @@ let base: string;
 beforeAll(async () => {
   await ready;
   const app = express();
+  app.use((req, _res, next) => {
+    (req as typeof req & { userId: string }).userId = TEST_OWNER_ID;
+    next();
+  });
   // Stub the pino-http logger the routes use in error branches.
   app.use((req, _res, next) => {
     (req as unknown as { log: unknown }).log = {
@@ -85,6 +95,7 @@ async function insertEngram(): Promise<number> {
     .insert(engramsTable)
     .values({
       slug: `upload-engram-${engramSeq}`,
+      ownerId: TEST_OWNER_ID,
       name: `Upload Engram ${engramSeq}`,
       title: "Test",
       symbol: "T",
@@ -154,6 +165,25 @@ describe("POST /media — upload gates against a real PGlite DB", () => {
     expect(await allAssets()).toHaveLength(0);
   });
 
+  it("rejects a misleading filename extension with 415 and writes NOTHING to the DB", async () => {
+    const engramId = await insertEngram();
+    const form = new FormData();
+    form.append("engramId", String(engramId));
+    form.append(
+      "file",
+      new Blob(["the harbor"], { type: "text/plain" }),
+      "scene.png",
+    );
+
+    const res = await fetch(`${base}/media`, { method: "POST", body: form });
+
+    expect(res.status).toBe(415);
+    expect(await res.json()).toMatchObject({
+      error: expect.stringContaining("filename extension"),
+    });
+    expect(await allAssets()).toHaveLength(0);
+  });
+
   it("rejects an upload over MEDIA_MAX_BYTES with 413 and writes NOTHING to the DB", async () => {
     const engramId = await insertEngram();
     // MEDIA_MAX_BYTES is 1024 (set in the hoisted block); 2 KiB exceeds it.
@@ -209,7 +239,14 @@ describe("POST /media — upload gates against a real PGlite DB", () => {
     const engramId = await insertEngram();
     const form = new FormData();
     form.append("engramId", String(engramId));
-    form.append("file", new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" }), "pic.png");
+    form.append(
+      "file",
+      new Blob(
+        [new Uint8Array(validPng)],
+        { type: "image/png" },
+      ),
+      "pic.png",
+    );
 
     const res = await fetch(`${base}/media`, { method: "POST", body: form });
 

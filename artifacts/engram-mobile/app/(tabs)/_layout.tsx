@@ -4,49 +4,55 @@ import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
+import { useAuth } from "@clerk/expo";
+import { Redirect } from "expo-router";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
-
-function NativeTabLayout() {
-  return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "cpu", selected: "cpu.fill" }} />
-        <Label>Personas</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="feed">
-        <Icon sf={{ default: "dot.radiowaves.left.and.right", selected: "dot.radiowaves.left.and.right" }} />
-        <Label>Feed</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="chat">
-        <Icon sf={{ default: "bubble.left", selected: "bubble.left.fill" }} />
-        <Label>Chat</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="inquiry">
-        <Icon sf={{ default: "questionmark.circle", selected: "questionmark.circle.fill" }} />
-        <Label>Inquiry</Label>
-      </NativeTabs.Trigger>
-    </NativeTabs>
-  );
-}
+import { isRtlLanguage } from "@/lib/layout-direction";
+import { e2eAuthBypass } from "@/lib/e2e-auth";
 
 type FeatherName = React.ComponentProps<typeof Feather>["name"];
 
 const TABS: {
   name: string;
-  label: string;
+  labelKey?: string;
+  label?: string;
   feather: FeatherName;
   sf: string;
+  sfSelected: string;
 }[] = [
-  { name: "index", label: "Personas", feather: "cpu", sf: "cpu" },
-  { name: "feed", label: "Feed", feather: "radio", sf: "dot.radiowaves.left.and.right" },
-  { name: "chat", label: "Chat", feather: "message-circle", sf: "bubble.left" },
-  { name: "inquiry", label: "Inquiry", feather: "help-circle", sf: "questionmark.circle" },
+  { name: "index", labelKey: "tabs.personas", feather: "cpu", sf: "cpu", sfSelected: "cpu.fill" },
+  { name: "hub", labelKey: "tabs.hub", feather: "activity", sf: "waveform.path.ecg", sfSelected: "waveform.path.ecg" },
+  { name: "feed", labelKey: "tabs.feed", feather: "radio", sf: "dot.radiowaves.left.and.right", sfSelected: "dot.radiowaves.left.and.right" },
+  { name: "media", label: "Media", feather: "eye", sf: "eye", sfSelected: "eye.fill" },
+  { name: "chat", labelKey: "tabs.chat", feather: "message-circle", sf: "bubble.left", sfSelected: "bubble.left.fill" },
+  { name: "inquiry", labelKey: "tabs.inquiry", feather: "help-circle", sf: "questionmark.circle", sfSelected: "questionmark.circle.fill" },
 ];
 
+function NativeTabLayout() {
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
+  // Native tab bars already mirror under I18nManager. React Native Web does
+  // not consistently reorder Expo Router tab items from document.dir alone.
+  const tabs = rtl && Platform.OS === "web" ? [...TABS].reverse() : TABS;
+  return (
+    <NativeTabs>
+      {tabs.map((tab) => (
+        <NativeTabs.Trigger key={tab.name} name={tab.name}>
+          <Icon sf={{ default: tab.sf as never, selected: tab.sfSelected as never }} />
+           <Label>{tab.label ?? t(tab.labelKey ?? "")}</Label>
+        </NativeTabs.Trigger>
+      ))}
+    </NativeTabs>
+  );
+}
+
 function ClassicTabLayout() {
+  const { t, i18n } = useTranslation("mobile");
+  const rtl = isRtlLanguage(i18n.resolvedLanguage ?? i18n.language);
   const colors = useColors();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -63,6 +69,7 @@ function ClassicTabLayout() {
           fontFamily: "Rajdhani_600SemiBold",
           fontSize: 11,
           letterSpacing: 0.5,
+          ...(rtl ? { fontFamily: undefined, letterSpacing: 0 } : {}),
         },
         tabBarStyle: {
           position: "absolute",
@@ -89,12 +96,12 @@ function ClassicTabLayout() {
           ),
       }}
     >
-      {TABS.map((tab) => (
+      {(rtl && isWeb ? [...TABS].reverse() : TABS).map((tab) => (
         <Tabs.Screen
           key={tab.name}
           name={tab.name}
           options={{
-            title: tab.label,
+            title: tab.label ?? t(tab.labelKey ?? ""),
             tabBarIcon: ({ color }) =>
               isIOS ? (
                 <SymbolView name={tab.sf as never} tintColor={color} size={24} />
@@ -109,6 +116,9 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return null;
+  if (!isSignedIn && !e2eAuthBypass) return <Redirect href="/(auth)/sign-in" />;
   if (isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
   }

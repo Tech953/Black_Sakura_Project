@@ -4,13 +4,12 @@ import {
   useUpdateHubControls,
   useListEngrams,
   useUpdateEngramConfig,
-  useListEngramMessages,
   useMarkEngramMessagesSeen,
+  useReplyToEngramMessage,
   useListHubSpaces,
   useMoveEngramPresence,
   getGetHubControlsQueryKey,
   getListEngramsQueryKey,
-  getListEngramMessagesQueryKey,
   getListHubPresenceQueryKey,
   getListHubActivityQueryKey,
   EngramMode,
@@ -19,6 +18,8 @@ import {
   type EngramMode as EngramModeT,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,9 @@ import {
   Pause,
   BellOff,
   Download,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
   Moon,
   Check,
   Inbox,
@@ -43,16 +47,20 @@ import {
   Power,
   FlaskConical,
   FileText,
+  Layers,
+  Send,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
+import { usePaginatedEngramMessages } from "@/hooks/use-paginated-engram-messages";
 
-const MODE_META: Record<string, { label: string; cls: string }> = {
-  orientation: { label: "Orientation", cls: "text-sky-400" },
-  social: { label: "Social", cls: "text-cyan-400" },
-  simulation: { label: "Simulation", cls: "text-rose-400" },
-  initiative_limited: { label: "Initiative (limited)", cls: "text-amber-400" },
-  full_bounded: { label: "Full (bounded)", cls: "text-emerald-400" },
-  quiescent: { label: "Quiescent", cls: "text-indigo-400" },
+const MODE_META: Record<string, { labelKey: string; cls: string }> = {
+  orientation: { labelKey: "modes.orientation", cls: "text-sky-400" },
+  social: { labelKey: "modes.social", cls: "text-cyan-400" },
+  simulation: { labelKey: "modes.simulation", cls: "text-rose-400" },
+  initiative_limited: { labelKey: "modes.initiativeLimited", cls: "text-amber-400" },
+  full_bounded: { labelKey: "modes.fullBounded", cls: "text-emerald-400" },
+  quiescent: { labelKey: "modes.quiescent", cls: "text-indigo-400" },
 };
 
 const MODE_ORDER: EngramModeT[] = [
@@ -64,55 +72,55 @@ const MODE_ORDER: EngramModeT[] = [
   EngramMode.quiescent,
 ];
 
-const STATUS_META: Record<string, { label: string; cls: string }> = {
-  delivered: { label: "Delivered", cls: "border-emerald-500/30 text-emerald-400" },
-  queued: { label: "Queued", cls: "border-amber-500/30 text-amber-400" },
-  digest: { label: "Digest", cls: "border-sky-500/30 text-sky-400" },
-  blocked: { label: "Refused", cls: "border-rose-500/40 text-rose-400" },
+const STATUS_META: Record<string, { labelKey: string; cls: string }> = {
+  delivered: { labelKey: "status.delivered", cls: "border-emerald-500/30 text-emerald-400" },
+  queued: { labelKey: "status.queued", cls: "border-amber-500/30 text-amber-400" },
+  digest: { labelKey: "status.digest", cls: "border-sky-500/30 text-sky-400" },
+  blocked: { labelKey: "status.blocked", cls: "border-rose-500/40 text-rose-400" },
 };
 
-const PRIORITY_META: Record<string, { label: string; cls: string }> = {
-  urgent: { label: "Urgent", cls: "border-rose-500/40 text-rose-400" },
-  meaningful: { label: "Meaningful", cls: "border-amber-500/30 text-amber-400" },
-  social: { label: "Social", cls: "border-cyan-500/30 text-cyan-400" },
+const PRIORITY_META: Record<string, { labelKey: string; cls: string }> = {
+  urgent: { labelKey: "priority.urgent", cls: "border-rose-500/40 text-rose-400" },
+  meaningful: { labelKey: "priority.meaningful", cls: "border-amber-500/30 text-amber-400" },
+  social: { labelKey: "priority.social", cls: "border-cyan-500/30 text-cyan-400" },
 };
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: TFunction): string {
   const diff = Date.now() - new Date(iso).getTime();
   const sec = Math.round(diff / 1000);
-  if (sec < 60) return "just now";
+  if (sec < 60) return t("common:justNow");
   const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return t("minutesAgo", { count: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.round(hr / 24)}d ago`;
+  if (hr < 24) return t("hoursAgo", { count: hr });
+  return t("daysAgo", { count: Math.round(hr / 24) });
 }
 
 export default function Terminal() {
+  const { t } = useTranslation("terminal");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: controls, isLoading: controlsLoading } = useGetHubControls();
   const { data: engrams, isLoading: engramsLoading } = useListEngrams();
   const { data: spaces } = useListHubSpaces();
-  const { data: messages, isLoading: messagesLoading } = useListEngramMessages(
-    { channel: "human", limit: 100 },
-    {
-      query: {
-        queryKey: getListEngramMessagesQueryKey({ channel: "human", limit: 100 }),
-        refetchInterval: 15000,
-      },
-    },
-  );
+  const humanHistory = usePaginatedEngramMessages("human");
+  const { messages, isLoading: messagesLoading } = humanHistory;
 
   const updateControls = useUpdateHubControls();
   const updateEngram = useUpdateEngramConfig();
   const markSeen = useMarkEngramMessagesSeen();
+  const replyToMessage = useReplyToEngramMessage();
   const move = useMoveEngramPresence();
 
   const [pendingEngramId, setPendingEngramId] = useState<number | null>(null);
+  const [replyingMessageId, setReplyingMessageId] = useState<number | null>(null);
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
+  const [expandedDigestIds, setExpandedDigestIds] = useState<Set<number>>(
+    () => new Set(),
+  );
 
-  const humanMessagesKey = getListEngramMessagesQueryKey({ channel: "human", limit: 100 });
+  const humanMessagesKey = humanHistory.latestQueryKey;
 
   const quiescenceSpace = useMemo(
     () => (spaces ?? []).find((s) => s.kind === "quiescence"),
@@ -128,10 +136,48 @@ export default function Terminal() {
   const ordered = useMemo(
     () =>
       [...(messages ?? [])].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
+          b.id - a.id,
       ),
     [messages],
   );
+
+  const terminalItems = useMemo(() => {
+    type TerminalItem =
+      | { kind: "message"; message: EngramMessage }
+      | { kind: "digest"; summary: EngramMessage; sources: EngramMessage[] };
+
+    const sourcesByGroup = new Map<string, EngramMessage[]>();
+    const summaryGroups = new Set<string>();
+    for (const message of ordered) {
+      if (message.isDigest && message.digestGroupId) {
+        summaryGroups.add(message.digestGroupId);
+      } else if (!message.isDigest && message.digestGroupId) {
+        const sources = sourcesByGroup.get(message.digestGroupId) ?? [];
+        sources.push(message);
+        sourcesByGroup.set(message.digestGroupId, sources);
+      }
+    }
+
+    return ordered.flatMap<TerminalItem>((message) => {
+      if (message.isDigest) {
+        return [
+          {
+            kind: "digest",
+            summary: message,
+            sources: message.digestGroupId
+              ? sourcesByGroup.get(message.digestGroupId) ?? []
+              : [],
+          },
+        ];
+      }
+      if (message.digestGroupId && summaryGroups.has(message.digestGroupId)) {
+        return [];
+      }
+      return [{ kind: "message", message }];
+    });
+  }, [ordered]);
 
   const unseenIds = useMemo(
     () => ordered.filter((m) => !m.seen && m.status !== "blocked").map((m) => m.id),
@@ -145,7 +191,7 @@ export default function Terminal() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetHubControlsQueryKey() });
         },
-        onError: () => toast({ title: "Failed to update controls", variant: "destructive" }),
+        onError: () => toast({ title: t("toastUpdateControlsFailed"), variant: "destructive" }),
       },
     );
   }
@@ -157,9 +203,9 @@ export default function Terminal() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
-          toast({ title: `${engram.name} → ${MODE_META[mode]?.label ?? mode}` });
+          toast({ title: t("toastModeChanged", { name: engram.name, mode: MODE_META[mode] ? t(MODE_META[mode].labelKey) : mode }) });
         },
-        onError: () => toast({ title: "Failed to change mode", variant: "destructive" }),
+        onError: () => toast({ title: t("toastChangeModeFailed"), variant: "destructive" }),
         onSettled: () => setPendingEngramId(null),
       },
     );
@@ -173,10 +219,10 @@ export default function Terminal() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
           toast({
-            title: `${engram.name} human contact ${enabled ? "enabled" : "disabled"}`,
+            title: t("toastHumanContactChanged", { context: enabled ? "enabled" : "disabled", name: engram.name }),
           });
         },
-        onError: () => toast({ title: "Failed to update human contact", variant: "destructive" }),
+        onError: () => toast({ title: t("toastUpdateHumanContactFailed"), variant: "destructive" }),
         onSettled: () => setPendingEngramId(null),
       },
     );
@@ -190,10 +236,10 @@ export default function Terminal() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
           toast({
-            title: `${engram.name} simulations ${enabled ? "enabled" : "disabled"}`,
+            title: t("toastSimulationsChanged", { context: enabled ? "enabled" : "disabled", name: engram.name }),
           });
         },
-        onError: () => toast({ title: "Failed to update simulations", variant: "destructive" }),
+        onError: () => toast({ title: t("toastUpdateSimulationsFailed"), variant: "destructive" }),
         onSettled: () => setPendingEngramId(null),
       },
     );
@@ -207,10 +253,10 @@ export default function Terminal() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
           toast({
-            title: `${engram.name} artifact generation ${enabled ? "enabled" : "disabled"}`,
+            title: t("toastArtifactGenerationChanged", { context: enabled ? "enabled" : "disabled", name: engram.name }),
           });
         },
-        onError: () => toast({ title: "Failed to update artifact generation", variant: "destructive" }),
+        onError: () => toast({ title: t("toastUpdateArtifactGenerationFailed"), variant: "destructive" }),
         onSettled: () => setPendingEngramId(null),
       },
     );
@@ -218,19 +264,19 @@ export default function Terminal() {
 
   function sendToQuiescence(engram: Engram) {
     if (!quiescenceSpace) {
-      toast({ title: "No quiescence space configured", variant: "destructive" });
+      toast({ title: t("toastNoQuiescenceSpace"), variant: "destructive" });
       return;
     }
     setPendingEngramId(engram.id);
     move.mutate(
-      { engramId: engram.id, data: { spaceId: quiescenceSpace.id, note: "Sent to quiescence by operator" } },
+      { engramId: engram.id, data: { spaceId: quiescenceSpace.id, note: t("quiescenceNote") } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListHubPresenceQueryKey() });
           queryClient.invalidateQueries({ queryKey: getListHubActivityQueryKey() });
-          toast({ title: `${engram.name} sent to quiescence` });
+          toast({ title: t("toastSentToQuiescence", { name: engram.name }) });
         },
-        onError: () => toast({ title: "Failed to send to quiescence", variant: "destructive" }),
+        onError: () => toast({ title: t("toastSendToQuiescenceFailed"), variant: "destructive" }),
         onSettled: () => setPendingEngramId(null),
       },
     );
@@ -243,9 +289,27 @@ export default function Terminal() {
       {
         onSuccess: (res) => {
           queryClient.invalidateQueries({ queryKey: humanMessagesKey });
-          toast({ title: `Marked ${res.updated} message${res.updated === 1 ? "" : "s"} seen` });
+          toast({ title: t("toastMarkedSeen", { count: res.updated }) });
         },
-        onError: () => toast({ title: "Failed to mark seen", variant: "destructive" }),
+        onError: () => toast({ title: t("toastMarkSeenFailed"), variant: "destructive" }),
+      },
+    );
+  }
+
+  function handleReply(messageId: number) {
+    const content = (replyDrafts[messageId] ?? "").trim();
+    if (!content) return;
+    setReplyingMessageId(messageId);
+    replyToMessage.mutate(
+      { id: messageId, data: { content } },
+      {
+        onSuccess: () => {
+          setReplyDrafts((drafts) => ({ ...drafts, [messageId]: "" }));
+          queryClient.invalidateQueries({ queryKey: humanMessagesKey });
+          toast({ title: t("toastReplySent") });
+        },
+        onError: () => toast({ title: t("toastReplyFailed"), variant: "destructive" }),
+        onSettled: () => setReplyingMessageId(null),
       },
     );
   }
@@ -258,6 +322,14 @@ export default function Terminal() {
       messages: ordered.map((m) => ({
         ...m,
         fromEngram: engramById.get(m.fromEngramId)?.name ?? null,
+        acknowledgement:
+          m.author === "operator"
+            ? {
+                state: m.acknowledgedAt ? "acknowledged" : "pending",
+                savedAt: m.createdAt,
+                acknowledgedAt: m.acknowledgedAt,
+              }
+            : null,
       })),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -269,7 +341,7 @@ export default function Terminal() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: "Log exported", description: `${ordered.length} messages downloaded.` });
+    toast({ title: t("toastLogExported"), description: t("toastLogExportedDescription", { count: ordered.length }) });
   }
 
   const paused = controls?.paused ?? false;
@@ -280,10 +352,10 @@ export default function Terminal() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-3xl font-bold tracking-widest text-primary flex items-center gap-3">
-            <TerminalIcon className="w-7 h-7" /> HUMAN TERMINAL
+            <TerminalIcon className="w-7 h-7" /> {t("title")}
           </h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            Operator overrides and the bounded channel through which engrams reach you
+            {t("subtitle")}
           </p>
         </div>
         <Button
@@ -294,7 +366,7 @@ export default function Terminal() {
           className="font-mono text-xs uppercase tracking-wider border-border/50"
           data-testid="button-export-logs"
         >
-          <Download className="w-3 h-3 mr-2" /> Export Logs
+          <Download className="w-3 h-3 mr-2" /> {t("exportLogs")}
         </Button>
       </div>
 
@@ -302,10 +374,10 @@ export default function Terminal() {
       <div className="grid gap-4 sm:grid-cols-2">
         <ControlToggle
           icon={Pause}
-          title="Global Pause"
-          description="Halt all autonomous behavior. Engrams still accrue pressure but emit nothing."
+          title={t("globalPauseTitle")}
+          description={t("globalPauseDescription")}
           active={paused}
-          activeLabel="Paused"
+          activeLabel={t("pausedLabel")}
           tone="rose"
           loading={controlsLoading || updateControls.isPending}
           onToggle={(v) => toggleControl({ paused: v })}
@@ -313,10 +385,10 @@ export default function Terminal() {
         />
         <ControlToggle
           icon={BellOff}
-          title="Quiet Mode"
-          description="Suppress non-urgent contact. Only urgent messages reach you; the rest are held."
+          title={t("quietModeTitle")}
+          description={t("quietModeDescription")}
           active={quietMode}
-          activeLabel="Quiet"
+          activeLabel={t("quietLabel")}
           tone="amber"
           loading={controlsLoading || updateControls.isPending}
           onToggle={(v) => toggleControl({ quietMode: v })}
@@ -327,7 +399,7 @@ export default function Terminal() {
       {/* Per-engram controls */}
       <div>
         <h3 className="font-display uppercase tracking-widest text-sm text-primary mb-3">
-          Per-Engram Controls
+          {t("perEngramControls")}
         </h3>
         {engramsLoading ? (
           <div className="space-y-3">
@@ -337,7 +409,7 @@ export default function Terminal() {
           </div>
         ) : !engrams?.length ? (
           <p className="font-mono text-xs text-muted-foreground/60 uppercase tracking-widest py-6 text-center">
-            No engrams instantiated
+            {t("noEngramsInstantiated")}
           </p>
         ) : (
           <div className="space-y-3">
@@ -351,14 +423,14 @@ export default function Terminal() {
                     <div className="min-w-0">
                       <p className="font-display tracking-wider text-sm text-foreground truncate">{engram.name}</p>
                       <span className={`font-mono text-[10px] uppercase tracking-widest ${MODE_META[engram.mode]?.cls ?? "text-muted-foreground"}`}>
-                        {MODE_META[engram.mode]?.label ?? engram.mode}
+                        {MODE_META[engram.mode] ? t(MODE_META[engram.mode].labelKey) : engram.mode}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex flex-1 flex-wrap items-center gap-4">
                     <div className="space-y-1">
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 block">Mode</span>
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 block">{t("modeLabel")}</span>
                       <Select
                         value={engram.mode}
                         onValueChange={(v) => setEngramMode(engram, v as EngramModeT)}
@@ -373,7 +445,7 @@ export default function Terminal() {
                         <SelectContent className="bg-card border-border/50">
                           {MODE_ORDER.map((m) => (
                             <SelectItem key={m} value={m} className="font-mono text-xs">
-                              {MODE_META[m]?.label ?? m}
+                              {MODE_META[m] ? t(MODE_META[m].labelKey) : m}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -381,7 +453,7 @@ export default function Terminal() {
                     </div>
 
                     <div className="space-y-1">
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 block">Human Contact</span>
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 block">{t("humanContact")}</span>
                       <div className="flex items-center gap-2 h-8">
                         <Switch
                           checked={engram.humanContactEnabled}
@@ -390,14 +462,14 @@ export default function Terminal() {
                           data-testid={`switch-human-contact-${engram.id}`}
                         />
                         <span className={`font-mono text-[10px] uppercase tracking-wider ${engram.humanContactEnabled ? "text-emerald-400" : "text-muted-foreground/50"}`}>
-                          {engram.humanContactEnabled ? "Enabled" : "Disabled"}
+                          {engram.humanContactEnabled ? t("common:enabled") : t("common:disabled")}
                         </span>
                       </div>
                     </div>
 
                     <div className="space-y-1">
                       <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1">
-                        <FlaskConical className="w-2.5 h-2.5" /> Simulations
+                        <FlaskConical className="w-2.5 h-2.5" /> {t("simulations")}
                       </span>
                       <div className="flex items-center gap-2 h-8">
                         <Switch
@@ -407,14 +479,14 @@ export default function Terminal() {
                           data-testid={`switch-simulation-${engram.id}`}
                         />
                         <span className={`font-mono text-[10px] uppercase tracking-wider ${engram.simulationEnabled ? "text-rose-400" : "text-muted-foreground/50"}`}>
-                          {engram.simulationEnabled ? "Enabled" : "Disabled"}
+                          {engram.simulationEnabled ? t("common:enabled") : t("common:disabled")}
                         </span>
                       </div>
                     </div>
 
                     <div className="space-y-1">
                       <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1">
-                        <FileText className="w-2.5 h-2.5" /> Generation
+                        <FileText className="w-2.5 h-2.5" /> {t("generation")}
                       </span>
                       <div className="flex items-center gap-2 h-8">
                         <Switch
@@ -424,13 +496,13 @@ export default function Terminal() {
                           data-testid={`switch-artifact-generation-${engram.id}`}
                         />
                         <span className={`font-mono text-[10px] uppercase tracking-wider ${engram.artifactGenerationEnabled ? "text-amber-400" : "text-muted-foreground/50"}`}>
-                          {engram.artifactGenerationEnabled ? "Enabled" : "Disabled"}
+                          {engram.artifactGenerationEnabled ? t("common:enabled") : t("common:disabled")}
                         </span>
                       </div>
                     </div>
 
                     <div className="space-y-1 ml-auto">
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 block">Override</span>
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 block">{t("override")}</span>
                       <Button
                         size="sm"
                         variant="outline"
@@ -439,7 +511,7 @@ export default function Terminal() {
                         className="font-mono text-[10px] uppercase tracking-wider border-indigo-400/40 text-indigo-300 hover:bg-indigo-400/10 h-8"
                         data-testid={`button-quiescence-${engram.id}`}
                       >
-                        <Moon className="w-3 h-3 mr-1.5" /> Send to Quiescence
+                        <Moon className="w-3 h-3 mr-1.5" /> {t("sendToQuiescence")}
                       </Button>
                     </div>
                   </div>
@@ -454,10 +526,10 @@ export default function Terminal() {
       <div>
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
           <h3 className="font-display uppercase tracking-widest text-sm text-primary flex items-center gap-2">
-            <Inbox className="w-4 h-4" /> Incoming Contact
+            <Inbox className="w-4 h-4" /> {t("incomingContact")}
             {unseenIds.length > 0 && (
               <Badge variant="outline" className="font-mono text-[9px] uppercase border-primary/40 text-primary">
-                {unseenIds.length} new
+                {t("newCount", { count: unseenIds.length })}
               </Badge>
             )}
           </h3>
@@ -469,8 +541,25 @@ export default function Terminal() {
             className="font-mono text-xs uppercase tracking-wider border-border/50"
             data-testid="button-mark-seen"
           >
-            <Check className="w-3 h-3 mr-2" /> Mark all seen
+            <Check className="w-3 h-3 mr-2" /> {t("markAllSeen")}
           </Button>
+          {ordered.length > 0 && humanHistory.hasOlder && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                humanHistory.loadOlder().catch(() =>
+                  toast({ title: t("toastLoadOlderFailed"), variant: "destructive" }),
+                )
+              }
+              disabled={humanHistory.isLoadingOlder}
+              className="font-mono text-xs uppercase tracking-wider border-border/50"
+              data-testid="button-load-older-human"
+            >
+              <ChevronUp className="w-3 h-3 mr-2" />
+              {humanHistory.isLoadingOlder ? t("loadingOlder") : t("loadOlder")}
+            </Button>
+          )}
         </div>
 
         {messagesLoading ? (
@@ -482,13 +571,59 @@ export default function Terminal() {
         ) : !ordered.length ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground font-mono text-center">
             <Power className="w-8 h-8 mb-4 opacity-30" />
-            <p className="text-xs uppercase tracking-widest">No engram has reached out yet</p>
+            <p className="text-xs uppercase tracking-widest">{t("noEngramReachedOut")}</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {ordered.map((msg) => (
-              <HumanMessageRow key={msg.id} msg={msg} engramById={engramById} />
-            ))}
+            {terminalItems.map((item) =>
+              item.kind === "digest" ? (
+                <HumanMessageRow
+                  key={item.summary.id}
+                  msg={item.summary}
+                  engramById={engramById}
+                  replyDraft={replyDrafts[item.summary.id] ?? ""}
+                  replying={replyingMessageId === item.summary.id}
+                  onReplyDraftChange={(content) =>
+                    setReplyDrafts((drafts) => ({
+                      ...drafts,
+                      [item.summary.id]: content,
+                    }))
+                  }
+                  onReply={() => handleReply(item.summary.id)}
+                  digestSources={item.sources}
+                  digestExpanded={expandedDigestIds.has(item.summary.id)}
+                  onToggleDigest={() =>
+                    setExpandedDigestIds((expanded) => {
+                      const next = new Set(expanded);
+                      if (next.has(item.summary.id)) next.delete(item.summary.id);
+                      else next.add(item.summary.id);
+                      return next;
+                    })
+                  }
+                  replyDrafts={replyDrafts}
+                  replyingMessageId={replyingMessageId}
+                  onSourceReplyDraftChange={(messageId, content) =>
+                    setReplyDrafts((drafts) => ({ ...drafts, [messageId]: content }))
+                  }
+                  onSourceReply={(messageId) => handleReply(messageId)}
+                />
+              ) : (
+                <HumanMessageRow
+                  key={item.message.id}
+                  msg={item.message}
+                  engramById={engramById}
+                  replyDraft={replyDrafts[item.message.id] ?? ""}
+                  replying={replyingMessageId === item.message.id}
+                  onReplyDraftChange={(content) =>
+                    setReplyDrafts((drafts) => ({
+                      ...drafts,
+                      [item.message.id]: content,
+                    }))
+                  }
+                  onReply={() => handleReply(item.message.id)}
+                />
+              ),
+            )}
           </div>
         )}
       </div>
@@ -545,50 +680,192 @@ function ControlToggle({
 function HumanMessageRow({
   msg,
   engramById,
+  replyDraft,
+  replying,
+  onReplyDraftChange,
+  onReply,
+  compact = false,
+  digestSources,
+  digestExpanded = false,
+  onToggleDigest,
+  replyDrafts,
+  replyingMessageId,
+  onSourceReplyDraftChange,
+  onSourceReply,
 }: {
   msg: EngramMessage;
   engramById: Map<number, Engram>;
+  replyDraft: string;
+  replying: boolean;
+  onReplyDraftChange: (content: string) => void;
+  onReply: () => void;
+  compact?: boolean;
+  digestSources?: EngramMessage[];
+  digestExpanded?: boolean;
+  onToggleDigest?: () => void;
+  replyDrafts?: Record<number, string>;
+  replyingMessageId?: number | null;
+  onSourceReplyDraftChange?: (messageId: number, content: string) => void;
+  onSourceReply?: (messageId: number) => void;
 }) {
+  const { t } = useTranslation("terminal");
   const from = engramById.get(msg.fromEngramId);
   const status = STATUS_META[msg.status] ?? STATUS_META.delivered;
   const priority = PRIORITY_META[msg.priority] ?? PRIORITY_META.social;
   const blocked = msg.status === "blocked";
   const unseen = !msg.seen && !blocked;
+  const operatorAuthored = msg.author === "operator";
 
   return (
     <Card
-      className={`bg-card/40 border-border/50 backdrop-blur-sm ${unseen ? "border-primary/30" : ""} ${blocked ? "border-rose-500/30 bg-rose-500/[0.03]" : ""}`}
+      className={`bg-card/40 border-border/50 backdrop-blur-sm ${unseen ? "border-primary/30" : ""} ${blocked ? "border-rose-500/30 bg-rose-500/[0.03]" : ""} ${operatorAuthored ? "border-cyan-500/30 bg-cyan-500/[0.03]" : ""}`}
       data-testid={`human-message-${msg.id}`}
     >
-      <CardContent className="p-4 flex gap-3 items-start">
-        <div className="shrink-0 w-9 h-9 rounded-none border border-border/50 flex items-center justify-center text-primary text-lg">
+      <CardContent className={`${compact ? "p-3" : "p-4"} flex gap-3 items-start`}>
+        <div className={`shrink-0 ${compact ? "w-7 h-7 text-sm" : "w-9 h-9 text-lg"} rounded-none border border-border/50 flex items-center justify-center text-primary`}>
           {from?.symbol ?? "◇"}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-display tracking-wider text-sm text-foreground">
-              {from?.name ?? `Engram #${msg.fromEngramId}`}
+              {operatorAuthored
+                ? `${t("operatorLabel")} → ${from?.name ?? t("engramFallbackName", { id: msg.fromEngramId })}`
+                : from?.name ?? t("engramFallbackName", { id: msg.fromEngramId })}
             </span>
             <Badge variant="outline" className={`font-mono text-[8px] uppercase tracking-wider ${priority.cls}`}>
-              {priority.label}
+              {t(priority.labelKey)}
             </Badge>
             <Badge variant="outline" className={`font-mono text-[8px] uppercase tracking-wider ${status.cls}`}>
-              {status.label}
+              {t(status.labelKey)}
             </Badge>
+            {msg.isDigest && (
+              <Badge
+                variant="outline"
+                className="font-mono text-[8px] uppercase tracking-wider border-violet-500/40 text-violet-300"
+              >
+                <Layers className="w-2.5 h-2.5 mr-1" /> {t("digestSummary")}
+              </Badge>
+            )}
+            {operatorAuthored && (
+              <Badge
+                variant="outline"
+                className="font-mono text-[8px] uppercase tracking-wider border-cyan-500/40 text-cyan-300"
+              >
+                {t("operatorLabel")}
+              </Badge>
+            )}
+            {operatorAuthored && (
+              <>
+                <Badge
+                  variant="outline"
+                  className="font-mono text-[8px] uppercase tracking-wider border-slate-500/40 text-slate-300"
+                >
+                  {t("acknowledgement.saved")}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={`font-mono text-[8px] uppercase tracking-wider ${
+                    msg.acknowledgedAt
+                      ? "border-emerald-500/40 text-emerald-300"
+                      : "border-amber-500/40 text-amber-300"
+                  }`}
+                  title={
+                    msg.acknowledgedAt
+                      ? new Date(msg.acknowledgedAt).toLocaleString()
+                      : undefined
+                  }
+                >
+                  {msg.acknowledgedAt
+                    ? t("acknowledgement.acknowledged")
+                    : t("acknowledgement.pending")}
+                </Badge>
+              </>
+            )}
             {unseen && (
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title="Unseen" />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" title={t("unseen")} />
             )}
             <span className="font-mono text-[10px] text-muted-foreground/40 ml-auto">
-              {relativeTime(msg.createdAt)}
+              {relativeTime(msg.createdAt, t)}
             </span>
           </div>
-          <p className={`text-sm leading-relaxed font-sans ${blocked ? "text-rose-200/70 italic" : "text-foreground/85"}`}>
+          <p
+            className={`text-sm leading-relaxed font-sans ${
+              blocked
+                ? "text-rose-200/70 italic"
+                : msg.isDigest
+                  ? "text-violet-100/90 whitespace-pre-line"
+                  : "text-foreground/85"
+            }`}
+          >
             {msg.content}
           </p>
           {blocked && msg.reason && (
             <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-rose-400/80 flex items-center gap-1.5">
               <ShieldAlert className="w-3 h-3 shrink-0" /> {msg.reason}
             </p>
+          )}
+          {msg.isDigest && digestSources?.length && onToggleDigest && (
+            <div className="mt-3 border-t border-border/40 pt-3">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-violet-300/80 hover:text-violet-200"
+                aria-expanded={digestExpanded}
+                data-testid={`button-digest-sources-${msg.id}`}
+                onClick={onToggleDigest}
+              >
+                {digestExpanded ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                )}
+                {t(digestExpanded ? "collapseDigest" : "expandDigest")} ·{" "}
+                {t("digestSources", { count: digestSources.length })}
+              </button>
+              {digestExpanded && (
+                <div
+                  className="mt-3 space-y-2 border-l border-violet-500/30 pl-3"
+                  data-testid={`digest-sources-${msg.id}`}
+                >
+                  {digestSources.map((source) => (
+                    <HumanMessageRow
+                      key={source.id}
+                      msg={source}
+                      engramById={engramById}
+                      replyDraft={replyDrafts?.[source.id] ?? ""}
+                      replying={replyingMessageId === source.id}
+                      onReplyDraftChange={(content) =>
+                        onSourceReplyDraftChange?.(source.id, content)
+                      }
+                      onReply={() => onSourceReply?.(source.id)}
+                      compact
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {!operatorAuthored && !blocked && !msg.isDigest && (
+            <div className="mt-3 flex gap-2 items-end">
+              <Textarea
+                value={replyDraft}
+                onChange={(event) => onReplyDraftChange(event.target.value)}
+                placeholder={t("replyPlaceholder")}
+                maxLength={2000}
+                rows={2}
+                disabled={replying}
+                className="min-h-0 resize-y bg-background/40 border-border/50 font-sans text-sm"
+                data-testid={`textarea-reply-${msg.id}`}
+              />
+              <Button
+                size="sm"
+                onClick={onReply}
+                disabled={!replyDraft.trim() || replying}
+                className="shrink-0 font-mono text-[10px] uppercase tracking-wider"
+                data-testid={`button-reply-${msg.id}`}
+              >
+                <Send className="w-3 h-3 mr-1.5" /> {t("reply")}
+              </Button>
+            </div>
           )}
         </div>
       </CardContent>

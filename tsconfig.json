@@ -4,7 +4,19 @@
   "files": [],
   "references": [
     {
+      "path": "./lib/expression-role-policy"
+    },
+    {
+      "path": "./lib/rebecca-source-registry"
+    },
+    {
       "path": "./lib/db"
+    },
+    {
+      "path": "./lib/engram-core"
+    },
+    {
+      "path": "./lib/i18n"
     },
     {
       "path": "./lib/api-client-react"

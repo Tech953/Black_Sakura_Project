@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveStoredDesktopDownload } from "./download-storage";
 
 // Repo-root-relative default downloads dir, resolved cwd-independently. After
 // esbuild bundles the server into a single dist file, import.meta.url points at
@@ -19,10 +20,21 @@ export const OCTET_MIME = "application/octet-stream";
 // URL; anything else falls back to the project default.
 const REPO_RE = /^[\w.-]+\/[\w.-]+$/;
 
+export const DEFAULT_GITHUB_REPO = "Tech953/Ch-IO";
+
 /** Repo used for BOTH the apk and desktop GitHub fallback. */
-function downloadsRepo(): string {
-  const v = process.env["DOWNLOADS_GITHUB_REPO"]?.trim();
-  return v && REPO_RE.test(v) ? v : "Tech953/Ch-IO";
+export function downloadsRepo(): string {
+  // VITE_GITHUB_REPO is the shared web/API setting. Keep the older API-only
+  // name as a fallback for existing deployments; the metadata response exposes
+  // the effective repo URL to the frontend when that override is used.
+  const v =
+    process.env["VITE_GITHUB_REPO"]?.trim() ||
+    process.env["DOWNLOADS_GITHUB_REPO"]?.trim();
+  return v && REPO_RE.test(v) ? v : DEFAULT_GITHUB_REPO;
+}
+
+export function githubReleasesUrl(repo = downloadsRepo()): string {
+  return `https://github.com/${repo}/releases/latest`;
 }
 
 /** The apk may target a different repo than desktop via the older env name. */
@@ -37,7 +49,9 @@ function downloadsDir(): string {
 
 /** Sanitize a filename for a Content-Disposition header (no quotes/control). */
 export function safeAttachment(filename: string): string {
-  const safe = filename.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
+  const safe = filename
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
   return `attachment; filename="${safe || "download"}"`;
 }
 
@@ -45,6 +59,21 @@ export function safeAttachment(filename: string): string {
 export function deriveVersion(name: string): string | null {
   const m = name.match(/(\d+\.\d+\.\d+)/);
   return m ? m[1]! : null;
+}
+
+function isoTimestampFromMillis(value: number): string | null {
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function latestTimestamp(values: (string | null)[]): string | null {
+  return (
+    values
+      .filter((value): value is string => value !== null)
+      .sort()
+      .at(-1) ?? null
+  );
 }
 
 export type DesktopOs = "mac" | "win" | "linux";
@@ -77,7 +106,11 @@ function extOf(name: string): string {
 // ---- Shared latest-release fetch (cached per repo) ------------------------
 
 type ReleaseAsset = { name: string; url: string; size: number };
-type ReleaseManifest = { tagName: string | null; assets: ReleaseAsset[] };
+type ReleaseManifest = {
+  tagName: string | null;
+  publishedAt: string | null;
+  assets: ReleaseAsset[];
+};
 
 const releaseCache = new Map<
   string,
@@ -115,6 +148,7 @@ async function getLatestRelease(repo: string): Promise<ReleaseManifest | null> {
     if (res.ok) {
       const json = (await res.json()) as {
         tag_name?: string;
+        published_at?: string;
         assets?: {
           name?: string;
           browser_download_url?: string;
@@ -123,6 +157,7 @@ async function getLatestRelease(repo: string): Promise<ReleaseManifest | null> {
       };
       value = {
         tagName: (json.tag_name ?? "").replace(/^v/, "") || null,
+        publishedAt: json.published_at ?? null,
         assets: (json.assets ?? [])
           .filter((a) => a.name && a.browser_download_url)
           .map((a) => ({
@@ -149,6 +184,7 @@ export type ResolvedApk =
       sizeBytes: number;
       localPath: string;
       version: string | null;
+      publishedAt: string | null;
     }
   | {
       kind: "github";
@@ -156,6 +192,7 @@ export type ResolvedApk =
       sizeBytes: number;
       url: string;
       version: string | null;
+      publishedAt: string | null;
     };
 
 export function resolveBundledApk(): ResolvedApk | null {
@@ -171,6 +208,7 @@ export function resolveBundledApk(): ResolvedApk | null {
           sizeBytes: st.size,
           localPath: explicit,
           version: deriveVersion(filename),
+          publishedAt: isoTimestampFromMillis(st.mtimeMs),
         };
       }
     } catch {
@@ -203,6 +241,7 @@ export function resolveBundledApk(): ResolvedApk | null {
     sizeBytes: best.size,
     localPath: path.join(dir, best.file),
     version: deriveVersion(best.file),
+    publishedAt: isoTimestampFromMillis(best.mtime),
   };
 }
 
@@ -220,6 +259,7 @@ export async function resolveApk(): Promise<ResolvedApk | null> {
     sizeBytes: asset.size,
     url: asset.url,
     version: release?.tagName ?? deriveVersion(asset.name),
+    publishedAt: release?.publishedAt ?? null,
   };
 }
 
@@ -230,14 +270,17 @@ export type ResolvedDesktopFile = {
   ext: string;
   filename: string;
   sizeBytes: number;
+  publishedAt: string | null;
 } & (
   | { source: "bundled"; localPath: string }
+  | { source: "storage"; url: string }
   | { source: "github"; url: string }
 );
 
 export type DesktopResolution = {
-  source: "bundled" | "github" | null;
+  source: "bundled" | "storage" | "github" | null;
   version: string | null;
+  publishedAt: string | null;
   installers: ResolvedDesktopFile[];
 };
 
@@ -277,6 +320,7 @@ function resolveBundledDesktop(): ResolvedDesktopFile[] {
           ext,
           filename: f,
           sizeBytes: st.size,
+          publishedAt: isoTimestampFromMillis(st.mtimeMs),
           source: "bundled",
           localPath: full,
         },
@@ -288,10 +332,11 @@ function resolveBundledDesktop(): ResolvedDesktopFile[] {
 
 async function resolveReleaseDesktop(): Promise<{
   version: string | null;
+  publishedAt: string | null;
   installers: ResolvedDesktopFile[];
 }> {
   const release = await getLatestRelease(downloadsRepo());
-  if (!release) return { version: null, installers: [] };
+  if (!release) return { version: null, publishedAt: null, installers: [] };
   const installers: ResolvedDesktopFile[] = [];
   for (const a of release.assets) {
     const os = desktopOsForFile(a.name);
@@ -301,11 +346,16 @@ async function resolveReleaseDesktop(): Promise<{
       ext: extOf(a.name),
       filename: a.name,
       sizeBytes: a.size,
+      publishedAt: release.publishedAt,
       source: "github",
       url: a.url,
     });
   }
-  return { version: release.tagName, installers };
+  return {
+    version: release.tagName,
+    publishedAt: release.publishedAt,
+    installers,
+  };
 }
 
 export async function resolveDesktop(): Promise<DesktopResolution> {
@@ -313,17 +363,45 @@ export async function resolveDesktop(): Promise<DesktopResolution> {
   if (bundled.length > 0) {
     const version =
       bundled.map((b) => deriveVersion(b.filename)).find((v) => v) ?? null;
-    return { source: "bundled", version, installers: bundled };
+    return {
+      source: "bundled",
+      version,
+      publishedAt: latestTimestamp(bundled.map((file) => file.publishedAt)),
+      installers: bundled,
+    };
+  }
+  const stored = await resolveStoredDesktopDownload();
+  if (stored) {
+    const os = desktopOsForFile(stored.filename);
+    if (os) {
+      return {
+        source: "storage",
+        version: deriveVersion(stored.filename),
+        publishedAt: stored.publishedAt,
+        installers: [
+          {
+            os,
+            ext: extOf(stored.filename),
+            filename: stored.filename,
+            sizeBytes: stored.sizeBytes,
+            publishedAt: stored.publishedAt,
+            source: "storage",
+            url: stored.url,
+          },
+        ],
+      };
+    }
   }
   const release = await resolveReleaseDesktop();
   if (release.installers.length > 0) {
     return {
       source: "github",
       version: release.version,
+      publishedAt: release.publishedAt,
       installers: release.installers,
     };
   }
-  return { source: null, version: null, installers: [] };
+  return { source: null, version: null, publishedAt: null, installers: [] };
 }
 
 /**

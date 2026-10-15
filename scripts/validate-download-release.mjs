@@ -1,0 +1,191 @@
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+export const DEFAULT_GITHUB_REPO = "Tech953/Ch-IO";
+export const GITHUB_REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const PLACEHOLDER_PART_RE =
+  /^(?:your|owner|org|organization|repo|repository|example|sample|placeholder|changeme)(?:[-_.].*)?$/i;
+const SKIP_NETWORK_ENV = "ENGRAM_RELEASE_CHECK_SKIP_NETWORK";
+const MAX_ATTEMPTS = 3;
+const MAX_RETRIES = MAX_ATTEMPTS - 1;
+const INITIAL_RETRY_DELAY_MS = 100;
+const MAX_RETRY_AFTER_MS = 30_000;
+
+function isCiEnvironment(env) {
+  return env.CI === "1" || env.CI === "true" || env.GITHUB_ACTIONS === "true";
+}
+
+export function resolveReleaseRepo(env = process.env) {
+  const repo = (env.VITE_GITHUB_REPO ?? DEFAULT_GITHUB_REPO).trim();
+  if (!GITHUB_REPO_RE.test(repo)) {
+    throw new Error(
+      `VITE_GITHUB_REPO must be an owner/repo value, received "${repo}".`,
+    );
+  }
+
+  const [owner, name] = repo.split("/");
+  if (PLACEHOLDER_PART_RE.test(owner) || PLACEHOLDER_PART_RE.test(name)) {
+    throw new Error(
+      `VITE_GITHUB_REPO still contains a placeholder value ("${repo}"). Set it to the real GitHub owner/repository.`,
+    );
+  }
+
+  return repo;
+}
+
+export function releaseUrlForRepo(repo) {
+  return `https://github.com/${repo}/releases/latest`;
+}
+
+function isRetryableStatus(status) {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function retryDelayMs(attempt) {
+  return INITIAL_RETRY_DELAY_MS * 2 ** (attempt - 1);
+}
+
+export function parseRetryAfter(value, now = Date.now()) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) {
+    const seconds = Number(trimmed);
+    const delayMs = seconds * 1_000;
+    return Number.isSafeInteger(delayMs) && delayMs <= MAX_RETRY_AFTER_MS
+      ? delayMs
+      : null;
+  }
+
+  if (/^[+-]?\d/.test(trimmed)) {
+    return null;
+  }
+
+  const retryAt = Date.parse(trimmed);
+  if (Number.isNaN(retryAt)) {
+    return null;
+  }
+
+  const delayMs = Math.max(0, retryAt - now);
+  return delayMs <= MAX_RETRY_AFTER_MS ? delayMs : null;
+}
+
+function retryAfterHeader(response) {
+  const headers = response?.headers;
+  if (!headers) {
+    return null;
+  }
+
+  if (typeof headers.get === "function") {
+    return headers.get("retry-after");
+  }
+
+  return headers["retry-after"] ?? headers["Retry-After"] ?? null;
+}
+
+export async function validateDownloadRelease({
+  env = process.env,
+  fetchImpl = globalThis.fetch,
+  sleepImpl = (delay) => new Promise((resolve) => setTimeout(resolve, delay)),
+  retryDelay = retryDelayMs,
+} = {}) {
+  const repo = resolveReleaseRepo(env);
+  const releaseUrl = releaseUrlForRepo(repo);
+  const skipNetwork =
+    env[SKIP_NETWORK_ENV] === "1" || process.argv.includes("--skip-network");
+
+  if (skipNetwork) {
+    if (isCiEnvironment(env)) {
+      throw new Error(
+        `${SKIP_NETWORK_ENV}=1 is for local development only and cannot disable the production release check in CI.`,
+      );
+    }
+    return { repo, releaseUrl, networkChecked: false };
+  }
+
+  if (typeof fetchImpl !== "function") {
+    throw new Error(
+      "The release check cannot run because fetch is unavailable.",
+    );
+  }
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    let response;
+    try {
+      response = await fetchImpl(releaseUrl, {
+        redirect: "manual",
+        headers: {
+          Accept: "text/html",
+          "User-Agent": "engram-release-link-validation",
+        },
+      });
+    } catch (error) {
+      if (attempt < MAX_ATTEMPTS) {
+        await sleepImpl(retryDelay(attempt));
+        continue;
+      }
+
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `GitHub release URL is unreachable (${releaseUrl}): network failure after ${MAX_ATTEMPTS} attempts (${MAX_RETRIES} retries; retries exhausted). Last error: ${detail}`,
+      );
+    }
+
+    if (response.status >= 200 && response.status < 400) {
+      return {
+        repo,
+        releaseUrl,
+        networkChecked: true,
+        status: response.status,
+      };
+    }
+
+    if (response.status === 404) {
+      throw new Error(
+        `GitHub release URL check failed for ${releaseUrl}. The repository or its latest release was not found.`,
+      );
+    }
+
+    if (isRetryableStatus(response.status) && attempt < MAX_ATTEMPTS) {
+      const fallbackDelay = retryDelay(attempt);
+      const serverDelay =
+        response.status === 429
+          ? parseRetryAfter(retryAfterHeader(response))
+          : null;
+      await sleepImpl(serverDelay ?? fallbackDelay);
+      continue;
+    }
+
+    throw new Error(
+      `GitHub release URL check failed for ${releaseUrl}. Transient HTTP failure after ${MAX_ATTEMPTS} attempts (${MAX_RETRIES} retries; retries exhausted). GitHub returned HTTP ${response.status}.`,
+    );
+  }
+
+  throw new Error(`GitHub release URL check failed for ${releaseUrl}.`);
+}
+
+async function main() {
+  const result = await validateDownloadRelease();
+  const mode = result.networkChecked ? "reachable" : "format-only (local skip)";
+  console.log(
+    `Download release link validated: ${result.releaseUrl} [${mode}]`,
+  );
+}
+
+if (
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === resolve(process.argv[1])
+) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(
+      `Download release link validation failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    process.exitCode = 1;
+  }
+}

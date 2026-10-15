@@ -1,0 +1,1 @@
+ALTER TABLE "conversations" ADD COLUMN "group_continuation_mode" text DEFAULT 'short' NOT NULL;

@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 import { conversations } from "./conversations";
+import { engramsTable } from "./engrams";
 
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
@@ -11,6 +12,10 @@ export const messages = pgTable("messages", {
     .references(() => conversations.id, { onDelete: "cascade" }),
   role: text("role").notNull(),
   content: text("content").notNull(),
+  /** Null for human/PYRI/legacy messages; set for an engram group-chat reply. */
+  speakerEngramId: integer("speaker_engram_id").references(() => engramsTable.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

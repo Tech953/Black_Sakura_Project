@@ -29,10 +29,21 @@ The repo already builds the APK in GitHub Actions:
 3. The deployed app's Download page picks it up automatically through the GitHub
    fallback (no further action needed).
 
-**Signing note:** with no release keystore configured, CI produces a
-**debug-signed** APK. It installs fine via sideload, but updating in place over
-an older debug-signed build may require uninstalling first. To get update-safe
-signing, add a release keystore via CI secrets.
+**Signing:** CI signs the APK with the private ENGRAM release keystore when
+these four repository secrets are set (GitHub → Settings → Secrets and
+variables → Actions):
+
+| Secret                      | Value                                           |
+| --------------------------- | ----------------------------------------------- |
+| `ANDROID_KEYSTORE_BASE64`   | `base64 -w0 .keys/engram-release.keystore`      |
+| `ANDROID_KEYSTORE_PASSWORD` | store password from `.keys/android-signing.env` |
+| `ANDROID_KEY_ALIAS`         | key alias from `.keys/android-signing.env`      |
+| `ANDROID_KEY_PASSWORD`      | key password from `.keys/android-signing.env`   |
+
+The keystore and its credentials live in the (gitignored) `.keys/` directory of
+the Replit workspace. The workflow verifies the built APK's signer certificate
+against the pinned release-key fingerprint and **fails the build** if the
+keystore is wrong or missing, so a debug-signed APK can never silently ship.
 
 ---
 
@@ -40,13 +51,13 @@ signing, add a release keystore via CI secrets.
 
 ### Prerequisites
 
-| Tool | Version | Notes |
-| --- | --- | --- |
-| Node.js | 24.x | Matches the repo's `nodejs-24` module |
-| pnpm | 9+ | Workspace package manager |
-| JDK | 17 | Required by the Android Gradle Plugin |
-| Android SDK | Platform 34 + build-tools | Easiest via **Android Studio** |
-| Android NDK | As pinned by Expo | Installed via the SDK Manager |
+| Tool        | Version                   | Notes                                 |
+| ----------- | ------------------------- | ------------------------------------- |
+| Node.js     | 24.x                      | Matches the repo's `nodejs-24` module |
+| pnpm        | 9+                        | Workspace package manager             |
+| JDK         | 17                        | Required by the Android Gradle Plugin |
+| Android SDK | Platform 34 + build-tools | Easiest via **Android Studio**        |
+| Android NDK | As pinned by Expo         | Installed via the SDK Manager         |
 
 Set the standard Android env vars so Gradle can find the SDK:
 
@@ -94,25 +105,52 @@ artifacts/engram-mobile/android/app/build/outputs/apk/release/app-release.apk
 
 `app.json` carries `expo.version` (the user-visible version, e.g. `1.2.3`) and
 `android.versionCode` (an integer that **must increase** for every release the
-Play Store / in-place update accepts). In CI these are stamped from the git tag
-and the run number; for local builds, bump them by hand in `app.json` before
-prebuilding if you want an update-safe sequence.
+Play Store / in-place update accepts). In CI, the user-visible version comes
+from the git tag and the version code is set to a value greater than the
+checked-in code and the workflow run number. For local builds, bump them by
+hand in `app.json` before prebuilding if you want an update-safe sequence.
+Keep the matching `versionCode` in `android/app/build.gradle`; the installer
+script refuses to package a mismatch.
 
-### Release signing (optional, for update-safe installs)
+### Release signing (update-safe installs)
 
-A debug-signed APK is fine for testing but its signature changes per machine.
-For a stable signature:
+Release signing is already wired in: an Expo config plugin
+(`artifacts/engram-mobile/plugins/withAndroidReleaseSigning.js`, registered in
+`app.json`) injects a `release` signing config into the generated
+`android/app/build.gradle` on every `expo prebuild`, so it survives `--clean`
+regeneration locally and in CI. Gradle reads these environment variables **at
+build time**:
 
-1. Generate a keystore:
-   ```bash
-   keytool -genkeypair -v -keystore engram-release.keystore \
-     -alias engram -keyalg RSA -keysize 2048 -validity 10000
-   ```
-2. Configure Gradle signing (`android/app/build.gradle` `signingConfigs`, or via
-   `~/.gradle/gradle.properties`), then rebuild with `assembleRelease`.
+| Variable                    | Meaning                               |
+| --------------------------- | ------------------------------------- |
+| `ANDROID_KEYSTORE_PATH`     | Absolute path to the `.keystore` file |
+| `ANDROID_KEYSTORE_PASSWORD` | Store password                        |
+| `ANDROID_KEY_ALIAS`         | Key alias                             |
+| `ANDROID_KEY_PASSWORD`      | Key password                          |
 
-Keep the keystore safe — losing it means you can no longer ship updates that
-install over existing copies.
+In the Replit workspace, the private keystore and its credentials live in the
+gitignored `.keys/` directory. To build a release-signed APK locally:
+
+```bash
+source .keys/android-signing.env   # exports the four variables above
+cd artifacts/engram-mobile/android
+./gradlew :app:assembleRelease
+```
+
+The direct Gradle command still has a debug fallback for development-only
+builds, but `scripts/build-installers.sh` and CI require the release keystore
+and verify that the APK signer matches it before staging a downloadable APK.
+
+Keep the keystore safe and **never commit it** — losing it means you can no
+longer ship updates that install over existing copies.
+
+When `scripts/build-installers.sh --android` creates a downloadable release, it
+copies the configured keystore into a temporary backup, restores it to a second
+temporary path, and builds the normal `arm64-v8a,x86_64` release from that
+restored path. The rebuilt APK certificate must match both the restored key and
+the existing `downloads/ENGRAM-android.apk` baseline before staging. The script
+removes the temporary backup on success or failure and reports cleanup
+confirmation.
 
 ---
 
@@ -149,11 +187,30 @@ Endpoints (API server, `artifacts/api-server/src/routes/download.ts`):
 > would rather not commit a binary, skip bundling and rely on the GitHub release
 > fallback (Option A).
 
+### Keep an update-test predecessor
+
+`scripts/build-installers.sh --android` builds the current signed APK and also
+creates a lower-version predecessor at:
+
+```text
+downloads/ENGRAM-android-previous-<prior-version>.apk
+```
+
+The predecessor is built from the same Android source and release keystore with
+the previous `versionCode`. The script verifies that both APKs have the same
+package name and signer, that the predecessor's version is lower, and that the
+files are not byte-identical. It fails instead of silently retaining a stale or
+missing predecessor.
+
+Use the predecessor first on a device, create representative local state, then
+install the current APK with `adb install -r` to exercise the real in-place
+upgrade path without uninstalling the app.
+
 ### Relevant environment variables
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `ANDROID_APK_PATH` | _(unset)_ | Absolute path to a single bundled `.apk` |
-| `ANDROID_APK_DIR` | `<repo>/downloads` | Directory scanned for the newest `*.apk` |
-| `ANDROID_APK_GITHUB_REPO` | `Tech953/Ch-IO` | `owner/repo` for the GitHub fallback |
-| `VITE_GITHUB_REPO` | `Tech953/Ch-IO` | Web build-time repo for the **desktop** release feed |
+| Variable                  | Default            | Purpose                                                              |
+| ------------------------- | ------------------ | -------------------------------------------------------------------- |
+| `ANDROID_APK_PATH`        | _(unset)_          | Absolute path to a single bundled `.apk`                             |
+| `ANDROID_APK_DIR`         | `<repo>/downloads` | Directory scanned for the newest `*.apk`                             |
+| `ANDROID_APK_GITHUB_REPO` | `Tech953/Ch-IO`    | Optional `owner/repo` override for the APK GitHub fallback           |
+| `VITE_GITHUB_REPO`        | `Tech953/Ch-IO`    | Shared `owner/repo` for the web release link and API GitHub fallback |

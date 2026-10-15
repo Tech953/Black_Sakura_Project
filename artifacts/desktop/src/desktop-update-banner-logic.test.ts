@@ -1,0 +1,90 @@
+import { describe, expect, it } from "vitest";
+import settings from "../../../lib/i18n/src/en/settings.json";
+import {
+  chooseDesktopUpdateBannerPosition,
+  clampProgress,
+  isRetryableInstallFailure,
+  statusText,
+  type DesktopUpdateCopy,
+  type DesktopUpdateStatus,
+} from "../../engram/src/components/desktop-update-banner-logic";
+
+describe("desktop update banner accessibility contracts", () => {
+  const copy: DesktopUpdateCopy = settings.update;
+
+  it("bounds progress values before exposing them to the progressbar", () => {
+    expect(clampProgress(-12)).toBe(0);
+    expect(clampProgress(42.6)).toBe(43);
+    expect(clampProgress(140)).toBe(100);
+    expect(clampProgress(Number.NaN)).toBe(0);
+    expect(clampProgress(Number.POSITIVE_INFINITY)).toBe(100);
+    expect(clampProgress(Number.NEGATIVE_INFINITY)).toBe(0);
+  });
+
+  it("uses the shared Settings copy for every updater state", () => {
+    const statuses: DesktopUpdateStatus[] = [
+      { state: "checking" },
+      { state: "available", version: "1.2.3" },
+      { state: "downloading", percent: 42.6 },
+      { state: "downloaded", version: "1.2.3" },
+      { state: "error", message: "feed unavailable" },
+      {
+        state: "error",
+        message: "install failed",
+        retryable: true,
+        updateReady: true,
+        version: "1.2.3",
+      },
+      { state: "not-available", manual: true },
+    ];
+
+    expect(statuses.map((status) => statusText(status, copy))).toEqual([
+      copy.checking,
+      copy.availableWithVersion.replace("{{version}}", "1.2.3"),
+      copy.downloading.replace("{{percent}}", "43"),
+      copy.downloaded,
+      copy.error,
+      copy.downloaded,
+      copy.upToDate,
+    ]);
+  });
+
+  it("only offers direct retry while the downloaded update is still available", () => {
+    expect(
+      isRetryableInstallFailure({
+        state: "error",
+        message: "install failed",
+        retryable: true,
+        updateReady: true,
+      }),
+    ).toBe(true);
+    expect(
+      isRetryableInstallFailure({
+        state: "error",
+        message: "install failed",
+        retryable: true,
+        deferred: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("moves the notice away from the dashboard control that must regain focus", () => {
+    expect(
+      chooseDesktopUpdateBannerPosition(
+        { left: 140, right: 620, top: 64, bottom: 180 },
+        { left: 280, right: 320, top: 80, bottom: 112 },
+        600,
+      ),
+    ).toBe("bottom");
+  });
+
+  it("keeps the top placement when the focused control is outside the banner", () => {
+    expect(
+      chooseDesktopUpdateBannerPosition(
+        { left: 140, right: 620, top: 64, bottom: 180 },
+        { left: 16, right: 48, top: 80, bottom: 112 },
+        600,
+      ),
+    ).toBe("top");
+  });
+});

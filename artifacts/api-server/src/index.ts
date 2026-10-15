@@ -1,5 +1,6 @@
 import app from "./app";
-import { ensureDatabaseReady } from "@workspace/db";
+import { db, ensureDatabaseReady } from "@workspace/db";
+import { seedFullRezzArchive, seedFullRezzLiveBranch } from "@workspace/db/seed";
 import { logger } from "./lib/logger";
 import { startEngramEngine, stopEngramEngine } from "./services/engram-engine";
 import { startMediaWorker, stopMediaWorker } from "./services/media-worker";
@@ -28,6 +29,12 @@ async function main(): Promise<void> {
   // where schema is managed by `drizzle-kit push` and the seed scripts — so it
   // is safe to call unconditionally on every startup.
   await ensureDatabaseReady();
+  // Unlike embedded PGlite, node-postgres does not run seedAll during
+  // initialization. Provision both canonical templates before any account can
+  // bootstrap from them. The archival seeder validates and refuses to repair
+  // partial/noncanonical records; the interactive copy is a separate branch.
+  await seedFullRezzArchive(db);
+  await seedFullRezzLiveBranch(db);
 
   // Optional explicit bind host. Unset on Replit/dev (binds all interfaces,
   // unchanged); the desktop build sets HOST=127.0.0.1 to keep the embedded

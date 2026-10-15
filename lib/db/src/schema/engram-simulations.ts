@@ -5,12 +5,14 @@ import {
   text,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { engramsTable } from "./engrams";
 import { hubSpacesTable } from "./hub-spaces";
 import { engramWorldModelTable } from "./engram-world-model";
+import { SYSTEM_OWNER_ID } from "./accounts";
 
 /**
  * Lifecycle of a bounded simulation an engram runs inside a simulation chamber:
@@ -41,6 +43,8 @@ export const engramSimulationsTable = pgTable(
   "engram_simulations",
   {
     id: serial("id").primaryKey(),
+    /** Account that owns this durable job; copied from its engram at creation. */
+    ownerId: text("owner_id").notNull().default(SYSTEM_OWNER_ID),
     engramId: integer("engram_id")
       .notNull()
       .references(() => engramsTable.id, { onDelete: "cascade" }),
@@ -69,7 +73,35 @@ export const engramSimulationsTable = pgTable(
   },
   (t) => [
     index("engram_simulations_engram_idx").on(t.engramId),
+    index("engram_simulations_owner_idx").on(t.ownerId),
     index("engram_simulations_status_idx").on(t.status),
+  ],
+);
+
+/**
+ * Durable membership and turn-taking state for a shared simulation. The
+ * simulation's engramId remains the initiating/primary engram for backwards
+ * compatibility; every simulation has a membership row for that engram.
+ */
+export const engramSimulationParticipantsTable = pgTable(
+  "engram_simulation_participants",
+  {
+    id: serial("id").primaryKey(),
+    simulationId: integer("simulation_id")
+      .notNull()
+      .references(() => engramSimulationsTable.id, { onDelete: "cascade" }),
+    engramId: integer("engram_id")
+      .notNull()
+      .references(() => engramsTable.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id").notNull().default(SYSTEM_OWNER_ID),
+    /** Last time this participant took a simulation turn; null means never. */
+    lastSpokeAt: timestamp("last_spoke_at", { withTimezone: true }),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("engram_simulation_participant_unique").on(t.simulationId, t.engramId),
+    index("engram_simulation_participants_sim_idx").on(t.simulationId),
+    index("engram_simulation_participants_engram_idx").on(t.engramId),
   ],
 );
 
@@ -90,6 +122,10 @@ export const engramSimulationStepsTable = pgTable(
     stepNumber: integer("step_number").notNull(),
     /** The in-fiction narrative produced for this step. */
     narrative: text("narrative").notNull(),
+    /** The engram whose turn produced this narrative; nullable for legacy steps. */
+    speakerEngramId: integer("speaker_engram_id").references(() => engramsTable.id, {
+      onDelete: "set null",
+    }),
     /** The SIMULATED world-model entry this step produced, if still present. */
     worldModelEntryId: integer("world_model_entry_id").references(
       () => engramWorldModelTable.id,
@@ -115,3 +151,7 @@ export type InsertEngramSimulationStep = z.infer<
 >;
 export type EngramSimulationStep = typeof engramSimulationStepsTable.$inferSelect;
 export type NewEngramSimulationStep = typeof engramSimulationStepsTable.$inferInsert;
+export type EngramSimulationParticipant =
+  typeof engramSimulationParticipantsTable.$inferSelect;
+export type NewEngramSimulationParticipant =
+  typeof engramSimulationParticipantsTable.$inferInsert;

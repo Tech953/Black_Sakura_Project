@@ -9,6 +9,234 @@ export interface HealthStatus {
   status: string;
 }
 
+export type OfflineSyncMessageRole = typeof OfflineSyncMessageRole[keyof typeof OfflineSyncMessageRole];
+
+
+export const OfflineSyncMessageRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export interface OfflineSyncMessage {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  role: OfflineSyncMessageRole;
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  content: string;
+  createdAt: string;
+}
+
+export type OfflineSyncConversationSeedKey = typeof OfflineSyncConversationSeedKey[keyof typeof OfflineSyncConversationSeedKey];
+
+
+export const OfflineSyncConversationSeedKey = {
+  'rebecca-full-rezz-live-v1': 'rebecca-full-rezz-live-v1',
+} as const;
+
+export interface OfflineSyncConversation {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  title: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  mode: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  engramSlug: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  personaName?: string | null;
+  /**
+     * @maxLength 40000
+     * @nullable
+     */
+  customEngram?: string | null;
+  createdAt: string;
+  /** @nullable */
+  archivedAt?: string | null;
+  seedKey?: OfflineSyncConversationSeedKey;
+  /** @maxItems 100 */
+  messages: OfflineSyncMessage[];
+}
+
+export interface OfflineSyncInquiry {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  engramSlug: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  kind: string;
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  question: string;
+  /** @maxLength 40000 */
+  response: string;
+  createdAt: string;
+}
+
+export interface OfflineSyncTransmission {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  engramSlug: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  kind: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  drive: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 40000
+     */
+  content: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  mood: string | null;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  importanceScore: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  confidenceScore: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  noveltyScore: number;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  overallScore: number;
+  wasDelivered: boolean;
+  seen: boolean;
+  createdAt: string;
+}
+
+export interface OfflineSyncObservedEntry {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  engramSlug: string;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  conversationSyncId: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 20000
+     */
+  content: string;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  confidence: number;
+  createdAt: string;
+}
+
+export interface OfflineSyncOperatorReply {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  syncId: string;
+  /** @minimum 1 */
+  messageId: number;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  content: string;
+  createdAt: string;
+}
+
+export interface OfflineSyncInput {
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  deviceId: string;
+  /** @maxItems 100 */
+  conversations: OfflineSyncConversation[];
+  /** @maxItems 100 */
+  inquiries: OfflineSyncInquiry[];
+  /** @maxItems 100 */
+  transmissions: OfflineSyncTransmission[];
+  /** @maxItems 100 */
+  observedEntries: OfflineSyncObservedEntry[];
+  /** @maxItems 100 */
+  operatorReplies: OfflineSyncOperatorReply[];
+}
+
+export interface OfflineSyncCounts {
+  conversations: number;
+  messages: number;
+  inquiries: number;
+  transmissions: number;
+  observedEntries: number;
+  operatorReplies: number;
+}
+
+export interface OfflineSyncResult {
+  syncedIds: string[];
+  imported: OfflineSyncCounts;
+}
+
 export interface PersonalityProfile {
   id: number;
   curiosity: number;
@@ -222,6 +450,18 @@ export interface SystemStats {
   beliefConfidenceDistribution: ConfidenceBucket[];
 }
 
+/**
+ * Consent for peer-generated turns after the human-triggered group reply.
+ */
+export type OpenaiConversationGroupContinuationMode = typeof OpenaiConversationGroupContinuationMode[keyof typeof OpenaiConversationGroupContinuationMode];
+
+
+export const OpenaiConversationGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
+
 export interface OpenaiConversation {
   id: number;
   title: string;
@@ -229,7 +469,44 @@ export interface OpenaiConversation {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  /** Explicit participants for a human-mediated group conversation. */
+  engramIds: number[];
+  /** Consent for peer-generated turns after the human-triggered group reply. */
+  groupContinuationMode: OpenaiConversationGroupContinuationMode;
+  /**
+     * Server-owned revision for optimistic concurrency on group continuation consent.
+     * @minimum 0
+     */
+  groupContinuationRevision: number;
   createdAt: string;
+  /** @nullable */
+  archivedAt: string | null;
+}
+
+export interface OpenaiConversationArchiveInput {
+  archived: boolean;
+}
+
+/**
+ * Consent for peer-generated turns after the human-triggered group reply.
+ */
+export type OpenaiConversationContinuationInputGroupContinuationMode = typeof OpenaiConversationContinuationInputGroupContinuationMode[keyof typeof OpenaiConversationContinuationInputGroupContinuationMode];
+
+
+export const OpenaiConversationContinuationInputGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
+
+export interface OpenaiConversationContinuationInput {
+  /** Consent for peer-generated turns after the human-triggered group reply. */
+  groupContinuationMode: OpenaiConversationContinuationInputGroupContinuationMode;
+  /**
+     * Server-owned revision read with the conversation before saving.
+     * @minimum 0
+     */
+  expectedRevision: number;
 }
 
 export interface OpenaiMessage {
@@ -237,8 +514,21 @@ export interface OpenaiMessage {
   conversationId: number;
   role: string;
   content: string;
+  speakerEngramId?: number | null;
   createdAt: string;
 }
+
+/**
+ * Consent for peer-generated turns after the human-triggered group reply.
+ */
+export type OpenaiConversationInputGroupContinuationMode = typeof OpenaiConversationInputGroupContinuationMode[keyof typeof OpenaiConversationInputGroupContinuationMode];
+
+
+export const OpenaiConversationInputGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
 
 export interface OpenaiConversationInput {
   title: string;
@@ -246,11 +536,33 @@ export interface OpenaiConversationInput {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  /**
+     * Select 2–6 non-archival engrams for a human-mediated group conversation.
+     * @minItems 2
+     * @maxItems 6
+     */
+  engramIds?: number[];
+  /** Consent for peer-generated turns after the human-triggered group reply. */
+  groupContinuationMode?: OpenaiConversationInputGroupContinuationMode;
 }
 
 export interface OpenaiMessageInput {
   content: string;
+  /** Optional BCP-47 language code the assistant/engram should respond in (e.g. "es", "ja"). Omit for automatic (match the user). */
+  language?: string;
 }
+
+/**
+ * Consent for peer-generated turns after the human-triggered group reply.
+ */
+export type OpenaiConversationWithMessagesGroupContinuationMode = typeof OpenaiConversationWithMessagesGroupContinuationMode[keyof typeof OpenaiConversationWithMessagesGroupContinuationMode];
+
+
+export const OpenaiConversationWithMessagesGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
 
 export interface OpenaiConversationWithMessages {
   id: number;
@@ -259,12 +571,53 @@ export interface OpenaiConversationWithMessages {
   personaName?: string;
   customEngram?: string;
   engramId?: number;
+  engramIds?: number[];
+  /** Consent for peer-generated turns after the human-triggered group reply. */
+  groupContinuationMode: OpenaiConversationWithMessagesGroupContinuationMode;
+  /**
+     * Server-owned revision for optimistic concurrency on group continuation consent.
+     * @minimum 0
+     */
+  groupContinuationRevision: number;
   createdAt: string;
+  /** @nullable */
+  archivedAt: string | null;
   messages: OpenaiMessage[];
 }
 
+export type PushTokenInputPlatform = typeof PushTokenInputPlatform[keyof typeof PushTokenInputPlatform];
+
+
+export const PushTokenInputPlatform = {
+  ios: 'ios',
+  android: 'android',
+} as const;
+
+export interface PushTokenInput {
+  /**
+     * @minLength 1
+     * @maxLength 512
+     * @pattern ^(Expo|Exponent)PushToken\[[^\]]+\]$
+     */
+  token: string;
+  platform: PushTokenInputPlatform;
+}
+
+export type OpenaiErrorGroupContinuationMode = typeof OpenaiErrorGroupContinuationMode[keyof typeof OpenaiErrorGroupContinuationMode];
+
+
+export const OpenaiErrorGroupContinuationMode = {
+  off: 'off',
+  short: 'short',
+  extended: 'extended',
+} as const;
+
 export interface OpenaiError {
   error: string;
+  code?: string;
+  groupContinuationMode?: OpenaiErrorGroupContinuationMode;
+  /** @minimum 0 */
+  groupContinuationRevision?: number;
 }
 
 export interface VoiceProfile {
@@ -323,6 +676,14 @@ export const EngramMode = {
   quiescent: 'quiescent',
 } as const;
 
+/**
+ * Whether this engram may take a peer-generated group continuation turn right now.
+ */
+export interface EngramContinuationEligibility {
+  eligible: boolean;
+  reason?: string;
+}
+
 export interface Engram {
   id: number;
   slug: string;
@@ -341,15 +702,18 @@ export interface Engram {
   tickCadenceSeconds: number;
   initiationThreshold: number;
   driveState: EngramDriveState;
-  currentMood?: string;
-  lastTickAt?: string;
-  lastTransmissionAt?: string;
+  currentMood?: string | null;
+  lastTickAt?: string | null;
+  lastTransmissionAt?: string | null;
   backoffUntil?: string | null;
   isChatActive: boolean;
   mode: EngramMode;
   humanContactEnabled: boolean;
   simulationEnabled: boolean;
   artifactGenerationEnabled: boolean;
+  /** Permanent archival branch — read-only, preserved for continuity fidelity. */
+  isArchival: boolean;
+  continuationEligibility?: EngramContinuationEligibility;
   createdAt: string;
   updatedAt: string;
 }
@@ -392,6 +756,7 @@ export const SimulationStatus = {
 export interface Simulation {
   id: number;
   engramId: number;
+  participantEngramIds: number[];
   spaceId: number;
   premise: string;
   status: SimulationStatus;
@@ -416,10 +781,141 @@ export interface SimulationStep {
   id: number;
   simulationId: number;
   stepNumber: number;
+  /** @nullable */
+  speakerEngramId: number | null;
   narrative: string;
   /** @nullable */
   worldModelEntryId: number | null;
   createdAt: string;
+}
+
+export interface EngramSynthesisInput {
+  /** Operator instructions shaping the synthesized persona */
+  stipulations: string;
+  /** Restrict archive grounding to these engrams' observed material */
+  sourceEngramIds?: number[];
+}
+
+export interface EngramImportWarning {
+  code: string;
+  message: string;
+  /** @nullable */
+  row: number | null;
+}
+
+export interface EngramImportSourceSummary {
+  filename: string;
+  rowsAccepted: number;
+  rowsSkipped: number;
+  charactersAccepted: number;
+  warnings: EngramImportWarning[];
+}
+
+/**
+ * Uploads can never create observed entries; remembered requires explicit operator verification.
+ */
+export type EngramImportMemoryCandidateProvenance = typeof EngramImportMemoryCandidateProvenance[keyof typeof EngramImportMemoryCandidateProvenance];
+
+
+export const EngramImportMemoryCandidateProvenance = {
+  simulated: 'simulated',
+  inferred: 'inferred',
+  remembered: 'remembered',
+} as const;
+
+export interface EngramImportMemoryCandidate {
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  content: string;
+  /** Uploads can never create observed entries; remembered requires explicit operator verification. */
+  provenance: EngramImportMemoryCandidateProvenance;
+  /** Must be true when provenance is remembered and is valid only for the exact operatorVerifiedContent. */
+  operatorVerified: boolean;
+  /**
+     * Exact content snapshot approved by the operator; null unless a remembered candidate is verified.
+     * @maxLength 1000
+     */
+  operatorVerifiedContent: string | null;
+  sourceRows: number[];
+}
+
+export type EngramImportEditableDraftMode = typeof EngramImportEditableDraftMode[keyof typeof EngramImportEditableDraftMode];
+
+
+export const EngramImportEditableDraftMode = {
+  orientation: 'orientation',
+  social: 'social',
+  simulation: 'simulation',
+  initiative_limited: 'initiative_limited',
+  full_bounded: 'full_bounded',
+  quiescent: 'quiescent',
+} as const;
+
+export interface EngramImportEditableDraft {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 8
+     */
+  symbol: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  origin: string;
+  voiceProfile: VoiceProfile;
+  emotionalBaseline: EmotionalBaseline;
+  environmentAnchor: EnvironmentAnchor;
+  memorySeed: MemorySeed;
+  guardrails: Guardrails;
+  drives: EngramDrive[];
+  focusThemes: string[];
+  memoryCandidates: EngramImportMemoryCandidate[];
+  autonomyEnabled: boolean;
+  tickCadenceSeconds: number;
+  initiationThreshold: number;
+  mode: EngramImportEditableDraftMode;
+  humanContactEnabled: boolean;
+  simulationEnabled: boolean;
+  artifactGenerationEnabled: boolean;
+}
+
+export interface EngramImportPreview {
+  draftId: string;
+  expiresAt: string;
+  source: EngramImportSourceSummary;
+  draft: EngramImportEditableDraft;
+}
+
+export interface EngramImportConfirmation {
+  /** @minLength 1 */
+  draftId: string;
+  draft: EngramImportEditableDraft;
+}
+
+export interface SimulationCreateInput {
+  engramId: number;
+  /**
+     * @minItems 1
+     * @maxItems 8
+     */
+  participantEngramIds?: number[];
+  /** Optional specific scenario; omitted to generate one from the engram's context */
+  premise?: string;
+  /** Optional step budget (capped server-side) */
+  maxSteps?: number;
 }
 
 export type SimulationControlInputAction = typeof SimulationControlInputAction[keyof typeof SimulationControlInputAction];
@@ -464,6 +960,20 @@ export interface EngramInquiry {
   createdAt: string;
 }
 
+export type EngramInquiryErrorCode = typeof EngramInquiryErrorCode[keyof typeof EngramInquiryErrorCode];
+
+
+export const EngramInquiryErrorCode = {
+  INQUIRY_GENERATION_FAILED: 'INQUIRY_GENERATION_FAILED',
+  INQUIRY_PERSISTENCE_FAILED: 'INQUIRY_PERSISTENCE_FAILED',
+} as const;
+
+export interface EngramInquiryError {
+  error: string;
+  code: EngramInquiryErrorCode;
+  message: string;
+}
+
 export type EngramInquiryInputKind = typeof EngramInquiryInputKind[keyof typeof EngramInquiryInputKind];
 
 
@@ -475,6 +985,8 @@ export const EngramInquiryInputKind = {
 export interface EngramInquiryInput {
   kind: EngramInquiryInputKind;
   question: string;
+  /** Optional BCP-47 language code the engram should respond in. Omit for automatic. */
+  language?: string;
 }
 
 export interface MarkSeenInput {
@@ -542,6 +1054,7 @@ export interface WorldModelEntry {
   content: string;
   confidence: number;
   scope: WorldModelEntryScope;
+  /** Optional source label; omitted when the entry has no source. */
   source?: string;
   createdAt: string;
   updatedAt: string;
@@ -571,6 +1084,7 @@ export interface WorldModelInput {
   content: string;
   confidence?: number;
   scope?: WorldModelInputScope;
+  /** Optional source label; omit when no source is available. */
   source?: string;
 }
 
@@ -586,6 +1100,7 @@ export interface WorldModelPatch {
   content?: string;
   confidence?: number;
   scope?: WorldModelPatchScope;
+  /** Optional replacement source label; omit to keep the existing value. */
   source?: string;
 }
 
@@ -675,6 +1190,8 @@ export const HubActivityEntryKind = {
   move: 'move',
   rest: 'rest',
   wake: 'wake',
+  converse: 'converse',
+  simulate: 'simulate',
   system: 'system',
 } as const;
 
@@ -708,6 +1225,14 @@ export const EngramMessageChannel = {
   human: 'human',
 } as const;
 
+export type EngramMessageAuthor = typeof EngramMessageAuthor[keyof typeof EngramMessageAuthor];
+
+
+export const EngramMessageAuthor = {
+  engram: 'engram',
+  operator: 'operator',
+} as const;
+
 export type EngramMessagePriority = typeof EngramMessagePriority[keyof typeof EngramMessagePriority];
 
 
@@ -735,14 +1260,23 @@ export interface EngramMessage {
   /** @nullable */
   spaceId: number | null;
   channel: EngramMessageChannel;
+  author: EngramMessageAuthor;
   priority: EngramMessagePriority;
   status: EngramMessageStatus;
   content: string;
   /** @nullable */
   reason: string | null;
   seen: boolean;
+  isDigest: boolean;
+  /**
+     * Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.
+     * @nullable
+     */
+  digestGroupId: string | null;
   /** @nullable */
   deliveredAt: string | null;
+  /** @nullable */
+  acknowledgedAt: string | null;
   createdAt: string;
 }
 
@@ -752,6 +1286,14 @@ export interface MarkMessagesSeenInput {
 
 export interface MarkMessagesSeenResult {
   updated: number;
+}
+
+export interface ReplyToEngramMessageInput {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  content: string;
 }
 
 export type MediaAssetModality = typeof MediaAssetModality[keyof typeof MediaAssetModality];
@@ -774,6 +1316,31 @@ export const MediaAssetStatus = {
   failed: 'failed',
 } as const;
 
+/**
+ * Whether this asset has no derived result, a partial result, or a complete result.
+ */
+export type MediaAssetResultState = typeof MediaAssetResultState[keyof typeof MediaAssetResultState];
+
+
+export const MediaAssetResultState = {
+  none: 'none',
+  partial: 'partial',
+  complete: 'complete',
+} as const;
+
+/**
+ * Stable category for known media processing failures and recovery.
+ * @nullable
+ */
+export type MediaAssetFailureKind = typeof MediaAssetFailureKind[keyof typeof MediaAssetFailureKind] | null;
+
+
+export const MediaAssetFailureKind = {
+  provider: 'provider',
+  extraction: 'extraction',
+  recovered: 'recovered',
+} as const;
+
 export interface MediaAsset {
   id: number;
   /** @nullable */
@@ -785,6 +1352,8 @@ export interface MediaAsset {
   modality: MediaAssetModality;
   sizeBytes: number;
   status: MediaAssetStatus;
+  /** Whether this asset has no derived result, a partial result, or a complete result. */
+  resultState: MediaAssetResultState;
   /** @nullable */
   summary: string | null;
   /** @nullable */
@@ -793,6 +1362,11 @@ export interface MediaAsset {
   transcript: string | null;
   /** @nullable */
   error: string | null;
+  /**
+     * Stable category for known media processing failures and recovery.
+     * @nullable
+     */
+  failureKind: MediaAssetFailureKind;
   observationCount: number;
   /** @nullable */
   startedAt: string | null;
@@ -917,6 +1491,13 @@ export const ListMemoriesLayer = {
   procedural: 'procedural',
 } as const;
 
+export type ListOpenaiConversationsParams = {
+/**
+ * When true, list archived conversations; otherwise list active conversations.
+ */
+archived?: boolean;
+};
+
 export type ListHubActivityParams = {
 spaceId?: number;
 limit?: number;
@@ -925,6 +1506,14 @@ limit?: number;
 export type ListEngramMessagesParams = {
 channel?: ListEngramMessagesChannel;
 limit?: number;
+/**
+ * Return rows older than this ISO timestamp. Pair with beforeId to disambiguate rows sharing the same timestamp.
+ */
+before?: string;
+/**
+ * Message id tie-breaker for the before timestamp cursor.
+ */
+beforeId?: number;
 };
 
 export type ListEngramMessagesChannel = typeof ListEngramMessagesChannel[keyof typeof ListEngramMessagesChannel];

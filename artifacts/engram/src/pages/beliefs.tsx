@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Plus, Trash2, Edit3, FileCheck2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 type BeliefForm = { statement: string; confidence: number; evidence: string; counterarguments: string };
 
@@ -19,6 +20,7 @@ export default function Beliefs() {
   const remove = useDeleteBelief();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation("beliefs");
   const [createOpen, setCreateOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<BeliefForm>({ statement: "", confidence: 0.75, evidence: "", counterarguments: "" });
@@ -36,7 +38,7 @@ export default function Beliefs() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListBeliefsQueryKey() });
         setCreateOpen(false);
-        toast({ title: "Belief Registered", description: "Added to belief registry." });
+        toast({ title: t("toastRegisteredTitle"), description: t("toastRegisteredDescription") });
       }
     });
   }
@@ -47,7 +49,7 @@ export default function Beliefs() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListBeliefsQueryKey() });
         closeEdit();
-        toast({ title: "Belief Revised", description: "Confidence and evidence updated." });
+        toast({ title: t("toastRevisedTitle"), description: t("toastRevisedDescription") });
       }
     });
   }
@@ -56,7 +58,7 @@ export default function Beliefs() {
     remove.mutate({ id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListBeliefsQueryKey() });
-        toast({ title: "Belief Removed", description: "Entry struck from registry." });
+        toast({ title: t("toastRemovedTitle"), description: t("toastRemovedDescription") });
       }
     });
   }
@@ -67,27 +69,27 @@ export default function Beliefs() {
     return (
       <div className="space-y-4 mt-2">
         <div>
-          <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">Statement</label>
+          <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">{t("statementLabel")}</label>
           <Textarea value={form.statement} onChange={e => setForm(p => ({ ...p, statement: e.target.value }))}
-            placeholder="Belief statement..." className="mt-1 font-sans text-sm border-border/50 bg-background/50 min-h-20" />
+            placeholder={t("statementPlaceholder")} className="mt-1 font-sans text-sm border-border/50 bg-background/50 min-h-20" />
         </div>
         <div className="space-y-2">
           <div className="flex justify-between">
-            <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">Confidence</label>
+            <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">{t("confidenceLabel")}</label>
             <span className={`font-mono text-sm font-bold ${confColor}`}>{conf}%</span>
           </div>
           <Slider min={0} max={1} step={0.01} value={[form.confidence]}
             onValueChange={v => setForm(p => ({ ...p, confidence: v[0] }))} />
         </div>
         <div>
-          <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">Supporting Evidence</label>
+          <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">{t("supportingEvidenceLabel")}</label>
           <Textarea value={form.evidence} onChange={e => setForm(p => ({ ...p, evidence: e.target.value }))}
-            placeholder="Evidence sources..." className="mt-1 font-mono text-xs border-border/50 bg-background/50 min-h-16" />
+            placeholder={t("evidencePlaceholder")} className="mt-1 font-mono text-xs border-border/50 bg-background/50 min-h-16" />
         </div>
         <div>
-          <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">Counterarguments (optional)</label>
+          <label className="font-mono text-[10px] uppercase text-muted-foreground tracking-wider">{t("counterargumentsOptionalLabel")}</label>
           <Textarea value={form.counterarguments} onChange={e => setForm(p => ({ ...p, counterarguments: e.target.value }))}
-            placeholder="Known objections..." className="mt-1 font-mono text-xs border-border/50 bg-background/50 min-h-12" />
+            placeholder={t("counterargumentsPlaceholder")} className="mt-1 font-mono text-xs border-border/50 bg-background/50 min-h-12" />
         </div>
       </div>
     );
@@ -97,24 +99,24 @@ export default function Beliefs() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-widest text-primary">BELIEF REGISTRY</h2>
-          <p className="text-sm font-mono text-muted-foreground mt-1">Revisable working hypotheses — evidence-based, confidence-scored</p>
+          <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
+          <p className="text-sm font-mono text-muted-foreground mt-1">{t("subtitle")}</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm" onClick={openCreate}
               className="font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground" data-testid="button-create-belief">
-              <Plus className="w-3 h-3 mr-2" /> Register Belief
+              <Plus className="w-3 h-3 mr-2" /> {t("registerBelief")}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border/50 max-w-xl">
             <DialogHeader>
-              <DialogTitle className="font-display tracking-widest text-primary">Register New Belief</DialogTitle>
+              <DialogTitle className="font-display tracking-widest text-primary">{t("registerNewBelief")}</DialogTitle>
             </DialogHeader>
             <BeliefForm />
             <Button onClick={handleCreate} disabled={create.isPending || !form.statement.trim()}
               className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground mt-4" data-testid="button-confirm-belief">
-              {create.isPending ? "Registering..." : "Register"}
+              {create.isPending ? t("registering") : t("register")}
             </Button>
           </DialogContent>
         </Dialog>
@@ -126,7 +128,7 @@ export default function Beliefs() {
         ) : !beliefs?.length ? (
           <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground font-mono text-center">
             <FileCheck2 className="w-8 h-8 mb-4 opacity-30" />
-            <p className="text-xs uppercase tracking-widest">No beliefs registered</p>
+            <p className="text-xs uppercase tracking-widest">{t("emptyState")}</p>
           </div>
         ) : (
           beliefs.map(b => {
@@ -144,18 +146,18 @@ export default function Beliefs() {
                   </div>
                   <div className="space-y-2 text-[11px] font-mono">
                     <div>
-                      <span className="text-muted-foreground/60 uppercase">Evidence</span>
+                      <span className="text-muted-foreground/60 uppercase">{t("evidence")}</span>
                       <p className="mt-0.5 text-foreground/60 leading-relaxed">{b.evidence}</p>
                     </div>
                     {b.counterarguments && (
                       <div>
-                        <span className="text-muted-foreground/60 uppercase">Counterarguments</span>
+                        <span className="text-muted-foreground/60 uppercase">{t("counterarguments")}</span>
                         <p className="mt-0.5 text-foreground/50 leading-relaxed">{b.counterarguments}</p>
                       </div>
                     )}
                   </div>
                   <div className="flex items-center justify-between pt-1 border-t border-border/20">
-                    <span className="font-mono text-[9px] text-muted-foreground/50 uppercase">Rev {b.revisionCount} · {b.lastReviewed}</span>
+                    <span className="font-mono text-[9px] text-muted-foreground/50 uppercase">{t("revisionMeta", { count: b.revisionCount, lastReviewed: b.lastReviewed })}</span>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openEdit(b)} className="text-muted-foreground hover:text-primary transition-colors p-1" data-testid={`button-edit-belief-${b.id}`}>
                         <Edit3 className="w-3.5 h-3.5" />
@@ -176,12 +178,12 @@ export default function Beliefs() {
       <Dialog open={editId !== null} onOpenChange={open => !open && closeEdit()}>
         <DialogContent className="bg-card border-border/50 max-w-xl">
           <DialogHeader>
-            <DialogTitle className="font-display tracking-widest text-primary">Revise Belief</DialogTitle>
+            <DialogTitle className="font-display tracking-widest text-primary">{t("reviseBelief")}</DialogTitle>
           </DialogHeader>
           <BeliefForm />
           <Button onClick={handleUpdate} disabled={update.isPending || !form.statement.trim()}
             className="w-full font-mono text-xs uppercase tracking-wider bg-primary text-primary-foreground mt-4" data-testid="button-confirm-belief-update">
-            {update.isPending ? "Revising..." : "Revise Belief"}
+            {update.isPending ? t("revising") : t("reviseBelief")}
           </Button>
         </DialogContent>
       </Dialog>

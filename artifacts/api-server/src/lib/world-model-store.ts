@@ -1,31 +1,58 @@
-import { db } from "@workspace/db";
+import { db, type AppDatabase } from "@workspace/db";
 import {
   engramWorldModelTable,
   type EngramWorldModelEntry,
   type NewEngramWorldModelEntry,
 } from "@workspace/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { TRUSTED_REBECCA_ADAPTIVE_SOURCES } from "./world-model";
 
 /** How many recent entries we pull into prompt context (the summarizer caps further). */
 export const WORLD_MODEL_PROMPT_LIMIT = 40;
+
+/** The subset shared by the application DB and a transaction handle. */
+export type DbExecutor = Pick<AppDatabase, "insert" | "update" | "delete">;
 
 /** Load an engram's most-recent world-model entries (recency-ordered) for prompt context. */
 export async function loadRecentWorldModel(
   engramId: number,
   limit = WORLD_MODEL_PROMPT_LIMIT,
 ): Promise<EngramWorldModelEntry[]> {
-  return db
-    .select()
-    .from(engramWorldModelTable)
-    .where(eq(engramWorldModelTable.engramId, engramId))
-    .orderBy(desc(engramWorldModelTable.createdAt))
-    .limit(limit);
+  const [recent, adaptive] = await Promise.all([
+    db
+      .select()
+      .from(engramWorldModelTable)
+      .where(eq(engramWorldModelTable.engramId, engramId))
+      .orderBy(desc(engramWorldModelTable.createdAt))
+      .limit(limit),
+    db
+      .select()
+      .from(engramWorldModelTable)
+      .where(
+        and(
+          eq(engramWorldModelTable.engramId, engramId),
+          inArray(engramWorldModelTable.source, [
+            ...TRUSTED_REBECCA_ADAPTIVE_SOURCES,
+          ]),
+        ),
+      )
+      .orderBy(desc(engramWorldModelTable.createdAt)),
+  ]);
+  const recentIds = new Set(recent.map((entry) => entry.id));
+  return [
+    ...recent,
+    ...adaptive.filter((entry) => !recentIds.has(entry.id)),
+  ];
 }
 
 /** Append a single world-model entry. Provenance on a new entry is set once and never changed. */
 export async function appendWorldModelEntry(
   entry: NewEngramWorldModelEntry,
+  executor: DbExecutor = db,
 ): Promise<EngramWorldModelEntry> {
-  const [row] = await db.insert(engramWorldModelTable).values(entry).returning();
+  const [row] = await executor
+    .insert(engramWorldModelTable)
+    .values(entry)
+    .returning();
   return row;
 }

@@ -5,6 +5,7 @@
  * ENGRAM AI Persona Framework API
  * OpenAPI spec version: 0.1.0
  */
+import type { EngramMessageAuthor } from './engramMessageAuthor';
 import type { EngramMessageChannel } from './engramMessageChannel';
 import type { EngramMessagePriority } from './engramMessagePriority';
 import type { EngramMessageStatus } from './engramMessageStatus';
@@ -17,13 +18,22 @@ export interface EngramMessage {
   /** @nullable */
   spaceId: number | null;
   channel: EngramMessageChannel;
+  author: EngramMessageAuthor;
   priority: EngramMessagePriority;
   status: EngramMessageStatus;
   content: string;
   /** @nullable */
   reason: string | null;
   seen: boolean;
+  isDigest: boolean;
+  /**
+     * Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.
+     * @nullable
+     */
+  digestGroupId: string | null;
   /** @nullable */
   deliveredAt: string | null;
+  /** @nullable */
+  acknowledgedAt: string | null;
   createdAt: string;
 }

@@ -1,0 +1,21 @@
+{
+  "title": "REFLECTIVE JOURNAL",
+  "subtitle": "Internal introspection log — observations, inferences, lessons",
+  "newEntry": "New Entry",
+  "recordJournalEntry": "Record Journal Entry",
+  "recordEntry": "Record Entry",
+  "recording": "Recording...",
+  "emptyState": "No journal entries recorded",
+  "eventLabel": "Event",
+  "eventPlaceholder": "What occurred...",
+  "confidenceLabel": "Confidence",
+  "reflectionLabel": "Reflection",
+  "reflectionPlaceholder": "What does this reveal...",
+  "actionItemsLabel": "Action Items",
+  "actionItemsPlaceholder": "What should change...",
+  "outcomeLabel": "Outcome",
+  "outcomeOptionalLabel": "Outcome (optional)",
+  "outcomePlaceholder": "Known result...",
+  "toastRecordedTitle": "Journal Entry Recorded",
+  "toastRecordedDescription": "Introspection logged."
+}

@@ -11,27 +11,104 @@ id = "f-hUiEFYn8IrciUuluv73"
 uri = "file://docs/01_ENGRAM_Proposal.pdf"
 type = "pdf"
 title = "Formalized Proposal"
+logical_id = "89648875-9c3a-41cb-987b-99816b893959"
 
 [[outputs]]
 id = "P-sv7qwF3IjjTwPIyU6fN"
 uri = "file://docs/02_ENGRAM_Developer_Guide.pdf"
 type = "pdf"
 title = "Developer Document"
+logical_id = "9437071e-45e0-4cf5-bb63-106e5312e65b"
 
 [[outputs]]
 id = "10vPZH5_JV4mdFmY1BuxU"
 uri = "file://docs/03_ENGRAM_README.pdf"
 type = "pdf"
 title = "README"
+logical_id = "c1f99350-2dc5-4392-be7f-a81a67b8df52"
 
 [[outputs]]
 id = "Y-GEkJIGZB-ki3nRXt7IR"
 uri = "file://docs/04_ENGRAM_User_Manual.pdf"
 type = "pdf"
 title = "User Manual"
+logical_id = "313d84a5-2544-481a-91bf-2868062b192f"
 
 [[outputs]]
 id = "88WrrF4AZ8iTC99g9_hvH"
 uri = "file://docs/building-the-android-apk.md"
 type = "text"
 title = "How to build the ENGRAM Android .apk"
+logical_id = "1f9c2d4e-fdcc-472f-97f4-fe45d5994a17"
+
+[[outputs]]
+id = "wAGdkofmpVSyTrIWSbpWj"
+uri = "file://docs/ENGRAM-developers-guide.csv"
+type = "table"
+title = "ENGRAM Developer's Guide (CSV)"
+description = "Comprehensive developer reference: architecture, setup, domain concepts, API contract, i18n, mobile/desktop builds, database, testing, operations, and gotchas — one row per topic with locations and key commands."
+logical_id = "f2248faa-5fbc-49e4-9232-8912aeb219da"
+
+[[outputs]]
+id = "ZWZlTIdkafgwQtalPq030"
+uri = "file://downloads/ENGRAM-android.apk"
+type = "unspecified"
+title = "ENGRAM Android APK — Galaxy Z Flip 8 build"
+description = "Rebuilt for reliable modern Android/foldable installation: version 1.0.1 (versionCode 2), resizable activity enabled, aligned Expo dependencies, 16 KB ZIP/ELF native-library compatibility verified, arm64-v8a and x86_64 llama.rn libraries included. SHA-256: d7d622d9e57dc2df5cac548a965c910985724aa0b44a274b7f23da7c4e9f3221."
+logical_id = "f933e010-ebee-4435-b2c4-9e0483f67bdc"
+
+[[outputs]]
+id = "vZN-jEpEjD1lPjrdQ0FI2"
+uri = "file://.local/outputs/-PYRI---Pitch-Deck.pdf"
+type = "pdf"
+title = "ENGRAM // PYRI — Pitch Deck.pdf"
+logical_id = "33b5fd30-283b-49b1-989c-d587ab8e803d"
+
+[[outputs]]
+id = "Aq0eZukj1etJX-7nOKzNo"
+uri = "file://.local/outputs/-PYRI---Pitch-Deck.pptx"
+type = "slides"
+title = "ENGRAM // PYRI — Pitch Deck.pptx"
+logical_id = "90014ba7-c8cc-4dde-9314-2cd981a56b7f"
+
+[[outputs]]
+id = "i2M8-wzrgYhIUUn6LDgvR"
+uri = "file://.local/outputs/ENGRAM-PYRI-30-Slide-Pitch.pdf"
+type = "pdf"
+title = "ENGRAM / PYRI 30-Slide Pitch (PDF)"
+description = "Verified 30-slide PDF export with the deck's cyan cyberpunk visual system."
+logical_id = "04003941-a080-45db-8cde-6709433d28c0"
+content_hash = "sha256:9be76cea27c37076a2de57a17011b32be676b0ae1833ec2870c743976e6dc23d"
+size = 2371102
+mtime_ms = 1789311667050
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:d8d76f30-60ca-487c-b77f-ebf37ab48c82/04003941-a080-45db-8cde-6709433d28c0/0e2180ba-a5fb-4361-ad49-4ed420bfb00d"
+storage_version_token = "1789311722372487"
+content_type = "application/pdf"
+
+[[outputs]]
+id = "GNUoPYjaGQgdEM0Wcl9dX"
+uri = "file://.local/outputs/ENGRAM-PYRI-30-Slide-Pitch-optimized.pptx"
+type = "slides"
+title = "ENGRAM / PYRI 30-Slide Pitch (PPTX)"
+description = "Verified 30-slide PowerPoint export, optimized for download while preserving the deck's cyan cyberpunk visual system."
+logical_id = "7e94f7f1-887c-406a-bf6d-d39b02b0cc51"
+content_hash = "sha256:7d634b91365144c8665ef8a2f2d9810a4edf566bde4a62e28addbd81d23b23d0"
+size = 19885099
+mtime_ms = 1789311973710
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:d8d76f30-60ca-487c-b77f-ebf37ab48c82/7e94f7f1-887c-406a-bf6d-d39b02b0cc51/d604f1ed-e8d4-456e-899c-308af5c6c16b"
+storage_version_token = "1789311998481096"
+content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+[[outputs]]
+id = "c7ouTTBlfiu-bVWTQzbC7"
+uri = "file://.local/outputs/ENGRAM-PYRI-Investor-Handout.pdf"
+type = "pdf"
+title = "ENGRAM // PYRI Investor Handout (PDF)"
+description = "A verified one-page investor overview to accompany the full 30-slide pitch deck PDF and PowerPoint."
+logical_id = "d3eea7f4-781e-4b76-aaf3-65a465cb1434"
+content_hash = "sha256:483a9fe43c29dd5a8aef43c1d3b831f1db04cb9d1103eb5c57fb31f42c36fab9"
+size = 333526
+mtime_ms = 1790281255031
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:d8d76f30-60ca-487c-b77f-ebf37ab48c82/d3eea7f4-781e-4b76-aaf3-65a465cb1434/c9d7b852-ccb6-4a78-92ed-221cd648d7d4"
+storage_version_token = "1790281301715955"
+content_type = "application/pdf"
