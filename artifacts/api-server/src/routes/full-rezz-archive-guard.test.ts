@@ -15,6 +15,12 @@ const mocks = vi.hoisted(() => ({
   loadOwnedConversation: vi.fn(),
   reviewGeneration: vi.fn(),
   submitSpeech: vi.fn(),
+  submitMovie: vi.fn(),
+  previewHistory: vi.fn(),
+  importHistory: vi.fn(),
+  listHistory: vi.fn(),
+  exportHistory: vi.fn(),
+  rollbackHistory: vi.fn(),
   readOnlyError:
     "This engram is a permanent immutable archival branch. It is read-only; any future exception requires multistage executive confirmation.",
 }));
@@ -39,8 +45,10 @@ vi.mock("../lib/account-bootstrap", () => ({
 
 vi.mock("../lib/full-rezz-worker", () => ({
   cancelFullRezzJob: vi.fn(),
+  exportFullRezzHistory: mocks.exportHistory,
   fullRezzWorkspaceForOwner: vi.fn(),
   getFullRezzAudioPath: vi.fn(),
+  getFullRezzMoviePath: vi.fn(),
   getFullRezzJob: mocks.getJob,
   getFullRezzRuntimeStatus: vi.fn(() => ({
     available: false,
@@ -48,10 +56,19 @@ vi.mock("../lib/full-rezz-worker", () => ({
     reason: "Runtime is not staged.",
   })),
   importFullRezzReferencePack: mocks.importReferencePack,
+  importFullRezzHistory: mocks.importHistory,
+  listFullRezzHistory: mocks.listHistory,
+  previewFullRezzHistory: mocks.previewHistory,
   previewFullRezzReferencePack: vi.fn(),
   reviewFullRezzGeneration: mocks.reviewGeneration,
   rollbackFullRezzImport: vi.fn(),
+  rollbackFullRezzHistoryImport: mocks.rollbackHistory,
+  submitFullRezzMovieExportJob: mocks.submitMovie,
   submitFullRezzSpeechJob: mocks.submitSpeech,
+}));
+
+vi.mock("../lib/full-rezz-contract", () => ({
+  readFullRezzBinding: vi.fn(() => null),
 }));
 
 import fullRezzRouter from "./full-rezz";
@@ -101,6 +118,62 @@ describe("FULL_REZZ immutable archive guard", () => {
     expect(await response.json()).toEqual({ error: mocks.readOnlyError });
     expect(mocks.importReferencePack).not.toHaveBeenCalled();
     expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects archival history preview/import before invoking the history worker", async () => {
+    const previewForm = new FormData();
+    previewForm.set("file", new Blob(["[]"], { type: "application/json" }), "history.json");
+    const preview = await fetch(`${base}/full-rezz/engrams/17/history/import-preview`, {
+      method: "POST",
+      body: previewForm,
+    });
+    expect(preview.status).toBe(409);
+    expect(await preview.json()).toEqual({ error: mocks.readOnlyError });
+
+    const importForm = new FormData();
+    importForm.set("file", new Blob(["[]"], { type: "application/json" }), "history.json");
+    const imported = await fetch(`${base}/full-rezz/engrams/17/history/import`, {
+      method: "POST",
+      body: importForm,
+    });
+    expect(imported.status).toBe(409);
+    expect(await imported.json()).toEqual({ error: mocks.readOnlyError });
+    expect(mocks.previewHistory).not.toHaveBeenCalled();
+    expect(mocks.importHistory).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects archival history read/export and movie export before worker access", async () => {
+    const history = await fetch(`${base}/full-rezz/engrams/17/history`);
+    expect(history.status).toBe(409);
+    expect(await history.json()).toEqual({ error: mocks.readOnlyError });
+
+    const historyExport = await fetch(`${base}/full-rezz/engrams/17/history/export`);
+    expect(historyExport.status).toBe(409);
+    expect(await historyExport.json()).toEqual({ error: mocks.readOnlyError });
+
+    mocks.loadOwnedConversation.mockResolvedValue({
+      id: 3,
+      ownerId: "owner",
+      engramId: 17,
+      archivedAt: null,
+    });
+    const movie = await fetch(
+      `${base}/full-rezz/conversations/3/messages/99/movie-export`,
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+    );
+    expect(movie.status).toBe(409);
+    expect(await movie.json()).toEqual({ error: mocks.readOnlyError });
+    expect(mocks.listHistory).not.toHaveBeenCalled();
+    expect(mocks.exportHistory).not.toHaveBeenCalled();
+    const rollback = await fetch(
+      `${base}/full-rezz/engrams/17/history/imports/import_0123456789abcdef0123456789abcdef`,
+      { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ confirm: true }) },
+    );
+    expect(rollback.status).toBe(409);
+    expect(await rollback.json()).toEqual({ error: mocks.readOnlyError });
+    expect(mocks.rollbackHistory).not.toHaveBeenCalled();
+    expect(mocks.submitMovie).not.toHaveBeenCalled();
   });
 
   it("rejects saved-reply speech before reading or starting an archival job", async () => {

@@ -18,6 +18,8 @@ import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Button } from "@/components/ui/button";
 import { FullRezzPresenter } from "@/components/full-rezz-presenter";
+import { FullRezzHistoryDialog } from "@/components/full-rezz-history-dialog";
+import { FullRezzMovieExportDialog } from "@/components/full-rezz-movie-export-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users, Download, Archive, ArchiveRestore, Settings2, Volume2 } from "lucide-react";
+import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users, Download, Archive, ArchiveRestore, Settings2, Volume2, History, Clapperboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -118,6 +120,7 @@ interface SpeechJobView {
   status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
   error?: string;
   audioUrl?: string;
+  turnId?: string;
   generationIds?: string[];
   audioObjectUrl?: string;
 }
@@ -206,6 +209,7 @@ export default function Chat() {
   const [dragOver, setDragOver] = useState(false);
   const [sysEvents, setSysEvents] = useState<SystemEvent[]>([]);
   const [fullRezzDialogOpen, setFullRezzDialogOpen] = useState(false);
+  const [fullRezzHistoryOpen, setFullRezzHistoryOpen] = useState(false);
   const [fullRezzFile, setFullRezzFile] = useState<File | null>(null);
   const [fullRezzPreview, setFullRezzPreview] = useState<FullRezzPreview | null>(null);
   const [fullRezzSelectedProfileId, setFullRezzSelectedProfileId] = useState("");
@@ -214,6 +218,10 @@ export default function Chat() {
   const [fullRezzBoundEngramId, setFullRezzBoundEngramId] = useState<number | null>(null);
   const [speechJobs, setSpeechJobs] = useState<Record<number, SpeechJobView>>({});
   const [presenterAudioUrl, setPresenterAudioUrl] = useState<string | null>(null);
+  const [movieExportSelection, setMovieExportSelection] = useState<{
+    conversationId: number;
+    messageId: number;
+  } | null>(null);
   const [speechReviewRatings, setSpeechReviewRatings] = useState<Record<number, FullRezzReviewRatings>>({});
   const [speechReviewStatus, setSpeechReviewStatus] = useState<Record<number, string>>({});
   const [speechReviewBusy, setSpeechReviewBusy] = useState<Record<number, boolean>>({});
@@ -872,6 +880,7 @@ export default function Chat() {
         [message.id!]: {
           jobId: job.id,
           status: job.status,
+          turnId: job.turnId,
           generationIds: job.generationIds,
         },
       }));
@@ -888,6 +897,7 @@ export default function Chat() {
             jobId: job.id,
             status: job.status,
             error: job.error,
+            turnId: job.turnId,
             audioUrl: job.audioUrl,
             generationIds: job.generationIds,
           },
@@ -904,6 +914,7 @@ export default function Chat() {
           [message.id!]: {
             jobId: job.id,
             status: "succeeded",
+            turnId: job.turnId,
             audioUrl: job.audioUrl,
             audioObjectUrl: objectUrl,
             generationIds: job.generationIds,
@@ -915,6 +926,7 @@ export default function Chat() {
           [message.id!]: {
             jobId: job.id,
             status: job.status,
+            turnId: job.turnId,
             error: job.error,
             generationIds: job.generationIds,
           },
@@ -1511,6 +1523,22 @@ export default function Chat() {
                     <Volume2 className="w-3.5 h-3.5" />
                   </Button>
                 )}
+                {activeEngram &&
+                  !activeEngram.isArchival &&
+                  !activeConv.archivedAt &&
+                  !isActiveGroup &&
+                  fullRezzBoundEngramId === activeEngram.id && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="w-7 h-7 text-primary/80 hover:text-primary"
+                      onClick={() => setFullRezzHistoryOpen(true)}
+                      title="FULL_REZZ conversation history"
+                      aria-label="FULL_REZZ conversation history"
+                    >
+                      <History className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -1690,6 +1718,27 @@ export default function Chat() {
                             >
                               Open Studio Unit presenter
                             </Button>
+                            {speechJob.status === "succeeded" &&
+                              activeConv &&
+                              msg.id != null &&
+                              fullRezzBoundEngramId === activeEngram?.id && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="ml-2 h-7 font-mono text-[9px] uppercase tracking-wider"
+                                  onClick={() =>
+                                    setMovieExportSelection({
+                                      conversationId: activeConv.id,
+                                      messageId: msg.id!,
+                                    })
+                                  }
+                                  title="Export an audited 60, 120 or 240 fps .webm movie"
+                                >
+                                  <Clapperboard className="mr-1 h-3 w-3" />
+                                  Export movie
+                                </Button>
+                              )}
                             <p className="font-mono text-[9px] text-muted-foreground/70">
                               Synthetic offline voice · human listening review required · not a performer identity claim.
                             </p>
@@ -1876,6 +1925,27 @@ export default function Chat() {
         audioUrl={presenterAudioUrl}
         assetBaseUrl={`${BASE}/api/full-rezz/studio-unit/assets`}
         authFetch={authFetch}
+      />
+      <FullRezzHistoryDialog
+        open={
+          fullRezzHistoryOpen &&
+          activeEngram != null &&
+          !activeEngram.isArchival &&
+          fullRezzBoundEngramId === activeEngram.id
+        }
+        onOpenChange={setFullRezzHistoryOpen}
+        authFetch={authFetch}
+        engramId={activeEngram?.id ?? 0}
+        engramName={activeEngram?.name ?? "engram"}
+      />
+      <FullRezzMovieExportDialog
+        open={movieExportSelection !== null}
+        onOpenChange={(open) => {
+          if (!open) setMovieExportSelection(null);
+        }}
+        authFetch={authFetch}
+        conversationId={movieExportSelection?.conversationId ?? null}
+        messageId={movieExportSelection?.messageId ?? null}
       />
     </div>
   );

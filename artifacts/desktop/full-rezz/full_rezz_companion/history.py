@@ -1,6 +1,6 @@
 """Atomic, provenance-preserving chat imports and durable per-character memory."""
 from __future__ import annotations
-import csv, hashlib, io, json, re, sqlite3, uuid
+import base64, csv, hashlib, io, json, re, sqlite3, uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -59,8 +59,11 @@ def parse_history(data, filename, mapping=None):
     return parsed
 
 class HistoryStore:
-    def __init__(self, root):
-        self.path = Path(root) / "companion" / "history.sqlite3"
+    def __init__(self, root, initialize=True):
+        self.root = Path(root).resolve()
+        self.path = self.root / "companion" / "history.sqlite3"
+        if not initialize:
+            return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
             db.executescript('''
@@ -99,6 +102,118 @@ class HistoryStore:
                 db.execute("INSERT INTO messages(character_id,message_id,role,content,timestamp,provenance,imported) VALUES(?,?,?,?,?,?,1)",
                            (character_id, f"{import_id}:{row['source_index']}", row["role"], row["content"], text_json(row["timestamp"]), text_json(provenance)))
         return {"import_id": import_id, "message_count": len(rows), "source_sha256": sha, "already_imported": False}
+    def preview_import(self, character_id, data, filename, mapping=None):
+        self.valid_id(character_id); rows = parse_history(data, filename, mapping)
+        sha = hashlib.sha256(data).hexdigest()
+        previous = None
+        if self.path.is_file():
+            try:
+                with sqlite3.connect(self.path.as_uri() + "?mode=ro", uri=True) as db:
+                    db.row_factory = sqlite3.Row
+                    previous = db.execute(
+                        "SELECT id,count FROM imports WHERE character_id=? AND source_sha256=?",
+                        (character_id, sha),
+                    ).fetchone()
+            except sqlite3.OperationalError:
+                previous = None
+        roles = {}
+        for row in rows:
+            roles[row["role"]] = roles.get(row["role"], 0) + 1
+        return {
+            "profile_id": character_id,
+            "filename": Path(filename).name,
+            "source_sha256": sha,
+            "message_count": len(rows),
+            "role_counts": roles,
+            "already_imported": previous is not None,
+            "sample": [
+                {"role": row["role"], "content": row["content"][:240]}
+                for row in rows[:3]
+            ],
+        }
+    def imports(self, character_id):
+        self.valid_id(character_id)
+        with self.connect() as db:
+            rows = db.execute(
+                "SELECT id,source_sha256,filename,created_at,mapping,count "
+                "FROM imports WHERE character_id=? ORDER BY created_at,id",
+                (character_id,),
+            ).fetchall()
+        return [
+            {
+                "import_id": row["id"],
+                "source_sha256": row["source_sha256"],
+                "filename": row["filename"],
+                "created_at": row["created_at"],
+                "mapping": json.loads(row["mapping"]),
+                "message_count": row["count"],
+            }
+            for row in rows
+        ]
+    def rollback_import(self, character_id, import_id):
+        self.valid_id(character_id)
+        if not isinstance(import_id, str) or not re.fullmatch(r"import_[a-f0-9]{32}", import_id):
+            raise ValueError("Invalid history import ID.")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            imported = db.execute(
+                "SELECT source_sha256,count FROM imports WHERE id=? AND character_id=?",
+                (import_id, character_id),
+            ).fetchone()
+            if imported is None:
+                return {"rolled_back": False, "import_id": import_id, "removed_message_count": 0}
+            rows = db.execute(
+                "SELECT message_id,provenance FROM messages WHERE character_id=? AND imported=1",
+                (character_id,),
+            ).fetchall()
+            message_ids = [
+                row["message_id"]
+                for row in rows
+                if json.loads(row["provenance"]).get("import_id") == import_id
+            ]
+            db.executemany(
+                "DELETE FROM messages WHERE character_id=? AND message_id=? AND imported=1",
+                [(character_id, message_id) for message_id in message_ids],
+            )
+            for turn in db.execute(
+                "SELECT id,receipt FROM turns WHERE character_id=?",
+                (character_id,),
+            ).fetchall():
+                receipt = json.loads(turn["receipt"])
+                excerpts = receipt.get("context_excerpts")
+                if not isinstance(excerpts, list):
+                    continue
+                retained = [
+                    item for item in excerpts
+                    if not isinstance(item, dict) or item.get("import_id") != import_id
+                ]
+                if len(retained) == len(excerpts):
+                    continue
+                receipt["context_excerpts"] = retained
+                receipt["context_message_ids"] = [
+                    item.get("message_id") for item in retained if isinstance(item, dict)
+                ]
+                receipt["truncated_message_ids"] = [
+                    item.get("message_id")
+                    for item in retained
+                    if isinstance(item, dict) and item.get("context_excerpt_truncated")
+                ]
+                receipt.setdefault("rolled_back_import_ids", []).append(import_id)
+                db.execute(
+                    "UPDATE turns SET receipt=? WHERE id=? AND character_id=?",
+                    (text_json(receipt), turn["id"], character_id),
+                )
+            db.execute(
+                "DELETE FROM imports WHERE id=? AND character_id=?",
+                (import_id, character_id),
+            )
+        return {
+            "rolled_back": True,
+            "import_id": import_id,
+            "source_sha256": imported["source_sha256"],
+            "removed_message_count": len(message_ids),
+            "source_bytes_removed": True,
+        }
     def interrupt_job(self,job_id):
         with self.connect() as db:
             for row in db.execute("SELECT id,character_id,receipt FROM turns WHERE status='generating_reply'").fetchall():
@@ -131,10 +246,28 @@ class HistoryStore:
         for row in sorted(candidates.values(), key=lambda r: r["sequence"], reverse=True):
             excerpt = row["content"][:min(3000, max_chars-used)]
             if not excerpt: break
+            provenance = json.loads(row["provenance"])
             result.append({"message_id": row["message_id"], "role": row["role"], "content": excerpt,
-                           "context_excerpt_truncated": len(excerpt) != len(row["content"]), "sequence": row["sequence"]})
+                           "context_excerpt_truncated": len(excerpt) != len(row["content"]), "sequence": row["sequence"],
+                           "import_id": provenance.get("import_id"), "source_sha256": provenance.get("source_sha256"),
+                           "source_span": provenance.get("source_span")})
             used += len(excerpt)
         return list(reversed(result))
+    def retrieve_with_receipt(self, character_id, query, receipt_id, recent=8, selected=8, max_chars=6500):
+        excerpts = self.retrieve(character_id, query, recent, selected, max_chars)
+        receipt = {
+            "context_message_ids": [row["message_id"] for row in excerpts],
+            "context_excerpts": excerpts,
+            "truncated_message_ids": [
+                row["message_id"] for row in excerpts if row["context_excerpt_truncated"]
+            ],
+            "context_character_budget": max_chars,
+            "full_history_retained": True,
+            "imported_system_role_is_executable_policy": False,
+        }
+        if receipt_id:
+            self.save_turn(receipt_id, character_id, "context_retrieved", receipt)
+        return receipt
     def append(self, character_id, role, content, provenance=None):
         self.valid_id(character_id)
         if role not in ROLES or not isinstance(content,str) or not content.strip() or len(content.encode())>MAX_MESSAGE_BYTES: raise ValueError("Invalid live message.")
@@ -148,12 +281,71 @@ class HistoryStore:
             db.execute("INSERT OR REPLACE INTO turns VALUES(?,?,?,?,?)", (turn_id, character_id, status, text_json(receipt), now()))
     def export(self, character_id, path):
         self.valid_id(character_id)
+        def portable_receipt(value):
+            if isinstance(value, dict):
+                result = {}
+                for key, item in value.items():
+                    if key == "audio_path" and isinstance(item, str):
+                        candidate = Path(item).resolve()
+                        result[key] = (
+                            candidate.relative_to(self.root).as_posix()
+                            if candidate.is_relative_to(self.root)
+                            else None
+                        )
+                    else:
+                        result[key] = portable_receipt(item)
+                return result
+            if isinstance(value, list):
+                return [portable_receipt(item) for item in value]
+            return value
+
         with self.connect() as db, Path(path).open("w",encoding="utf-8") as out:
-            out.write('{"schema_version":"1.0.0","character_id":'+text_json(character_id)+',"messages":[')
+            out.write('{"schema_version":"1.1.0","character_id":'+text_json(character_id)+',"imports":[')
+            first_import = True
+            for row in db.execute(
+                "SELECT id,source_sha256,filename,created_at,original,mapping,count "
+                "FROM imports WHERE character_id=? ORDER BY created_at,id",
+                (character_id,),
+            ):
+                original = bytes(row["original"])
+                if hashlib.sha256(original).hexdigest() != row["source_sha256"]:
+                    raise ValueError("A stored history source failed its SHA256 integrity check.")
+                record = {
+                    "import_id": row["id"],
+                    "source_sha256": row["source_sha256"],
+                    "filename": row["filename"],
+                    "created_at": row["created_at"],
+                    "mapping": json.loads(row["mapping"]),
+                    "message_count": row["count"],
+                    "original_bytes_base64": base64.b64encode(original).decode("ascii"),
+                }
+                if not first_import:
+                    out.write(",")
+                out.write(text_json(record))
+                first_import = False
+            out.write('],"messages":[')
             first=True
             for row in db.execute("SELECT * FROM messages WHERE character_id=? ORDER BY sequence", (character_id,)):
                 value=dict(row); value["provenance"]=json.loads(value["provenance"])
+                if value["imported"] and value["timestamp"] is not None:
+                    value["timestamp"] = json.loads(value["timestamp"])
                 if not first:out.write(',')
                 out.write(text_json(value));first=False
+            out.write('],"turns":[')
+            first = True
+            for row in db.execute(
+                "SELECT id,status,receipt,created_at FROM turns WHERE character_id=? ORDER BY created_at,id",
+                (character_id,),
+            ):
+                record = {
+                    "turn_id": row["id"],
+                    "status": row["status"],
+                    "receipt": portable_receipt(json.loads(row["receipt"])),
+                    "created_at": row["created_at"],
+                }
+                if not first:
+                    out.write(",")
+                out.write(text_json(record))
+                first = False
             out.write(']}')
         return Path(path)

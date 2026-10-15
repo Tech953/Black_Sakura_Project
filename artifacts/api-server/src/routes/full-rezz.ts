@@ -20,20 +20,28 @@ import {
 } from "../lib/full-rezz-contract";
 import {
   cancelFullRezzJob,
+  exportFullRezzHistory,
   fullRezzWorkspaceForOwner,
+  getFullRezzMoviePath,
   getFullRezzAudioPath,
   getFullRezzJob,
   getFullRezzRuntimeStatus,
+  importFullRezzHistory,
+  listFullRezzHistory,
   importFullRezzReferencePack,
+  previewFullRezzHistory,
   previewFullRezzReferencePack,
   reviewFullRezzGeneration,
+  rollbackFullRezzHistoryImport,
   rollbackFullRezzImport,
+  submitFullRezzMovieExportJob,
   submitFullRezzSpeechJob,
 } from "../lib/full-rezz-worker";
 
 const router = Router();
 const UPLOAD_DIR = path.join(os.tmpdir(), "engram-full-rezz-imports");
 const MAX_PACK_BYTES = 256 * 1024 * 1024;
+const MAX_HISTORY_BYTES = 128 * 1024 * 1024;
 const RATINGS = [
   "likeness",
   "naturalness",
@@ -88,6 +96,17 @@ const upload = multer({
   }),
   limits: { fileSize: MAX_PACK_BYTES, files: 1 },
 }).single("file");
+const historyUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, callback) => {
+      void mkdir(UPLOAD_DIR, { recursive: true })
+        .then(() => callback(null, UPLOAD_DIR))
+        .catch((error: unknown) => callback(error as Error, UPLOAD_DIR));
+    },
+    filename: (_req, _file, callback) => callback(null, `${randomUUID()}.history`),
+  }),
+  limits: { fileSize: MAX_HISTORY_BYTES, files: 1 },
+}).single("file");
 
 function positiveInteger(value: string): number | null {
   const parsed = Number(value);
@@ -105,6 +124,31 @@ function sendUploadError(error: unknown, res: Response): void {
     return;
   }
   res.status(400).json({ error: "Reference-pack upload could not be read." });
+}
+
+function sendHistoryUploadError(error: unknown, res: Response): void {
+  if (error instanceof multer.MulterError) {
+    res.status(error.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
+      error:
+        error.code === "LIMIT_FILE_SIZE"
+          ? "Conversation history exceeds the 128 MiB import limit."
+          : "Conversation history upload was rejected.",
+    });
+    return;
+  }
+  res.status(400).json({ error: "Conversation history upload could not be read." });
+}
+
+function historyMapping(value: unknown): Record<string, unknown> {
+  if (value == null || value === "") return {};
+  if (typeof value !== "string" || value.length > 8192) {
+    throw new Error("History mapping must be JSON text of at most 8 KiB.");
+  }
+  const parsed = JSON.parse(value) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("History mapping must be a JSON object.");
+  }
+  return parsed as Record<string, unknown>;
 }
 
 router.get("/full-rezz/status", (_req, res) => {
@@ -163,6 +207,285 @@ router.get("/full-rezz/engrams/:id/binding", async (req, res) => {
       : {}),
   });
 });
+
+router.get("/full-rezz/engrams/:id/history", async (req, res) => {
+  const engramId = positiveInteger(req.params.id);
+  if (engramId == null) {
+    res.status(400).json({ error: "Invalid engram ID." });
+    return;
+  }
+  const engram = await loadOwnedEngram(engramId, req.userId!);
+  if (!engram) {
+    res.status(404).json({ error: "Engram not found." });
+    return;
+  }
+  if (engram.isArchival) {
+    res.status(409).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+    return;
+  }
+  const binding = readFullRezzBinding(engram.voiceProfile);
+  if (!binding) {
+    res.status(409).json({ error: "Bind a FULL_REZZ profile before accessing its history." });
+    return;
+  }
+  const runtime = getFullRezzRuntimeStatus();
+  if (!runtime.available) {
+    res.status(503).json({ error: runtime.reason });
+    return;
+  }
+  const limit = req.query.limit == null ? 50 : Number(req.query.limit);
+  const offset = req.query.offset == null ? 0 : Number(req.query.offset);
+  if (
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 200 ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0
+  ) {
+    res.status(400).json({ error: "History pages accept limit 1–200 and a non-negative offset." });
+    return;
+  }
+  try {
+    res.json(
+      await listFullRezzHistory(req.userId!, binding.voice_profile_id, limit, offset),
+    );
+  } catch (error) {
+    res.status(503).json({
+      error: error instanceof Error ? error.message.slice(0, 1200) : "History could not be loaded.",
+    });
+  }
+});
+
+router.get("/full-rezz/engrams/:id/history/export", async (req, res) => {
+  const engramId = positiveInteger(req.params.id);
+  if (engramId == null) {
+    res.status(400).json({ error: "Invalid engram ID." });
+    return;
+  }
+  const engram = await loadOwnedEngram(engramId, req.userId!);
+  if (!engram) {
+    res.status(404).json({ error: "Engram not found." });
+    return;
+  }
+  if (engram.isArchival) {
+    res.status(409).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+    return;
+  }
+  const binding = readFullRezzBinding(engram.voiceProfile);
+  if (!binding) {
+    res.status(409).json({ error: "Bind a FULL_REZZ profile before exporting its history." });
+    return;
+  }
+  const runtime = getFullRezzRuntimeStatus();
+  if (!runtime.available) {
+    res.status(503).json({ error: runtime.reason });
+    return;
+  }
+  try {
+    const exportPath = await exportFullRezzHistory(
+      req.userId!,
+      binding.voice_profile_id,
+    );
+    res.type("application/json");
+    res.download(
+      exportPath,
+      `engram-${engramId}-full-rezz-history.json`,
+      (error) => {
+        if (error && !res.headersSent) {
+          res.status(500).json({ error: "FULL_REZZ history export could not be downloaded." });
+        }
+      },
+    );
+  } catch (error) {
+    res.status(503).json({
+      error: error instanceof Error ? error.message.slice(0, 1200) : "History export failed.",
+    });
+  }
+});
+
+router.post(
+  "/full-rezz/engrams/:id/history/import-preview",
+  (req, res, next) => {
+    historyUpload(req, res, (error) => {
+      if (error) {
+        sendHistoryUploadError(error, res);
+        return;
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    if (req.aborted || res.destroyed) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      return;
+    }
+    const engramId = positiveInteger(req.params.id);
+    if (engramId == null) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      res.status(400).json({ error: "Invalid engram ID." });
+      return;
+    }
+    const engram = await loadOwnedEngram(engramId, req.userId!);
+    if (!engram) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      res.status(404).json({ error: "Engram not found." });
+      return;
+    }
+    if (engram.isArchival) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      res.status(409).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
+    const binding = readFullRezzBinding(engram.voiceProfile);
+    if (!binding) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      res.status(409).json({ error: "Bind a FULL_REZZ profile before importing history." });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: "Choose a JSON, JSONL, CSV, TXT or MD history file." });
+      return;
+    }
+    if (!getFullRezzRuntimeStatus().available) {
+      await unlink(req.file.path).catch(() => undefined);
+      res.status(503).json({ error: getFullRezzRuntimeStatus().reason });
+      return;
+    }
+    try {
+      const mapping = historyMapping(req.body?.mapping);
+      const preview = await previewFullRezzHistory(
+        req.userId!,
+        binding.voice_profile_id,
+        req.file.path,
+        path.basename(req.file.originalname).slice(0, 255),
+        mapping,
+      );
+      res.json(preview);
+    } catch (error) {
+      res.status(422).json({
+        error: error instanceof Error ? error.message.slice(0, 1200) : "History preview failed.",
+      });
+    } finally {
+      await unlink(req.file.path).catch(() => undefined);
+    }
+  },
+);
+
+router.post(
+  "/full-rezz/engrams/:id/history/import",
+  (req, res, next) => {
+    historyUpload(req, res, (error) => {
+      if (error) {
+        sendHistoryUploadError(error, res);
+        return;
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    if (req.aborted || res.destroyed) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      return;
+    }
+    const engramId = positiveInteger(req.params.id);
+    if (engramId == null) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      res.status(400).json({ error: "Invalid engram ID." });
+      return;
+    }
+    const engram = await loadOwnedEngram(engramId, req.userId!);
+    if (!engram) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      res.status(404).json({ error: "Engram not found." });
+      return;
+    }
+    if (engram.isArchival) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      res.status(409).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
+    const binding = readFullRezzBinding(engram.voiceProfile);
+    if (!binding) {
+      if (req.file?.path) await unlink(req.file.path).catch(() => undefined);
+      res.status(409).json({ error: "Bind a FULL_REZZ profile before importing history." });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: "Choose a JSON, JSONL, CSV, TXT or MD history file." });
+      return;
+    }
+    if (!getFullRezzRuntimeStatus().available) {
+      await unlink(req.file.path).catch(() => undefined);
+      res.status(503).json({ error: getFullRezzRuntimeStatus().reason });
+      return;
+    }
+    try {
+      const mapping = historyMapping(req.body?.mapping);
+      const imported = await importFullRezzHistory(
+        req.userId!,
+        binding.voice_profile_id,
+        req.file.path,
+        mapping,
+      );
+      res.status(201).json(imported);
+    } catch (error) {
+      res.status(422).json({
+        error: error instanceof Error ? error.message.slice(0, 1200) : "History import failed.",
+      });
+    } finally {
+      await unlink(req.file.path).catch(() => undefined);
+    }
+  },
+);
+
+router.delete(
+  "/full-rezz/engrams/:id/history/imports/:importId",
+  async (req, res) => {
+    const engramId = positiveInteger(req.params.id);
+    if (engramId == null || !/^import_[a-f0-9]{32}$/.test(req.params.importId)) {
+      res.status(400).json({ error: "Invalid engram or history import ID." });
+      return;
+    }
+    const engram = await loadOwnedEngram(engramId, req.userId!);
+    if (!engram) {
+      res.status(404).json({ error: "Engram not found." });
+      return;
+    }
+    if (engram.isArchival) {
+      res.status(409).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
+    const binding = readFullRezzBinding(engram.voiceProfile);
+    if (!binding) {
+      res.status(409).json({ error: "Bind a FULL_REZZ profile before rolling back history." });
+      return;
+    }
+    if (req.body?.confirm !== true) {
+      res.status(400).json({
+        error: "Explicit confirmation is required to remove imported messages and source bytes.",
+      });
+      return;
+    }
+    const runtime = getFullRezzRuntimeStatus();
+    if (!runtime.available) {
+      res.status(503).json({ error: runtime.reason });
+      return;
+    }
+    try {
+      res.json(
+        await rollbackFullRezzHistoryImport(
+          req.userId!,
+          binding.voice_profile_id,
+          req.params.importId,
+        ),
+      );
+    } catch (error) {
+      res.status(422).json({
+        error: error instanceof Error ? error.message.slice(0, 1200) : "History rollback failed.",
+      });
+    }
+  },
+);
 
 router.post("/full-rezz/import-preview", (req, res, next) => {
   upload(req, res, (error) => {
@@ -395,6 +718,7 @@ router.post(
       const job = await submitFullRezzSpeechJob({
         ownerId: req.userId!,
         engramId: engram.id,
+        conversationId: conversation.id,
         messageId: message.id,
         profileId: binding.voice_profile_id,
         text: message.content,
@@ -411,6 +735,96 @@ router.post(
     } catch (error) {
       res.status(400).json({
         error: error instanceof Error ? error.message : "Unable to start FULL_REZZ speech.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/full-rezz/conversations/:conversationId/messages/:messageId/movie-export",
+  async (req, res) => {
+    const conversationId = positiveInteger(req.params.conversationId);
+    const messageId = positiveInteger(req.params.messageId);
+    if (conversationId == null || messageId == null) {
+      res.status(400).json({ error: "Invalid conversation or message ID." });
+      return;
+    }
+    const conversation = await loadOwnedConversation(conversationId, req.userId!);
+    if (!conversation || conversation.engramId == null) {
+      res.status(404).json({ error: "Conversation not found." });
+      return;
+    }
+    if (conversation.archivedAt) {
+      res.status(409).json({ error: "Archived conversations cannot start movie exports." });
+      return;
+    }
+    const engram = await loadOwnedEngram(conversation.engramId, req.userId!);
+    if (!engram) {
+      res.status(404).json({ error: "Engram not found." });
+      return;
+    }
+    if (engram.isArchival) {
+      res.status(409).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+      return;
+    }
+    const [message] = await db
+      .select()
+      .from(messages)
+      .where(
+        and(
+          eq(messages.id, messageId),
+          eq(messages.conversationId, conversationId),
+          eq(messages.role, "assistant"),
+          eq(messages.speakerEngramId, engram.id),
+        ),
+      )
+      .limit(1);
+    if (!message) {
+      res.status(404).json({ error: "No saved assistant reply from this engram was found." });
+      return;
+    }
+    const binding = readFullRezzBinding(engram.voiceProfile);
+    if (!binding) {
+      res.status(409).json({ error: "Import and bind a FULL_REZZ profile first." });
+      return;
+    }
+    const runtime = getFullRezzRuntimeStatus();
+    if (!runtime.available) {
+      res.status(503).json({ error: runtime.reason });
+      return;
+    }
+    const body = req.body ?? {};
+    const mode = body.mode === "2d" || body.mode === "3d" ? body.mode : "3d";
+    const fps = body.fps == null ? 60 : body.fps;
+    const viewId =
+      typeof body.viewId === "string" && /^[a-zA-Z0-9_-]{1,80}$/.test(body.viewId)
+        ? body.viewId
+        : "front";
+    const width = body.width == null ? 1280 : body.width;
+    const height = body.height == null ? 720 : body.height;
+    if (![60, 120, 240].includes(fps)) {
+      res.status(400).json({ error: "Choose a movie frame rate of 60, 120 or 240 fps." });
+      return;
+    }
+    try {
+      const job = await submitFullRezzMovieExportJob({
+        ownerId: req.userId!,
+        engramId: engram.id,
+        conversationId: conversation.id,
+        messageId: message.id,
+        profileId: binding.voice_profile_id,
+        mode,
+        viewId,
+        action: "talk",
+        fps: fps as 60 | 120 | 240,
+        width,
+        height,
+        clip: mode === "3d" ? 0 : null,
+      });
+      res.status(202).json(job);
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "Unable to start FULL_REZZ movie export.",
       });
     }
   },
@@ -452,6 +866,40 @@ router.get("/full-rezz/jobs/:id/audio", async (req, res) => {
     res.type("audio/wav").sendFile(audioPath, (error) => {
       if (error && !res.headersSent) {
         res.status(500).json({ error: "Unable to read the completed FULL_REZZ audio." });
+      }
+    });
+  } catch (error) {
+    res.status(503).json({ error: error instanceof Error ? error.message : "FULL_REZZ is unavailable." });
+  }
+});
+
+router.get("/full-rezz/jobs/:id/video", async (req, res) => {
+  try {
+    const videoPath = await getFullRezzMoviePath(req.userId!, req.params.id, "video");
+    if (!videoPath) {
+      res.status(404).json({ error: "FULL_REZZ movie is not available." });
+      return;
+    }
+    res.type("video/webm").sendFile(videoPath, (error) => {
+      if (error && !res.headersSent) {
+        res.status(500).json({ error: "Unable to read the completed FULL_REZZ movie." });
+      }
+    });
+  } catch (error) {
+    res.status(503).json({ error: error instanceof Error ? error.message : "FULL_REZZ is unavailable." });
+  }
+});
+
+router.get("/full-rezz/jobs/:id/audit", async (req, res) => {
+  try {
+    const auditPath = await getFullRezzMoviePath(req.userId!, req.params.id, "audit");
+    if (!auditPath) {
+      res.status(404).json({ error: "FULL_REZZ movie audit is not available." });
+      return;
+    }
+    res.type("application/json").sendFile(auditPath, (error) => {
+      if (error && !res.headersSent) {
+        res.status(500).json({ error: "Unable to read the completed FULL_REZZ movie audit." });
       }
     });
   } catch (error) {
