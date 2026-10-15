@@ -68,6 +68,10 @@ extraResources:
   # omit only model.gguf; the fixed server remains so app-managed custom GGUFs run.
   - from: resources/llama
     to: llama
+  # FULL_REZZ source is public; its separately licensed Windows runtime/models
+  # are staged from the verified 3.0 installer payload at release-build time.
+  - from: resources/full-rezz
+    to: full-rezz
 
 linux:
   target:

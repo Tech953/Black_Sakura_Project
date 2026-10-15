@@ -25,6 +25,7 @@ import {
   ConfirmEngramCsvImportBody,
 } from "@workspace/api-zod";
 import type { EngramInquiryError as EngramInquiryErrorContract } from "@workspace/api-zod";
+import { ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
 import {
   runTick,
   forceTransmission,
@@ -104,10 +105,7 @@ async function loadEngram(id: number, ownerId: string): Promise<Engram | undefin
  */
 function rejectIfArchival(engram: Engram, res: Parameters<Parameters<typeof router.post>[1]>[1]): boolean {
   if (!engram.isArchival) return false;
-  res.status(403).json({
-    error:
-      "This engram is a permanent archival branch preserved for continuity fidelity. It is read-only and cannot be altered.",
-  });
+  res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
   return true;
 }
 

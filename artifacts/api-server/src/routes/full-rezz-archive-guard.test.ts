@@ -1,0 +1,157 @@
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import express, {
+  type NextFunction,
+  type Request,
+  type Response as ExpressResponse,
+} from "express";
+import type { AddressInfo } from "node:net";
+import type { Server } from "node:http";
+
+const mocks = vi.hoisted(() => ({
+  importReferencePack: vi.fn(),
+  getJob: vi.fn(),
+  transaction: vi.fn(),
+  loadOwnedEngram: vi.fn(),
+  loadOwnedConversation: vi.fn(),
+  reviewGeneration: vi.fn(),
+  submitSpeech: vi.fn(),
+  readOnlyError:
+    "This engram is a permanent immutable archival branch. It is read-only; any future exception requires multistage executive confirmation.",
+}));
+
+vi.mock("@workspace/db", () => ({
+  db: { transaction: mocks.transaction },
+}));
+
+vi.mock("@workspace/db/schema", () => ({
+  engramsTable: { id: {}, ownerId: {}, isArchival: {}, voiceProfile: {} },
+  messages: { id: {}, conversationId: {}, role: {}, speakerEngramId: {}, content: {} },
+}));
+
+vi.mock("../lib/archival", () => ({
+  ARCHIVAL_READ_ONLY_ERROR: mocks.readOnlyError,
+}));
+
+vi.mock("../lib/account-bootstrap", () => ({
+  loadOwnedEngram: mocks.loadOwnedEngram,
+  loadOwnedConversation: mocks.loadOwnedConversation,
+}));
+
+vi.mock("../lib/full-rezz-worker", () => ({
+  cancelFullRezzJob: vi.fn(),
+  fullRezzWorkspaceForOwner: vi.fn(),
+  getFullRezzAudioPath: vi.fn(),
+  getFullRezzJob: mocks.getJob,
+  getFullRezzRuntimeStatus: vi.fn(() => ({
+    available: false,
+    runtimeVersion: "3.0.0",
+    reason: "Runtime is not staged.",
+  })),
+  importFullRezzReferencePack: mocks.importReferencePack,
+  previewFullRezzReferencePack: vi.fn(),
+  reviewFullRezzGeneration: mocks.reviewGeneration,
+  rollbackFullRezzImport: vi.fn(),
+  submitFullRezzSpeechJob: mocks.submitSpeech,
+}));
+
+import fullRezzRouter from "./full-rezz";
+
+describe("FULL_REZZ immutable archive guard", () => {
+  let server: Server;
+  let base: string;
+
+  beforeAll(async () => {
+    mocks.loadOwnedEngram.mockResolvedValue({
+      id: 17,
+      ownerId: "owner",
+      isArchival: true,
+      voiceProfile: { speechStyle: "preserved" },
+    });
+    const app = express();
+    app.use(express.json());
+    app.use((req: Request, _res: ExpressResponse, next: NextFunction) => {
+      (req as Request & { userId: string }).userId = "owner";
+      next();
+    });
+    app.use(fullRezzRouter);
+    await new Promise<void>((resolve) => {
+      server = app.listen(0, () => resolve());
+    });
+    const address = server.address() as AddressInfo;
+    base = `http://127.0.0.1:${address.port}`;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  });
+
+  it("rejects imports before runtime checks or worker/database writes", async () => {
+    const form = new FormData();
+    form.set("originalProfileId", "voice_57373fea79f3473e");
+    form.set("file", new Blob(["not extracted"], { type: "application/zip" }), "pack.zip");
+
+    const response = await fetch(`${base}/full-rezz/engrams/17/import`, {
+      method: "POST",
+      body: form,
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: mocks.readOnlyError });
+    expect(mocks.importReferencePack).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects saved-reply speech before reading or starting an archival job", async () => {
+    mocks.loadOwnedConversation.mockResolvedValue({
+      id: 3,
+      ownerId: "owner",
+      engramId: 17,
+      archivedAt: null,
+    });
+
+    const response = await fetch(
+      `${base}/full-rezz/conversations/3/messages/99/speech`,
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: mocks.readOnlyError });
+    expect(mocks.submitSpeech).not.toHaveBeenCalled();
+  });
+
+  it("rejects review writes before the worker when a job's engram is archival", async () => {
+    mocks.getJob.mockResolvedValue({
+      id: "9f2e6823-4053-4b16-b36c-8a5902f50475",
+      status: "succeeded",
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+      engramId: 17,
+      messageId: 99,
+      generationIds: ["gen_0123456789abcdef"],
+    });
+
+    const response = await fetch(
+      `${base}/full-rezz/jobs/9f2e6823-4053-4b16-b36c-8a5902f50475/review`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          generationId: "gen_0123456789abcdef",
+          ratings: {
+            likeness: "acceptable",
+            naturalness: "acceptable",
+            delivery: "acceptable",
+            reference_purity: "acceptable",
+            canon_boundaries: "acceptable",
+          },
+        }),
+      },
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: mocks.readOnlyError });
+    expect(mocks.reviewGeneration).not.toHaveBeenCalled();
+  });
+});

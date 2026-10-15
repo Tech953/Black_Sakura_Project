@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users, Download, Archive, ArchiveRestore, Settings2 } from "lucide-react";
+import { Plus, Trash2, Send, Upload, X, Loader2, MessageSquare, PanelLeft, Paperclip, Eye, AlertTriangle, Users, Download, Archive, ArchiveRestore, Settings2, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -99,6 +99,50 @@ interface Attachment {
   error?: string | null;
 }
 
+interface FullRezzProfileChoice {
+  id: string;
+  name: string;
+  referenceCount: number;
+  sourceCount: number;
+}
+
+interface FullRezzPreview {
+  packId: string;
+  schemaVersion: string;
+  profiles: FullRezzProfileChoice[];
+}
+
+interface SpeechJobView {
+  jobId: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  error?: string;
+  audioUrl?: string;
+  generationIds?: string[];
+  audioObjectUrl?: string;
+}
+
+type FullRezzReviewValue = "unreviewed" | "acceptable" | "needs_revision";
+type FullRezzReviewRatings = Record<
+  "likeness" | "naturalness" | "delivery" | "reference_purity" | "canon_boundaries",
+  FullRezzReviewValue
+>;
+
+const FULL_REZZ_REVIEW_FIELDS = [
+  ["likeness", "Likeness"],
+  ["naturalness", "Naturalness"],
+  ["delivery", "Delivery"],
+  ["reference_purity", "Reference purity"],
+  ["canon_boundaries", "Canon boundaries"],
+] as const;
+
+const EMPTY_FULL_REZZ_REVIEW: FullRezzReviewRatings = {
+  likeness: "unreviewed",
+  naturalness: "unreviewed",
+  delivery: "unreviewed",
+  reference_purity: "unreviewed",
+  canon_boundaries: "unreviewed",
+};
+
 const UPLOAD_ACCEPT =
   "image/png,image/jpeg,image/webp,image/gif,audio/*,video/mp4,video/quicktime,video/webm,.txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json";
 
@@ -160,11 +204,24 @@ export default function Chat() {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [sysEvents, setSysEvents] = useState<SystemEvent[]>([]);
+  const [fullRezzDialogOpen, setFullRezzDialogOpen] = useState(false);
+  const [fullRezzFile, setFullRezzFile] = useState<File | null>(null);
+  const [fullRezzPreview, setFullRezzPreview] = useState<FullRezzPreview | null>(null);
+  const [fullRezzSelectedProfileId, setFullRezzSelectedProfileId] = useState("");
+  const [fullRezzBusy, setFullRezzBusy] = useState(false);
+  const [fullRezzRuntime, setFullRezzRuntime] = useState<{ available: boolean; reason?: string } | null>(null);
+  const [fullRezzBoundEngramId, setFullRezzBoundEngramId] = useState<number | null>(null);
+  const [speechJobs, setSpeechJobs] = useState<Record<number, SpeechJobView>>({});
+  const [speechReviewRatings, setSpeechReviewRatings] = useState<Record<number, FullRezzReviewRatings>>({});
+  const [speechReviewStatus, setSpeechReviewStatus] = useState<Record<number, string>>({});
+  const [speechReviewBusy, setSpeechReviewBusy] = useState<Record<number, boolean>>({});
   const isMobile = useIsMobile();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fullRezzFileInputRef = useRef<HTMLInputElement>(null);
+  const audioObjectUrlsRef = useRef<string[]>([]);
 
   const authFetch = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -553,6 +610,7 @@ export default function Chat() {
 
   async function handleSend() {
     if (!input.trim() || streaming || !activeId) return;
+    const conversationId = activeId;
     const userMsg = input.trim();
     const groupParticipantIds = activeConv?.engramIds ?? [];
     const isGroup = groupParticipantIds.length >= 2;
@@ -569,7 +627,7 @@ export default function Chat() {
 
     let responseStatus: number | null = null;
     try {
-      const resp = await authFetch(`${BASE}/api/openai/conversations/${activeId}/messages`, {
+      const resp = await authFetch(`${BASE}/api/openai/conversations/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: userMsg, language: resolveReplyLanguage() }),
@@ -635,6 +693,7 @@ export default function Chat() {
           return next;
         });
       }
+      await reloadMessages(conversationId);
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
         toast({
@@ -680,6 +739,274 @@ export default function Chat() {
   const activeGroupEngrams = (engrams ?? []).filter((e) => (activeConv?.engramIds ?? []).includes(e.id));
   const isActiveGroup = activeGroupEngrams.length >= 2;
   const engramById = new Map((engrams ?? []).map((e) => [e.id, e]));
+
+  useEffect(() => {
+    let cancelled = false;
+    setFullRezzBoundEngramId(null);
+    if (!activeEngram || activeEngram.isArchival) return;
+    void authFetch(`${BASE}/api/full-rezz/engrams/${activeEngram.id}/binding`)
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return response.json() as Promise<{ bound?: boolean; isArchival?: boolean }>;
+      })
+      .then((result) => {
+        if (!cancelled && result?.bound && !result.isArchival) {
+          setFullRezzBoundEngramId(activeEngram.id);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeEngram?.id, activeEngram?.isArchival, authFetch]);
+
+  useEffect(
+    () => () => {
+      for (const objectUrl of audioObjectUrlsRef.current) URL.revokeObjectURL(objectUrl);
+    },
+    [],
+  );
+
+  async function openFullRezzDialog() {
+    setFullRezzDialogOpen(true);
+    setFullRezzFile(null);
+    setFullRezzPreview(null);
+    setFullRezzSelectedProfileId("");
+    setFullRezzRuntime(null);
+    try {
+      const response = await authFetch(`${BASE}/api/full-rezz/status`);
+      const value = await response.json();
+      setFullRezzRuntime(value);
+    } catch {
+      setFullRezzRuntime({
+        available: false,
+        reason: "FULL_REZZ runtime status could not be reached.",
+      });
+    }
+  }
+
+  async function previewFullRezzFile(file: File | null) {
+    setFullRezzFile(file);
+    setFullRezzPreview(null);
+    setFullRezzSelectedProfileId("");
+    if (!file) return;
+    setFullRezzBusy(true);
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      const response = await authFetch(`${BASE}/api/full-rezz/import-preview`, {
+        method: "POST",
+        body: form,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Reference-pack preview failed.");
+      const profiles = Array.isArray(result.profiles) ? result.profiles as FullRezzProfileChoice[] : [];
+      setFullRezzPreview({
+        packId: String(result.packId ?? ""),
+        schemaVersion: String(result.schemaVersion ?? ""),
+        profiles,
+      });
+      if (profiles.length === 1) setFullRezzSelectedProfileId(profiles[0].id);
+    } catch (error) {
+      toast({
+        title: "FULL_REZZ import preview failed",
+        description: error instanceof Error ? error.message : "The pack could not be validated.",
+        variant: "destructive",
+      });
+    } finally {
+      setFullRezzBusy(false);
+    }
+  }
+
+  async function importFullRezzProfile() {
+    if (!activeEngram || activeEngram.isArchival || !fullRezzFile || !fullRezzSelectedProfileId) return;
+    setFullRezzBusy(true);
+    const form = new FormData();
+    form.append("file", fullRezzFile);
+    form.append("originalProfileId", fullRezzSelectedProfileId);
+    try {
+      const response = await authFetch(
+        `${BASE}/api/full-rezz/engrams/${activeEngram.id}/import`,
+        { method: "POST", body: form },
+      );
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Profile import failed.");
+      setFullRezzBoundEngramId(activeEngram.id);
+      setFullRezzDialogOpen(false);
+      toast({
+        title: "FULL_REZZ profile bound",
+        description: "The selected profile is linked to this writable engram. Speech stays off until you request it.",
+      });
+    } catch (error) {
+      toast({
+        title: "FULL_REZZ import failed",
+        description: error instanceof Error ? error.message : "The profile could not be imported.",
+        variant: "destructive",
+      });
+    } finally {
+      setFullRezzBusy(false);
+    }
+  }
+
+  async function speakSavedReply(message: Message) {
+    if (!activeConv || !activeEngram || message.id == null) return;
+    const current = speechJobs[message.id];
+    if (current?.status === "queued" || current?.status === "running") return;
+    setSpeechJobs((jobs) => ({
+      ...jobs,
+      [message.id!]: { jobId: "", status: "queued" },
+    }));
+    setSpeechReviewRatings((ratings) => ({ ...ratings, [message.id!]: EMPTY_FULL_REZZ_REVIEW }));
+    setSpeechReviewStatus((status) => ({ ...status, [message.id!]: "" }));
+    try {
+      const response = await authFetch(
+        `${BASE}/api/full-rezz/conversations/${activeConv.id}/messages/${message.id}/speech`,
+        { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+      );
+      let job = await response.json();
+      if (!response.ok) throw new Error(job.error ?? "Unable to start local speech.");
+      setSpeechJobs((jobs) => ({
+        ...jobs,
+        [message.id!]: {
+          jobId: job.id,
+          status: job.status,
+          generationIds: job.generationIds,
+        },
+      }));
+      for (let attempt = 0; attempt < 1200; attempt += 1) {
+        if (job.status !== "queued" && job.status !== "running") break;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const statusResponse = await authFetch(`${BASE}/api/full-rezz/jobs/${job.id}`);
+        const next = await statusResponse.json();
+        if (!statusResponse.ok) throw new Error(next.error ?? "Could not read speech-job status.");
+        job = next;
+        setSpeechJobs((jobs) => ({
+          ...jobs,
+          [message.id!]: {
+            jobId: job.id,
+            status: job.status,
+            error: job.error,
+            audioUrl: job.audioUrl,
+            generationIds: job.generationIds,
+          },
+        }));
+      }
+      if (job.status === "succeeded" && typeof job.audioUrl === "string") {
+        const audioResponse = await authFetch(`${BASE}${job.audioUrl}`);
+        if (!audioResponse.ok) throw new Error("Completed audio could not be loaded.");
+        const blob = await audioResponse.blob();
+        const objectUrl = URL.createObjectURL(new Blob([blob], { type: "audio/wav" }));
+        audioObjectUrlsRef.current.push(objectUrl);
+        setSpeechJobs((jobs) => ({
+          ...jobs,
+          [message.id!]: {
+            jobId: job.id,
+            status: "succeeded",
+            audioUrl: job.audioUrl,
+            audioObjectUrl: objectUrl,
+            generationIds: job.generationIds,
+          },
+        }));
+      } else if (job.status === "failed" || job.status === "cancelled") {
+        setSpeechJobs((jobs) => ({
+          ...jobs,
+          [message.id!]: {
+            jobId: job.id,
+            status: job.status,
+            error: job.error,
+            generationIds: job.generationIds,
+          },
+        }));
+      }
+    } catch (error) {
+      setSpeechJobs((jobs) => ({
+        ...jobs,
+        [message.id!]: {
+          jobId: current?.jobId ?? "",
+          status: "failed",
+          error: error instanceof Error ? error.message : "FULL_REZZ speech failed.",
+        },
+      }));
+      toast({
+        title: "FULL_REZZ speech failed",
+        description: error instanceof Error ? error.message : "The local voice worker did not finish.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function cancelSavedReplySpeech(messageId: number) {
+    const job = speechJobs[messageId];
+    if (!job?.jobId) return;
+    try {
+      await authFetch(`${BASE}/api/full-rezz/jobs/${job.jobId}`, { method: "DELETE" });
+      setSpeechJobs((jobs) => ({
+        ...jobs,
+        [messageId]: { ...job, status: "cancelled", error: "Speech job cancelled." },
+      }));
+    } catch {
+      toast({ title: "Could not cancel FULL_REZZ speech", variant: "destructive" });
+    }
+  }
+
+  function updateSpeechReviewRating(
+    messageId: number,
+    field: keyof FullRezzReviewRatings,
+    value: FullRezzReviewValue,
+  ) {
+    setSpeechReviewRatings((current) => ({
+      ...current,
+      [messageId]: {
+        ...(current[messageId] ?? EMPTY_FULL_REZZ_REVIEW),
+        [field]: value,
+      },
+    }));
+    setSpeechReviewStatus((current) => ({ ...current, [messageId]: "" }));
+  }
+
+  async function saveSpeechReview(messageId: number) {
+    const job = speechJobs[messageId];
+    const generationIds = job?.generationIds;
+    const ratings = speechReviewRatings[messageId] ?? EMPTY_FULL_REZZ_REVIEW;
+    if (!job?.jobId || !generationIds?.length) return;
+    if (Object.values(ratings).some((value) => value === "unreviewed")) {
+      setSpeechReviewStatus((current) => ({
+        ...current,
+        [messageId]: "Rate all five dimensions before saving.",
+      }));
+      return;
+    }
+
+    setSpeechReviewBusy((current) => ({ ...current, [messageId]: true }));
+    setSpeechReviewStatus((current) => ({ ...current, [messageId]: "Saving review…" }));
+    try {
+      for (const generationId of generationIds) {
+        const response = await authFetch(
+          `${BASE}/api/full-rezz/jobs/${job.jobId}/review`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ generationId, ratings }),
+          },
+        );
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error ?? "The listening review could not be saved.");
+        }
+      }
+      setSpeechReviewStatus((current) => ({
+        ...current,
+        [messageId]: `Review saved for ${generationIds.length} generated segment${generationIds.length === 1 ? "" : "s"}.`,
+      }));
+    } catch (error) {
+      setSpeechReviewStatus((current) => ({
+        ...current,
+        [messageId]: error instanceof Error ? error.message : "The listening review could not be saved.",
+      }));
+    } finally {
+      setSpeechReviewBusy((current) => ({ ...current, [messageId]: false }));
+    }
+  }
 
   // Live push: subscribe scoped to this conversation + its engram. Server filters so we
   // only receive global events plus those matching our engramId/conversationId.
@@ -1021,6 +1348,110 @@ export default function Chat() {
           </div>
         </DialogContent>
       </Dialog>
+      <Dialog open={fullRezzDialogOpen} onOpenChange={setFullRezzDialogOpen}>
+        <DialogContent className="bg-card border-border/50 max-w-lg w-[calc(100vw-2rem)]">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-widest text-primary">
+              FULL_REZZ 3.0 · Local voice profile
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="font-mono text-[10px] leading-relaxed text-muted-foreground/80">
+              Bind an explicitly selected profile to {activeEngram?.name ?? "this writable engram"}.
+              The import preserves its source snapshot and ID mapping; authored prompts stay inert.
+              Speech is synthetic, not a claim of performer identity.
+            </p>
+            {fullRezzRuntime && (
+              <div className={`border px-3 py-2 font-mono text-[10px] ${
+                fullRezzRuntime.available
+                  ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-300"
+                  : "border-amber-400/30 bg-amber-400/5 text-amber-200"
+              }`}>
+                {fullRezzRuntime.available
+                  ? "Local runtime staged. Model hashes are verified on first speech job."
+                  : fullRezzRuntime.reason ?? "Local runtime unavailable."}
+              </div>
+            )}
+            {fullRezzBoundEngramId === activeEngram?.id && (
+              <div className="border border-primary/30 bg-primary/5 px-3 py-2 font-mono text-[10px] text-primary/80">
+                A FULL_REZZ profile is already bound. Importing another profile replaces only that binding.
+              </div>
+            )}
+            <input
+              ref={fullRezzFileInputRef}
+              type="file"
+              accept=".zip,application/zip"
+              className="hidden"
+              onChange={(event) => void previewFullRezzFile(event.target.files?.[0] ?? null)}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fullRezzFileInputRef.current?.click()}
+                disabled={fullRezzBusy || !fullRezzRuntime?.available}
+              >
+                {fullRezzBusy && !fullRezzPreview
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Upload className="w-3.5 h-3.5" />}
+                Choose reference-pack ZIP
+              </Button>
+              {fullRezzFile && (
+                <span className="max-w-[16rem] truncate font-mono text-[10px] text-muted-foreground">
+                  {fullRezzFile.name}
+                </span>
+              )}
+            </div>
+            {fullRezzPreview && (
+              <div className="space-y-2 border border-border/40 p-3">
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  Pack {fullRezzPreview.packId} · schema {fullRezzPreview.schemaVersion}
+                </div>
+                {fullRezzPreview.profiles.map((profile) => (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    aria-pressed={fullRezzSelectedProfileId === profile.id}
+                    onClick={() => setFullRezzSelectedProfileId(profile.id)}
+                    className={`w-full border px-3 py-2 text-left ${
+                      fullRezzSelectedProfileId === profile.id
+                        ? "border-primary/60 bg-primary/10"
+                        : "border-border/40 hover:border-primary/30"
+                    }`}
+                  >
+                    <span className="block font-mono text-xs text-foreground">{profile.name}</span>
+                    <span className="mt-1 block font-mono text-[9px] text-muted-foreground">
+                      {profile.id} · {profile.referenceCount} references · {profile.sourceCount} sources
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setFullRezzDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void importFullRezzProfile()}
+                disabled={
+                  fullRezzBusy ||
+                  !fullRezzRuntime?.available ||
+                  !fullRezzFile ||
+                  !fullRezzSelectedProfileId ||
+                  !activeEngram ||
+                  activeEngram.isArchival
+                }
+              >
+                {fullRezzBusy && fullRezzPreview
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : null}
+                Bind selected profile
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -1060,6 +1491,22 @@ export default function Chat() {
                     aria-label={t("groupContinuationLabel")}
                   >
                     <Settings2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+                {activeEngram && !activeEngram.isArchival && !activeConv.archivedAt && !isActiveGroup && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={`w-7 h-7 ${
+                      fullRezzBoundEngramId === activeEngram.id
+                        ? "text-primary hover:text-primary"
+                        : "text-muted-foreground/60 hover:text-primary"
+                    }`}
+                    onClick={() => void openFullRezzDialog()}
+                    title="FULL_REZZ local voice profile"
+                    aria-label="FULL_REZZ local voice profile"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
                   </Button>
                 )}
                 <DropdownMenu>
@@ -1149,6 +1596,14 @@ export default function Chat() {
             </div>
           ) : (
             messages.map((msg, idx) => {
+              const speechJob = msg.id == null ? undefined : speechJobs[msg.id];
+              const canSpeakSavedReply =
+                msg.role === "assistant" &&
+                msg.id != null &&
+                fullRezzBoundEngramId != null &&
+                msg.speakerEngramId === fullRezzBoundEngramId &&
+                !activeConv?.archivedAt &&
+                !activeEngram?.isArchival;
               if (msg.role === "context") {
                 return (
                   <div key={idx} className="flex justify-center">
@@ -1192,6 +1647,107 @@ export default function Chat() {
                         <span className="inline-block w-0.5 h-4 bg-primary/70 animate-pulse ml-0.5 align-text-bottom" />
                       )}
                     </div>
+                    {canSpeakSavedReply && (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 font-mono text-[9px] uppercase tracking-wider"
+                            onClick={() => void speakSavedReply(msg)}
+                            disabled={speechJob?.status === "queued" || speechJob?.status === "running"}
+                          >
+                            {speechJob?.status === "queued" || speechJob?.status === "running"
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : <Volume2 className="w-3 h-3" />}
+                            {speechJob?.status === "succeeded" ? "Regenerate speech" : "Speak saved reply"}
+                          </Button>
+                          {(speechJob?.status === "queued" || speechJob?.status === "running") && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 font-mono text-[9px] text-muted-foreground"
+                              onClick={() => void cancelSavedReplySpeech(msg.id!)}
+                            >
+                              <X className="w-3 h-3" />
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
+                        {speechJob?.audioObjectUrl && (
+                          <div className="space-y-1">
+                            <audio controls preload="none" src={speechJob.audioObjectUrl} className="h-9 max-w-full" />
+                            <p className="font-mono text-[9px] text-muted-foreground/70">
+                              Synthetic offline voice · human listening review required · not a performer identity claim.
+                            </p>
+                          </div>
+                        )}
+                        {speechJob?.status === "succeeded" && (speechJob.generationIds?.length ?? 0) > 0 && msg.id != null && (
+                          <div className="rounded border border-border/50 bg-background/40 p-3 space-y-3">
+                            <div>
+                              <p className="font-mono text-[10px] uppercase tracking-wider text-foreground/80">
+                                Listening review
+                              </p>
+                              <p className="font-mono text-[9px] text-muted-foreground/70">
+                                Apply ratings to all {speechJob.generationIds!.length} generated segment{speechJob.generationIds!.length === 1 ? "" : "s"} in this reply.
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {FULL_REZZ_REVIEW_FIELDS.map(([field, label]) => (
+                                <label key={field} className="flex items-center justify-between gap-2 font-mono text-[9px] text-muted-foreground">
+                                  <span>{label}</span>
+                                  <select
+                                    aria-label={`FULL_REZZ ${label} review`}
+                                    className="h-7 min-w-32 rounded border border-border/60 bg-background px-2 text-foreground"
+                                    value={(speechReviewRatings[msg.id!] ?? EMPTY_FULL_REZZ_REVIEW)[field]}
+                                    onChange={(event) =>
+                                      updateSpeechReviewRating(
+                                        msg.id!,
+                                        field,
+                                        event.target.value as FullRezzReviewValue,
+                                      )
+                                    }
+                                  >
+                                    <option value="unreviewed">Unreviewed</option>
+                                    <option value="acceptable">Acceptable</option>
+                                    <option value="needs_revision">Needs revision</option>
+                                  </select>
+                                </label>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 font-mono text-[9px] uppercase tracking-wider"
+                                disabled={
+                                  speechReviewBusy[msg.id!] === true ||
+                                  Object.values(speechReviewRatings[msg.id!] ?? EMPTY_FULL_REZZ_REVIEW)
+                                    .some((value) => value === "unreviewed")
+                                }
+                                onClick={() => void saveSpeechReview(msg.id!)}
+                              >
+                                {speechReviewBusy[msg.id!] ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                Save listening review
+                              </Button>
+                              {speechReviewStatus[msg.id!] && (
+                                <span role="status" className="font-mono text-[9px] text-muted-foreground">
+                                  {speechReviewStatus[msg.id!]}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {speechJob?.error && (
+                          <p role="status" className="font-mono text-[9px] text-rose-300/90">
+                            {speechJob.error}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               );

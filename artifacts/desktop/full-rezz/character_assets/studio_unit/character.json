@@ -1,0 +1,125 @@
+{
+  "schema_version": "1.0.0",
+  "name": "Studio Unit",
+  "visual_role": "Original neutral rigged demonstration avatar; not a reconstructed anime character.",
+  "two_d": {
+    "views": [
+      {
+        "view_id": "front",
+        "image": "studio_unit/front.png",
+        "calibration_status": "calibrated",
+        "azimuth_deg": 0,
+        "elevation_deg": 5,
+        "mouth": [
+          320.0,
+          98.70325824608884,
+          8,
+          3.5
+        ],
+        "supported_actions": [
+          "idle",
+          "talk"
+        ]
+      },
+      {
+        "view_id": "front_three_quarter",
+        "image": "studio_unit/front_three_quarter.png",
+        "calibration_status": "calibrated",
+        "azimuth_deg": 45,
+        "elevation_deg": 5,
+        "mouth": [
+          285.23080396513683,
+          100.86438445736223,
+          8,
+          3.5
+        ],
+        "supported_actions": [
+          "idle",
+          "talk"
+        ]
+      },
+      {
+        "view_id": "profile",
+        "image": "studio_unit/profile.png",
+        "calibration_status": "calibrated",
+        "azimuth_deg": 90,
+        "elevation_deg": 5,
+        "mouth": null,
+        "supported_actions": [
+          "idle",
+          "talk"
+        ]
+      },
+      {
+        "view_id": "rear_three_quarter",
+        "image": "studio_unit/rear_three_quarter.png",
+        "calibration_status": "calibrated",
+        "azimuth_deg": 145,
+        "elevation_deg": 5,
+        "mouth": null,
+        "supported_actions": [
+          "idle",
+          "talk"
+        ]
+      },
+      {
+        "view_id": "rear",
+        "image": "studio_unit/rear.png",
+        "calibration_status": "calibrated",
+        "azimuth_deg": 180,
+        "elevation_deg": 5,
+        "mouth": null,
+        "supported_actions": [
+          "idle",
+          "talk"
+        ]
+      },
+      {
+        "view_id": "low_angle",
+        "image": "studio_unit/low_angle.png",
+        "calibration_status": "calibrated",
+        "azimuth_deg": -35,
+        "elevation_deg": -15,
+        "mouth": null,
+        "supported_actions": [
+          "idle",
+          "talk"
+        ]
+      }
+    ]
+  },
+  "three_d": {
+    "asset": "studio_unit/studio_unit.gltf",
+    "joint_mapping": {
+      "root": 0,
+      "torso": 1,
+      "head": 2,
+      "jaw": 3,
+      "right_shoulder": 4,
+      "right_elbow": 5,
+      "right_wrist": 6,
+      "left_shoulder": 7,
+      "left_elbow": 8,
+      "left_wrist": 9,
+      "left_hip": 10,
+      "left_knee": 11,
+      "left_ankle": 12,
+      "right_hip": 13,
+      "right_knee": 14,
+      "right_ankle": 15
+    },
+    "supported_actions": [
+      "idle",
+      "talk",
+      "gesture",
+      "step"
+    ]
+  },
+  "presentation": {
+    "mode": "3d",
+    "view_id": "front"
+  },
+  "extensions": {
+    "generation": "Procedural original meshes; 2D views rendered from those actual surfaces."
+  }
+}
