@@ -13,6 +13,9 @@
       "path": "../../lib/db"
     },
     {
+      "path": "../../lib/engram-core"
+    },
+    {
       "path": "../../lib/api-zod"
     },
     {

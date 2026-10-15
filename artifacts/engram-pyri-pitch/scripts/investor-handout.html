@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ENGRAM // PYRI — Investor Handout</title>
+    <style>
+      @page {
+        size: Letter portrait;
+        margin: 0;
+      }
+
+      :root {
+        color-scheme: dark;
+        --bg: #070b19;
+        --bg-deep: #040711;
+        --surface: #0e1830;
+        --surface-raised: #142241;
+        --cyan: #22d3ee;
+        --cyan-soft: rgba(34, 211, 238, 0.14);
+        --amber: #f5b84c;
+        --text: #edf8ff;
+        --muted: #a0b4c5;
+        --line: rgba(102, 223, 245, 0.25);
+        --display: "Rajdhani", "Arial Narrow", "DejaVu Sans", sans-serif;
+        --body: "Inter", "DejaVu Sans", Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 8.5in;
+        height: 11in;
+        margin: 0;
+        color: var(--text);
+        background: var(--bg);
+        font-family: var(--body);
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      body {
+        overflow: hidden;
+      }
+
+      .page {
+        position: relative;
+        width: 8.5in;
+        height: 11in;
+        padding: 0.48in 0.5in 0.46in;
+        overflow: hidden;
+        background:
+          radial-gradient(ellipse at 87% 5%, rgba(34, 211, 238, 0.15), transparent 24%),
+          radial-gradient(ellipse at 5% 83%, rgba(245, 184, 76, 0.07), transparent 25%),
+          linear-gradient(135deg, #070b19 0%, #091122 62%, #070b19 100%);
+      }
+
+      .page::before {
+        position: absolute;
+        z-index: 0;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(34, 211, 238, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(34, 211, 238, 0.035) 1px, transparent 1px);
+        background-size: 28px 28px;
+        content: "";
+        pointer-events: none;
+      }
+
+      .page::after {
+        position: absolute;
+        z-index: 0;
+        inset: 0;
+        background: repeating-linear-gradient(
+          to bottom,
+          rgba(237, 248, 255, 0.018) 0,
+          rgba(237, 248, 255, 0.018) 1px,
+          transparent 1px,
+          transparent 5px
+        );
+        content: "";
+        pointer-events: none;
+      }
+
+      .content {
+        position: relative;
+        z-index: 1;
+      }
+
+      .topline,
+      .brand-row,
+      .section-label,
+      .surface-label,
+      .next-label,
+      .footline {
+        font-family: var(--body);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+      }
+
+      .topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--cyan);
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+      }
+
+      .topline .status {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--muted);
+        letter-spacing: 0.12em;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--amber);
+        box-shadow: 0 0 10px rgba(245, 184, 76, 0.75);
+      }
+
+      .rule {
+        height: 1px;
+        margin-top: 12px;
+        background: linear-gradient(90deg, var(--cyan), rgba(34, 211, 238, 0.06) 88%);
+      }
+
+      .hero {
+        position: relative;
+        display: flex;
+        min-height: 2.05in;
+        align-items: center;
+        padding: 21px 0 17px;
+      }
+
+      .hero-copy {
+        position: relative;
+        z-index: 1;
+        max-width: 5.9in;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 9px;
+        color: var(--cyan);
+        font-size: 8px;
+        font-weight: 700;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: 49px;
+        font-weight: 800;
+        letter-spacing: 0.015em;
+        line-height: 0.88;
+      }
+
+      h1 span {
+        color: var(--amber);
+        font-size: 27px;
+        letter-spacing: 0.02em;
+      }
+
+      .tagline {
+        max-width: 5.6in;
+        margin: 15px 0 0;
+        font-family: var(--display);
+        font-size: 19px;
+        font-weight: 600;
+        line-height: 1.12;
+      }
+
+      .intro {
+        max-width: 5.8in;
+        margin: 9px 0 0;
+        color: var(--muted);
+        font-size: 9px;
+        line-height: 1.45;
+      }
+
+      .signal-mark {
+        position: absolute;
+        top: 27px;
+        right: 12px;
+        width: 1.42in;
+        height: 1.42in;
+        opacity: 0.9;
+      }
+
+      .signal-mark .ring {
+        position: absolute;
+        inset: 0;
+        border: 1px solid rgba(34, 211, 238, 0.42);
+        border-radius: 50%;
+      }
+
+      .signal-mark .ring:nth-child(2) {
+        inset: 12px;
+        border-color: rgba(34, 211, 238, 0.3);
+      }
+
+      .signal-mark .ring:nth-child(3) {
+        inset: 24px;
+        border-color: rgba(245, 184, 76, 0.56);
+      }
+
+      .signal-mark .axis {
+        position: absolute;
+        top: 50%;
+        left: 8px;
+        width: calc(100% - 16px);
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+        transform: rotate(-36deg);
+      }
+
+      .signal-mark .node {
+        position: absolute;
+        top: 46%;
+        left: 46%;
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--bg);
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 16px rgba(34, 211, 238, 0.9);
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 0.86fr 1.14fr;
+        gap: 12px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        background: rgba(14, 24, 48, 0.82);
+      }
+
+      .story-panel {
+        min-height: 1.78in;
+        padding: 17px 17px 15px;
+      }
+
+      .section-label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 11px;
+        color: var(--cyan);
+        font-size: 8.5px;
+        font-weight: 700;
+      }
+
+      .section-label .index {
+        color: var(--amber);
+      }
+
+      .story-panel h2,
+      .safety h2 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.08;
+      }
+
+      .story-panel p {
+        margin: 9px 0 0;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1.48;
+      }
+
+      .loop {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+      }
+
+      .loop-label {
+        margin-bottom: 7px;
+        color: var(--muted);
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+      }
+
+      .loop-steps {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text);
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .loop-steps span:nth-child(odd) {
+        color: var(--cyan);
+      }
+
+      .loop-steps i {
+        color: var(--amber);
+        font-size: 8px;
+        font-style: normal;
+      }
+
+      .loop-note {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 8.5px;
+      }
+
+      .surfaces {
+        margin-top: 19px;
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+
+      .section-heading h2 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: 19px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .section-heading span {
+        color: var(--muted);
+        font-size: 7px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .surface-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 9px;
+      }
+
+      .surface {
+        min-height: 1.55in;
+        padding: 15px 14px 12px;
+        border: 1px solid rgba(34, 211, 238, 0.34);
+        background:
+          linear-gradient(135deg, rgba(34, 211, 238, 0.08), transparent 60%),
+          rgba(14, 24, 48, 0.82);
+      }
+
+      .surface:nth-child(2) {
+        border-color: rgba(245, 184, 76, 0.42);
+        background:
+          linear-gradient(135deg, rgba(245, 184, 76, 0.08), transparent 60%),
+          rgba(14, 24, 48, 0.82);
+      }
+
+      .surface-label {
+        margin-bottom: 7px;
+        color: var(--cyan);
+        font-size: 8px;
+        font-weight: 700;
+      }
+
+      .surface:nth-child(2) .surface-label {
+        color: var(--amber);
+      }
+
+      .surface h3 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: 17px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .surface p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 9.3px;
+        line-height: 1.45;
+      }
+
+      .safety {
+        display: grid;
+        grid-template-columns: 1.35fr 0.65fr;
+        gap: 13px;
+        align-items: center;
+        min-height: 1.36in;
+        margin-top: 18px;
+        padding: 15px 17px;
+        border: 1px solid rgba(245, 184, 76, 0.52);
+        background: linear-gradient(100deg, rgba(245, 184, 76, 0.1), rgba(14, 24, 48, 0.78) 60%);
+      }
+
+      .safety .section-label {
+        margin-bottom: 6px;
+        color: var(--amber);
+      }
+
+      .safety h2 {
+        max-width: 4.55in;
+        font-size: 17px;
+      }
+
+      .safety p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 9.5px;
+        line-height: 1.45;
+      }
+
+      .safety-side {
+        padding-left: 12px;
+        border-left: 1px solid rgba(245, 184, 76, 0.36);
+        color: var(--text);
+        font-size: 9px;
+        line-height: 1.5;
+      }
+
+      .safety-side strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--amber);
+        font-size: 8px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .next {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 17px;
+        padding: 15px 17px;
+        border-left: 3px solid var(--cyan);
+        background: rgba(34, 211, 238, 0.075);
+      }
+
+      .next-label {
+        margin-bottom: 5px;
+        color: var(--cyan);
+        font-size: 8px;
+        font-weight: 700;
+      }
+
+      .next strong {
+        display: block;
+        font-family: var(--display);
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+
+      .next .arrow {
+        color: var(--cyan);
+        font-size: 23px;
+        font-weight: 300;
+      }
+
+      .footline {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 15px;
+        color: var(--muted);
+        font-size: 6.5px;
+        letter-spacing: 0.1em;
+      }
+
+      .footline span:first-child {
+        color: var(--cyan);
+      }
+
+      @media print {
+        html,
+        body,
+        .page {
+          width: 8.5in;
+          height: 11in;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="content">
+        <header class="topline">
+          <span>ENGRAM // PYRI / INVESTOR BRIEF</span>
+          <span class="status"><i class="status-dot"></i> MEMORY ONLINE / BOUNDARIES ACTIVE</span>
+        </header>
+        <div class="rule"></div>
+
+        <section class="hero" aria-labelledby="brand">
+          <div class="hero-copy">
+            <div class="brand-row"><span>COGNITIVE ARCHITECTURE</span><span>/</span><span>COMPANION SYSTEM</span></div>
+            <h1 id="brand">ENGRAM <span>// PYRI</span></h1>
+            <p class="tagline">Build companions with memory, voice, and restraint.</p>
+            <p class="intro">A cognitive architecture for companions that remember, develop, and reach out with boundaries.</p>
+          </div>
+          <div class="signal-mark" aria-hidden="true">
+            <i class="ring"></i><i class="ring"></i><i class="ring"></i><i class="axis"></i><i class="node"></i>
+          </div>
+        </section>
+
+        <section class="two-col" aria-label="Problem and approach">
+          <article class="panel story-panel">
+            <div class="section-label"><span class="index">01</span><span>THE PROBLEM</span></div>
+            <h2>Chat forgets.<br />Memory needs structure.</h2>
+            <p>Most AI resets between conversations. Memory without structure becomes a transcript dump; autonomy without boundaries becomes an unsafe surprise.</p>
+          </article>
+          <article class="panel story-panel">
+            <div class="section-label"><span class="index">02</span><span>THE APPROACH</span></div>
+            <h2>Continuity made explicit.</h2>
+            <p>ENGRAM turns conversations and evidence into durable observations, memories, and beliefs with provenance and confidence. Each pass leaves reviewable evidence.</p>
+            <div class="loop">
+              <div class="loop-label">THE COGNITIVE LOOP</div>
+              <div class="loop-steps">
+                <span>PERCEIVE</span><i>&gt;</i><span>CONSOLIDATE</span><i>&gt;</i><span>INTERPRET</span><i>&gt;</i><span>SIMULATE</span><i>&gt;</i><span>EXPRESS</span>
+              </div>
+              <div class="loop-note">Possible next states are explored without changing reality.</div>
+            </div>
+          </article>
+        </section>
+
+        <section class="surfaces" aria-labelledby="surfaces-title">
+          <div class="section-heading">
+            <h2 id="surfaces-title">One system. Three surfaces.</h2>
+            <span>PRODUCT / 03</span>
+          </div>
+          <div class="surface-grid">
+            <article class="surface">
+              <div class="surface-label">UNDERSTAND / WEB</div>
+              <h3>Operator dashboard</h3>
+              <p>Inspect engrams, memory, beliefs, drives, and transmissions. Review provenance instead of trusting invisible state.</p>
+            </article>
+            <article class="surface">
+              <div class="surface-label">MEET / MOBILE</div>
+              <h3>PYRI companion</h3>
+              <p>A native mobile presence brings the persona into in-voice conversation and real-world interaction.</p>
+            </article>
+            <article class="surface">
+              <div class="surface-label">EXPRESS / HIERO-CODE</div>
+              <h3>More than sentiment</h3>
+              <p>A controlled micro-expression vocabulary carries tone, intent, hesitation, care, and invitations to respond.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="safety" aria-labelledby="safety-title">
+          <div>
+            <div class="section-label"><span class="index">04</span><span>THE SAFETY BOUNDARY</span></div>
+            <h2 id="safety-title">Intimate expression data stays outside PYRI's chat prompt.</h2>
+            <p>The chat model receives safe, ranked expression cues - not intimate expression data.</p>
+          </div>
+          <div class="safety-side">
+            <strong>Separation by design</strong>
+            Simulation does not alter observed reality. Memory, expression, and initiative remain bounded and reviewable.
+          </div>
+        </section>
+
+        <section class="next" aria-label="Next step">
+          <div>
+            <div class="next-label">NEXT STEP / FULL PITCH</div>
+            <strong>Explore the 30-slide product and architecture walkthrough.</strong>
+          </div>
+          <span class="arrow" aria-hidden="true">&gt;</span>
+        </section>
+
+        <footer class="footline">
+          <span>WEB FOR UNDERSTANDING</span>
+          <span>MOBILE FOR PRESENCE</span>
+          <span>BOUNDARIES FOR TRUST</span>
+        </footer>
+      </div>
+    </main>
+  </body>
+</html>

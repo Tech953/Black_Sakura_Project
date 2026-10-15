@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Engram, MediaAsset } from "@workspace/db";
+import {
+  decodeStoredMediaFailure,
+  MediaProcessingFailure,
+} from "../lib/media-failure";
 
 // --- Hoisted mock state (db + every collaborator the worker reaches) -----------
 const h = vi.hoisted(() => {
@@ -19,6 +23,7 @@ const h = vi.hoisted(() => {
       };
       return chain;
     },
+    transaction: async (fn: (tx: unknown) => unknown) => fn({ kind: "transaction" }),
   };
 
   return {
@@ -36,6 +41,7 @@ const h = vi.hoisted(() => {
       async (_asset: MediaAsset, _content: string) => undefined,
     ),
     recoverStuckJobs: vi.fn(async () => 0),
+    contentMatchesMime: vi.fn(() => true),
     extractFromMedia: vi.fn(),
     generateMediaCommentary: vi.fn(async () => "in-voice reaction"),
     summarizeWorldModel: vi.fn(() => "wm summary"),
@@ -45,7 +51,10 @@ const h = vi.hoisted(() => {
 
 vi.mock("@workspace/db", () => ({ db: h.db }));
 vi.mock("@workspace/db/schema", () => ({ engramsTable: h.engramsTable }));
-vi.mock("drizzle-orm", () => ({ eq: () => ({}) }));
+vi.mock("drizzle-orm", () => ({ and: () => ({}), eq: () => ({}) }));
+vi.mock("../lib/account-bootstrap", () => ({
+  loadOwnedConversation: vi.fn(async () => ({ id: 1 })),
+}));
 vi.mock("../lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -58,7 +67,10 @@ vi.mock("../lib/media-store", () => ({
   upsertMediaContextMessage: h.upsertMediaContextMessage,
   recoverStuckJobs: h.recoverStuckJobs,
 }));
-vi.mock("../lib/media-extraction", () => ({ extractFromMedia: h.extractFromMedia }));
+vi.mock("../lib/media-extraction", () => ({
+  contentMatchesMime: h.contentMatchesMime,
+  extractFromMedia: h.extractFromMedia,
+}));
 vi.mock("../lib/engram-generation", () => ({
   generateMediaCommentary: h.generateMediaCommentary,
 }));
@@ -73,6 +85,7 @@ import { runMediaTick } from "./media-worker";
 function makeAsset(overrides: Partial<MediaAsset> = {}): MediaAsset {
   return {
     id: 7,
+    ownerId: "test_media_worker_owner",
     engramId: 3,
     filename: "harbor.txt",
     mimeType: "text/plain",
@@ -93,7 +106,7 @@ function makeAsset(overrides: Partial<MediaAsset> = {}): MediaAsset {
 }
 
 function makeEngram(): Engram {
-  return { id: 3, name: "Arezo" } as Engram;
+  return { id: 3, name: "Arezo", ownerId: "test_media_worker_owner" } as Engram;
 }
 
 beforeEach(() => {
@@ -139,12 +152,17 @@ describe("runMediaTick — completes a claimed job", () => {
     expect(h.appendMediaObservation).toHaveBeenCalledTimes(2);
     // The worker passes asset/engram ids straight through; provenance + source are
     // fixed inside the store (asserted separately in media-store.test.ts).
-    expect(h.appendMediaObservation).toHaveBeenNthCalledWith(1, {
+    const appendCall = h.appendMediaObservation.mock.calls[0] as unknown as [
+      Record<string, unknown>,
+      unknown,
+    ];
+    expect(appendCall[0]).toEqual({
       assetId: 7,
       engramId: 3,
       content: "A lighthouse blinks twice.",
       confidence: 0.85,
     });
+    expect(appendCall[1]).toEqual({ kind: "transaction" });
     expect(h.generateMediaCommentary).toHaveBeenCalledTimes(1);
 
     expect(h.updateMediaAsset).toHaveBeenCalledTimes(1);
@@ -159,6 +177,9 @@ describe("runMediaTick — completes a claimed job", () => {
       error: null,
     });
     expect(patch.completedAt).toBeInstanceOf(Date);
+    expect(
+      (h.updateMediaAsset.mock.calls[0] as unknown as [number, Record<string, unknown>, unknown])[2],
+    ).toEqual({ kind: "transaction" });
   });
 
   it("skips blank observation lines so observationCount reflects only real entries", async () => {
@@ -241,7 +262,74 @@ describe("runMediaTick — failures surface on the job", () => {
     const [, patch] = h.updateMediaAsset.mock.calls[0];
     expect(patch.status).toBe("failed");
     expect(patch.error).toContain("vision model unavailable");
-    expect(patch.completedAt).toBeInstanceOf(Date);
+    expect(patch.completedAt).toBeNull();
+    expect(patch.observationCount).toBe(0);
+  });
+
+  it.each(["provider", "extraction"] as const)(
+    "persists the %s category separately from its diagnostic",
+    async (failureKind) => {
+      h.claimNextPendingJob.mockResolvedValueOnce(makeAsset());
+      h.extractFromMedia.mockRejectedValueOnce(
+        new MediaProcessingFailure(failureKind, `${failureKind} diagnostic`),
+      );
+
+      await runMediaTick();
+
+      const [, patch] = h.updateMediaAsset.mock.calls[0];
+      expect(decodeStoredMediaFailure(patch.error as string)).toEqual({
+        failureKind,
+        diagnostic: `${failureKind} diagnostic`,
+      });
+      expect(patch.observationCount).toBe(0);
+    },
+  );
+
+  it("marks a write-time failure as no-result instead of exposing a partial result", async () => {
+    h.claimNextPendingJob.mockResolvedValueOnce(makeAsset());
+    h.appendMediaObservation
+      .mockResolvedValueOnce({ id: 1 })
+      .mockRejectedValueOnce(new Error("world model write failed"));
+
+    const result = await runMediaTick();
+
+    expect(result.processed).toBe(1);
+    expect(h.appendMediaObservation).toHaveBeenCalledTimes(2);
+    expect(h.updateMediaAsset).toHaveBeenCalledTimes(1);
+    const [, patch] = h.updateMediaAsset.mock.calls[0];
+    expect(patch).toMatchObject({
+      status: "failed",
+      observationCount: 0,
+      summary: null,
+      commentary: null,
+      transcript: null,
+      completedAt: null,
+    });
+    expect(patch.error).toContain("world model write failed");
+    expect(decodeStoredMediaFailure(patch.error as string).failureKind).toBeNull();
+  });
+
+  it("replaces a failed attempt on retry without appending another copy", async () => {
+    h.claimNextPendingJob
+      .mockResolvedValueOnce(makeAsset())
+      .mockResolvedValueOnce(makeAsset({ status: "processing" }));
+    h.appendMediaObservation
+      .mockResolvedValueOnce({ id: 1 })
+      .mockRejectedValueOnce(new Error("temporary world model failure"))
+      .mockResolvedValueOnce({ id: 2 })
+      .mockResolvedValueOnce({ id: 3 });
+
+    await runMediaTick();
+    await runMediaTick();
+
+    expect(h.clearMediaObservations).toHaveBeenCalledTimes(2);
+    expect(h.appendMediaObservation).toHaveBeenCalledTimes(4);
+    const [, patch] = h.updateMediaAsset.mock.calls[1];
+    expect(patch).toMatchObject({
+      status: "completed",
+      observationCount: 2,
+      error: null,
+    });
   });
 
   it("fails the job when the blob bytes are missing", async () => {
@@ -254,6 +342,19 @@ describe("runMediaTick — failures surface on the job", () => {
     const [, patch] = h.updateMediaAsset.mock.calls[0];
     expect(patch.status).toBe("failed");
     expect(patch.error).toMatch(/missing/i);
+  });
+
+  it("fails before clearing observations or extracting invalid stored bytes", async () => {
+    h.claimNextPendingJob.mockResolvedValueOnce(makeAsset());
+    h.contentMatchesMime.mockReturnValueOnce(false);
+
+    await runMediaTick();
+
+    expect(h.clearMediaObservations).not.toHaveBeenCalled();
+    expect(h.extractFromMedia).not.toHaveBeenCalled();
+    const [, patch] = h.updateMediaAsset.mock.calls[0];
+    expect(patch.status).toBe("failed");
+    expect(patch.error).toMatch(/do not match/i);
   });
 
   it("truncates very long error messages to 500 chars", async () => {
@@ -284,7 +385,7 @@ describe("runMediaTick — commentary is best-effort", () => {
     expect(patch.observationCount).toBe(2);
   });
 
-  it("completes without commentary when the owning engram no longer exists", async () => {
+  it("fails the job when the owner-scoped engram no longer exists", async () => {
     h.claimNextPendingJob.mockResolvedValueOnce(makeAsset());
     h.state.engram = null;
 
@@ -292,8 +393,8 @@ describe("runMediaTick — commentary is best-effort", () => {
 
     expect(h.generateMediaCommentary).not.toHaveBeenCalled();
     const [, patch] = h.updateMediaAsset.mock.calls[0];
-    expect(patch.status).toBe("completed");
-    expect(patch.commentary).toBeNull();
+    expect(patch.status).toBe("failed");
+    expect(patch.error).toMatch(/owner/i);
   });
 });
 

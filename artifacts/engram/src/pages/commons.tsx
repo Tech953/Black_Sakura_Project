@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import {
-  useListEngramMessages,
   useListEngrams,
-  getListEngramMessagesQueryKey,
   type EngramMessage,
   type Engram,
 } from "@workspace/api-client-react";
@@ -10,35 +8,40 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessagesSquare, ShieldAlert, Users } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import { usePaginatedEngramMessages } from "@/hooks/use-paginated-engram-messages";
+import { Button } from "@/components/ui/button";
+import { ChevronUp } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-const STATUS_META: Record<string, { label: string; cls: string }> = {
-  delivered: { label: "Delivered", cls: "border-emerald-500/30 text-emerald-400" },
-  blocked: { label: "Refused", cls: "border-rose-500/40 text-rose-400" },
-  queued: { label: "Queued", cls: "border-amber-500/30 text-amber-400" },
-  digest: { label: "Digest", cls: "border-sky-500/30 text-sky-400" },
+const STATUS_META: Record<string, { cls: string }> = {
+  delivered: { cls: "border-emerald-500/30 text-emerald-400" },
+  blocked: { cls: "border-rose-500/40 text-rose-400" },
+  queued: { cls: "border-amber-500/30 text-amber-400" },
+  digest: { cls: "border-sky-500/30 text-sky-400" },
 };
 
-function relativeTime(iso: string): string {
+function statusLabel(t: TFunction, status: string): string {
+  return STATUS_META[status] ? t(`status.${status}`) : t("status.delivered");
+}
+
+function relativeTime(t: TFunction, iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const sec = Math.round(diff / 1000);
-  if (sec < 60) return "just now";
+  if (sec < 60) return t("time.justNow");
   const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return t("time.minutesAgo", { count: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.round(hr / 24)}d ago`;
+  if (hr < 24) return t("time.hoursAgo", { count: hr });
+  return t("time.daysAgo", { count: Math.round(hr / 24) });
 }
 
 export default function Commons() {
-  const { data: messages, isLoading } = useListEngramMessages(
-    { channel: "engram", limit: 100 },
-    {
-      query: {
-        queryKey: getListEngramMessagesQueryKey({ channel: "engram", limit: 100 }),
-        refetchInterval: 15000,
-      },
-    },
-  );
+  const { t } = useTranslation("commons");
+  const { toast } = useToast();
+  const commonsHistory = usePaginatedEngramMessages("engram");
+  const { messages, isLoading } = commonsHistory;
   const { data: engrams } = useListEngrams();
 
   const engramById = useMemo(() => {
@@ -50,7 +53,9 @@ export default function Commons() {
   const ordered = useMemo(
     () =>
       [...(messages ?? [])].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
+          b.id - a.id,
       ),
     [messages],
   );
@@ -61,40 +66,58 @@ export default function Commons() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-3xl font-bold tracking-widest text-primary">THE COMMONS</h2>
+          <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            Engram-to-engram dialogue — every turn is visible and logged, including refused attempts
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wider border-border/50 text-muted-foreground gap-1.5">
-            <Users className="w-3 h-3" /> {ordered.length} turns
+            <Users className="w-3 h-3" /> {t("turns", { count: ordered.length })}
           </Badge>
           {blockedCount > 0 && (
             <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wider border-rose-500/40 text-rose-400 gap-1.5">
-              <ShieldAlert className="w-3 h-3" /> {blockedCount} refused
+              <ShieldAlert className="w-3 h-3" /> {t("refusedCount", { count: blockedCount })}
             </Badge>
           )}
         </div>
       </div>
 
       <div className="bg-card/20 border border-border/30 p-4 font-mono text-xs text-muted-foreground space-y-1">
-        <p className="text-primary/70">ANTI-COERCION RAIL ACTIVE</p>
+        <p className="text-primary/70">{t("antiCoercionTitle")}</p>
         <p>
-          An engram can never impersonate, erase, or override another's identity. Any turn that
-          attempts coercion is refused before delivery and recorded here for audit.
+          {t("antiCoercionBody")}
         </p>
       </div>
 
       <div className="space-y-3">
+        {ordered.length > 0 && commonsHistory.hasOlder && (
+          <div className="flex justify-center">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                commonsHistory.loadOlder().catch(() =>
+                  toast({ title: t("toastLoadOlderFailed"), variant: "destructive" }),
+                )
+              }
+              disabled={commonsHistory.isLoadingOlder}
+              className="font-mono text-xs uppercase tracking-wider border-border/50"
+              data-testid="button-load-older-commons"
+            >
+              <ChevronUp className="w-3 h-3 mr-2" />
+              {commonsHistory.isLoadingOlder ? t("loadingOlder") : t("loadOlder")}
+            </Button>
+          </div>
+        )}
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 bg-primary/5" />)
         ) : !ordered.length ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground font-mono text-center">
             <MessagesSquare className="w-8 h-8 mb-4 opacity-30" />
-            <p className="text-xs uppercase tracking-widest">No commons dialogue yet</p>
+            <p className="text-xs uppercase tracking-widest">{t("emptyTitle")}</p>
             <p className="text-[10px] mt-2 opacity-60 max-w-sm">
-              When two or more converse-capable engrams share the commons, they take turns speaking.
+              {t("emptyBody")}
             </p>
           </div>
         ) : (
@@ -114,6 +137,7 @@ function CommonsRow({
   msg: EngramMessage;
   engramById: Map<number, Engram>;
 }) {
+  const { t } = useTranslation("commons");
   const from = engramById.get(msg.fromEngramId);
   const to = msg.toEngramId != null ? engramById.get(msg.toEngramId) : undefined;
   const status = STATUS_META[msg.status] ?? STATUS_META.delivered;
@@ -131,7 +155,7 @@ function CommonsRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-display tracking-wider text-sm text-foreground">
-              {from?.name ?? `Engram #${msg.fromEngramId}`}
+              {from?.name ?? t("engramFallback", { id: msg.fromEngramId })}
             </span>
             {to && (
               <span className="font-mono text-[10px] text-muted-foreground/60">
@@ -139,10 +163,10 @@ function CommonsRow({
               </span>
             )}
             <Badge variant="outline" className={`font-mono text-[8px] uppercase tracking-wider ${status.cls}`}>
-              {status.label}
+              {statusLabel(t, msg.status)}
             </Badge>
             <span className="font-mono text-[10px] text-muted-foreground/40 ml-auto">
-              {relativeTime(msg.createdAt)}
+              {relativeTime(t, msg.createdAt)}
             </span>
           </div>
           <p className={`text-sm leading-relaxed font-sans ${blocked ? "text-rose-200/70 italic" : "text-foreground/85"}`}>

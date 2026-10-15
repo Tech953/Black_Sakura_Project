@@ -10,10 +10,16 @@ import {
   type MediaJobStatus,
   type EngramWorldModelEntry,
 } from "@workspace/db/schema";
-import { and, asc, desc, eq, lt } from "drizzle-orm";
-import { appendWorldModelEntry } from "./world-model-store";
+import { and, asc, desc, eq, lt, ne } from "drizzle-orm";
+import { appendWorldModelEntry, type DbExecutor } from "./world-model-store";
+import { SYSTEM_OWNER_ID } from "@workspace/db/schema";
+
+/** Stable reason exposed to clients when the worker recovers a timed-out job. */
+export const MEDIA_RECOVERY_ERROR = "Processing timed out and was recovered.";
 
 export interface CreateMediaAssetInput {
+  /** Account that owns this durable upload. */
+  ownerId: string;
   /** Owning engram, or null for a default-PYRI-chat upload (no world-model writes). */
   engramId: number | null;
   /** The chat thread this upload was dropped into, if inline. */
@@ -36,6 +42,7 @@ export async function createMediaAsset(
       .insert(mediaAssetsTable)
       .values({
         engramId: input.engramId,
+        ownerId: input.ownerId,
         conversationId: input.conversationId ?? null,
         filename: input.filename,
         mimeType: input.mimeType,
@@ -99,9 +106,9 @@ export async function upsertMediaContextMessage(
 
 /** List media assets (metadata only — never the bytes), newest first. */
 export async function loadMediaAssets(
-  filter: { engramId?: number; status?: MediaJobStatus } = {},
+  filter: { ownerId: string; engramId?: number; status?: MediaJobStatus },
 ): Promise<MediaAsset[]> {
-  const conds = [];
+  const conds = [eq(mediaAssetsTable.ownerId, filter.ownerId)];
   if (filter.engramId !== undefined)
     conds.push(eq(mediaAssetsTable.engramId, filter.engramId));
   if (filter.status !== undefined)
@@ -115,23 +122,25 @@ export async function loadMediaAssets(
 
 export async function loadMediaAssetById(
   id: number,
+  ownerId?: string,
 ): Promise<MediaAsset | undefined> {
   const [row] = await db
     .select()
     .from(mediaAssetsTable)
-    .where(eq(mediaAssetsTable.id, id));
+    .where(ownerId ? and(eq(mediaAssetsTable.id, id), eq(mediaAssetsTable.ownerId, ownerId)) : eq(mediaAssetsTable.id, id));
   return row;
 }
 
 /** Load the raw bytes + MIME for one asset (used only by the /raw streaming route). */
 export async function loadMediaBlob(
   assetId: number,
+  ownerId?: string,
 ): Promise<{ data: Buffer; mimeType: string } | undefined> {
   const [row] = await db
     .select({ data: mediaBlobsTable.data, mimeType: mediaAssetsTable.mimeType })
     .from(mediaBlobsTable)
     .innerJoin(mediaAssetsTable, eq(mediaAssetsTable.id, mediaBlobsTable.assetId))
-    .where(eq(mediaBlobsTable.assetId, assetId));
+    .where(ownerId ? and(eq(mediaBlobsTable.assetId, assetId), eq(mediaAssetsTable.ownerId, ownerId)) : eq(mediaBlobsTable.assetId, assetId));
   return row;
 }
 
@@ -146,7 +155,7 @@ export async function claimNextPendingJob(): Promise<MediaAsset | undefined> {
     const [pending] = await tx
       .select({ id: mediaAssetsTable.id })
       .from(mediaAssetsTable)
-      .where(eq(mediaAssetsTable.status, "pending"))
+      .where(and(eq(mediaAssetsTable.status, "pending"), ne(mediaAssetsTable.ownerId, SYSTEM_OWNER_ID)))
       .orderBy(asc(mediaAssetsTable.createdAt))
       .limit(1)
       .for("update", { skipLocked: true });
@@ -171,12 +180,13 @@ export async function recoverStuckJobs(olderThanMs: number): Promise<number> {
     .update(mediaAssetsTable)
     .set({
       status: "failed",
-      error: "Processing timed out and was recovered.",
+      error: MEDIA_RECOVERY_ERROR,
       updatedAt: new Date(),
     })
     .where(
       and(
         eq(mediaAssetsTable.status, "processing"),
+        ne(mediaAssetsTable.ownerId, SYSTEM_OWNER_ID),
         lt(mediaAssetsTable.startedAt, cutoff),
       ),
     )
@@ -201,8 +211,9 @@ export type MediaAssetPatch = Partial<
 export async function updateMediaAsset(
   id: number,
   patch: MediaAssetPatch,
+  executor: DbExecutor = db,
 ): Promise<MediaAsset | undefined> {
-  const [row] = await db
+  const [row] = await executor
     .update(mediaAssetsTable)
     .set({ ...patch, updatedAt: new Date() })
     .where(eq(mediaAssetsTable.id, id))
@@ -244,13 +255,27 @@ export async function requeueMediaAsset(
  * world-model rows are matched by their hardcoded `source = "media:<id>"` tag; the
  * mapping rows are cleared explicitly so the operation is order-independent.
  */
-export async function clearMediaObservations(assetId: number): Promise<void> {
-  await db
-    .delete(mediaObservationsTable)
-    .where(eq(mediaObservationsTable.assetId, assetId));
-  await db
-    .delete(engramWorldModelTable)
-    .where(eq(engramWorldModelTable.source, `media:${assetId}`));
+export async function clearMediaObservations(
+  assetId: number,
+  executor?: DbExecutor,
+): Promise<void> {
+  const clear = async (tx: DbExecutor) => {
+    await tx
+      .delete(mediaObservationsTable)
+      .where(eq(mediaObservationsTable.assetId, assetId));
+    await tx
+      .delete(engramWorldModelTable)
+      .where(eq(engramWorldModelTable.source, `media:${assetId}`));
+  };
+
+  // Clearing is itself a replacement boundary. Keep the mapping rows and tagged
+  // world-model rows in one transaction so a failed retry cannot leave stale or
+  // half-cleared derived state behind.
+  if (executor) {
+    await clear(executor);
+  } else {
+    await db.transaction(clear);
+  }
 }
 
 /**
@@ -270,16 +295,19 @@ export async function appendMediaObservation(input: {
   engramId: number;
   content: string;
   confidence: number;
-}): Promise<EngramWorldModelEntry> {
-  const entry = await appendWorldModelEntry({
-    engramId: input.engramId,
-    provenance: "observed",
-    content: input.content,
-    confidence: input.confidence,
-    scope: "private",
-    source: `media:${input.assetId}`,
-  });
-  await db
+}, executor: DbExecutor = db): Promise<EngramWorldModelEntry> {
+  const entry = await appendWorldModelEntry(
+    {
+      engramId: input.engramId,
+      provenance: "observed",
+      content: input.content,
+      confidence: input.confidence,
+      scope: "private",
+      source: `media:${input.assetId}`,
+    },
+    executor,
+  );
+  await executor
     .insert(mediaObservationsTable)
     .values({ assetId: input.assetId, worldModelEntryId: entry.id });
   return entry;

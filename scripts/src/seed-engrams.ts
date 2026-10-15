@@ -1,10 +1,26 @@
 import { db, closeDb } from "@workspace/db";
-import { seedEngrams } from "@workspace/db/seed";
+import {
+  seedEngrams,
+  seedRebeccaAdaptiveProfile,
+  seedRebeccaNarrativeMemories,
+} from "@workspace/db/seed";
 
 async function main() {
   const { inserted, total } = await seedEngrams(db);
+  const narrativeMemories = await seedRebeccaNarrativeMemories(db);
+  const adaptiveProfile = await seedRebeccaAdaptiveProfile(db);
   console.log(
     `Seeded engrams: ${inserted} inserted, ${total - inserted} already present.`,
+  );
+  console.log(
+    `Seeded Rebecca adaptive profile: ${adaptiveProfile.nodesInserted} nodes inserted, ` +
+      `${adaptiveProfile.nodesTotal - adaptiveProfile.nodesInserted} already present` +
+      `${adaptiveProfile.profileUpdated ? "; profile enriched." : "."}`,
+  );
+  console.log(
+    `Seeded Rebecca narrative memories: ${narrativeMemories.nodesInserted} nodes inserted, ` +
+      `${narrativeMemories.nodesTotal - narrativeMemories.nodesInserted} already present` +
+      `${narrativeMemories.memorySeedUpdated ? "; memory seed backfilled." : "."}`,
   );
   await closeDb();
 }

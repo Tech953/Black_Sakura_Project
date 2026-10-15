@@ -8,12 +8,18 @@
     "seed:expressions": "tsx ./src/seed-expressions.ts",
     "seed:engrams": "tsx ./src/seed-engrams.ts",
     "seed:hub": "tsx ./src/seed-hub.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "seed:full-rezz": "tsx ./src/seed-full-rezz.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm run check:locales",
+    "test:locales": "tsx --test ./src/locale-key-tree.test.ts",
+    "check:locales": "tsx ./src/check-locales.ts",
+    "generate:locales": "tsx ./src/generate-locales.ts"
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
     "drizzle-orm": "catalog:",
-    "pdfkit": "^0.19.1"
+    "pdfkit": "^0.19.1",
+    "@workspace/i18n": "workspace:*",
+    "openai": "^6.45.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",

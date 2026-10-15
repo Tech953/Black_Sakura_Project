@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { EmotionalBaseline } from './emotionalBaseline';
+import type { EngramContinuationEligibility } from './engramContinuationEligibility';
 import type { EngramDrive } from './engramDrive';
 import type { EngramDriveState } from './engramDriveState';
 import type { EngramMode } from './engramMode';
@@ -32,15 +33,18 @@ export interface Engram {
   tickCadenceSeconds: number;
   initiationThreshold: number;
   driveState: EngramDriveState;
-  currentMood?: string;
-  lastTickAt?: string;
-  lastTransmissionAt?: string;
+  currentMood?: string | null;
+  lastTickAt?: string | null;
+  lastTransmissionAt?: string | null;
   backoffUntil?: string | null;
   isChatActive: boolean;
   mode: EngramMode;
   humanContactEnabled: boolean;
   simulationEnabled: boolean;
   artifactGenerationEnabled: boolean;
+  /** Permanent archival branch — read-only, preserved for continuity fidelity. */
+  isArchival: boolean;
+  continuationEligibility?: EngramContinuationEligibility;
   createdAt: string;
   updatedAt: string;
 }

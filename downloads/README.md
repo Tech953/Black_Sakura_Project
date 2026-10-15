@@ -15,6 +15,11 @@ Endpoints (`artifacts/api-server/src/routes/download.ts`, logic in
 - `GET /api/download/android` — JSON metadata (`available`, `source`, `version`, `filename`, `sizeBytes`)
 - `GET /api/download/android.apk` — the APK itself
 
+Metadata includes `publishedAt` when the source provides a trustworthy
+timestamp: bundled files use their filesystem modification time, and App
+Storage files use their object creation/update metadata. It remains `null`
+when no usable timestamp is available, so the Download page hides the date.
+
 ## How serving works ("do both")
 
 Both desktop and Android resolve in the same two-step order:
@@ -25,9 +30,10 @@ Both desktop and Android resolve in the same two-step order:
    `ANDROID_APK_PATH`; the directory is overridable with `ANDROID_APK_DIR`.)
 2. **GitHub fallback** — if nothing is bundled, the API fetches the latest
    release and proxy-streams the matching asset(s), so the download still stays
-   on this app's origin. Desktop uses `DOWNLOADS_GITHUB_REPO` (default
-   `Tech953/Ch-IO`); the APK uses `ANDROID_APK_GITHUB_REPO` (which falls back to
-   `DOWNLOADS_GITHUB_REPO`).
+   on this app's origin. Desktop uses the shared `VITE_GITHUB_REPO` setting
+   (default `Tech953/Ch-IO`); the APK uses `ANDROID_APK_GITHUB_REPO` when set
+   and otherwise follows the shared setting. `DOWNLOADS_GITHUB_REPO` remains a
+   legacy API-only fallback.
 
 Desktop bundling is **all-or-nothing for version coherence**: if ANY bundled
 desktop installer is present, the bundled set wins entirely and the GitHub
@@ -43,6 +49,14 @@ file you must **commit it here** (these files are not gitignored). Installers ar
 large (an APK is ~30–100 MB; desktop installers are bigger), which permanently
 increases repo size — if you'd rather not commit a large binary, rely on the
 GitHub release fallback above (no commit needed).
+
+## Refreshing after a rebuild
+
+Run **`pnpm run build:installers`** (or `./scripts/build-installers.sh`) from
+the repo root to rebuild both the Windows portable zip and the Android APK and
+refresh this folder in one step (`--desktop` / `--android` build just one).
+Filenames carry the current app versions, which is what the Download page
+displays — so rerun this after bumping a version or changing app code.
 
 ## Building the installers
 

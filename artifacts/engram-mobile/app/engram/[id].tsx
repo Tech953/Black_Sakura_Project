@@ -1,65 +1,160 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 import { Glyph } from "@/components/glyph";
 import { Chip, MonoLabel, PrimaryButton, ScoreBar } from "@/components/ui";
-import { useEngram } from "@/context/engram-context";
+import {
+  getEngramListModeQueryKey,
+  useEngram,
+} from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
+import { useOfflineMode } from "@/lib/offline/mode";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetEngramQueryKey,
-  getListEngramsQueryKey,
+  getListEngramWorldModelQueryKey,
+  getListMediaQueryKey,
+  useListBeliefs,
+  useListEngramWorldModel,
+  useListMemories,
+  useListMedia,
   useActivateEngram,
   useGetEngram,
+  type WorldModelEntry,
 } from "@workspace/api-client-react";
 
+function mediaAssetId(source: string | undefined): number | null {
+  if (!source?.startsWith("media:")) return null;
+  const id = Number(source.slice("media:".length));
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
 export default function EngramDetailScreen() {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
+  const [mediaSearch, setMediaSearch] = useState("");
+  const offlineActive = useOfflineMode();
   const { selectedEngramId, setSelectedEngramId } = useEngram();
+  const { data: memories } = useListMemories();
+  const { data: beliefs } = useListBeliefs();
+  const { data: worldModel } = useListEngramWorldModel(id, {
+    query: {
+      enabled: !Number.isNaN(id),
+      queryKey: getListEngramWorldModelQueryKey(id),
+    },
+  });
+  const { data: mediaAssets } = useListMedia(
+    Number.isNaN(id) ? undefined : { engramId: id },
+    {
+      query: {
+        enabled: !Number.isNaN(id),
+        queryKey: getListMediaQueryKey(Number.isNaN(id) ? undefined : { engramId: id }),
+      },
+    },
+  );
+  const mediaById = useMemo(
+    () => new Map((mediaAssets ?? []).map((asset) => [asset.id, asset])),
+    [mediaAssets],
+  );
+  const mediaObservations = useMemo(
+    () =>
+      (worldModel ?? []).filter(
+        (entry): entry is WorldModelEntry =>
+          entry.provenance === "observed" && mediaAssetId(entry.source) !== null,
+      ),
+    [worldModel],
+  );
+  const normalizedMediaSearch = mediaSearch.trim().toLocaleLowerCase();
+  const filteredMediaObservations = useMemo(() => {
+    if (!normalizedMediaSearch) return mediaObservations;
 
-  const { data: engram, isLoading } = useGetEngram(id, {
-    query: { enabled: !Number.isNaN(id), queryKey: getGetEngramQueryKey(id) },
+    return mediaObservations.filter((observation) => {
+      const assetId = mediaAssetId(observation.source);
+      const filename = assetId === null ? "" : mediaById.get(assetId)?.filename ?? "";
+      return (
+        observation.content.toLocaleLowerCase().includes(normalizedMediaSearch) ||
+        filename.toLocaleLowerCase().includes(normalizedMediaSearch)
+      );
+    });
+  }, [mediaById, mediaObservations, normalizedMediaSearch]);
+
+  useEffect(() => {
+    setMediaSearch("");
+  }, [id]);
+
+  const { data: engram, isLoading, isError, refetch } = useGetEngram(id, {
+    query: {
+      enabled: !Number.isNaN(id),
+      queryKey: [
+        ...getGetEngramQueryKey(id),
+        offlineActive ? "offline-selection" : "online-selection",
+      ],
+    },
   });
   const activate = useActivateEngram();
 
   const isActive = selectedEngramId === id;
 
   const onActivate = useCallback(async () => {
+    if (engram?.isArchival === true) return;
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
-    setSelectedEngramId(id);
+    setSelectedEngramId(id, engram?.slug);
     try {
       await activate.mutateAsync({ id });
-      queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
+      void queryClient.invalidateQueries({
+        queryKey: getEngramListModeQueryKey(offlineActive),
+      });
+      // Dismiss back to the root route rather than relying on the Android
+      // back-stack shape. This also handles a detail screen opened by a link.
+      router.dismissTo("/");
     } catch {
-      // local selection persists
+      // Keep the detail screen mounted so a transient activation failure does
+      // not look like an app crash or strand the user on a blank route.
     }
-    router.back();
-  }, [activate, id, queryClient, router, setSelectedEngramId]);
+  }, [
+    activate,
+    engram?.isArchival,
+    engram?.slug,
+    id,
+    offlineActive,
+    queryClient,
+    router,
+    setSelectedEngramId,
+  ]);
+
+  const onOpenPreservedTranscript = useCallback(() => {
+    setSelectedEngramId(id, engram?.slug);
+    router.dismissTo("/(tabs)/chat");
+  }, [engram?.slug, id, router, setSelectedEngramId]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Stack.Screen
         options={{
           headerShown: true,
-          title: engram?.name ?? "Engram",
+          title: engram?.name ?? t("detail.fallbackTitle"),
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.primary,
           headerTitleStyle: {
@@ -68,17 +163,36 @@ export default function EngramDetailScreen() {
           },
         }}
       />
-      {isLoading || !engram ? (
+      {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
+      ) : isError || !engram ? (
+        <View style={styles.errorState}>
+          <Text style={[styles.errorText, { color: colors.destructive }]}>
+            {t("errors.message")}
+          </Text>
+          <PrimaryButton
+            label={t("errors.tryAgain")}
+            tone="outline"
+            onPress={() => void refetch()}
+            style={{ marginTop: 14, minWidth: 150 }}
+          />
+        </View>
       ) : (
+        <KeyboardAvoidingView
+          style={styles.keyboardContainer}
+          behavior="padding"
+          keyboardVerticalOffset={0}
+        >
         <ScrollView
           contentContainerStyle={[
             styles.scroll,
             { paddingBottom: (Platform.OS === "web" ? 34 : insets.bottom) + 120 },
           ]}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <View style={styles.hero}>
             <Glyph symbol={engram.symbol} size={72} active={isActive} />
@@ -95,21 +209,24 @@ export default function EngramDetailScreen() {
                   tone="primary"
                 />
                 {engram.autonomyEnabled ? (
-                  <Chip label="autonomous" tone="success" />
+                  <Chip label={t("detail.autonomous")} tone="success" />
                 ) : (
-                  <Chip label="dormant" tone="muted" />
+                  <Chip label={t("detail.dormant")} tone="muted" />
                 )}
+                {engram.isArchival ? (
+                  <Chip label={t("chat.archived")} tone="muted" />
+                ) : null}
               </View>
             </View>
           </View>
 
-          <Section label="Origin" colors={colors}>
+          <Section label={t("detail.origin")} colors={colors}>
             <Text style={[styles.body, { color: colors.foreground }]}>
               {engram.origin}
             </Text>
           </Section>
 
-          <Section label="Voice" colors={colors}>
+          <Section label={t("detail.voice")} colors={colors}>
             <Text style={[styles.body, { color: colors.foreground }]}>
               {engram.voiceProfile.speechStyle}
             </Text>
@@ -127,7 +244,7 @@ export default function EngramDetailScreen() {
             ) : null}
           </Section>
 
-          <Section label="Drive Pressure" colors={colors}>
+          <Section label={t("detail.drivePressure")} colors={colors}>
             <View style={{ gap: 14 }}>
               {engram.drives.map((drive) => {
                 const pressure = engram.driveState?.[drive.id] ?? 0;
@@ -159,7 +276,7 @@ export default function EngramDetailScreen() {
             </View>
           </Section>
 
-          <Section label="Focus Themes" colors={colors}>
+          <Section label={t("detail.focusThemes")} colors={colors}>
             <View style={styles.themeWrap}>
               {engram.focusThemes.map((t, i) => (
                 <Chip key={i} label={t} tone="violet" />
@@ -167,26 +284,172 @@ export default function EngramDetailScreen() {
             </View>
           </Section>
 
-          <Section label="Baseline" colors={colors}>
+          <Section label={t("detail.baseline")} colors={colors}>
             <View style={{ gap: 12 }}>
               <Metric
-                label="valence"
+                metricKey="valence"
+                label={t("detail.valence")}
                 value={engram.emotionalBaseline.valence}
                 colors={colors}
               />
               <Metric
-                label="arousal"
+                metricKey="arousal"
+                label={t("detail.arousal")}
                 value={engram.emotionalBaseline.arousal}
                 colors={colors}
               />
               <Metric
-                label="volatility"
+                metricKey="volatility"
+                label={t("detail.volatility")}
                 value={engram.emotionalBaseline.volatility}
                 colors={colors}
               />
             </View>
           </Section>
+
+          <Section label={t("detail.memory")} colors={colors}>
+            {(memories ?? []).slice(0, 5).map((memory) => (
+              <View key={memory.id} style={styles.dataRow}>
+                <View style={styles.dataRowTop}>
+                  <Chip label={memory.layer} tone="primary" />
+                  <Text style={[styles.dataMeta, { color: colors.mutedForeground }]}>
+                    {Math.round(memory.confidence * 100)}%
+                  </Text>
+                </View>
+                <Text style={[styles.body, { color: colors.foreground }]}>
+                  {memory.content}
+                </Text>
+              </View>
+            ))}
+            {!memories?.length ? (
+              <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
+                {t("detail.noMemory")}
+              </Text>
+            ) : null}
+          </Section>
+
+          <Section label={t("detail.mediaMemory")} colors={colors}>
+            {mediaObservations.length > 0 ? (
+              <View
+                style={[
+                  styles.mediaSearchField,
+                  { borderColor: colors.border, backgroundColor: colors.background },
+                ]}
+              >
+                <Feather name="search" size={16} color={colors.mutedForeground} />
+                <TextInput
+                  testID="input-media-memory-search"
+                  accessibilityLabel={t("detail.searchMediaMemory")}
+                  value={mediaSearch}
+                  onChangeText={setMediaSearch}
+                  placeholder={t("detail.searchMediaMemory")}
+                  placeholderTextColor={colors.mutedForeground}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  selectionColor={colors.primary}
+                  style={[styles.mediaSearchInput, { color: colors.foreground }]}
+                />
+                {mediaSearch.length > 0 ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("detail.clearMediaMemorySearch")}
+                    hitSlop={10}
+                    onPress={() => setMediaSearch("")}
+                    style={styles.mediaSearchClear}
+                  >
+                    <Feather name="x" size={16} color={colors.mutedForeground} />
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+            {filteredMediaObservations.map((observation) => {
+              const assetId = mediaAssetId(observation.source)!;
+              const asset = mediaById.get(assetId);
+              return (
+                <View key={observation.id} style={styles.dataRow}>
+                  <View style={styles.dataRowTop}>
+                    <Chip label={observation.provenance} tone="success" />
+                    <Text style={[styles.dataMeta, { color: colors.mutedForeground }]}>
+                      {Math.round(observation.confidence * 100)}%
+                    </Text>
+                  </View>
+                  <Text style={[styles.body, { color: colors.foreground }]}>
+                    {observation.content}
+                  </Text>
+                  <PrimaryButton
+                    label={asset?.filename ?? t("detail.openMediaSource")}
+                    tone="outline"
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/media",
+                        params: { asset: String(assetId) },
+                      })
+                    }
+                    testID={`engram-media-source-${observation.id}`}
+                    style={{ marginTop: 10 }}
+                  />
+                </View>
+              );
+            })}
+            {!mediaObservations.length ? (
+              <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
+                {t("detail.noMediaMemory")}
+              </Text>
+            ) : !filteredMediaObservations.length ? (
+              <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
+                {t("detail.noMediaMemoryMatches")}
+              </Text>
+            ) : null}
+          </Section>
+
+          <Section label={t("detail.beliefs")} colors={colors}>
+            {(beliefs ?? []).slice(0, 5).map((belief) => (
+              <View key={belief.id} style={styles.dataRow}>
+                <View style={styles.dataRowTop}>
+                  <MonoLabel color={colors.accent} style={styles.localizedMeta}>
+                    {Math.round(belief.confidence * 100)}% {t("detail.confident")}
+                  </MonoLabel>
+                  <MonoLabel
+                    color={colors.mutedForeground}
+                    style={styles.localizedMeta}
+                  >
+                    {t("detail.revisions", { count: belief.revisionCount })}
+                  </MonoLabel>
+                </View>
+                <Text style={[styles.body, { color: colors.foreground }]}>
+                  {belief.statement}
+                </Text>
+              </View>
+            ))}
+            {!beliefs?.length ? (
+              <Text style={[styles.emptyData, { color: colors.mutedForeground }]}>
+                {t("detail.noBeliefs")}
+              </Text>
+            ) : null}
+          </Section>
+
+          <Section label={t("detail.environment")} colors={colors}>
+            <Text style={[styles.body, { color: colors.foreground }]}>
+              {engram.environmentAnchor.description}
+            </Text>
+            <View style={{ marginTop: 14, gap: 8 }}>
+              <Text style={[styles.dataMeta, { color: colors.primary }]}>
+                {engram.environmentAnchor.name}
+              </Text>
+              <Text style={[styles.dataMeta, { color: colors.mutedForeground }]}>
+                {engram.environmentAnchor.ambient}
+              </Text>
+            </View>
+            <PrimaryButton
+              label={t("detail.openEnvironment")}
+              tone="outline"
+              onPress={() => router.push(`/engram/environment?id=${id}`)}
+              style={{ marginTop: 14 }}
+            />
+          </Section>
         </ScrollView>
+        </KeyboardAvoidingView>
       )}
 
       {engram ? (
@@ -202,10 +465,18 @@ export default function EngramDetailScreen() {
         >
           <PrimaryButton
             testID="activate-button"
-            label={isActive ? "Active engram" : "Make active"}
-            onPress={onActivate}
-            loading={activate.isPending}
-            disabled={isActive}
+            label={
+              engram.isArchival
+                ? t("chat.history")
+                : isActive
+                  ? t("detail.activeEngram")
+                  : t("detail.makeActive")
+            }
+            onPress={
+              engram.isArchival ? onOpenPreservedTranscript : onActivate
+            }
+            loading={!engram.isArchival && activate.isPending}
+            disabled={!engram.isArchival && isActive}
           />
         </View>
       ) : null}
@@ -242,16 +513,18 @@ function Section({
 }
 
 function Metric({
+  metricKey,
   label,
   value,
   colors,
 }: {
+  metricKey: string;
   label: string;
   value: number;
   colors: ReturnType<typeof useColors>;
 }) {
   // valence ranges -1..1; map to 0..1 for the bar.
-  const norm = label === "valence" ? (value + 1) / 2 : value;
+  const norm = metricKey === "valence" ? (value + 1) / 2 : value;
   return (
     <View style={{ gap: 6 }}>
       <View style={styles.driveRow}>
@@ -266,8 +539,21 @@ function Metric({
 }
 
 const styles = StyleSheet.create({
+  keyboardContainer: { flex: 1 },
   container: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  errorState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 28,
+  },
+  errorText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+  },
   scroll: { padding: 20 },
   hero: {
     flexDirection: "row",
@@ -275,7 +561,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  heroBody: { flex: 1, gap: 4 },
+  heroBody: { flex: 1, minWidth: 0, gap: 4 },
   name: {
     fontFamily: "Rajdhani_700Bold",
     fontSize: 26,
@@ -287,6 +573,7 @@ const styles = StyleSheet.create({
   },
   heroChips: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 6,
     marginTop: 6,
   },
@@ -306,6 +593,35 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     lineHeight: 21,
   },
+  dataRow: { gap: 8, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "rgba(148,163,184,0.14)" },
+  dataRowTop: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  dataMeta: { fontFamily: "JetBrainsMono_400Regular", fontSize: 10, textTransform: "uppercase" },
+  localizedMeta: { fontSize: 10, flexShrink: 1 },
+  emptyData: { fontFamily: "Inter_400Regular", fontSize: 13, lineHeight: 20 },
+  mediaSearchField: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  mediaSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 9,
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+  },
+  mediaSearchClear: { padding: 4 },
   driveRow: {
     flexDirection: "row",
     justifyContent: "space-between",

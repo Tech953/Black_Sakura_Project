@@ -1,0 +1,14 @@
+{
+  "name": "@workspace/engram-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "@workspace/expression-role-policy": "workspace:*",
+    "@workspace/rebecca-source-registry": "workspace:*"
+  }
+}

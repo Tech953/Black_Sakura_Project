@@ -10,6 +10,7 @@ import type { SimulationStatus } from './simulationStatus';
 export interface Simulation {
   id: number;
   engramId: number;
+  participantEngramIds: number[];
   spaceId: number;
   premise: string;
   status: SimulationStatus;

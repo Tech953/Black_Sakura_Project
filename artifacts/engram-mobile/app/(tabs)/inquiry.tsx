@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Platform,
@@ -17,6 +18,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Chip, EmptyState, MonoLabel, PrimaryButton } from "@/components/ui";
 import { useEngram } from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
+import { resolveReplyLanguage } from "@/lib/i18n";
+import { inquiryRequest, type InquiryMode } from "@/lib/mobile-flow-seams";
+import { useOfflineMode } from "@/lib/offline/mode";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetEngramQueryKey,
@@ -27,13 +31,27 @@ import {
 } from "@workspace/api-client-react";
 
 
-type Mode = "probe" | "develop";
+type Mode = InquiryMode;
+type InquiryFailureCode = "INQUIRY_GENERATION_FAILED" | "INQUIRY_PERSISTENCE_FAILED";
+
+function inquiryFailureCode(error: unknown): InquiryFailureCode | null {
+  if (!error || typeof error !== "object" || !("data" in error)) return null;
+  const data = (error as { data?: unknown }).data;
+  if (!data || typeof data !== "object" || !("code" in data)) return null;
+  const code = (data as { code?: unknown }).code;
+  return code === "INQUIRY_GENERATION_FAILED" || code === "INQUIRY_PERSISTENCE_FAILED"
+    ? code
+    : null;
+}
 
 export default function InquiryScreen() {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { selectedEngramId } = useEngram();
+  const offlineActive = useOfflineMode();
+  const modeScope = offlineActive ? "offline-selection" : "online-selection";
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const engramId = selectedEngramId ?? 0;
@@ -41,38 +59,65 @@ export default function InquiryScreen() {
 
   const [mode, setMode] = useState<Mode>("probe");
   const [question, setQuestion] = useState("");
+  const [submitFailure, setSubmitFailure] = useState<{
+    code: InquiryFailureCode | null;
+    mode: Mode;
+  } | null>(null);
 
   const { data: engram } = useGetEngram(engramId, {
-    query: { enabled, queryKey: getGetEngramQueryKey(engramId) },
+    query: {
+      enabled,
+      queryKey: [
+        ...getGetEngramQueryKey(engramId),
+        modeScope,
+      ],
+    },
   });
+  const inquiriesQueryKey = [
+    ...getListEngramInquiriesQueryKey(engramId),
+    modeScope,
+  ] as const;
   const { data: inquiries } = useListEngramInquiries(engramId, {
-    query: { enabled, queryKey: getListEngramInquiriesQueryKey(engramId) },
+    query: { enabled, queryKey: inquiriesQueryKey },
   });
   const create = useCreateEngramInquiry();
 
+  useEffect(() => {
+    setSubmitFailure(null);
+  }, [engramId]);
+
   const onSubmit = useCallback(async () => {
     if (!enabled || question.trim().length === 0) return;
+    setSubmitFailure(null);
+    const submittedMode = mode;
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
     try {
-      await create.mutateAsync({
-        id: engramId,
-        data: { kind: mode, question: question.trim() },
-      });
+      await create.mutateAsync(
+        inquiryRequest({
+          engramId,
+          mode,
+          question,
+          language: await resolveReplyLanguage(),
+        }),
+      );
       setQuestion("");
       queryClient.invalidateQueries({
-        queryKey: getListEngramInquiriesQueryKey(engramId),
+        queryKey: inquiriesQueryKey,
       });
       if (mode === "develop") {
         queryClient.invalidateQueries({
-          queryKey: getGetEngramQueryKey(engramId),
+          queryKey: [
+            ...getGetEngramQueryKey(engramId),
+            modeScope,
+          ],
         });
       }
-    } catch {
-      // ignore
+    } catch (error) {
+      setSubmitFailure({ code: inquiryFailureCode(error), mode: submittedMode });
     }
-  }, [create, enabled, engramId, mode, question, queryClient]);
+  }, [create, enabled, engramId, mode, modeScope, question, queryClient]);
 
   if (!enabled) {
     return (
@@ -82,8 +127,8 @@ export default function InquiryScreen() {
           icon={
             <Feather name="help-circle" size={28} color={colors.mutedForeground} />
           }
-          title="No engram selected"
-          subtitle="Choose an engram to probe its mind or guide its development."
+          title={t("inquiry.noEngram")}
+          subtitle={t("inquiry.noEngramSubtitle")}
         />
       </View>
     );
@@ -93,10 +138,10 @@ export default function InquiryScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
         <Text style={[styles.kicker, { color: colors.primary }]}>
-          INQUIRY // {engram?.symbol ?? "··"}
+          {t("inquiry.kicker")} // {engram?.symbol ?? "··"}
         </Text>
         <Text style={[styles.h1, { color: colors.foreground }]}>
-          Interrogate
+          {t("inquiry.title")}
         </Text>
       </View>
 
@@ -113,7 +158,11 @@ export default function InquiryScreen() {
               <Pressable
                 key={m}
                 testID={`mode-${m}`}
-                onPress={() => setMode(m)}
+                onPress={() => {
+                  setSubmitFailure(null);
+                  setMode(m);
+                }}
+                disabled={create.isPending}
                 style={[
                   styles.modeChip,
                   {
@@ -134,7 +183,7 @@ export default function InquiryScreen() {
                     color: active ? colors.primary : colors.mutedForeground,
                   }}
                 >
-                  {m}
+                  {m === "probe" ? t("inquiry.probe") : t("inquiry.develop")}
                 </Text>
                 <Text
                   style={{
@@ -144,7 +193,7 @@ export default function InquiryScreen() {
                     marginTop: 2,
                   }}
                 >
-                  {m === "probe" ? "Ask, no change" : "Reshape config"}
+                  {m === "probe" ? t("inquiry.probeHint") : t("inquiry.developHint")}
                 </Text>
               </Pressable>
             );
@@ -154,14 +203,19 @@ export default function InquiryScreen() {
         <TextInput
           testID="inquiry-input"
           value={question}
-          onChangeText={setQuestion}
+          onChangeText={(value) => {
+            setSubmitFailure(null);
+            setQuestion(value);
+          }}
+          editable={!create.isPending}
           placeholder={
             mode === "probe"
-              ? "What do you remember about…?"
-              : "Become more curious about…"
+              ? t("inquiry.probePlaceholder")
+              : t("inquiry.developPlaceholder")
           }
           placeholderTextColor={colors.mutedForeground}
           multiline
+          maxLength={4000}
           style={[
             styles.input,
             {
@@ -175,7 +229,7 @@ export default function InquiryScreen() {
 
         <PrimaryButton
           testID="inquiry-submit"
-          label={mode === "probe" ? "Probe" : "Develop"}
+          label={mode === "probe" ? t("inquiry.probe") : t("inquiry.develop")}
           tone={mode === "develop" ? "accent" : "primary"}
           loading={create.isPending}
           disabled={question.trim().length === 0}
@@ -183,13 +237,41 @@ export default function InquiryScreen() {
           style={{ marginTop: 14 }}
         />
 
+        {submitFailure ? (
+          <View
+            style={[
+              styles.errorCard,
+              { borderColor: colors.destructive + "66", backgroundColor: colors.card },
+            ]}
+          >
+            <Text style={[styles.errorText, { color: colors.destructive }]}>
+              {submitFailure.code === "INQUIRY_GENERATION_FAILED"
+                ? t("inquiry.generationFailureMessage")
+                : submitFailure.code === "INQUIRY_PERSISTENCE_FAILED"
+                  ? submitFailure.mode === "develop"
+                    ? t("inquiry.developPersistenceFailureMessage")
+                    : t("inquiry.probePersistenceFailureMessage")
+                  : t("inquiry.unconfirmedFailureMessage")}
+            </Text>
+            {submitFailure.code ? (
+              <PrimaryButton
+                label={t("inquiry.retryInquiry")}
+                tone="outline"
+                onPress={onSubmit}
+                disabled={create.isPending}
+                style={{ marginTop: 10, height: 42 }}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
         <MonoLabel style={{ marginTop: 28, marginBottom: 12 }}>
-          History
+          {t("inquiry.history")}
         </MonoLabel>
 
         {(inquiries ?? []).length === 0 ? (
           <Text style={[styles.emptyHist, { color: colors.mutedForeground }]}>
-            No inquiries yet.
+            {t("inquiry.noInquiries")}
           </Text>
         ) : (
           (inquiries ?? []).map((item) => (
@@ -222,7 +304,9 @@ export default function InquiryScreen() {
                     { borderColor: colors.accent + "55" },
                   ]}
                 >
-                  <MonoLabel color={colors.accent}>config delta</MonoLabel>
+                  <MonoLabel color={colors.accent}>
+                    {t("inquiry.configDelta")}
+                  </MonoLabel>
                   <Text
                     style={[styles.deltaText, { color: colors.secondaryForeground }]}
                   >
@@ -288,6 +372,17 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
     gap: 8,
+  },
+  errorCard: {
+    borderWidth: 1,
+    padding: 12,
+    marginTop: 12,
+    borderRadius: 6,
+  },
+  errorText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    lineHeight: 19,
   },
   q: {
     fontFamily: "Rajdhani_600SemiBold",

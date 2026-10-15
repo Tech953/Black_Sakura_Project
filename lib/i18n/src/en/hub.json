@@ -1,0 +1,52 @@
+{
+  "title": "THE HUB",
+  "subtitle": "The shared world the engrams inhabit — where each one is, and how they move between spaces",
+  "relocateEngram": "Relocate Engram",
+  "engramLabel": "Engram",
+  "chooseEngram": "Choose an engram",
+  "destinationSpaceLabel": "Destination Space",
+  "chooseSpace": "Choose a space",
+  "restSuffix": " (rest)",
+  "noteOptionalLabel": "Note (optional)",
+  "notePlaceholder": "Why is it here...",
+  "move": "Move",
+  "moving": "Moving...",
+  "recentActivity": "Recent Activity",
+  "noMovements": "No movements logged yet",
+  "restBadge": "Rest",
+  "logged": "Logged",
+  "unlogged": "Unlogged",
+  "present": "Present",
+  "empty": "— empty —",
+  "fallbackEngram": "Engram",
+  "fallbackSpace": "space",
+  "kind": {
+    "commons": "Commons",
+    "private_room": "Private Room",
+    "simulation_chamber": "Simulation Chamber",
+    "archive": "Archive",
+    "terminal": "Human Terminal",
+    "quiescence": "Quiescence"
+  },
+  "visibility": {
+    "public": "Public",
+    "occupants": "Occupants",
+    "operators": "Operators"
+  },
+  "time": {
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  },
+  "toastPresenceUpdatedTitle": "Presence updated",
+  "toastPresenceUpdatedDescription": "{{engram}} → {{space}}.",
+  "toastMoveFailed": "Failed to move engram",
+  "moveFailureDetails": "The move was not recorded. The engram remains in its last confirmed location.",
+  "retryMove": "Retry move",
+  "retryingMove": "Retrying...",
+  "openTranscript": "Open transcript",
+  "transcriptTitle": "{{space}} transcript",
+  "transcriptUnavailable": "Could not load this transcript.",
+  "transcriptEmpty": "No Commons exchange has been recorded in this space yet."
+}

@@ -5,7 +5,12 @@
  * ENGRAM AI Persona Framework API
  * OpenAPI spec version: 0.1.0
  */
+import type { OpenaiErrorGroupContinuationMode } from './openaiErrorGroupContinuationMode';
 
 export interface OpenaiError {
   error: string;
+  code?: string;
+  groupContinuationMode?: OpenaiErrorGroupContinuationMode;
+  /** @minimum 0 */
+  groupContinuationRevision?: number;
 }

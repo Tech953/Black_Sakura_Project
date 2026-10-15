@@ -36,16 +36,25 @@ const h = vi.hoisted(() => {
   }));
 
   const transcribeCreate = vi.fn(async () => ({ text: state.transcript }));
+  const normalizeLLMProviderError = vi.fn((error: unknown) => ({
+    message: error instanceof Error
+      ? `Normalized provider failure: ${error.message}`
+      : "Normalized provider failure",
+  }));
 
   const llm = {
     chat: { completions: { create: chatCreate } },
     audio: { transcriptions: { create: transcribeCreate } },
   };
 
-  return { state, chatCreate, transcribeCreate, llm };
+  return { state, chatCreate, transcribeCreate, normalizeLLMProviderError, llm };
 });
 
-vi.mock("./llm", () => ({ llm: h.llm, LLM_MODEL: "test-chat-model" }));
+vi.mock("./llm", () => ({
+  llm: h.llm,
+  LLM_MODEL: "test-chat-model",
+  normalizeLLMProviderError: h.normalizeLLMProviderError,
+}));
 vi.mock("openai", () => ({
   toFile: vi.fn(async (buf: Buffer, name: string, opts: unknown) => ({
     buf,
@@ -84,10 +93,131 @@ vi.mock("node:fs/promises", () => ({
 }));
 
 import {
+  contentMatchesMime,
+  detectContentType,
   detectModality,
+  filenameMatchesMime,
   MEDIA_MIME_ALLOWLIST,
+  normalizeMediaMimeType,
   extractFromMedia,
 } from "./media-extraction";
+
+function ebmlVint(value: number): Buffer {
+  if (value < 0x7f) return Buffer.from([0x80 | value]);
+  if (value < 0x3fff) return Buffer.from([0x40 | (value >> 8), value & 0xff]);
+  if (value < 0x1fffff)
+    return Buffer.from([0x20 | (value >> 16), (value >> 8) & 0xff, value & 0xff]);
+  throw new Error(`fixture EBML value is too large: ${value}`);
+}
+
+function ebmlElement(id: number, payload: Buffer): Buffer {
+  const idLength = id <= 0xff ? 1 : id <= 0xffff ? 2 : id <= 0xffffff ? 3 : 4;
+  const idBytes = Buffer.alloc(idLength);
+  idBytes.writeUIntBE(id, 0, idLength);
+  return Buffer.concat([idBytes, ebmlVint(payload.length), payload]);
+}
+
+function minimalEbml(documentType: "webm" | "matroska"): Buffer {
+  const ebmlHeader = ebmlElement(
+    0x1a45dfa3,
+    Buffer.concat([
+      ebmlElement(0x4286, Buffer.from([1])),
+      ebmlElement(0x42f7, Buffer.from([1])),
+      ebmlElement(0x42f2, Buffer.from([4])),
+      ebmlElement(0x42f3, Buffer.from([8])),
+      ebmlElement(0x4282, Buffer.from(documentType)),
+    ]),
+  );
+  const info = ebmlElement(0x1549a966, ebmlElement(0x2ad7b1, Buffer.from([0x0f, 0x42, 0x40])));
+  const tracks = ebmlElement(0x1654ae6b, ebmlElement(0xae, ebmlElement(0xd7, Buffer.from([1]))));
+  const cluster = ebmlElement(
+    0x1f43b675,
+    Buffer.concat([
+      ebmlElement(0xe7, Buffer.from([0])),
+      ebmlElement(0xa3, Buffer.from([0x81, 0, 0])),
+    ]),
+  );
+  return Buffer.concat([ebmlHeader, ebmlElement(0x18538067, Buffer.concat([info, tracks, cluster]))]);
+}
+
+function isoBox(type: string, payload: Buffer): Buffer {
+  const box = Buffer.alloc(8);
+  box.writeUInt32BE(8 + payload.length, 0);
+  box.write(type, 4, 4, "ascii");
+  return Buffer.concat([box, payload]);
+}
+
+function minimalIso(brand: string): Buffer {
+  return Buffer.concat([
+    isoBox("ftyp", Buffer.concat([Buffer.from(brand, "ascii"), Buffer.alloc(4), Buffer.from(brand, "ascii")])),
+    isoBox("moov", isoBox("mvhd", Buffer.alloc(4))),
+    isoBox("mdat", Buffer.from([0])),
+  ]);
+}
+
+function minimalWav(): Buffer {
+  const fmt = Buffer.alloc(16);
+  fmt.writeUInt16LE(1, 0);
+  fmt.writeUInt16LE(1, 2);
+  fmt.writeUInt32LE(8_000, 4);
+  fmt.writeUInt32LE(16_000, 8);
+  fmt.writeUInt16LE(2, 12);
+  fmt.writeUInt16LE(16, 14);
+  const data = Buffer.from([0, 0]);
+  const body = Buffer.concat([
+    Buffer.from("fmt ", "ascii"),
+    Buffer.from([16, 0, 0, 0]),
+    fmt,
+    Buffer.from("data", "ascii"),
+    Buffer.from([2, 0, 0, 0]),
+    data,
+  ]);
+  return Buffer.concat([Buffer.from("RIFF", "ascii"), Buffer.from([body.length + 4, 0, 0, 0]), Buffer.from("WAVE", "ascii"), body]);
+}
+
+function oggCrc(data: Buffer): number {
+  let crc = 0;
+  for (let index = 0; index < data.length; index += 1) {
+    const byte = index >= 22 && index < 26 ? 0 : data[index]!;
+    crc ^= byte << 24;
+    for (let bit = 0; bit < 8; bit += 1)
+      crc = (crc & 0x80000000) !== 0 ? (crc << 1) ^ 0x04c11db7 : crc << 1;
+  }
+  return crc >>> 0;
+}
+
+function minimalOgg(): Buffer {
+  const payload = Buffer.concat([Buffer.from("OpusHead", "ascii"), Buffer.alloc(11)]);
+  const page = Buffer.alloc(27 + 1 + payload.length);
+  page.write("OggS", 0, 4, "ascii");
+  page[4] = 0;
+  page[5] = 2;
+  page.writeUInt32LE(1, 14);
+  page[26] = 1;
+  page[27] = payload.length;
+  payload.copy(page, 28);
+  page.writeUInt32LE(oggCrc(page), 22);
+  return page;
+}
+
+const minimalJpeg = Buffer.from(
+  "/9j/4AAQSkZJRgABAgAAAQABAAD//gAQTGF2YzYwLjMxLjEwMgD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABLAAEBAAAAAAAAAAAAAAAAAAAACAEBAAAAAAAAAAAAAAAAAAAAABABAAAAAAAAAAAAAAAAAAAAABEBAAAAAAAAAAAAAAAAAAAAAP/AABEIAAIAAgMBIgACEQADEQD/2gAMAwEAAhEDEQA/AJ/AB//Z",
+  "base64",
+);
+const validPng = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACAQMAAABIeJ9nAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAADUExURf8AABniCTcAAAAMSURBVAjXY2BgYAAAAAQAASc0JwoAAAAASUVORK5CYII=",
+  "base64",
+);
+const validWebp = Buffer.from(
+  "UklGRjwAAABXRUJQVlA4IDAAAADQAQCdASoCAAIAAgA0JaACdLoB+AADsAD+8MQL/yC5YXXI1/8gP+QH/ID/+PIAAAA=",
+  "base64",
+);
+const validGif = Buffer.from(
+  "R0lGODlhAgACAPAAAP8AAAAAACH5BAAAAAAALAAAAAACAAIAAAIChFEAOw==",
+  "base64",
+);
+const minimalMp3 = Buffer.alloc(417);
+minimalMp3.set([0xff, 0xfb, 0x90, 0x64]);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -119,6 +249,13 @@ describe("detectModality — MIME allowlist drives modality (never client input)
     expect(detectModality('video/webm;codecs="vp9"')).toBe("video");
   });
 
+  it("canonicalizes common browser and picker aliases", () => {
+    expect(normalizeMediaMimeType("image/jpg")).toBe("image/jpeg");
+    expect(normalizeMediaMimeType("audio/mp3")).toBe("audio/mpeg");
+    expect(normalizeMediaMimeType("audio/x-wav; codecs=pcm")).toBe("audio/wav");
+    expect(normalizeMediaMimeType("video/x-m4v")).toBe("video/mp4");
+  });
+
   it("returns null for anything not on the allowlist", () => {
     expect(detectModality("application/zip")).toBeNull();
     expect(detectModality("application/x-msdownload")).toBeNull();
@@ -131,6 +268,95 @@ describe("detectModality — MIME allowlist drives modality (never client input)
     for (const modality of Object.values(MEDIA_MIME_ALLOWLIST)) {
       expect(allowed.has(modality)).toBe(true);
     }
+  });
+});
+
+describe("detectContentType — uploaded bytes must match the claimed MIME", () => {
+  it("recognizes complete minimal fixtures for the supported binary containers", () => {
+    expect(detectContentType(Buffer.from("the harbor was quiet"))).toBe("text/plain");
+    expect(detectContentType(Buffer.from('{"harbor":"quiet"}'))).toBe("application/json");
+    expect(detectContentType(validPng)).toBe("image/png");
+    expect(detectContentType(validWebp)).toBe("image/webp");
+    expect(detectContentType(validGif)).toBe("image/gif");
+    expect(detectContentType(minimalJpeg)).toBe("image/jpeg");
+    expect(detectContentType(minimalMp3)).toBe("audio/mpeg");
+    expect(detectContentType(minimalWav())).toBe("audio/wav");
+    expect(detectContentType(minimalOgg())).toBe("audio/ogg");
+    expect(detectContentType(minimalEbml("webm"))).toBe("video/webm");
+    expect(detectContentType(minimalEbml("matroska"))).toBe("video/x-matroska");
+    expect(detectContentType(minimalIso("qt  "))).toBe("video/quicktime");
+    expect(detectContentType(minimalIso("isom"))).toBe("video/mp4");
+  });
+
+  it("accepts valid aliases and rejects mislabeled or executable bytes", () => {
+    const mp3 = minimalMp3;
+    expect(contentMatchesMime(mp3, "audio/mpeg")).toBe(true);
+    expect(contentMatchesMime(mp3, "audio/mp3")).toBe(true);
+    expect(contentMatchesMime(mp3, "image/png")).toBe(false);
+    const wav = minimalWav();
+    expect(contentMatchesMime(wav, "audio/x-wav")).toBe(true);
+
+    expect(contentMatchesMime(validPng, "image/png")).toBe(true);
+    expect(contentMatchesMime(validPng, "text/plain")).toBe(false);
+    expect(contentMatchesMime(Buffer.from([0x4d, 0x5a, 0x90, 0x00]), "text/plain")).toBe(false);
+  });
+
+  it("rejects a filename extension that contradicts an otherwise valid MIME type", () => {
+    expect(filenameMatchesMime("scene.png", "image/png")).toBe(true);
+    expect(filenameMatchesMime("scene.jpg", "image/png")).toBe(false);
+    expect(filenameMatchesMime("notes.md", "text/markdown")).toBe(true);
+    expect(filenameMatchesMime("notes.txt", "text/markdown")).toBe(false);
+    expect(filenameMatchesMime("README", "text/plain")).toBe(true);
+  });
+
+  it.each([
+    ["truncated WAV", minimalWav().subarray(0, -1), "audio/wav"],
+    ["truncated Ogg", minimalOgg().subarray(0, -1), "audio/ogg"],
+    ["truncated WebM", minimalEbml("webm").subarray(0, -1), "video/webm"],
+    ["truncated QuickTime", minimalIso("qt  ").subarray(0, -1), "video/quicktime"],
+    ["truncated Matroska", minimalEbml("matroska").subarray(0, -1), "video/x-matroska"],
+    ["truncated JPEG", minimalJpeg.subarray(0, -2), "image/jpeg"],
+    ["truncated PNG", validPng.subarray(0, -1), "image/png"],
+    ["truncated WebP", validWebp.subarray(0, -1), "image/webp"],
+    ["truncated GIF", validGif.subarray(0, -1), "image/gif"],
+  ])("%s is rejected before extraction", (_label, bytes, mime) => {
+    expect(detectContentType(bytes)).toBeNull();
+    expect(contentMatchesMime(bytes, mime)).toBe(false);
+  });
+
+  it("rejects structurally invalid containers even when their leading bytes look valid", () => {
+    const invalidPng = Buffer.from(validPng);
+    invalidPng.writeUInt32BE(0xffffffff, 8);
+    expect(contentMatchesMime(invalidPng, "image/png")).toBe(false);
+
+    const invalidWebp = Buffer.from(validWebp);
+    invalidWebp.writeUInt32LE(0xffffffff, 16);
+    expect(contentMatchesMime(invalidWebp, "image/webp")).toBe(false);
+
+    const invalidGif = Buffer.from(validGif);
+    const imageSeparator = invalidGif.indexOf(0x2c, 13);
+    expect(imageSeparator).toBeGreaterThanOrEqual(13);
+    invalidGif[imageSeparator + 11] = 0xff;
+    expect(contentMatchesMime(invalidGif, "image/gif")).toBe(false);
+
+    const invalidWav = minimalWav();
+    invalidWav.writeUInt32LE(invalidWav.length, 4);
+    expect(contentMatchesMime(invalidWav, "audio/wav")).toBe(false);
+
+    const invalidOgg = minimalOgg();
+    invalidOgg[22] ^= 0xff;
+    expect(contentMatchesMime(invalidOgg, "audio/ogg")).toBe(false);
+
+    const invalidWebm = minimalEbml("webm");
+    invalidWebm.write("ebml", invalidWebm.indexOf("webm", 0, "ascii"), 4, "ascii");
+    expect(contentMatchesMime(invalidWebm, "video/webm")).toBe(false);
+
+    const invalidQuickTime = Buffer.concat([
+      isoBox("ftyp", Buffer.concat([Buffer.from("qt  ", "ascii"), Buffer.alloc(4), Buffer.from("qt  ", "ascii")])),
+      isoBox("moov", Buffer.alloc(0)),
+      isoBox("mdat", Buffer.from([0])),
+    ]);
+    expect(contentMatchesMime(invalidQuickTime, "video/quicktime")).toBe(false);
   });
 });
 
@@ -156,7 +382,7 @@ describe("extractFromMedia — image", () => {
   it("perceives an image via the vision model using a base64 data URL", async () => {
     const result = await extractFromMedia(
       { modality: "image", mimeType: "image/png", filename: "scene.png" },
-      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+      validPng,
     );
 
     expect(result.observations.length).toBeGreaterThan(0);
@@ -378,7 +604,24 @@ describe("extractFromMedia — unsupported modality", () => {
         { modality: "hologram", mimeType: "x/y", filename: "z" },
         Buffer.from(""),
       ),
-    ).rejects.toThrow(/Unsupported media modality/i);
+    ).rejects.toMatchObject({ failureKind: "extraction" });
+  });
+});
+
+describe("extractFromMedia — failure categories", () => {
+  it("classifies model-provider errors and preserves the normalized diagnostic", async () => {
+    h.chatCreate.mockRejectedValueOnce(new Error("provider timed out"));
+
+    await expect(
+      extractFromMedia(
+        { modality: "text", mimeType: "text/plain", filename: "harbor.txt" },
+        Buffer.from("A lighthouse."),
+      ),
+    ).rejects.toMatchObject({
+      failureKind: "provider",
+      message: "Normalized provider failure: provider timed out",
+    });
+    expect(h.normalizeLLMProviderError).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -466,6 +709,22 @@ describe("extractFromMedia — video", () => {
     // No usable audio bytes ⇒ transcription is never attempted.
     expect(h.transcribeCreate).not.toHaveBeenCalled();
     expect(h.chatCreate).not.toHaveBeenCalled();
+  });
+
+  it("preserves a provider failure when a video has no usable frames", async () => {
+    h.state.frameBuf = Buffer.from("");
+    h.state.audioBuf = Buffer.from("audio-track");
+    h.transcribeCreate.mockRejectedValueOnce(new Error("provider unavailable"));
+
+    await expect(
+      extractFromMedia(
+        { modality: "video", mimeType: "video/mp4", filename: "audio-only.mp4" },
+        Buffer.from("video-bytes"),
+      ),
+    ).rejects.toMatchObject({
+      failureKind: "provider",
+      message: "Normalized provider failure: provider unavailable",
+    });
   });
 
   it("caps combined observations at MAX_OBSERVATIONS (8) when both channels contribute", async () => {

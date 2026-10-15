@@ -1,13 +1,17 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { personasTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { SetActivePersonaBody } from "@workspace/api-zod";
 
 const router = Router();
 
 router.get("/personas", async (req, res) => {
-  const rows = await db.select().from(personasTable).orderBy(personasTable.id);
+  const rows = await db
+    .select()
+    .from(personasTable)
+    .where(eq(personasTable.ownerId, req.userId!))
+    .orderBy(personasTable.id);
   res.json(rows);
 });
 
@@ -17,15 +21,26 @@ router.patch("/personas/active", async (req, res) => {
     res.status(400).json({ error: "Invalid body" });
     return;
   }
-  await db.update(personasTable).set({ isActive: false });
-  const updated = await db.update(personasTable)
-    .set({ isActive: true })
-    .where(eq(personasTable.id, parsed.data.personaId))
-    .returning();
-  if (!updated[0]) {
+  const personaId = parsed.data.personaId;
+  const ownerId = req.userId!;
+  const [persona] = await db
+    .select()
+    .from(personasTable)
+    .where(and(eq(personasTable.id, personaId), eq(personasTable.ownerId, ownerId)))
+    .limit(1);
+  if (!persona) {
     res.status(404).json({ error: "Persona not found" });
     return;
   }
+  const updated = await db.transaction(async (tx) => {
+    await tx.update(personasTable)
+      .set({ isActive: false })
+      .where(eq(personasTable.ownerId, ownerId));
+    return tx.update(personasTable)
+      .set({ isActive: true })
+      .where(and(eq(personasTable.id, personaId), eq(personasTable.ownerId, ownerId)))
+      .returning();
+  });
   res.json(updated[0]);
 });
 

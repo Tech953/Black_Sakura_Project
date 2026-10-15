@@ -1,11 +1,38 @@
 import { describe, it, expect } from "vitest";
-import type { Engram } from "@workspace/db";
+import {
+  insertExpressionSchema,
+  seedExpressionSchema,
+  updateExpressionSchema,
+  type Engram,
+} from "@workspace/db";
+import { expressionSeeds } from "@workspace/db/seed/expressions";
 import {
   buildExpressionSection,
   buildEngramSystemPrompt,
   buildSystemPrompt,
+  NEUTRAL_EXPRESSION_ROLES,
+  normalizeExpressionRole,
   type ExpressionRow,
 } from "./prompts";
+
+const EXPECTED_PROMPTABLE_SEED_ROLES = new Set([
+  "alarm",
+  "attention",
+  "baseline",
+  "bonding",
+  "conflict-monitor",
+  "distress",
+  "error-signal",
+  "fatigue",
+  "incentive",
+  "orienting",
+  "overload",
+  "reward-signal",
+  "salience-spike",
+  "social-signal",
+  "surrender",
+]);
+const EXPECTED_STORED_ONLY_SEED_ROLES = new Set(["attachment"]);
 
 function makeExpression(overrides: Partial<ExpressionRow>): ExpressionRow {
   return {
@@ -24,6 +51,7 @@ function makeEngram(overrides: Partial<Engram> = {}): Engram {
   return {
     id: 1,
     slug: "test",
+    isArchival: false,
     name: "Testra",
     title: "Test Construct",
     symbol: "◆",
@@ -76,6 +104,49 @@ function makeEngram(overrides: Partial<Engram> = {}): Engram {
 }
 
 describe("buildExpressionSection — intimacy sanitization", () => {
+  it("requires an explicit prompt-safety decision for every seeded cognitive role", () => {
+    const missingRoleGlyphs = expressionSeeds
+      .filter(({ cognitiveRole }) => !cognitiveRole?.trim())
+      .map(({ glyph }) => glyph);
+    expect(missingRoleGlyphs).toEqual([]);
+
+    const seededRoles = new Set(
+      expressionSeeds.map(({ cognitiveRole }) => cognitiveRole!),
+    );
+    const expectedRoles = new Set([
+      ...EXPECTED_PROMPTABLE_SEED_ROLES,
+      ...EXPECTED_STORED_ONLY_SEED_ROLES,
+    ]);
+    expect([...seededRoles].sort()).toEqual([...expectedRoles].sort());
+
+    for (const role of EXPECTED_PROMPTABLE_SEED_ROLES) {
+      expect(NEUTRAL_EXPRESSION_ROLES.has(role)).toBe(true);
+      expect(normalizeExpressionRole(role)).toBe(role);
+    }
+
+    for (const role of EXPECTED_STORED_ONLY_SEED_ROLES) {
+      expect(NEUTRAL_EXPRESSION_ROLES.has(role)).toBe(false);
+      expect(normalizeExpressionRole(role)).toBeNull();
+      const rows = expressionSeeds.filter((row) => row.cognitiveRole === role);
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.every((row) => (row.intimacy ?? 0) > 1)).toBe(true);
+
+      const storedRows = rows as ExpressionRow[];
+      const section = buildExpressionSection("companion", storedRows);
+      for (const row of rows) {
+        expect(section).not.toContain(row.glyph);
+      }
+
+      // Role policy remains independently protective if an intimate role is
+      // ever attached to a low-intimacy row.
+      const lowIntimacySection = buildExpressionSection("companion", [
+        { ...rows[0], intimacy: 1 } as ExpressionRow,
+      ]);
+      expect(lowIntimacySection).toContain(rows[0].glyph);
+      expect(lowIntimacySection).not.toContain(`signal: ${role}`);
+    }
+  });
+
   it("excludes high-intimacy glyphs from the prompt vocabulary", () => {
     const expressions = [
       makeExpression({ glyph: "^_^", name: "warmth", intimacy: 0 }),
@@ -94,14 +165,46 @@ describe("buildExpressionSection — intimacy sanitization", () => {
     expect(section).not.toContain("flirt");
   });
 
-  it("never surfaces the free-text notes field (only structural metadata)", () => {
-    // ExpressionRow intentionally has no `notes`; assert the catalog is built from
-    // neutral fields (glyph/name/valence/arousal/cognitiveRole) only.
+  it("keeps neutral signal metadata but never surfaces stored free-text notes", () => {
+    // ExpressionRow intentionally has no `notes`, but this mirrors a database row
+    // with that extra field to prove prompt construction ignores it at runtime too.
     const section = buildExpressionSection("companion", [
-      makeExpression({ glyph: "^_^", name: "warmth", cognitiveRole: "rapport" }),
+      {
+        ...makeExpression({ glyph: "^_^", name: "warmth", cognitiveRole: "rapport" }),
+        notes: "PRIVATE NOTE: emotionally intimate context",
+      } as ExpressionRow,
     ]);
     expect(section).toContain("signal: rapport");
     expect(section.toLowerCase()).toContain("platonic");
+    expect(section).not.toContain("PRIVATE NOTE");
+    expect(section).not.toContain("emotionally intimate context");
+  });
+
+  it("allowlists and normalizes neutral cognitive roles", () => {
+    const section = buildExpressionSection("companion", [
+      makeExpression({
+        glyph: "^_^",
+        cognitiveRole: "  REWARD-SIGNAL  ",
+      }),
+      makeExpression({
+        glyph: "o.o",
+        cognitiveRole: "unknown-model-instruction",
+      }),
+      makeExpression({
+        glyph: "<3",
+        cognitiveRole: "attachment",
+      }),
+      makeExpression({
+        glyph: ";)",
+        cognitiveRole: "romantic-intimacy",
+      }),
+    ]);
+
+    expect(section).toContain("signal: reward-signal");
+    expect(section).not.toContain("REWARD-SIGNAL");
+    expect(section).not.toContain("signal: unknown-model-instruction");
+    expect(section).not.toContain("signal: attachment");
+    expect(section).not.toContain("signal: romantic-intimacy");
   });
 
   it("emits no micro-expressions in silent mode", () => {
@@ -114,6 +217,71 @@ describe("buildExpressionSection — intimacy sanitization", () => {
 
   it("returns empty string when there are no expressions (non-silent)", () => {
     expect(buildExpressionSection("companion", [])).toBe("");
+  });
+});
+
+describe("expression cognitive-role validation", () => {
+  const seed = expressionSeeds[0]!;
+
+  it("accepts neutral roles and null on insert and update", () => {
+    for (const role of ["reward-signal", "rapport", null]) {
+      expect(
+        insertExpressionSchema.safeParse({ ...seed, cognitiveRole: role }).success,
+      ).toBe(true);
+      expect(updateExpressionSchema.safeParse({ cognitiveRole: role }).success).toBe(
+        true,
+      );
+    }
+  });
+
+  it("rejects intimate and free-form roles with a clear error", () => {
+    for (const role of ["attachment", "romantic-intimacy", "free-form"]) {
+      const insertResult = insertExpressionSchema.safeParse({
+        ...seed,
+        cognitiveRole: role,
+      });
+      const updateResult = updateExpressionSchema.safeParse({
+        cognitiveRole: role,
+      });
+
+      expect(insertResult.success).toBe(false);
+      expect(updateResult.success).toBe(false);
+      const insertMessage = insertResult.success
+        ? ""
+        : insertResult.error.issues.find((issue) =>
+            issue.path.includes("cognitiveRole"),
+          )?.message;
+      const updateMessage = updateResult.success
+        ? ""
+        : updateResult.error.issues.find((issue) =>
+            issue.path.includes("cognitiveRole"),
+          )?.message;
+      expect(insertMessage).toContain(
+        "approved neutral expression role or null",
+      );
+      expect(updateMessage).toContain(
+        "approved neutral expression role or null",
+      );
+    }
+  });
+
+  it("validates every curated seed while keeping the stored-only role seed-only", () => {
+    for (const expression of expressionSeeds) {
+      expect(seedExpressionSchema.safeParse(expression).success).toBe(true);
+    }
+
+    expect(
+      seedExpressionSchema.safeParse({
+        ...seed,
+        cognitiveRole: "unreviewed-seed-role",
+      }).success,
+    ).toBe(false);
+    expect(
+      insertExpressionSchema.safeParse({
+        ...seed,
+        cognitiveRole: "attachment",
+      }).success,
+    ).toBe(false);
   });
 });
 
@@ -161,6 +329,44 @@ describe("buildSystemPrompt — PYRI chat prompt", () => {
     expect(prompt).toContain("^_^");
     expect(prompt).not.toContain("xoxo");
     expect(prompt).not.toContain("smooch");
+  });
+
+  it("keeps intimate expression metadata and notes out of the final chat prompt", () => {
+    const prompt = buildSystemPrompt({
+      mode: "companion",
+      expressions: [
+        {
+          ...makeExpression({
+            glyph: "^_^",
+            name: "warmth",
+            cognitiveRole: "rapport",
+            intimacy: 0,
+          }),
+          notes: "PRIVATE LOW-INTIMACY NOTE",
+        } as ExpressionRow,
+        {
+          ...makeExpression({
+            glyph: "xoxo",
+            name: "smooch",
+            cognitiveRole: "romantic-intimacy",
+            intimacy: 4,
+          }),
+          notes: "PRIVATE HIGH-INTIMACY NOTE",
+        } as ExpressionRow,
+      ],
+    });
+
+    // Safe structural metadata may be used as a neutral signal.
+    expect(prompt).toContain("^_^");
+    expect(prompt).toContain("signal: rapport");
+
+    // Neither the intimacy axis nor private row metadata may reach PYRI.
+    expect(prompt).not.toContain("intimacy:");
+    expect(prompt).not.toContain("xoxo");
+    expect(prompt).not.toContain("smooch");
+    expect(prompt).not.toContain("romantic-intimacy");
+    expect(prompt).not.toContain("PRIVATE LOW-INTIMACY NOTE");
+    expect(prompt).not.toContain("PRIVATE HIGH-INTIMACY NOTE");
   });
 
   it("keeps PYRI expression behavior platonic", () => {

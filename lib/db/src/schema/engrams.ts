@@ -7,6 +7,8 @@ import {
   real,
   jsonb,
   timestamp,
+  index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -88,7 +90,9 @@ export type EngramMode = (typeof ENGRAM_MODES)[number];
 
 export const engramsTable = pgTable("engrams", {
   id: serial("id").primaryKey(),
-  slug: text("slug").notNull().unique(),
+  /** Clerk subject owning this mutable engram; system rows are bootstrap templates. */
+  ownerId: text("owner_id").notNull().default("__engram_system_template__"),
+  slug: text("slug").notNull(),
   name: text("name").notNull(),
   title: text("title").notNull(),
   symbol: text("symbol").notNull(),
@@ -112,6 +116,12 @@ export const engramsTable = pgTable("engrams", {
   simulationEnabled: boolean("simulation_enabled").notNull().default(true),
   /** When false, this engram may never autonomously generate an artifact. The absolute off switch. */
   artifactGenerationEnabled: boolean("artifact_generation_enabled").notNull().default(true),
+  /**
+   * Permanent archival branch: preserved for continuity fidelity. Read-only —
+   * no config changes, tuning, chat, transmissions, or engine activity. Later
+   * instances of the same persona are distinct updates, not replacements.
+   */
+  isArchival: boolean("is_archival").notNull().default(false),
   // --- Live state ---
   driveState: jsonb("drive_state").$type<DriveState>().notNull().default({}),
   currentMood: text("current_mood"),
@@ -122,7 +132,10 @@ export const engramsTable = pgTable("engrams", {
   isChatActive: boolean("is_chat_active").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  index("engrams_owner_idx").on(table.ownerId),
+  uniqueIndex("engrams_owner_slug_unique").on(table.ownerId, table.slug),
+]);
 
 export const insertEngramSchema = createInsertSchema(engramsTable).omit({
   id: true,
@@ -130,5 +143,9 @@ export const insertEngramSchema = createInsertSchema(engramsTable).omit({
   updatedAt: true,
 });
 export type InsertEngram = z.infer<typeof insertEngramSchema>;
-export type Engram = typeof engramsTable.$inferSelect;
+// Compatibility for existing engine/prompt fixtures. Database rows always carry
+// ownerId; account-bound loaders return the concrete row type.
+export type Engram = Omit<typeof engramsTable.$inferSelect, "ownerId"> & {
+  ownerId?: string;
+};
 export type NewEngram = typeof engramsTable.$inferInsert;

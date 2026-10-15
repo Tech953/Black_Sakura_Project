@@ -9,6 +9,12 @@ directories:
 
 artifactName: ${productName}-${version}-${arch}.${ext}
 
+# The publish asset gate is declared in
+# scripts/validate-release-assets.mjs (RELEASE_TARGETS). Keep that list aligned
+# with every architecture added to these platform targets: each entry must
+# declare its installer suffixes and electron-updater manifest name before a
+# release can be made public.
+
 # Release feed for auto-update (electron-updater). At package time
 # electron-builder bakes provider+owner+repo into app-update.yml inside the app,
 # and `--publish` (see .github/workflows/desktop-build.yml) uploads the
@@ -16,12 +22,11 @@ artifactName: ${productName}-${version}-${arch}.${ext}
 # pushed tag. owner/repo are left unset so they are auto-detected from the git
 # remote / GITHUB_REPOSITORY in CI; set them explicitly here if you fork/rename.
 #
-# releaseType is `draft` (not `release`): each OS matrix job uploads into a
-# hidden draft Release, so a partially-uploaded release is never publicly
-# visible and concurrent first-creators don't race a public release into
-# existence. A final CI job (`publish`, needs: build) flips the draft to public
-# once all three OS installers + manifests are attached. The published release
-# is still public and requires no GitHub login to download.
+# releaseType is `draft` (not `release`). The workflow's prepare-draft job
+# creates one hidden draft with a workflow-attempt owner marker before the OS
+# matrix starts. Each matrix publisher finds that draft by tag and uploads its
+# assets; the final `publish` job makes it public only after all required
+# installers, manifests, and the Android APK are attached.
 publish:
   provider: github
   releaseType: draft
@@ -59,6 +64,14 @@ extraResources:
   # executables that notarization would otherwise reject).
   - from: resources/bin
     to: bin
+  # Trusted llama.cpp server plus an optional default model. Slim Windows builds
+  # omit only model.gguf; the fixed server remains so app-managed custom GGUFs run.
+  - from: resources/llama
+    to: llama
+  # FULL_REZZ source is public; its separately licensed Windows runtime/models
+  # are staged from the verified 3.0 installer payload at release-build time.
+  - from: resources/full-rezz
+    to: full-rezz
 
 linux:
   target:
@@ -74,16 +87,26 @@ deb:
     - libnss3
     - libxss1
     - libxtst6
+    # The pinned Linux llama.cpp runtime links against these host libraries on
+    # both x64 and ARM64. AppImage users need equivalent libraries from their
+    # distribution; the packaged preflight reports the exact unresolved names.
+    - libgcc-s1
+    - libstdc++6
+    - libssl3
+    - libgomp1
     - xdg-utils
 
 mac:
   target:
     - dmg
   category: public.app-category.productivity
-  # Signing + notarization. Signing is opt-in via env: provide a Developer ID
-  # certificate through CSC_LINK / CSC_KEY_PASSWORD. With no certificate present
-  # electron-builder skips signing entirely (and therefore notarization too), so
-  # local/unsigned builds keep working.
+  # The pinned macOS x64 and ARM64 archives carry their llama.cpp dylibs next
+  # to llama-server, so no Homebrew/system package is required. ARM64 also
+  # carries libggml-metal; the packaged preflight checks that target-specific
+  # dylib with otool before the smoke test.
+  # Signing + notarization. Tag-release CI requires a Developer ID certificate
+  # through CSC_LINK / CSC_KEY_PASSWORD and Apple notarization credentials.
+  # Local/manual engineering builds may omit them and remain unsigned.
   #
   # Gatekeeper on modern macOS requires BOTH a Developer ID signature AND Apple
   # notarization — a signed-but-unnotarized app still shows the "unidentified
@@ -103,14 +126,17 @@ mac:
   # .app and hands them to @electron/osx-sign, which signs them with the same
   # hardened runtime + inherit entitlements + secure timestamp as the rest of the
   # bundle. Paths are relative to the .app's Contents (no extension on macOS).
-  # This is a no-op for unsigned local/CI builds (signing is skipped without a
-  # cert), so those keep working unchanged.
+  # This remains a no-op for explicitly unsigned local/manual builds.
   binaries:
     - Contents/Resources/bin/ffmpeg
     - Contents/Resources/bin/ffprobe
-  # notarize runs only after a successful sign, and only when Apple credentials
-  # are present in the environment (APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD +
-  # APPLE_TEAM_ID, or the APPLE_API_KEY trio); otherwise it is skipped gracefully.
+    # Bundled llama.cpp model server (staged by prepare-resources.mjs when the
+    # .llama cache is present). Must be signed like every other executable or
+    # notarization rejects the app. Harmless if the file is absent (unsigned
+    # local builds skip signing entirely).
+    - Contents/Resources/llama/bin/llama-server
+  # notarize runs after signing. Tag-release CI supplies and requires
+  # APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID.
   notarize: true
 
 win:
@@ -125,15 +151,20 @@ win:
     # auto-updating distribution; the .zip is for no-install use. Adds no per-OS
     # cost and ships in the same release.
     - zip
-  # Authenticode signing is opt-in via WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD
-  # (electron-builder maps these to the certificate file + password). With no
-  # certificate the executable is left unsigned. A timestamp countersignature
+  # Tag-release CI requires WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD
+  # (electron-builder maps these to the certificate file + password). A timestamp countersignature
   # keeps the signature valid after the signing certificate eventually expires,
   # and SHA-256 is required for SmartScreen to trust the signature.
   signtoolOptions:
     signingHashAlgorithms:
       - sha256
     rfc3161TimeStampServer: http://timestamp.digicert.com
+  # Explicitly include extraResources executables in electron-builder's
+  # Authenticode signing pass. This keeps ffmpeg.exe and ffprobe.exe signed
+  # with the same certificate and RFC 3161 timestamp as the main executable.
+  # With no WIN_CSC_LINK, electron-builder leaves the manual build unsigned.
+  signExts:
+    - .exe
 
 nsis:
   oneClick: false

@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { engramsTable, engramTransmissionsTable } from "@workspace/db/schema";
+import { engramsTable, engramTransmissionsTable, SYSTEM_OWNER_ID } from "@workspace/db/schema";
 import type {
   Engram,
   EngramTransmission,
@@ -7,7 +7,7 @@ import type {
   HubSpace,
   EngramPresence,
 } from "@workspace/db";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { generateTransmission, type TransmissionKind } from "../lib/engram-generation";
 import { summarizeWorldModel } from "../lib/world-model";
@@ -19,13 +19,30 @@ import { attemptOperatorContact } from "../lib/operator-contact";
 import { maybeRunCommonsTurn } from "../lib/commons";
 import { maybeRunSimulationStep } from "../lib/simulations";
 import { maybeRunArtifactGeneration } from "../lib/artifacts-scheduler";
+import {
+  createHumanDigest,
+  loadRecentOperatorReplyRows,
+  markOperatorRepliesAcknowledged,
+  listPendingHumanDigestOwners,
+} from "../lib/messages-store";
+import { normalizeLLMProviderError } from "../lib/llm";
+import {
+  claimTransmissionPush,
+  sendTransmissionPush,
+} from "../lib/mobile-push";
+import {
+  ENGRAM_COOLDOWN_MS,
+  ENGRAM_HOURLY_CAP,
+  ENGRAM_DAILY_CAP,
+  ENGRAM_MAX_ELAPSED_SEC,
+} from "../lib/engram-rate-limits";
 
 // --- Tunable constants (cost & cadence guards) ---
 const GLOBAL_TICK_MS = 20_000; // how often the engine wakes up
-export const COOLDOWN_MS = 90_000; // minimum gap between an engram's transmissions
-export const HOURLY_CAP = 10; // max transmissions per engram per rolling hour
-export const DAILY_CAP = 60; // max transmissions per engram per rolling day
-export const MAX_ELAPSED_SEC = 600; // cap accrual after long downtime / clock jumps
+export const COOLDOWN_MS = ENGRAM_COOLDOWN_MS; // minimum gap between an engram's transmissions
+export const HOURLY_CAP = ENGRAM_HOURLY_CAP; // max transmissions per engram per rolling hour
+export const DAILY_CAP = ENGRAM_DAILY_CAP; // max transmissions per engram per rolling day
+export const MAX_ELAPSED_SEC = ENGRAM_MAX_ELAPSED_SEC; // cap accrual after long downtime / clock jumps
 const ERROR_BACKOFF_MS = 120_000; // skip generation for an engram after a failure
 
 const OUTREACH_HINT = /(connection|devotion|loyal|protect|chaos|fun|reach|company)/i;
@@ -48,6 +65,34 @@ export interface DriveCharge {
   description: string;
   pressure: number;
   charge: number; // pressure * weight
+}
+
+/** Return null for absent or unparsable timestamps instead of allowing NaN to escape. */
+export function getValidTimestampMs(value: Date | string | null | undefined): number | null {
+  if (value == null) return null;
+  const timestamp = value instanceof Date ? value.getTime() : Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+/**
+ * Project pressure for display without persisting it or consuming engine jitter.
+ * The engine's stochastic accrual remains the source of truth for initiation; this
+ * stable midpoint projection only makes read-only live-state displays move between
+ * persisted ticks.
+ */
+export function projectDriveState(engram: Engram, now: number): DriveState {
+  const last = getValidTimestampMs(engram.lastTickAt);
+  // A missing or corrupt timestamp cannot define elapsed time, so preserve stored pressure.
+  const elapsedSec = last === null ? 0 : clamp((now - last) / 1000, 0, MAX_ELAPSED_SEC);
+  const state: DriveState = { ...(engram.driveState ?? {}) };
+
+  for (const drive of engram.drives) {
+    const prev = typeof state[drive.id] === "number" ? state[drive.id] : 0;
+    const gained = drive.baseRate * elapsedSec;
+    state[drive.id] = clamp(prev + gained, 0, 1);
+  }
+
+  return state;
 }
 
 /** Accrue per-drive pressure from elapsed time (no LLM). Returns the new state + ranked charges. */
@@ -78,13 +123,24 @@ export function accrue(
   return { state, charges };
 }
 
-async function recentTransmissions(engramId: number, since: number): Promise<EngramTransmission[]> {
+async function recentTransmissions(
+  ownerId: string,
+  engramId: number,
+  since: number,
+): Promise<EngramTransmission[]> {
   return db
     .select()
     .from(engramTransmissionsTable)
     .where(
       and(
         eq(engramTransmissionsTable.engramId, engramId),
+        inArray(
+          engramTransmissionsTable.engramId,
+          db
+            .select({ id: engramsTable.id })
+            .from(engramsTable)
+            .where(and(eq(engramsTable.id, engramId), eq(engramsTable.ownerId, ownerId))),
+        ),
         gte(engramTransmissionsTable.createdAt, new Date(since)),
       ),
     )
@@ -105,13 +161,24 @@ async function emit(
 ): Promise<EngramTransmission> {
   const kind = pickKind(top.id, top.label);
   const worldModelSummary = summarizeWorldModel(await loadRecentWorldModel(engram.id));
+  const operatorReplyRows = await loadRecentOperatorReplyRows(engram.ownerId!, engram.id);
+  const operatorReplies = operatorReplyRows.map((reply) => reply.content);
   const content = await generateTransmission({
     engram,
     kind,
     drive: { id: top.id, label: top.label, description: top.description },
     recentContents,
+    operatorReplies,
     worldModelSummary,
   });
+  await markOperatorRepliesAcknowledged(
+    engram.ownerId!,
+    engram.id,
+    operatorReplyRows
+      .filter((reply) => reply.acknowledgedAt == null)
+      .map((reply) => reply.id),
+    new Date(now),
+  );
 
   const importance = clamp(top.charge, 0, 1);
   const confidence = clamp(1 - engram.emotionalBaseline.volatility * 0.4, 0.3, 1);
@@ -134,6 +201,7 @@ async function emit(
     // contact (full_bounded, not quiet mode). Urgent-only / quiet contact still routes
     // through the bounded human-contact bus for audit, but stays off the chat feed.
     const { delivered } = await attemptOperatorContact({
+      ownerId: engram.ownerId!,
       engram,
       capabilities,
       charge: top.charge,
@@ -196,6 +264,32 @@ async function emit(
     logger.error({ err, engramId: engram.id }, "engram world-model DESIRED append failed");
   }
 
+  // Only a delivered outreach may contact the operator's phone. Claim before
+  // dispatch so a retry/restart cannot send the same transmission twice.
+  if (kind === "outreach" && wasDelivered) {
+    try {
+      if (await claimTransmissionPush(row.id)) {
+        void sendTransmissionPush({
+          ownerId: engram.ownerId!,
+          engramId: engram.id,
+          engramName: engram.name,
+          transmissionId: row.id,
+          content: row.content,
+        }).catch((err) => {
+          logger.warn(
+            { err, transmissionId: row.id },
+            "mobile outreach push delivery failed",
+          );
+        });
+      }
+    } catch (err) {
+      logger.warn(
+        { err, transmissionId: row.id },
+        "mobile outreach push claim failed",
+      );
+    }
+  }
+
   return row;
 }
 
@@ -212,7 +306,29 @@ export interface TickResult {
  *
  * @param opts.force ignore per-engram cadence (used by the manual /tick endpoint).
  */
-export async function runTick(opts: { force?: boolean } = {}): Promise<TickResult> {
+export async function runTick(opts: { force?: boolean; ownerId?: string } = {}): Promise<TickResult> {
+  if (!opts.ownerId) {
+    const autonomousOwners = await db
+      .selectDistinct({ ownerId: engramsTable.ownerId })
+      .from(engramsTable)
+      .where(and(eq(engramsTable.autonomyEnabled, true), ne(engramsTable.ownerId, SYSTEM_OWNER_ID)));
+    const digestOwners = await listPendingHumanDigestOwners();
+    const owners = Array.from(
+      new Set([
+        ...autonomousOwners.map(({ ownerId }) => ownerId),
+        ...digestOwners,
+      ]),
+    );
+    const results: TickResult[] = [];
+    for (const ownerId of owners) {
+      results.push(await runTick({ ...opts, ownerId }));
+    }
+    return {
+      ticked: results.reduce((total, result) => total + result.ticked, 0),
+      generated: results.reduce((total, result) => total + result.generated, 0),
+      transmissions: results.flatMap((result) => result.transmissions),
+    };
+  }
   if (ticking) return { ticked: 0, generated: 0, transmissions: [] };
   ticking = true;
   const now = Date.now();
@@ -223,17 +339,19 @@ export async function runTick(opts: { force?: boolean } = {}): Promise<TickResul
     const engrams = await db
       .select()
       .from(engramsTable)
-      .where(eq(engramsTable.autonomyEnabled, true));
+      .where(
+        and(eq(engramsTable.autonomyEnabled, true), eq(engramsTable.ownerId, opts.ownerId)),
+      );
 
     // Load global runtime controls once per tick. A global pause (or quiet mode)
     // flows through capabilitiesFor below, so a paused engine only accrues/persists.
-    const controls = await loadControls();
+    const controls = await loadControls(opts.ownerId);
 
     // Load Hub state once per tick: an engram located in a space that disallows
     // initiative (quiescence/rest) accrues pressure but never self-initiates.
-    const spaces = await loadSpaces();
+    const spaces = await loadSpaces(opts.ownerId);
     const spaceById = new Map<number, HubSpace>(spaces.map((s) => [s.id, s]));
-    const presence = await loadPresence();
+    const presence = await loadPresence(opts.ownerId);
     const spaceByEngram = new Map<number, HubSpace>();
     const presenceByEngram = new Map<number, EngramPresence>();
     for (const p of presence) {
@@ -246,8 +364,12 @@ export async function runTick(opts: { force?: boolean } = {}): Promise<TickResul
     for (const engram of engrams) {
       const last = engram.lastTickAt ? new Date(engram.lastTickAt).getTime() : 0;
       const cadenceMs = engram.tickCadenceSeconds * 1000;
-      if (!opts.force && now - last < cadenceMs) continue;
-      ticked++;
+      // Cadence gates the routine persist-state pass, NOT initiation: pressure is
+      // recomputed from lastTickAt every global tick, and a drive that crosses the
+      // initiation threshold may fire immediately — engrams self-initiate on drive
+      // pressure, not on a fixed timestamp schedule. Cooldown, backoff, rate caps
+      // and the human-contact policy still bound how often that can happen.
+      const cadenceDue = opts.force || now - last >= cadenceMs;
 
       const { state, charges } = accrue(engram, now);
 
@@ -283,12 +405,19 @@ export async function runTick(opts: { force?: boolean } = {}): Promise<TickResul
       const inBackoff = now < backoffUntil;
 
       if (!capabilities.canIdle || !crossed || onCooldown || inBackoff) {
-        await persistState();
+        // Nothing fires this tick. Only persist on the engram's own cadence so a
+        // 20s global tick doesn't multiply DB writes; unpersisted pressure is not
+        // lost — accrue() recomputes it from lastTickAt.
+        if (cadenceDue) {
+          ticked++;
+          await persistState();
+        }
         continue;
       }
+      ticked++;
 
       // Rate caps (rolling hour / day).
-      const recent = await recentTransmissions(engram.id, now - 24 * 3600_000);
+      const recent = await recentTransmissions(opts.ownerId, engram.id, now - 24 * 3600_000);
       const hourCount = recent.filter(
         (r) => now - new Date(r.createdAt).getTime() < 3600_000,
       ).length;
@@ -308,7 +437,11 @@ export async function runTick(opts: { force?: boolean } = {}): Promise<TickResul
         );
         produced.push(tx);
       } catch (err) {
-        logger.error({ err, engramId: engram.id }, "engram transmission generation failed");
+        const providerError = normalizeLLMProviderError(err);
+        logger.error(
+          { err: providerError, engramId: engram.id, providerCode: providerError.code },
+          "engram transmission generation failed",
+        );
         // Persist the backoff (and accrued pressure) so a restart can't bypass it.
         await db
           .update(engramsTable)
@@ -370,6 +503,15 @@ export async function runTick(opts: { force?: boolean } = {}): Promise<TickResul
     } catch (err) {
       logger.error({ err }, "artifact generation step failed");
     }
+
+    // Surface held social contact as one operator-facing summary. The source
+    // rows are claimed and marked inside one transaction, so another tick or
+    // server instance cannot bundle the same messages twice.
+    try {
+      await createHumanDigest(opts.ownerId, new Date(now));
+    } catch (err) {
+      logger.error({ err, ownerId: opts.ownerId }, "human contact digest failed");
+    }
   } finally {
     ticking = false;
   }
@@ -391,13 +533,15 @@ export async function forceTransmission(engram: Engram): Promise<EngramTransmiss
     pressure: 0.6,
     charge: 0.6,
   };
-  const recent = await recentTransmissions(engram.id, now - 24 * 3600_000);
+  const ownerId = engram.ownerId;
+  if (!ownerId) throw new Error("Cannot transmit for an engram without an owner");
+  const recent = await recentTransmissions(ownerId, engram.id, now - 24 * 3600_000);
 
   // Operator-forced, but still routed through the same capability/human-contact
   // policy so a forced outreach respects pause/quiet/quiescence and the rate caps.
-  const controls = await loadControls();
-  const presence = await loadPresenceForEngram(engram.id);
-  const space = presence ? await loadSpaceById(presence.spaceId) : undefined;
+  const controls = await loadControls(ownerId);
+  const presence = await loadPresenceForEngram(engram.id, ownerId);
+  const space = presence ? await loadSpaceById(presence.spaceId, ownerId) : undefined;
   const capabilities = capabilitiesFor({
     mode: engram.mode,
     controls,

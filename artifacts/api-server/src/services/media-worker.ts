@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { engramsTable } from "@workspace/db/schema";
 import type { Engram, MediaAsset } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import {
   claimNextPendingJob,
@@ -12,11 +12,20 @@ import {
   recoverStuckJobs,
   upsertMediaContextMessage,
 } from "../lib/media-store";
-import { extractFromMedia, type MediaExtraction } from "../lib/media-extraction";
+import {
+  contentMatchesMime,
+  extractFromMedia,
+  type MediaExtraction,
+} from "../lib/media-extraction";
+import {
+  encodeStoredMediaFailure,
+  MediaProcessingFailure,
+} from "../lib/media-failure";
 import { generateMediaCommentary } from "../lib/engram-generation";
 import { summarizeWorldModel } from "../lib/world-model";
 import { loadRecentWorldModel } from "../lib/world-model-store";
 import { publishEvent } from "../lib/events";
+import { loadOwnedConversation } from "../lib/account-bootstrap";
 
 const WORKER_INTERVAL_MS = Number(process.env.MEDIA_WORKER_INTERVAL_MS) || 5_000;
 /** A job stuck "processing" longer than this (e.g. a crash mid-job) is failed and unwedged. */
@@ -28,8 +37,10 @@ let ticking = false; // re-entrancy guard: never run two ticks (or two jobs) at 
 let started = false; // lifecycle guard so the worker only starts once
 let timer: NodeJS.Timeout | null = null;
 
-async function loadEngram(id: number): Promise<Engram | undefined> {
-  const [row] = await db.select().from(engramsTable).where(eq(engramsTable.id, id));
+async function loadEngram(id: number, ownerId: string): Promise<Engram | undefined> {
+  const [row] = await db.select().from(engramsTable).where(
+    and(eq(engramsTable.id, id), eq(engramsTable.ownerId, ownerId)),
+  );
   return row;
 }
 
@@ -37,11 +48,36 @@ async function loadEngram(id: number): Promise<Engram | undefined> {
  * Process one claimed media job end-to-end: extract observations via the modality
  * dispatcher, persist each as an OBSERVED world-model entry (source media:<id>, both
  * hardcoded in the store), store the summary/transcript, and generate the engram's
- * in-voice commentary. Throws on hard failure so the caller marks the job failed.
+ * in-voice commentary. Throws before the completion transaction on hard failure so
+ * the caller can mark the job failed without exposing a partial result.
  */
 async function processAsset(asset: MediaAsset): Promise<void> {
+  // Recheck the durable ownership captured at enqueue time before touching bytes
+  // or writing derived state. A global worker may claim any account's job, but
+  // it must never process a template or a job whose parent changed ownership.
+  const engram =
+    asset.engramId == null
+      ? undefined
+      : await loadEngram(asset.engramId, asset.ownerId);
+  if (asset.engramId != null && !engram) {
+    throw new Error("Owning engram no longer belongs to this media job owner.");
+  }
+  if (asset.conversationId != null && !(await loadOwnedConversation(asset.conversationId, asset.ownerId))) {
+    throw new Error("Owning conversation no longer belongs to this media job owner.");
+  }
   const blob = await loadMediaBlob(asset.id);
-  if (!blob) throw new Error("Media bytes are missing for this asset.");
+  if (!blob) {
+    throw new MediaProcessingFailure(
+      "extraction",
+      "Media bytes are missing for this asset.",
+    );
+  }
+  if (!contentMatchesMime(blob.data, asset.mimeType)) {
+    throw new MediaProcessingFailure(
+      "extraction",
+      "Stored media bytes do not match the asset MIME type.",
+    );
+  }
 
   // Idempotency: re-processing (a retry) re-perceives the same bytes, so drop any
   // observations a prior partial run left behind before writing the fresh set.
@@ -58,24 +94,10 @@ async function processAsset(asset: MediaAsset): Promise<void> {
   // extracts a summary/transcript and surfaces them as conversation context below, but
   // creates no observations and no in-voice commentary. Provenance/source stay hardcoded
   // inside appendMediaObservation; there is no path here to choose them.
-  let written = 0;
   let commentary = "";
   if (asset.engramId != null) {
-    for (const content of extraction.observations) {
-      const trimmed = content.trim();
-      if (!trimmed) continue;
-      await appendMediaObservation({
-        assetId: asset.id,
-        engramId: asset.engramId,
-        content: trimmed,
-        confidence: OBSERVATION_CONFIDENCE,
-      });
-      written++;
-    }
-
     // In-voice reaction. Best-effort: extraction already succeeded and observations are
-    // persisted, so a commentary failure must not fail the whole job.
-    const engram = await loadEngram(asset.engramId);
+    // committed separately below, so a commentary failure must not fail the whole job.
     if (engram) {
       try {
         const worldModelSummary = summarizeWorldModel(
@@ -95,27 +117,61 @@ async function processAsset(asset: MediaAsset): Promise<void> {
     }
   }
 
-  await updateMediaAsset(asset.id, {
-    status: "completed",
-    summary: extraction.summary || null,
-    transcript: extraction.transcript,
-    commentary: commentary || null,
-    observationCount: written,
-    completedAt: new Date(),
-    error: null,
+  const observations = asset.engramId == null
+    ? []
+    : extraction.observations
+        .map((content) => content.trim())
+        .filter(Boolean);
+
+  // The observation rows, mapping rows, and completed asset metadata must become
+  // visible together. If the process dies during this transaction, the asset
+  // remains processing and recovery/retry can replace the prior attempt.
+  await db.transaction(async (tx) => {
+    for (const content of observations) {
+      await appendMediaObservation(
+        {
+          assetId: asset.id,
+          engramId: asset.engramId!,
+          content,
+          confidence: OBSERVATION_CONFIDENCE,
+        },
+        tx,
+      );
+    }
+    await updateMediaAsset(
+      asset.id,
+      {
+        status: "completed",
+        summary: extraction.summary || null,
+        transcript: extraction.transcript,
+        commentary: commentary || null,
+        observationCount: observations.length,
+        completedAt: new Date(),
+        error: null,
+      },
+      tx,
+    );
   });
 
-  publishEvent({
-    type: "media.completed",
-    engramId: asset.engramId,
-    conversationId: asset.conversationId,
-    data: {
-      id: asset.id,
-      modality: asset.modality,
-      filename: asset.filename,
-      observationCount: written,
-    },
-  });
+  // The durable completion has already committed. Event delivery is only a live
+  // UI nudge, so it must not turn a completed job into a failed one if a listener
+  // throws.
+  try {
+    publishEvent({
+      type: "media.completed",
+      ownerId: asset.ownerId,
+      engramId: asset.engramId,
+      conversationId: asset.conversationId,
+      data: {
+        id: asset.id,
+        modality: asset.modality,
+        filename: asset.filename,
+        observationCount: observations.length,
+      },
+    });
+  } catch (err) {
+    logger.warn({ err, assetId: asset.id }, "media completion event publish failed");
+  }
 
   // Surface the perception inside the chat thread it was dropped into (idempotent on
   // retry via the asset's contextMessageId). No-op when the asset isn't conversation-bound.
@@ -136,7 +192,7 @@ async function processAsset(asset: MediaAsset): Promise<void> {
       engramId: asset.engramId,
       conversationId: asset.conversationId,
       modality: asset.modality,
-      observations: written,
+      observations: observations.length,
     },
     "media asset perceived",
   );
@@ -180,10 +236,20 @@ export async function runMediaTick(): Promise<{ processed: number }> {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       logger.error({ err, assetId: asset.id }, "media perception failed");
+      const storedError =
+        err instanceof MediaProcessingFailure
+          ? encodeStoredMediaFailure(err.failureKind, message)
+          : message;
       await updateMediaAsset(asset.id, {
         status: "failed",
-        error: message.slice(0, 500),
-        completedAt: new Date(),
+        error: storedError.slice(0, 500),
+        // Processing is all-or-nothing. Clear result metadata on every failed
+        // attempt so the API cannot present a stale success as a partial result.
+        summary: null,
+        commentary: null,
+        transcript: null,
+        observationCount: 0,
+        completedAt: null,
       });
     }
     return { processed: 1 };

@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
@@ -12,9 +13,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TransmissionCard } from "@/components/transmission-card";
-import { EmptyState, IconButton } from "@/components/ui";
+import { EmptyState, IconButton, PrimaryButton } from "@/components/ui";
 import { useEngram } from "@/context/engram-context";
 import { useColors } from "@/hooks/useColors";
+import { useOfflineMode } from "@/lib/offline/mode";
+import {
+  markSeenRequest,
+  unseenTransmissionIds,
+} from "@/lib/mobile-flow-seams";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetEngramQueryKey,
@@ -26,63 +32,80 @@ import {
 } from "@workspace/api-client-react";
 
 export default function FeedScreen() {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { selectedEngramId } = useEngram();
+  const offlineActive = useOfflineMode();
+  const modeScope = offlineActive ? "offline-selection" : "online-selection";
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const engramId = selectedEngramId ?? 0;
   const enabled = selectedEngramId != null;
 
   const { data: engram } = useGetEngram(engramId, {
-    query: { enabled, queryKey: getGetEngramQueryKey(engramId) },
+    query: {
+      enabled,
+      queryKey: [
+        ...getGetEngramQueryKey(engramId),
+        modeScope,
+      ],
+    },
   });
-  const { data: transmissions, isLoading } = useListEngramTransmissions(
+  const transmissionsQueryKey = [
+    ...getListEngramTransmissionsQueryKey(engramId),
+    modeScope,
+  ] as const;
+  const {
+    data: transmissions,
+    isLoading,
+    isError,
+    refetch,
+  } = useListEngramTransmissions(
     engramId,
     {
       query: {
         enabled,
         refetchInterval: 5000,
-        queryKey: getListEngramTransmissionsQueryKey(engramId),
+        queryKey: transmissionsQueryKey,
       },
     },
   );
   const transmit = useTransmitEngram();
   const markSeen = useMarkTransmissionsSeen();
+  const [pulseFailed, setPulseFailed] = useState(false);
 
-  const unseenIds = useMemo(
-    () => (transmissions ?? []).filter((t) => !t.seen).map((t) => t.id),
-    [transmissions],
-  );
+  const unseenIds = useMemo(() => unseenTransmissionIds(transmissions), [transmissions]);
 
   useEffect(() => {
     if (!enabled || unseenIds.length === 0) return;
     markSeen
-      .mutateAsync({ id: engramId, data: { ids: unseenIds } })
+      .mutateAsync(markSeenRequest(engramId, unseenIds))
       .then(() =>
         queryClient.invalidateQueries({
-          queryKey: getListEngramTransmissionsQueryKey(engramId),
+          queryKey: transmissionsQueryKey,
         }),
       )
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unseenIds.join(",")]);
+  }, [engramId, offlineActive, unseenIds.join(",")]);
 
   const onPulse = useCallback(async () => {
     if (!enabled) return;
+    setPulseFailed(false);
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
     try {
       await transmit.mutateAsync({ id: engramId });
       queryClient.invalidateQueries({
-        queryKey: getListEngramTransmissionsQueryKey(engramId),
+        queryKey: transmissionsQueryKey,
       });
     } catch {
-      // ignore
+      setPulseFailed(true);
     }
-  }, [enabled, engramId, queryClient, transmit]);
+  }, [enabled, engramId, modeScope, queryClient, transmit]);
 
   if (!enabled) {
     return (
@@ -90,8 +113,8 @@ export default function FeedScreen() {
         <View style={{ paddingTop: topPad }} />
         <EmptyState
           icon={<Feather name="radio" size={28} color={colors.mutedForeground} />}
-          title="No engram selected"
-          subtitle="Choose an engram from the Personas tab to monitor its live transmissions."
+          title={t("feed.noEngram")}
+          subtitle={t("feed.noEngramSubtitle")}
         />
       </View>
     );
@@ -102,10 +125,10 @@ export default function FeedScreen() {
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.kicker, { color: colors.primary }]}>
-            LIVE FEED // {engram?.symbol ?? "··"}
+            {t("feed.kicker")} // {engram?.symbol ?? "··"}
           </Text>
           <Text style={[styles.h1, { color: colors.foreground }]}>
-            {engram?.name ?? "Transmissions"}
+            {engram?.name ?? t("feed.fallbackTitle")}
           </Text>
         </View>
         <IconButton
@@ -121,7 +144,27 @@ export default function FeedScreen() {
         </IconButton>
       </View>
 
-      {isLoading ? (
+      {isError || pulseFailed ? (
+        <View
+          style={[
+            styles.errorCard,
+            { borderColor: colors.destructive + "66", backgroundColor: colors.card },
+          ]}
+        >
+          <Text style={[styles.errorText, { color: colors.destructive }]}>
+            {t("errors.message")}
+          </Text>
+          <PrimaryButton
+            label={t("errors.tryAgain")}
+            tone="outline"
+            onPress={() => {
+              setPulseFailed(false);
+              void refetch();
+            }}
+            style={{ marginTop: 10, height: 42 }}
+          />
+        </View>
+      ) : isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
@@ -143,8 +186,8 @@ export default function FeedScreen() {
                     color={colors.mutedForeground}
                   />
                 }
-                title="Awaiting signal"
-                subtitle="This engram has not transmitted yet. Tap the bolt to provoke one now."
+                title={t("feed.awaitingSignal")}
+                subtitle={t("feed.awaitingSignalSubtitle")}
               />
             </View>
           }
@@ -178,4 +221,16 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  errorCard: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 12,
+  },
+  errorText: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    lineHeight: 19,
+  },
 });

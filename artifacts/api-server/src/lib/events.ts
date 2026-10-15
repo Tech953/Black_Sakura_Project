@@ -27,13 +27,16 @@ export interface EngramEvent {
   engramId?: number | null;
   /** Conversation this event concerns, when scoped to one. */
   conversationId?: number | null;
-  /** Arbitrary serializable payload (already serialized shape — no Dates). */
+  /** Clerk subject authorized to receive this event. Undefined events are private by default. */
+  ownerId?: string;
+  /** API-shaped payload; serialize runtime values (including Dates) before publishing. */
   data?: unknown;
   /** ISO timestamp, stamped at publish time. */
   ts: string;
 }
 
 export interface EventScope {
+  ownerId?: string;
   engramId?: number | null;
   conversationId?: number | null;
 }
@@ -53,6 +56,8 @@ emitter.setMaxListeners(0);
  *   global events only — never another scope's events (no cross-scope leakage).
  */
 export function eventMatchesScope(event: EngramEvent, scope: EventScope): boolean {
+  // Do not broadcast legacy/worker events that have not established ownership.
+  if (scope.ownerId != null && event.ownerId !== scope.ownerId) return false;
   const isGlobal = event.engramId == null && event.conversationId == null;
   if (isGlobal) return true;
   if (scope.engramId != null && event.engramId === scope.engramId) return true;

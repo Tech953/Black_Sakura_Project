@@ -1,0 +1,242 @@
+[
+  {
+    "id": "engram-pyri-01",
+    "position": 1,
+    "filepath": "src/pages/slides/Slide1.tsx",
+    "title": "ENGRAM // PYRI",
+    "description": "A cognitive architecture for companions that remember, develop, and reach out with boundaries.",
+    "speakerNotes": "Open with the core proposition: ENGRAM gives a companion structured continuity, expression, and bounded initiative. Set the expectation that the deck will move from the internal architecture to the operator surfaces and then to the safety boundary."
+  },
+  {
+    "id": "engram-pyri-02",
+    "position": 2,
+    "filepath": "src/pages/slides/Slide2.tsx",
+    "title": "The missing layer between chat and relationship",
+    "description": "Why ENGRAM makes continuity, inner state, and consent explicit.",
+    "speakerNotes": "Frame the gap as continuity rather than a lack of conversation quality. The system needs explicit state, memory, and consent controls before a chat experience can support a durable relationship."
+  },
+  {
+    "id": "engram-pyri-03",
+    "position": 3,
+    "filepath": "src/pages/slides/Slide3.tsx",
+    "title": "A companion is a system, not a prompt",
+    "description": "The five structured layers of an engram.",
+    "speakerNotes": "Introduce the five layers as the architecture behind the experience: identity, memory, observation, drives, and expression. This gives the audience a map for the deeper slides that follow."
+  },
+  {
+    "id": "engram-pyri-04",
+    "position": 4,
+    "filepath": "src/pages/slides/DeepIdentity.tsx",
+    "title": "Identity gives the engram a stable center",
+    "description": "A deeper look at continuity, voice, guardrails, and archival identity.",
+    "speakerNotes": "Explain that identity is more than a system prompt: it includes continuity, voice, and guardrails that remain inspectable. Archival identity is treated as a boundary, not as a mutable live persona."
+  },
+  {
+    "id": "engram-pyri-05",
+    "position": 5,
+    "filepath": "src/pages/slides/Slide4.tsx",
+    "title": "The ENGRAM cognitive loop",
+    "description": "Perceive, consolidate, interpret, simulate, and express.",
+    "speakerNotes": "Show the loop as a sequence of bounded state transitions rather than an autonomous black box. We start with what the engram can notice, then follow how it consolidates, interprets, simulates, and expresses."
+  },
+  {
+    "id": "engram-pyri-06",
+    "position": 6,
+    "filepath": "src/pages/slides/DeepMemory.tsx",
+    "title": "Memory turns moments into continuity",
+    "description": "A selection pipeline from notice to recall.",
+    "speakerNotes": "Move from the loop into memory. The important point is selection: not every moment becomes a durable fact, and recall should be traceable to what was noticed and retained."
+  },
+  {
+    "id": "engram-pyri-07",
+    "position": 7,
+    "filepath": "src/pages/slides/Slide5.tsx",
+    "title": "Layered memory keeps context usable",
+    "description": "Working, episodic, semantic, and world-model layers.",
+    "speakerNotes": "Different memory layers serve different time horizons and responsibilities. Keeping working, episodic, semantic, and world-model information distinct prevents a single undifferentiated context store from becoming opaque."
+  },
+  {
+    "id": "engram-pyri-08",
+    "position": 8,
+    "filepath": "src/pages/slides/DeepObservation.tsx",
+    "title": "Observation is not belief",
+    "description": "Evidence, inference, confidence, and revision remain distinct.",
+    "speakerNotes": "Make the epistemic boundary explicit: an observation is evidence, while a belief is an interpretation with confidence and provenance. That distinction lets the system revise an inference without rewriting the underlying record."
+  },
+  {
+    "id": "engram-pyri-09",
+    "position": 9,
+    "filepath": "src/pages/slides/Slide6.tsx",
+    "title": "Beliefs are registered, not smuggled into a prompt",
+    "description": "Belief provenance and confidence make state inspectable.",
+    "speakerNotes": "Connect the distinction to implementation: beliefs are registered state with provenance and confidence, not hidden prompt text. This is what makes the engram's current understanding reviewable by an operator."
+  },
+  {
+    "id": "engram-pyri-10",
+    "position": 10,
+    "filepath": "src/pages/slides/DeepWorldModel.tsx",
+    "title": "The world model is reviewable",
+    "description": "Current observations remain traceable and resistant to silent rewrite.",
+    "speakerNotes": "The world model gathers current observations while preserving their source and scope. Close this section by emphasizing that reviewability is a product behavior, not merely a storage choice."
+  },
+  {
+    "id": "engram-pyri-11",
+    "position": 11,
+    "filepath": "src/pages/slides/Slide7.tsx",
+    "title": "Autonomous engrams have a reason to speak",
+    "description": "Drive pressure and human-contact policy shape initiative.",
+    "speakerNotes": "Now introduce initiative. An engram does not speak because a timer says so; drive pressure creates a candidate action, and human-contact policy decides whether reaching out is allowed."
+  },
+  {
+    "id": "engram-pyri-12",
+    "position": 12,
+    "filepath": "src/pages/slides/DeepDriveMechanics.tsx",
+    "title": "Autonomy begins with drives",
+    "description": "Pressure, bounded candidate actions, and cooldowns.",
+    "speakerNotes": "Describe drives as pressure signals that compete within explicit thresholds and cooldowns. The implementation keeps candidate actions bounded and persisted so a restart cannot erase the autonomy guard."
+  },
+  {
+    "id": "engram-pyri-13",
+    "position": 13,
+    "filepath": "src/pages/slides/DeepContactPolicy.tsx",
+    "title": "Contact is a policy decision",
+    "description": "Quiet mode, cooldowns, delivery policy, and fail-closed behavior.",
+    "speakerNotes": "Separate wanting to speak from being permitted to contact a person. Quiet mode, priority thresholds, cooldowns, and fail-closed behavior ensure that a blocked or paused state does not become an unexpected notification."
+  },
+  {
+    "id": "engram-pyri-14",
+    "position": 14,
+    "filepath": "src/pages/slides/Slide8.tsx",
+    "title": "From inner state to an in-voice response",
+    "description": "A bounded path from state to expression.",
+    "speakerNotes": "Transition from initiative into expression: the system turns bounded state into a response through a controlled path. The next slides show how PYRI adds range without opening the internal data boundary."
+  },
+  {
+    "id": "engram-pyri-15",
+    "position": 15,
+    "filepath": "src/pages/slides/Slide9.tsx",
+    "title": "Hiero-Code: expression with a safety boundary",
+    "description": "A controlled micro-expression layer with a strict data boundary.",
+    "speakerNotes": "Position Hiero-Code as a micro-expression vocabulary, not a second source of private memory. It gives the response a recognizable texture while keeping the inputs to that layer explicitly constrained."
+  },
+  {
+    "id": "engram-pyri-16",
+    "position": 16,
+    "filepath": "src/pages/slides/DeepExpressionBoundary.tsx",
+    "title": "PYRI speaks through an expression layer",
+    "description": "Ranked expression cues give voice range without exposing intimate data.",
+    "speakerNotes": "Explain the ranking boundary: expression cues can shape tone and rhythm, but intimate or unrelated state is not silently passed through. This is the bridge from architecture into the actual conversation surface."
+  },
+  {
+    "id": "engram-pyri-17",
+    "position": 17,
+    "filepath": "src/pages/slides/Slide10.tsx",
+    "title": "The in-voice chat experience",
+    "description": "Streaming conversation becomes evidence for the next interaction.",
+    "speakerNotes": "Show the user-facing result: a streaming chat that still participates in the evidence loop. What happens in conversation can become bounded context for the next interaction, rather than disappearing when the stream ends."
+  },
+  {
+    "id": "engram-pyri-18",
+    "position": 18,
+    "filepath": "src/pages/slides/DeepInquiry.tsx",
+    "title": "Inquiry gives the operator a safe control surface",
+    "description": "Probe and develop inquiries create legible, guarded interaction.",
+    "speakerNotes": "Inquiry is the operator's deliberate way to explore or develop an engram. Keep the distinction between a probe and a durable change visible: interaction should produce a legible record and respect the same guardrails as autonomous behavior."
+  },
+  {
+    "id": "engram-pyri-19",
+    "position": 19,
+    "filepath": "src/pages/slides/DeepEvidenceLoop.tsx",
+    "title": "Conversation and initiative share the same evidence loop",
+    "description": "Speak, observe, update, and reach.",
+    "speakerNotes": "Tie the internal and conversational paths together. Whether the engram is replying or reaching out, the system can speak, observe the result, update bounded state, and decide what comes next."
+  },
+  {
+    "id": "engram-pyri-20",
+    "position": 20,
+    "filepath": "src/pages/slides/Slide11.tsx",
+    "title": "Web: the operator's cognitive dashboard",
+    "description": "Inspection, tuning, orchestration, and provenance.",
+    "speakerNotes": "Shift from the architecture to the first product surface. The web dashboard is where an operator inspects state, tunes an engram, orchestrates activity, and follows provenance instead of guessing what happened."
+  },
+  {
+    "id": "engram-pyri-21",
+    "position": 21,
+    "filepath": "src/pages/slides/DeepDashboard.tsx",
+    "title": "The dashboard exposes the cognitive state",
+    "description": "A closer look at the operator workflow.",
+    "speakerNotes": "Use this detail view to make the workflow concrete: the operator can move from a signal to the underlying state and its history. The dashboard is an inspection and control surface, not a replacement for the engram's own voice."
+  },
+  {
+    "id": "engram-pyri-22",
+    "position": 22,
+    "filepath": "src/pages/slides/Slide12.tsx",
+    "title": "Mobile: the companion in the flow of life",
+    "description": "Feed, outreach, chat, inquiry, and offline presence.",
+    "speakerNotes": "Introduce mobile as the presence surface. It brings feed, outreach, chat, inquiry, and offline capability into the operator's normal context without removing the web dashboard's deeper inspection role."
+  },
+  {
+    "id": "engram-pyri-23",
+    "position": 23,
+    "filepath": "src/pages/slides/DeepFeed.tsx",
+    "title": "Mobile turns autonomous activity into a readable signal",
+    "description": "Feed, push notification, and tap-through behavior.",
+    "speakerNotes": "The mobile feed turns an autonomous event into something the operator can understand and act on. Push data identifies the engram and transmission so a tap can open the correct Feed context rather than a generic landing screen."
+  },
+  {
+    "id": "engram-pyri-24",
+    "position": 24,
+    "filepath": "src/pages/slides/DeepOffline.tsx",
+    "title": "Offline mode preserves presence without the network",
+    "description": "On-device history, local streaming, and later reconciliation.",
+    "speakerNotes": "Offline mode is a deliberate operating path: history and local streaming remain available on the device, then bounded reconciliation can happen later. The point is continuity without pretending that local state is automatically cloud truth."
+  },
+  {
+    "id": "engram-pyri-25",
+    "position": 25,
+    "filepath": "src/pages/slides/Slide13.tsx",
+    "title": "One architecture, two surfaces",
+    "description": "Web for understanding, mobile for presence.",
+    "speakerNotes": "Summarize the product split: web is optimized for understanding and control, while mobile is optimized for presence and timely contact. Both surfaces operate on the same bounded engram model."
+  },
+  {
+    "id": "engram-pyri-26",
+    "position": 26,
+    "filepath": "src/pages/slides/Slide14.tsx",
+    "title": "Simulation is where possibilities stay contained",
+    "description": "Contained what-if exploration and shared spaces.",
+    "speakerNotes": "Open the simulation section by distinguishing possibility from reality. Simulation lets an operator explore a what-if path in a contained space without presenting that path as an observed fact."
+  },
+  {
+    "id": "engram-pyri-27",
+    "position": 27,
+    "filepath": "src/pages/slides/DeepSimulationBoundary.tsx",
+    "title": "Simulation extends the space without contaminating reality",
+    "description": "Live-world evidence and possible states remain separated.",
+    "speakerNotes": "Make the quarantine boundary explicit: simulated steps are structurally separate from live-world evidence and observed state. This allows exploration while protecting the integrity of the engram's real history."
+  },
+  {
+    "id": "engram-pyri-28",
+    "position": 28,
+    "filepath": "src/pages/slides/Slide15.tsx",
+    "title": "Safety is part of the architecture",
+    "description": "Separation, archival boundaries, fail-closed contact, and persisted claims.",
+    "speakerNotes": "Transition into the safety close by saying these are not add-on policies. Separation, archival boundaries, fail-closed contact, and persisted claims are built into the paths that create state and effects."
+  },
+  {
+    "id": "engram-pyri-29",
+    "position": 29,
+    "filepath": "src/pages/slides/DeepSafetyControls.tsx",
+    "title": "Safety controls are explicit",
+    "description": "Consent, archival boundaries, quarantine, and retry-safe effects.",
+    "speakerNotes": "Walk through the controls as concrete guarantees: consent limits contact, archival branches remain read-only, simulation stays quarantined, and retry-safe claims prevent duplicate effects. Avoid describing these as intentions; they are the boundaries the implementation enforces."
+  },
+  {
+    "id": "engram-pyri-30",
+    "position": 30,
+    "filepath": "src/pages/slides/Slide16.tsx",
+    "title": "Build companions with memory, voice, and restraint",
+    "description": "ENGRAM and PYRI's proposition.",
+    "speakerNotes": "Close by returning to the opening proposition. ENGRAM provides the structured cognitive architecture, PYRI provides the expressive companion surface, and the combination is credible because memory, voice, initiative, and restraint remain connected and inspectable."
+  }
+]

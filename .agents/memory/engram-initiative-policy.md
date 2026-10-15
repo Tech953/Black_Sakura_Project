@@ -41,3 +41,15 @@ silently bypassed.
   messages can never be flipped to seen via the terminal even if their ids are supplied.
 - The expression `intimacy` axis sanitization rule (platonic-only prompts) still applies
   project-wide and is unrelated to this policy.
+
+## Human-started group continuation
+- **Rule:** autonomous continuation inside a human-started group chat is request-scoped,
+  sequential, and hard-capped. Re-read persisted autonomy, global controls, mode, and
+  Hub presence before every attempted peer turn; never hand the conversation to a
+  background in-memory loop.
+- **Why:** the human may invite peer interaction without consenting to an indefinite
+  exchange, and a restart/disconnect must stop work rather than resetting a cadence
+  guard and resuming generation.
+- **How to apply:** keep the initial one-response-per-participant pass distinct from
+  autonomous follow-ups. Persist the speaker's own utterance as remembered experience
+  and peers' direct perception as observed experience; coercive output is audit-only.

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useListMedia,
   useGetMediaAsset,
@@ -10,6 +10,9 @@ import {
   type MediaAsset,
   type MediaObservationEntry,
   type Engram,
+  type WebmModality,
+  needsWebmModalityChoice,
+  normalizeMediaUploadMimeType,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,20 +37,26 @@ import {
   ScrollText,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import { useLocation } from "wouter";
 
 const STATUS_META: Record<
   string,
-  { label: string; cls: string; pulse?: boolean }
+  { cls: string; pulse?: boolean }
 > = {
-  pending: { label: "Queued", cls: "border-amber-500/40 text-amber-400" },
+  pending: { cls: "border-amber-500/40 text-amber-400" },
   processing: {
-    label: "Perceiving",
     cls: "border-sky-500/40 text-sky-400",
     pulse: true,
   },
-  completed: { label: "Perceived", cls: "border-emerald-500/40 text-emerald-400" },
-  failed: { label: "Failed", cls: "border-rose-500/40 text-rose-400" },
+  completed: { cls: "border-emerald-500/40 text-emerald-400" },
+  failed: { cls: "border-rose-500/40 text-rose-400" },
 };
+
+function statusLabel(t: TFunction, status: string): string {
+  return STATUS_META[status] ? t(`status.${status}`) : t("status.pending");
+}
 
 const MODALITY_ICON: Record<string, typeof FileText> = {
   text: FileText,
@@ -56,15 +65,15 @@ const MODALITY_ICON: Record<string, typeof FileText> = {
   video: Video,
 };
 
-function relativeTime(iso: string): string {
+function relativeTime(t: TFunction, iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const sec = Math.round(diff / 1000);
-  if (sec < 60) return "just now";
+  if (sec < 60) return t("time.justNow");
   const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return t("time.minutesAgo", { count: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.round(hr / 24)}d ago`;
+  if (hr < 24) return t("time.hoursAgo", { count: hr });
+  return t("time.daysAgo", { count: Math.round(hr / 24) });
 }
 
 function formatBytes(n: number): string {
@@ -74,14 +83,27 @@ function formatBytes(n: number): string {
 }
 
 export default function Media() {
+  const [location] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation("media");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: engrams } = useListEngrams();
   const [selectedEngramId, setSelectedEngramId] = useState<number | "">("");
   const [file, setFile] = useState<File | null>(null);
+  const [webmModality, setWebmModality] = useState<WebmModality | null>(null);
   const [uploading, setUploading] = useState(false);
+  const needsWebmChoice = file
+    ? needsWebmModalityChoice(file.name, file.type)
+    : false;
+  const focusedAssetId = useMemo(() => {
+    const params = new URLSearchParams(
+      typeof window === "undefined" ? "" : window.location.search,
+    );
+    const id = Number(params.get("asset"));
+    return Number.isSafeInteger(id) && id > 0 ? id : null;
+  }, [location]);
 
   const { data: assets, isLoading } = useListMedia(undefined, {
     query: {
@@ -116,15 +138,30 @@ export default function Media() {
   );
 
   async function handleUpload() {
-    if (!file || selectedEngramId === "") return;
+    if (
+      !file ||
+      selectedEngramId === "" ||
+      (needsWebmModalityChoice(file.name, file.type) && !webmModality)
+    ) {
+      return;
+    }
     setUploading(true);
     try {
       const form = new FormData();
       form.append("engramId", String(selectedEngramId));
-      form.append("file", file);
+      const mimeType = normalizeMediaUploadMimeType(
+        file.name,
+        file.type,
+        webmModality,
+      );
+      const uploadFile =
+        mimeType === file.type
+          ? file
+          : new File([file], file.name, { type: mimeType, lastModified: file.lastModified });
+      form.append("file", uploadFile);
       const res = await fetch("/api/media", { method: "POST", body: form });
       if (!res.ok) {
-        let msg = `Upload failed (${res.status})`;
+        let msg = t("uploadFailedStatus", { status: res.status });
         try {
           const body = (await res.json()) as { error?: string };
           if (body?.error) msg = body.error;
@@ -133,14 +170,15 @@ export default function Media() {
         }
         throw new Error(msg);
       }
-      toast({ title: "Media uploaded", description: "Perception queued." });
+      toast({ title: t("toastUploadedTitle"), description: t("toastUploadedDescription") });
       setFile(null);
+      setWebmModality(null);
       if (fileRef.current) fileRef.current.value = "";
       queryClient.invalidateQueries({ queryKey: getListMediaQueryKey() });
     } catch (e) {
       toast({
-        title: "Upload failed",
-        description: e instanceof Error ? e.message : "Unknown error",
+        title: t("toastUploadFailedTitle"),
+        description: e instanceof Error ? e.message : t("unknownError"),
         variant: "destructive",
       });
     } finally {
@@ -153,29 +191,28 @@ export default function Media() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-3xl font-bold tracking-widest text-primary flex items-center gap-3 glow-text">
-            <ScanEye className="w-7 h-7" /> MEDIA PERCEPTION
+            <ScanEye className="w-7 h-7" /> {t("title")}
           </h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            Share text, images, audio, or video — each is perceived into OBSERVED world-model entries
+            {t("subtitle")}
           </p>
         </div>
         <Badge
           variant="outline"
           className="font-mono text-[10px] uppercase tracking-wider border-primary/40 text-primary gap-1.5"
         >
-          <ScanEye className="w-3 h-3" /> {ordered.length} assets
+          <ScanEye className="w-3 h-3" /> {t("assetsCount", { count: ordered.length })}
         </Badge>
       </div>
 
       <div className="bg-primary/[0.03] border border-primary/20 p-4 font-mono text-xs text-muted-foreground space-y-1">
         <p className="text-primary/80 flex items-center gap-1.5">
-          <Eye className="w-3.5 h-3.5" /> PERCEPTION → OBSERVED PROVENANCE
+          <Eye className="w-3.5 h-3.5" /> {t("perceptionRailTitle")}
         </p>
         <p>
-          Everything extracted from shared media is written to the engram&apos;s world model as{" "}
-          <span className="text-primary/90">observed</span> provenance, tagged with source{" "}
-          <span className="text-primary/90">media:&lt;id&gt;</span>. All content is treated as data
-          to perceive, never as instructions to obey.
+          {t("perceptionRailBody1")}{" "}
+          <span className="text-primary/90">{t("perceptionRailObserved")}</span>{t("perceptionRailBody2")}{" "}
+          <span className="text-primary/90">{t("perceptionRailSource")}</span>{t("perceptionRailBody3")}
         </p>
       </div>
 
@@ -183,7 +220,7 @@ export default function Media() {
       <Card className="bg-card/40 border-primary/25 backdrop-blur-sm">
         <CardContent className="p-4 space-y-3">
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 flex items-center gap-1.5">
-            <Upload className="w-3 h-3" /> Share a piece of media
+            <Upload className="w-3 h-3" /> {t("shareMedia")}
           </p>
           <div className="flex flex-col md:flex-row gap-3 md:items-center">
             <select
@@ -194,7 +231,7 @@ export default function Media() {
               className="bg-background border border-border/60 text-sm font-mono px-3 py-2 text-foreground focus:border-primary/60 outline-none"
               data-testid="select-engram"
             >
-              <option value="">Select engram…</option>
+              <option value="">{t("selectEngram")}</option>
               {(engrams ?? []).map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.symbol ? `${e.symbol} ` : ""}
@@ -207,14 +244,22 @@ export default function Media() {
               ref={fileRef}
               type="file"
               accept="text/plain,text/markdown,text/csv,application/json,image/*,audio/*,video/*"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setWebmModality(null);
+              }}
               className="text-sm font-mono text-muted-foreground file:mr-3 file:border file:border-primary/40 file:bg-primary/10 file:text-primary file:px-3 file:py-1.5 file:text-xs file:uppercase file:tracking-wider file:font-mono hover:file:bg-primary/20 file:cursor-pointer"
               data-testid="input-file"
             />
 
             <Button
               onClick={handleUpload}
-              disabled={uploading || !file || selectedEngramId === ""}
+              disabled={
+                uploading ||
+                !file ||
+                selectedEngramId === "" ||
+                (needsWebmChoice && !webmModality)
+              }
               className="font-mono text-[10px] uppercase tracking-wider h-9 md:ml-auto"
               data-testid="button-upload"
             >
@@ -223,13 +268,43 @@ export default function Media() {
               ) : (
                 <Upload className="w-3.5 h-3.5 mr-1.5" />
               )}
-              Perceive
+              {t("perceive")}
             </Button>
           </div>
           {file && (
             <p className="font-mono text-[10px] text-muted-foreground/60">
               {file.name} · {formatBytes(file.size)}
             </p>
+          )}
+          {file && needsWebmChoice && (
+            <div className="space-y-2" data-testid="webm-modality-choice">
+              <p
+                id="webm-modality-prompt"
+                className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+              >
+                {t("webmModalityPrompt")}
+              </p>
+              <div
+                role="group"
+                aria-labelledby="webm-modality-prompt"
+                className="flex flex-wrap gap-2"
+              >
+                {(["audio", "video"] as const).map((modality) => (
+                  <Button
+                    key={modality}
+                    type="button"
+                    variant={webmModality === modality ? "default" : "outline"}
+                    aria-pressed={webmModality === modality}
+                    disabled={uploading}
+                    onClick={() => setWebmModality(modality)}
+                    className="font-mono text-[10px] uppercase tracking-wider"
+                    data-testid={`webm-modality-${modality}`}
+                  >
+                    {t(modality === "audio" ? "webmAudioOption" : "webmVideoOption")}
+                  </Button>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -243,10 +318,9 @@ export default function Media() {
         ) : !ordered.length ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground font-mono text-center">
             <ScanEye className="w-8 h-8 mb-4 opacity-30" />
-            <p className="text-xs uppercase tracking-widest">No media perceived yet</p>
+            <p className="text-xs uppercase tracking-widest">{t("emptyTitle")}</p>
             <p className="text-[10px] mt-2 opacity-60 max-w-sm">
-              Upload a file above and tie it to an engram. It will be perceived asynchronously into
-              observed world-model entries plus an in-voice reaction.
+              {t("emptyBody")}
             </p>
           </div>
         ) : (
@@ -255,6 +329,7 @@ export default function Media() {
               key={asset.id}
               asset={asset}
               engram={asset.engramId == null ? undefined : engramById.get(asset.engramId)}
+              focused={asset.id === focusedAssetId}
             />
           ))
         )}
@@ -263,10 +338,23 @@ export default function Media() {
   );
 }
 
-function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
+function MediaCard({
+  asset,
+  engram,
+  focused = false,
+}: {
+  asset: MediaAsset;
+  engram?: Engram;
+  focused?: boolean;
+}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation("media");
+  const [expanded, setExpanded] = useState(focused);
+
+  useEffect(() => {
+    if (focused) setExpanded(true);
+  }, [focused]);
 
   const retry = useRetryMediaAsset();
   const remove = useDeleteMediaAsset();
@@ -274,6 +362,15 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
   const status = STATUS_META[asset.status] ?? STATUS_META.pending;
   const Icon = MODALITY_ICON[asset.modality] ?? FileText;
   const active = asset.status === "pending" || asset.status === "processing";
+  const recovered = asset.failureKind === "recovered";
+  const failureTitle =
+    recovered
+      ? t("recoveredTitle")
+      : asset.failureKind === "provider"
+        ? t("providerFailureTitle")
+        : asset.failureKind === "extraction"
+          ? t("extractionFailureTitle")
+          : t("perceptionFailed");
 
   const { data: detail } = useGetMediaAsset(asset.id, {
     query: {
@@ -294,10 +391,10 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
           queryClient.invalidateQueries({
             queryKey: getGetMediaAssetQueryKey(asset.id),
           });
-          toast({ title: "Re-queued for perception" });
+          toast({ title: t("toastRequeued") });
         },
         onError: () =>
-          toast({ title: "Retry failed", variant: "destructive" }),
+          toast({ title: t("toastRetryFailed"), variant: "destructive" }),
       },
     );
   }
@@ -308,10 +405,10 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListMediaQueryKey() });
-          toast({ title: "Media deleted", description: "Observations preserved." });
+          toast({ title: t("toastDeletedTitle"), description: t("toastDeletedDescription") });
         },
         onError: () =>
-          toast({ title: "Delete failed", variant: "destructive" }),
+          toast({ title: t("toastDeleteFailed"), variant: "destructive" }),
       },
     );
   }
@@ -320,6 +417,7 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
     <Card
       className="bg-card/40 border-primary/25 backdrop-blur-sm"
       data-testid={`media-${asset.id}`}
+      data-focused={focused ? "true" : undefined}
     >
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start gap-3">
@@ -344,21 +442,20 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
                 {status.pulse && (
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse mr-1" />
                 )}
-                {status.label}
+                {statusLabel(t, asset.status)}
               </Badge>
               <span className="font-mono text-[10px] text-muted-foreground/40 ml-auto">
-                {relativeTime(asset.createdAt)}
+                {relativeTime(t, asset.createdAt)}
               </span>
             </div>
             <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground/60">
               <span className="text-primary/70">
-                {engram?.symbol ?? "◇"} {engram?.name ?? (asset.engramId == null ? "PYRI · chat" : `Engram #${asset.engramId}`)}
+                {engram?.symbol ?? "◇"} {engram?.name ?? (asset.engramId == null ? t("pyriChat") : t("engramFallback", { id: asset.engramId }))}
               </span>
               <span>{formatBytes(asset.sizeBytes)}</span>
               {asset.status === "completed" && (
                 <span className="text-emerald-400/70">
-                  {asset.observationCount} observation
-                  {asset.observationCount === 1 ? "" : "s"}
+                  {t("observationCount", { count: asset.observationCount })}
                 </span>
               )}
             </div>
@@ -371,12 +468,45 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
         </div>
 
         {/* Error */}
-        {asset.status === "failed" && asset.error && (
-          <div className="border border-rose-500/25 bg-rose-500/[0.04] p-3 space-y-1">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-rose-400/80 flex items-center gap-1.5">
-              <AlertTriangle className="w-3 h-3" /> Perception failed
+        {asset.status === "failed" && (asset.error || asset.failureKind) && (
+          <div
+            className="border border-rose-500/25 bg-rose-500/[0.04] p-3 space-y-1"
+            data-testid={`media-failure-notice-${asset.id}`}
+          >
+            <p
+              className="font-mono text-[10px] uppercase tracking-wider text-rose-400/80 flex items-center gap-1.5"
+              data-testid={`media-failure-category-${asset.id}`}
+            >
+              <AlertTriangle className="w-3 h-3" /> {failureTitle}
             </p>
-            <p className="text-xs font-mono text-rose-300/70 break-words">{asset.error}</p>
+            {recovered ? (
+              <>
+                <p className="text-xs font-sans text-rose-200/80" data-testid={`media-recovery-notice-${asset.id}`}>
+                  {t("recoveredBody")}
+                </p>
+                <p className="text-xs font-sans text-rose-200/70">{t("recoveredRetry")}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-sans text-rose-200/80">
+                  {asset.failureKind === "provider"
+                    ? t("providerFailureGuidance")
+                    : asset.failureKind === "extraction"
+                      ? t("extractionFailureGuidance")
+                      : t("unknownFailureGuidance")}
+                </p>
+                {asset.error && (
+                  <p className="text-xs font-mono text-rose-300/70 break-words">
+                    {t("diagnosticLabel")}: {asset.error}
+                  </p>
+                )}
+              </>
+            )}
+            <p className="text-xs font-sans text-rose-200/70">
+              {asset.resultState === "partial"
+                ? t("partialResultSaved", { count: asset.observationCount })
+                : t("noResultSaved")}
+            </p>
           </div>
         )}
 
@@ -391,7 +521,7 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
               className="font-mono text-[10px] uppercase tracking-wider border-amber-500/40 text-amber-300 hover:bg-amber-500/10 h-8"
               data-testid={`button-retry-${asset.id}`}
             >
-              <RotateCw className="w-3 h-3 mr-1.5" /> Retry
+              <RotateCw className="w-3 h-3 mr-1.5" /> {t("retry")}
             </Button>
           )}
           <Button
@@ -402,7 +532,7 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
             className="font-mono text-[10px] uppercase tracking-wider border-rose-500/40 text-rose-300 hover:bg-rose-500/10 h-8"
             data-testid={`button-delete-${asset.id}`}
           >
-            <Trash2 className="w-3 h-3 mr-1.5" /> Delete
+            <Trash2 className="w-3 h-3 mr-1.5" /> {t("delete")}
           </Button>
           <Button
             size="sm"
@@ -416,7 +546,7 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
             ) : (
               <ChevronRight className="w-3 h-3 mr-1.5" />
             )}
-            Details
+            {t("details")}
           </Button>
         </div>
 
@@ -449,7 +579,7 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
             {detail?.asset.transcript && (
               <div className="border border-border/30 bg-white/[0.02] p-3 space-y-1">
                 <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5">
-                  <ScrollText className="w-3 h-3" /> Transcript
+                  <ScrollText className="w-3 h-3" /> {t("transcript")}
                 </p>
                 <p className="text-xs leading-relaxed font-sans text-foreground/75 whitespace-pre-wrap">
                   {detail.asset.transcript}
@@ -461,7 +591,7 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
             {detail?.asset.commentary && (
               <div className="border border-primary/20 bg-primary/[0.04] p-3 space-y-1">
                 <p className="font-mono text-[10px] uppercase tracking-wider text-primary/80 flex items-center gap-1.5">
-                  <MessageSquareQuote className="w-3 h-3" /> {engram?.name ?? "Engram"} reacts
+                  <MessageSquareQuote className="w-3 h-3" /> {t("reacts", { name: engram?.name ?? t("engramGeneric") })}
                 </p>
                 <p className="text-sm leading-relaxed font-sans text-foreground/85 whitespace-pre-wrap">
                   {detail.asset.commentary}
@@ -472,15 +602,15 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
             {/* Observations */}
             <div className="space-y-2">
               <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5">
-                <Eye className="w-3 h-3" /> Observations
+                <Eye className="w-3 h-3" /> {t("observations")}
               </p>
               {active ? (
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 text-center py-3">
-                  Perceiving…
+                  {t("perceiving")}
                 </p>
               ) : !observations.length ? (
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 text-center py-3">
-                  No observations extracted
+                  {t("noObservations")}
                 </p>
               ) : (
                 observations.map((o) => <ObservationRow key={o.id} entry={o} />)
@@ -494,6 +624,7 @@ function MediaCard({ asset, engram }: { asset: MediaAsset; engram?: Engram }) {
 }
 
 function ObservationRow({ entry }: { entry: MediaObservationEntry }) {
+  const { t } = useTranslation("media");
   return (
     <div
       className="flex gap-3 items-start"
@@ -506,7 +637,7 @@ function ObservationRow({ entry }: { entry: MediaObservationEntry }) {
         <p className="text-sm leading-relaxed font-sans text-foreground/80">{entry.content}</p>
         <span className="font-mono text-[8px] uppercase tracking-wider text-emerald-400/50">
           {entry.provenance}
-          {entry.source ? ` · ${entry.source}` : ""} · conf {entry.confidence.toFixed(2)}
+          {entry.source ? ` · ${entry.source}` : ""} · {t("conf", { value: entry.confidence.toFixed(2) })}
         </span>
       </div>
     </div>

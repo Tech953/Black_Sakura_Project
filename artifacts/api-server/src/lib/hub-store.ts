@@ -3,65 +3,139 @@ import {
   hubSpacesTable,
   engramPresenceTable,
   hubActivityLogTable,
+  engramsTable,
 } from "@workspace/db/schema";
 import type { HubSpace, EngramPresence, HubActivity, HubActivityKind } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, or } from "drizzle-orm";
 import { statusForSpace, describeMovement } from "./hub";
 
 const ACTIVITY_DEFAULT_LIMIT = 50;
 const ACTIVITY_MAX_LIMIT = 200;
 
-export async function loadSpaces(): Promise<HubSpace[]> {
-  return db.select().from(hubSpacesTable).orderBy(hubSpacesTable.sortOrder);
+export async function loadSpaces(ownerId: string): Promise<HubSpace[]> {
+  return db
+    .select()
+    .from(hubSpacesTable)
+    .where(eq(hubSpacesTable.ownerId, ownerId))
+    .orderBy(hubSpacesTable.sortOrder);
 }
 
-export async function loadSpaceById(id: number): Promise<HubSpace | undefined> {
-  const [row] = await db.select().from(hubSpacesTable).where(eq(hubSpacesTable.id, id));
+export async function loadSpaceById(id: number, ownerId: string): Promise<HubSpace | undefined> {
+  const [row] = await db
+    .select()
+    .from(hubSpacesTable)
+    .where(and(eq(hubSpacesTable.id, id), eq(hubSpacesTable.ownerId, ownerId)));
   return row;
 }
 
-export async function loadPresence(): Promise<EngramPresence[]> {
-  return db.select().from(engramPresenceTable);
+export async function loadPresence(ownerId: string): Promise<EngramPresence[]> {
+  const rows = await db
+    .select({ presence: engramPresenceTable })
+    .from(engramPresenceTable)
+    .innerJoin(hubSpacesTable, eq(engramPresenceTable.spaceId, hubSpacesTable.id))
+    .innerJoin(engramsTable, eq(engramPresenceTable.engramId, engramsTable.id))
+    .where(and(eq(hubSpacesTable.ownerId, ownerId), eq(engramsTable.ownerId, ownerId)));
+  return rows.map(({ presence }) => presence);
 }
 
 export async function loadPresenceForEngram(
   engramId: number,
+  ownerId: string,
 ): Promise<EngramPresence | undefined> {
   const [row] = await db
-    .select()
+    .select({ presence: engramPresenceTable })
     .from(engramPresenceTable)
-    .where(eq(engramPresenceTable.engramId, engramId));
-  return row;
+    .innerJoin(hubSpacesTable, eq(engramPresenceTable.spaceId, hubSpacesTable.id))
+    .innerJoin(engramsTable, eq(engramPresenceTable.engramId, engramsTable.id))
+    .where(
+      and(
+        eq(engramPresenceTable.engramId, engramId),
+        eq(hubSpacesTable.ownerId, ownerId),
+        eq(engramsTable.ownerId, ownerId),
+      ),
+    );
+  return row?.presence;
+}
+
+export type HubPresenceOwnershipFinding = {
+  presenceId: number;
+  engramId: number;
+  engramOwnerId: string | null;
+  spaceId: number;
+  spaceOwnerId: string | null;
+};
+
+/**
+ * Read-only integrity scan for presence rows whose engram and space have
+ * different owners. Left joins also make orphaned parent rows visible if
+ * foreign-key enforcement was bypassed during a manual repair or import.
+ */
+export async function findHubPresenceOwnershipIssues(): Promise<HubPresenceOwnershipFinding[]> {
+  return db
+    .select({
+      presenceId: engramPresenceTable.id,
+      engramId: engramPresenceTable.engramId,
+      engramOwnerId: engramsTable.ownerId,
+      spaceId: engramPresenceTable.spaceId,
+      spaceOwnerId: hubSpacesTable.ownerId,
+    })
+    .from(engramPresenceTable)
+    .leftJoin(engramsTable, eq(engramPresenceTable.engramId, engramsTable.id))
+    .leftJoin(hubSpacesTable, eq(engramPresenceTable.spaceId, hubSpacesTable.id))
+    .where(
+      or(
+        isNull(engramsTable.id),
+        isNull(hubSpacesTable.id),
+        ne(engramsTable.ownerId, hubSpacesTable.ownerId),
+      ),
+    )
+    .orderBy(asc(engramPresenceTable.id));
 }
 
 export async function loadActivity(
+  ownerId: string,
   opts: { spaceId?: number; limit?: number } = {},
 ): Promise<HubActivity[]> {
   const limit = Math.min(
     Math.max(opts.limit ?? ACTIVITY_DEFAULT_LIMIT, 1),
     ACTIVITY_MAX_LIMIT,
   );
-  if (opts.spaceId !== undefined) {
-    return db
-      .select()
-      .from(hubActivityLogTable)
-      .where(eq(hubActivityLogTable.spaceId, opts.spaceId))
-      .orderBy(desc(hubActivityLogTable.createdAt))
-      .limit(limit);
-  }
-  return db
-    .select()
+  const rows = await db
+    .select({ activity: hubActivityLogTable })
     .from(hubActivityLogTable)
+    .innerJoin(hubSpacesTable, eq(hubActivityLogTable.spaceId, hubSpacesTable.id))
+    .leftJoin(engramsTable, eq(hubActivityLogTable.engramId, engramsTable.id))
+    .where(
+      and(
+        eq(hubSpacesTable.ownerId, ownerId),
+        or(
+          isNull(hubActivityLogTable.engramId),
+          eq(engramsTable.ownerId, ownerId),
+        ),
+        ...(opts.spaceId === undefined ? [] : [eq(hubActivityLogTable.spaceId, opts.spaceId)]),
+      ),
+    )
     .orderBy(desc(hubActivityLogTable.createdAt))
     .limit(limit);
+  return rows.map(({ activity }) => activity);
 }
 
 export async function appendActivity(entry: {
+  ownerId: string;
   spaceId: number;
   engramId?: number | null;
   kind: HubActivityKind;
   summary: string;
 }): Promise<HubActivity> {
+  const space = await loadSpaceById(entry.spaceId, entry.ownerId);
+  if (!space) throw new Error("Cannot append activity to a foreign or missing Hub space");
+  if (entry.engramId != null) {
+    const [engram] = await db
+      .select({ id: engramsTable.id })
+      .from(engramsTable)
+      .where(and(eq(engramsTable.id, entry.engramId), eq(engramsTable.ownerId, entry.ownerId)));
+    if (!engram) throw new Error("Cannot append activity for a foreign or missing engram");
+  }
   const [row] = await db
     .insert(hubActivityLogTable)
     .values({
@@ -81,29 +155,50 @@ export async function appendActivity(entry: {
  * source or target space has logging enabled (and only on a real space change).
  */
 export async function movePresence(args: {
+  ownerId: string;
   engram: { id: number; name: string };
   targetSpace: HubSpace;
   note?: string | null;
 }): Promise<EngramPresence> {
-  const { engram, targetSpace, note } = args;
+  const { ownerId, engram, targetSpace, note } = args;
   const status = statusForSpace(targetSpace);
-  const now = new Date();
 
   return db.transaction(async (tx) => {
+    const [ownedEngram] = await tx
+      .select({ id: engramsTable.id })
+      .from(engramsTable)
+      .where(and(eq(engramsTable.id, engram.id), eq(engramsTable.ownerId, ownerId)))
+      // Lock the parent row as well as the presence row below. A first
+      // placement has no presence row to lock, so the engram lock is what
+      // serializes competing first placements and prevents duplicate "enter"
+      // events or stale enteredAt values.
+      .for("update");
+    if (!ownedEngram) throw new Error("Cannot move presence for a foreign or missing engram");
+
+    const [ownedTarget] = await tx
+      .select({ id: hubSpacesTable.id })
+      .from(hubSpacesTable)
+      .where(and(eq(hubSpacesTable.id, targetSpace.id), eq(hubSpacesTable.ownerId, ownerId)));
+    if (!ownedTarget) throw new Error("Cannot move presence into a foreign or missing Hub space");
+
     const [previous] = await tx
       .select()
       .from(engramPresenceTable)
-      .where(eq(engramPresenceTable.engramId, engram.id));
+      .where(eq(engramPresenceTable.engramId, engram.id))
+      .for("update");
 
     let previousSpace: HubSpace | undefined;
     if (previous) {
       [previousSpace] = await tx
         .select()
         .from(hubSpacesTable)
-        .where(eq(hubSpacesTable.id, previous.spaceId));
+        .where(and(eq(hubSpacesTable.id, previous.spaceId), eq(hubSpacesTable.ownerId, ownerId)));
     }
 
     const sameSpace = previous?.spaceId === targetSpace.id;
+    // Take the timestamp after waiting for the per-engram lock so a queued
+    // move cannot write an older enteredAt/updatedAt than the move before it.
+    const now = new Date();
 
     const [presence] = await tx
       .insert(engramPresenceTable)
