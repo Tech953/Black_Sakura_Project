@@ -119,6 +119,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # OWNER_ID is supplied by this step's GitHub Actions env block.
+          # shellcheck disable=SC2153
           OWNER_MARKER="<!-- engram-draft-owner:${OWNER_ID} -->"
           RELEASES_JSON="$(gh api "repos/$REPO/releases?per_page=100" --paginate)"
           SAME_TAG_RELEASES="$(printf '%s\n' "$RELEASES_JSON" | jq -s --arg tag "$TAG" '[.[][] | select(.tag_name == $tag)]')"
@@ -1276,7 +1278,10 @@ jobs:
         run: |
           set -euo pipefail
           APK="artifacts/engram-mobile/android/app/build/outputs/apk/release/app-release.apk"
-          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n1)"
+          BUILD_TOOLS_DIR="$ANDROID_HOME/build-tools"
+          BT_VERSION="$(find "$BUILD_TOOLS_DIR" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V | tail -n1)"
+          test -n "$BT_VERSION" || { echo "No Android SDK build-tools directory was found." >&2; exit 1; }
+          BT="$BUILD_TOOLS_DIR/$BT_VERSION"
           SIGNER="$("$BT/apksigner" verify --print-certs "$APK")"
           echo "$SIGNER"
           ACTUAL="$(echo "$SIGNER" | grep -i 'SHA-256 digest' | head -n1 | awk '{print $NF}' | tr -d ':' | tr 'A-F' 'a-f')"
