@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Button } from "@/components/ui/button";
+import { FullRezzPresenter } from "@/components/full-rezz-presenter";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -212,6 +213,7 @@ export default function Chat() {
   const [fullRezzRuntime, setFullRezzRuntime] = useState<{ available: boolean; reason?: string } | null>(null);
   const [fullRezzBoundEngramId, setFullRezzBoundEngramId] = useState<number | null>(null);
   const [speechJobs, setSpeechJobs] = useState<Record<number, SpeechJobView>>({});
+  const [presenterAudioUrl, setPresenterAudioUrl] = useState<string | null>(null);
   const [speechReviewRatings, setSpeechReviewRatings] = useState<Record<number, FullRezzReviewRatings>>({});
   const [speechReviewStatus, setSpeechReviewStatus] = useState<Record<number, string>>({});
   const [speechReviewBusy, setSpeechReviewBusy] = useState<Record<number, boolean>>({});
@@ -1679,6 +1681,15 @@ export default function Chat() {
                         {speechJob?.audioObjectUrl && (
                           <div className="space-y-1">
                             <audio controls preload="none" src={speechJob.audioObjectUrl} className="h-9 max-w-full" />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 font-mono text-[9px] uppercase tracking-wider"
+                              onClick={() => setPresenterAudioUrl(speechJob.audioObjectUrl!)}
+                            >
+                              Open Studio Unit presenter
+                            </Button>
                             <p className="font-mono text-[9px] text-muted-foreground/70">
                               Synthetic offline voice · human listening review required · not a performer identity claim.
                             </p>
@@ -1859,6 +1870,13 @@ export default function Chat() {
           </p>
         </div>
       </div>
+      <FullRezzPresenter
+        open={presenterAudioUrl !== null}
+        onClose={() => setPresenterAudioUrl(null)}
+        audioUrl={presenterAudioUrl}
+        assetBaseUrl={`${BASE}/api/full-rezz/studio-unit/assets`}
+        authFetch={authFetch}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -40,6 +41,41 @@ const RATINGS = [
   "reference_purity",
   "canon_boundaries",
 ] as const;
+const STUDIO_UNIT_ASSETS = new Set([
+  "character.json",
+  "front.png",
+  "front_three_quarter.png",
+  "low_angle.png",
+  "profile.png",
+  "rear.png",
+  "rear_three_quarter.png",
+  "studio_unit.gltf",
+]);
+
+function studioUnitAssetRoot(): string | null {
+  const candidates = [
+    process.env.FULL_REZZ_ROOT
+      ? path.join(
+          path.resolve(process.env.FULL_REZZ_ROOT),
+          "character_assets",
+          "studio_unit",
+        )
+      : null,
+    path.resolve(
+      process.cwd(),
+      "../desktop/full-rezz/character_assets/studio_unit",
+    ),
+    path.resolve(
+      process.cwd(),
+      "artifacts/desktop/full-rezz/character_assets/studio_unit",
+    ),
+  ].filter((candidate): candidate is string => candidate !== null);
+  return (
+    candidates.find((candidate) =>
+      existsSync(path.join(candidate, "character.json")),
+    ) ?? null
+  );
+}
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -73,6 +109,32 @@ function sendUploadError(error: unknown, res: Response): void {
 
 router.get("/full-rezz/status", (_req, res) => {
   res.json(getFullRezzRuntimeStatus());
+});
+
+router.get("/full-rezz/studio-unit/assets/:name", (req, res) => {
+  const name = req.params.name;
+  if (!STUDIO_UNIT_ASSETS.has(name)) {
+    res.status(404).json({ error: "Studio Unit asset was not found." });
+    return;
+  }
+  const root = studioUnitAssetRoot();
+  if (!root) {
+    res.status(503).json({ error: "Studio Unit assets are not staged in this build." });
+    return;
+  }
+  res.type(
+    name.endsWith(".png")
+      ? "image/png"
+      : name.endsWith(".gltf")
+        ? "model/gltf+json"
+        : "application/json",
+  );
+  res.setHeader("Cache-Control", "private, max-age=3600");
+  res.sendFile(path.join(root, name), (error) => {
+    if (error && !res.headersSent) {
+      res.status(404).json({ error: "Studio Unit asset was not found." });
+    }
+  });
 });
 
 router.get("/full-rezz/engrams/:id/binding", async (req, res) => {

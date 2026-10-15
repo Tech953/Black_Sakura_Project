@@ -8,8 +8,9 @@ archive system.
 - The chat UI can preview and import a FULL_REZZ reference pack into an existing
   writable engram, with explicit profile selection and provenance checks.
 - Speech is requested only for an assistant reply already saved by the host.
-  Imported prompts and history are retained as untrusted reference data; they
-  are not executed to produce a reply.
+  Imported character/context snapshots are retained as untrusted source data;
+  they are not executed to produce a reply. FULL_REZZ conversation-history
+  import/export is not exposed in the host UI yet.
 - Speech uses the local FULL_REZZ worker and fails closed when the verified
   runtime is unavailable. No cloud speech fallback is provided.
 - Per-owner workspace data, generated audio, audit records, and import
@@ -31,9 +32,14 @@ staged. The installer is not executed by this integration. Native Windows
 acceptance testing remains required.
 
 The included `Studio Unit` is an original neutral demonstration asset. It is
-not a likeness or substitute for any bound character. This change does not
-yet connect a 3D presenter, animation controls, or a frame-rate/export
-pipeline to the chat UI.
+not a likeness or substitute for any bound character. The shared browser and
+desktop chat UI can open it beside generated speech: the presenter loads its
+six supplied static PNG views and its skinned glTF model with the authored
+animation clips. The 3D view has preset camera angles and pointer orbit; when
+speech is playing, the selected authored clip follows the audio element clock.
+This is not phoneme alignment, inferred lip sync, or character-specific
+animation. The 2D views remain static, and no movie export or 60/120/240 fps
+render pipeline is connected yet.
 
 F5-TTS model assets are subject to the model's CC-BY-NC-4.0 license; they must
 not be redistributed or used commercially without separate authorization.

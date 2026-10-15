@@ -154,4 +154,24 @@ describe("FULL_REZZ immutable archive guard", () => {
     expect(await response.json()).toEqual({ error: mocks.readOnlyError });
     expect(mocks.reviewGeneration).not.toHaveBeenCalled();
   });
+
+  it("serves allowlisted Studio Unit assets and rejects arbitrary paths", async () => {
+    const view = await fetch(
+      `${base}/full-rezz/studio-unit/assets/front.png`,
+    );
+    expect(view.status).toBe(200);
+    expect(view.headers.get("content-type")).toContain("image/png");
+    expect((await view.arrayBuffer()).byteLength).toBeGreaterThan(0);
+
+    const model = await fetch(
+      `${base}/full-rezz/studio-unit/assets/studio_unit.gltf`,
+    );
+    expect(model.status).toBe(200);
+    expect(model.headers.get("content-type")).toContain("model/gltf+json");
+
+    const arbitraryPath = await fetch(
+      `${base}/full-rezz/studio-unit/assets/%2e%2e%2f..%2fpackage.json`,
+    );
+    expect(arbitraryPath.status).toBe(404);
+  });
 });
