@@ -9,9 +9,11 @@ import type { EngramArtifact } from "@workspace/db";
  * activation, transmissions (including seen state), inquiries, chat, world
  * model, hub movement, simulations, media perception, or generated artifacts.
  * Every engram-associated write route and worker must check this.
+ * No bypass is implemented; any future exception requires multistage
+ * executive confirmation before a change is even considered.
  */
 export const ARCHIVAL_READ_ONLY_ERROR =
-  "This engram is a permanent archival branch preserved for continuity fidelity. It is read-only and cannot be altered.";
+  "This engram is a permanent immutable archival branch. It is read-only; any future exception requires multistage executive confirmation.";
 
 /** True when the given engram id refers to an archival (read-only) branch. */
 export async function isArchivalEngram(engramId: number | null | undefined): Promise<boolean> {

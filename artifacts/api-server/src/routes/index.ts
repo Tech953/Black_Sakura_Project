@@ -22,6 +22,7 @@ import eventsRouter from "./events";
 import downloadRouter from "./download";
 import offlineSyncRouter from "./offline-sync";
 import mobilePushRouter from "./mobile-push";
+import fullRezzRouter from "./full-rezz";
 import { requireAuth } from "../middlewares/require-auth";
 
 const router: IRouter = Router();
@@ -56,5 +57,6 @@ router.use(artifactsRouter);
 router.use(eventsRouter);
 router.use(offlineSyncRouter);
 router.use(mobilePushRouter);
+router.use(fullRezzRouter);
 
 export default router;

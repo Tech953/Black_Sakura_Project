@@ -1,0 +1,132 @@
+en	es	fr	de	pt	it	ru	ja	ko	zh-Hans	ar	hi
+Open workspace	Abrir espacio de trabajo	Ouvrir l’espace de travail	Arbeitsbereich öffnen	Abrir espaço de trabalho	Apri spazio di lavoro	Открыть рабочую папку	作業フォルダーを開く	작업 공간 열기	打开工作区	فتح مساحة العمل	कार्यस्थान खोलें
+Interface language	Idioma de la interfaz	Langue de l’interface	Oberflächensprache	Idioma da interface	Lingua dell’interfaccia	Язык интерфейса	表示言語	인터페이스 언어	界面语言	لغة الواجهة	इंटरफ़ेस की भाषा
+Reply language	Idioma de respuesta	Langue des réponses	Antwortsprache	Idioma da resposta	Lingua delle risposte	Язык ответов	返信言語	응답 언어	回复语言	لغة الرد	उत्तर की भाषा
+Transcription language	Idioma de transcripción	Langue de transcription	Transkriptionssprache	Idioma da transcrição	Lingua della trascrizione	Язык расшифровки	文字起こし言語	음성 인식 언어	转录语言	لغة التفريغ	प्रतिलेखन की भाषा
+Synthesis language	Idioma de síntesis	Langue de synthèse	Synthesesprache	Idioma da síntese	Lingua della sintesi	Язык синтеза	音声合成言語	음성 합성 언어	合成语言	لغة توليد الصوت	वाणी संश्लेषण की भाषा
+Speech engine	Motor de voz	Moteur vocal	Sprachmodul	Motor de voz	Motore vocale	Движок речи	音声エンジン	음성 엔진	语音引擎	محرك الصوت	वाणी इंजन
+Automatic	Automático	Automatique	Automatisch	Automático	Automatico	Автоматически	自動	자동	自动	تلقائي	स्वचालित
+Reference-conditioned voice	Voz condicionada por referencia	Voix conditionnée par référence	Referenzgestützte Stimme	Voz condicionada por referência	Voce basata sul riferimento	Голос по аудиообразцу	参照音声に基づく声	참조 음성 기반 목소리	参考音频条件合成	صوت مبني على العينة المرجعية	संदर्भ आधारित आवाज़
+Generic multilingual voice	Voz multilingüe genérica	Voix multilingue générique	Allgemeine mehrsprachige Stimme	Voz multilíngue genérica	Voce multilingue generica	Обычный многоязычный голос	汎用多言語音声	일반 다국어 음성	通用多语言声音	صوت عام متعدد اللغات	सामान्य बहुभाषी आवाज़
+Language settings	Configuración de idiomas	Paramètres linguistiques	Spracheinstellungen	Configurações de idioma	Impostazioni linguistiche	Настройки языков	言語設定	언어 설정	语言设置	إعدادات اللغة	भाषा सेटिंग
+1 Audio & regions	1 Audio y regiones	1 Audio et segments	1 Audio und Abschnitte	1 Áudio e regiões	1 Audio e segmenti	1 Аудио и фрагменты	1 音声と区間	1 오디오 및 구간	1 音频与片段	1 الصوت والمقاطع	1 ऑडियो और खंड
+2 Profile & sources	2 Perfil y fuentes	2 Profil et sources	2 Profil und Quellen	2 Perfil e fontes	2 Profilo e fonti	2 Профиль и источники	2 プロフィールと資料	2 프로필 및 출처	2 档案与来源	2 الملف والمصادر	2 प्रोफ़ाइल और स्रोत
+3 Generate	3 Generar	3 Générer	3 Erzeugen	3 Gerar	3 Genera	3 Синтез	3 音声生成	3 생성	3 生成	3 التوليد	3 उत्पन्न करें
+4 Review & audit	4 Revisión y auditoría	4 Évaluation et audit	4 Prüfung und Audit	4 Revisão e auditoria	4 Revisione e audit	4 Проверка и аудит	4 評価と監査	4 검토 및 감사	4 审核与审计	4 المراجعة والتدقيق	4 समीक्षा और ऑडिट
+5 Export & backup	5 Exportación y copia	5 Export et sauvegarde	5 Export und Sicherung	5 Exportação e backup	5 Esportazione e backup	5 Экспорт и резервирование	5 エクスポートとバックアップ	5 내보내기 및 백업	5 导出与备份	5 التصدير والنسخ الاحتياطي	5 निर्यात और बैकअप
+User guide	Guía del usuario	Guide utilisateur	Benutzerhandbuch	Guia do usuário	Guida utente	Руководство	利用ガイド	사용자 안내서	用户指南	دليل المستخدم	उपयोगकर्ता मार्गदर्शिका
+Cancel operation	Cancelar operación	Annuler l’opération	Vorgang abbrechen	Cancelar operação	Annulla operazione	Отменить операцию	処理を中止	작업 취소	取消操作	إلغاء العملية	कार्य रद्द करें
+Ready	Listo	Prêt	Bereit	Pronto	Pronto	Готово	準備完了	준비 완료	就绪	جاهز	तैयार
+Import audio / video	Importar audio o vídeo	Importer audio ou vidéo	Audio oder Video importieren	Importar áudio ou vídeo	Importa audio o video	Импорт аудио или видео	音声・動画を読み込む	오디오/비디오 가져오기	导入音频或视频	استيراد الصوت أو الفيديو	ऑडियो या वीडियो आयात करें
+One declared reference voice	Una voz de referencia declarada	Une voix de référence déclarée	Eine deklarierte Referenzstimme	Uma voz de referência declarada	Una voce di riferimento dichiarata	Один заявленный голос	指定した単一の参照音声	지정된 단일 참조 음성	声明的单一参考声音	صوت مرجعي واحد محدد	एक निर्दिष्ट संदर्भ आवाज़
+Per-channel activity	Actividad por canal	Activité par canal	Aktivität je Kanal	Atividade por canal	Attività per canale	Активность по каналам	チャンネル別の発話区間	채널별 활동	按声道活动	نشاط كل قناة	प्रत्येक चैनल की गतिविधि
+Anonymous speaker clusters	Grupos anónimos de hablantes	Groupes de locuteurs anonymes	Anonyme Sprechergruppen	Grupos anônimos de falantes	Gruppi di parlanti anonimi	Анонимные группы говорящих	匿名の話者グループ	익명 화자 군집	匿名说话人聚类	مجموعات متحدثين مجهولة	अनाम वक्ता समूह
+Speakers (0 = automatic)	Hablantes (0 = automático)	Locuteurs (0 = automatique)	Sprecher (0 = automatisch)	Falantes (0 = automático)	Parlanti (0 = automatico)	Говорящие (0 = автоматически)	話者数（0＝自動）	화자 수 (0 = 자동)	说话人数（0 = 自动）	المتحدثون (0 = تلقائي)	वक्ता (0 = स्वचालित)
+Analyze	Analizar	Analyser	Analysieren	Analisar	Analizza	Анализировать	分析	분석	分析	تحليل	विश्लेषण करें
+Transcribe	Transcribir	Transcrire	Transkribieren	Transcrever	Trascrivi	Расшифровать	文字起こし	음성 인식	转录	تفريغ الصوت	प्रतिलेखन करें
+Start	Inicio	Début	Beginn	Início	Inizio	Начало	開始	시작	开始	البداية	आरंभ
+End	Fin	Fin	Ende	Fim	Fine	Конец	終了	끝	结束	النهاية	अंत
+Speaker	Hablante	Locuteur	Sprecher	Falante	Parlante	Говорящий	話者	화자	说话人	المتحدث	वक्ता
+Channel	Canal	Canal	Kanal	Canal	Canale	Канал	チャンネル	채널	声道	القناة	चैनल
+Purity	Pureza	Pureté	Reinheit	Pureza	Purezza	Чистота	純度	순도	纯净度	النقاء	शुद्धता
+Delivery / scene	Interpretación / escena	Interprétation / scène	Vortrag / Szene	Interpretação / cena	Interpretazione / scena	Подача / сцена	話し方・場面	표현/장면	表达／场景	الأداء / المشهد	अभिव्यक्ति / दृश्य
+Exact spoken text	Texto hablado exacto	Texte prononcé exact	Exakter gesprochener Text	Texto falado exato	Testo pronunciato esatto	Точный произнесённый текст	正確な発話内容	정확한 발화 내용	准确的口述文本	النص المنطوق الدقيق	सटीक बोले गए शब्द
+Add region	Añadir región	Ajouter un segment	Abschnitt hinzufügen	Adicionar região	Aggiungi segmento	Добавить фрагмент	区間を追加	구간 추가	添加片段	إضافة مقطع	खंड जोड़ें
+Remove selected	Eliminar selección	Supprimer la sélection	Auswahl entfernen	Remover selecionado	Rimuovi selezione	Удалить выбранное	選択項目を削除	선택 항목 삭제	删除所选项	حذف المحدد	चयन हटाएँ
+Save edits	Guardar cambios	Enregistrer les modifications	Änderungen speichern	Salvar alterações	Salva modifiche	Сохранить правки	編集を保存	편집 저장	保存编辑	حفظ التعديلات	संपादन सहेजें
+Bind selected speaker	Vincular hablante seleccionado	Associer le locuteur sélectionné	Ausgewählten Sprecher zuordnen	Vincular falante selecionado	Associa parlante selezionato	Привязать говорящего	選択した話者を紐づける	선택 화자 연결	绑定所选说话人	ربط المتحدث المحدد	चुने हुए वक्ता को जोड़ें
+Excerpt:	Fragmento:	Extrait :	Ausschnitt:	Trecho:	Estratto:	Фрагмент:	抜粋：	발췌:	节选：	المقتطف:	अंश:
+Channel (-1 = mix)	Canal (-1 = mezcla)	Canal (-1 = mixage)	Kanal (-1 = Mischung)	Canal (-1 = mistura)	Canale (-1 = mix)	Канал (-1 = смесь)	チャンネル（-1＝ミックス）	채널 (-1 = 믹스)	声道（-1 = 混合）	القناة (-1 = مزج)	चैनल (-1 = मिश्रण)
+Conditioned preview	Vista previa procesada	Écoute traitée	Bearbeitete Vorschau	Prévia processada	Anteprima elaborata	Обработанное прослушивание	処理済み音声の試聴	처리된 미리 듣기	处理后试听	معاينة الصوت المعالج	संसाधित पूर्वावलोकन
+Listen	Escuchar	Écouter	Anhören	Ouvir	Ascolta	Прослушать	試聴	듣기	试听	استماع	सुनें
+Quality & spectrum	Calidad y espectro	Qualité et spectre	Qualität und Spektrum	Qualidade e espectro	Qualità e spettro	Качество и спектр	品質とスペクトル	품질 및 스펙트럼	质量与频谱	الجودة والطيف	गुणवत्ता और स्पेक्ट्रम
+Separate two sources	Separar dos fuentes	Séparer deux sources	Zwei Quellen trennen	Separar duas fontes	Separa due sorgenti	Разделить два источника	2つの音源を分離	두 음원 분리	分离两个声源	فصل مصدرين	दो स्रोत अलग करें
+Save processing settings	Guardar ajustes de procesamiento	Enregistrer les paramètres de traitement	Verarbeitungseinstellungen speichern	Salvar configurações de processamento	Salva impostazioni di elaborazione	Сохранить настройки обработки	処理設定を保存	처리 설정 저장	保存处理设置	حفظ إعدادات المعالجة	प्रसंस्करण सेटिंग सहेजें
+New profile	Nuevo perfil	Nouveau profil	Neues Profil	Novo perfil	Nuovo profilo	Новый профиль	新規プロフィール	새 프로필	新建档案	ملف جديد	नई प्रोफ़ाइल
+Name	Nombre	Nom	Name	Nome	Nome	Имя	名前	이름	名称	الاسم	नाम
+Language hint	Idioma de referencia	Langue de référence	Sprachhinweis	Idioma de referência	Lingua di riferimento	Языковая подсказка	参照言語のヒント	참조 언어 힌트	参考语言提示	تلميح لغة العينة	संदर्भ भाषा संकेत
+Notes	Notas	Notes	Notizen	Notas	Note	Заметки	メモ	메모	备注	ملاحظات	टिप्पणियाँ
+Save profile revision	Guardar revisión del perfil	Enregistrer la révision du profil	Profilrevision speichern	Salvar revisão do perfil	Salva revisione del profilo	Сохранить версию профиля	プロフィールの改訂を保存	프로필 개정 저장	保存档案修订	حفظ نسخة الملف	प्रोफ़ाइल संशोधन सहेजें
+Import local source	Importar fuente local	Importer une source locale	Lokale Quelle importieren	Importar fonte local	Importa fonte locale	Импорт локального источника	ローカル資料を読み込む	로컬 출처 가져오기	导入本地来源	استيراد مصدر محلي	स्थानीय स्रोत आयात करें
+Draft from sources	Borrador desde fuentes	Brouillon à partir des sources	Entwurf aus Quellen	Rascunho a partir das fontes	Bozza dalle fonti	Черновик по источникам	資料から下書きを作成	출처에서 초안 작성	根据来源起草	مسودة من المصادر	स्रोतों से मसौदा बनाएँ
+Apply last reviewed draft	Aplicar último borrador revisado	Appliquer le dernier brouillon vérifié	Letzten geprüften Entwurf anwenden	Aplicar último rascunho revisado	Applica ultima bozza verificata	Применить проверенный черновик	確認済みの下書きを適用	검토한 최신 초안 적용	应用最后审核的草稿	تطبيق آخر مسودة مراجعة	अंतिम समीक्षित मसौदा लागू करें
+Read source	Leer fuente	Lire la source	Quelle lesen	Ler fonte	Leggi fonte	Прочитать источник	資料を読む	출처 읽기	阅读来源	قراءة المصدر	स्रोत पढ़ें
+Profile	Perfil	Profil	Profil	Perfil	Profilo	Профиль	プロフィール	프로필	档案	الملف	प्रोफ़ाइल
+Scene / reference style	Escena / estilo de referencia	Scène / style de référence	Szene / Referenzstil	Cena / estilo de referência	Scena / stile di riferimento	Сцена / стиль образца	場面・参照スタイル	장면/참조 스타일	场景／参考风格	المشهد / أسلوب العينة	दृश्य / संदर्भ शैली
+Rate multiplier	Multiplicador de velocidad	Facteur de vitesse	Geschwindigkeitsfaktor	Multiplicador de velocidade	Moltiplicatore di velocità	Множитель скорости	速度倍率	속도 배율	语速倍率	معامل السرعة	गति गुणक
+Seed	Semilla	Graine	Startwert	Semente	Seme	Начальное число	シード	시드	随机种子	البذرة	बीज
+Sampling steps	Pasos de muestreo	Étapes d’échantillonnage	Abtastschritte	Etapas de amostragem	Passi di campionamento	Шаги выборки	サンプリング回数	샘플링 단계	采样步数	خطوات أخذ العينات	नमूना चरण
+Enter 1–800 characters of authored dialogue.	Escribe de 1 a 800 caracteres de diálogo original.	Saisissez 1 à 800 caractères de dialogue original.	1–800 Zeichen eigenen Dialog eingeben.	Digite de 1 a 800 caracteres de diálogo original.	Inserisci da 1 a 800 caratteri di dialogo originale.	Введите 1–800 символов авторского диалога.	創作した台詞を1～800文字で入力してください。	창작 대사를 1~800자로 입력하세요.	输入 1–800 个字符的原创对话。	أدخل حوارًا مؤلفًا من 1 إلى 800 حرف.	मौलिक संवाद के 1–800 अक्षर दर्ज करें।
+Generate test clip	Generar clip de prueba	Générer un extrait de test	Testclip erzeugen	Gerar clipe de teste	Genera clip di prova	Создать тестовый фрагмент	テスト音声を生成	테스트 음성 생성	生成测试音频	توليد مقطع تجريبي	परीक्षण क्लिप बनाएँ
+Listen generated	Escuchar resultado	Écouter le résultat	Ergebnis anhören	Ouvir resultado	Ascolta risultato	Прослушать результат	生成音声を試聴	생성 음성 듣기	试听生成音频	استماع إلى الصوت المولد	उत्पन्न आवाज़ सुनें
+Listen reference	Escuchar referencia	Écouter la référence	Referenz anhören	Ouvir referência	Ascolta riferimento	Прослушать образец	参照音声を試聴	참조 음성 듣기	试听参考音频	استماع إلى العينة	संदर्भ आवाज़ सुनें
+Save WAV	Guardar WAV	Enregistrer WAV	WAV speichern	Salvar WAV	Salva WAV	Сохранить WAV	WAVを保存	WAV 저장	保存 WAV	حفظ WAV	WAV सहेजें
+Recheck words	Comprobar texto de nuevo	Vérifier à nouveau le texte	Text erneut prüfen	Verificar texto novamente	Ricontrolla testo	Повторно проверить текст	発話内容を再検証	발화 내용 재검사	重新检查文本	إعادة فحص النص	शब्द फिर जाँचें
+Likeness	Semejanza	Ressemblance	Ähnlichkeit	Semelhança	Somiglianza	Сходство	類似性	유사성	相似度	التشابه	समानता
+Naturalness	Naturalidad	Naturel	Natürlichkeit	Naturalidade	Naturalezza	Естественность	自然さ	자연스러움	自然度	الطبيعية	स्वाभाविकता
+Delivery	Interpretación	Interprétation	Vortrag	Interpretação	Interpretazione	Подача	話し方	표현	表达	الأداء	अभिव्यक्ति
+Reference Purity	Pureza de referencia	Pureté de la référence	Reinheit der Referenz	Pureza da referência	Purezza del riferimento	Чистота образца	参照音声の純度	참조 음성 순도	参考音频纯净度	نقاء العينة	संदर्भ की शुद्धता
+Canon Boundaries	Límites del canon	Limites du canon	Kanon-Grenzen	Limites do cânone	Limiti del canone	Границы канона	正史との境界	정사 경계	正史边界	حدود القصة الأصلية	मूल कथा की सीमाएँ
+unreviewed	Sin revisar	Non évalué	Ungeprüft	Não revisado	Non valutato	Не проверено	未評価	검토 전	未审核	لم يراجع	समीक्षा लंबित
+acceptable	Aceptable	Acceptable	Akzeptabel	Aceitável	Accettabile	Приемлемо	許容できる	수용 가능	可接受	مقبول	स्वीकार्य
+needs_revision	Requiere cambios	À réviser	Überarbeitung nötig	Precisa de revisão	Da rivedere	Нужна доработка	要修正	수정 필요	需要修订	يحتاج تعديلًا	संशोधन आवश्यक
+Listening observations, scene, changes requested	Observaciones de escucha, escena y cambios solicitados	Observations d’écoute, scène et modifications demandées	Höreindrücke, Szene und gewünschte Änderungen	Observações de escuta, cena e alterações solicitadas	Osservazioni d’ascolto, scena e modifiche richieste	Наблюдения, сцена и нужные изменения	試聴の感想、場面、修正の希望	청취 의견, 장면, 수정 요청	试听观察、场景与修改要求	ملاحظات الاستماع والمشهد والتعديلات المطلوبة	सुनने के अवलोकन, दृश्य और वांछित बदलाव
+Append listening review	Añadir revisión de escucha	Ajouter une évaluation d’écoute	Hörbewertung anhängen	Adicionar avaliação de escuta	Aggiungi valutazione d’ascolto	Добавить оценку прослушивания	試聴評価を追記	청취 검토 추가	追加试听审核	إضافة مراجعة استماع	श्रवण समीक्षा जोड़ें
+high_fidelity	Alta fidelidad	Haute fidélité	Hohe Wiedergabetreue	Alta fidelidade	Alta fedeltà	Высокая точность	高忠実度	고음질	高保真	دقة عالية	उच्च निष्ठा
+standard	Estándar	Standard	Standard	Padrão	Standard	Стандарт	標準	표준	标准	قياسي	मानक
+Export all profile reference packs	Exportar paquetes de referencia	Exporter les packs de référence	Referenzpakete exportieren	Exportar pacotes de referência	Esporta pacchetti di riferimento	Экспортировать наборы образцов	参照パックをエクスポート	참조 패키지 내보내기	导出参考包	تصدير حزم العينات	संदर्भ पैकेज निर्यात करें
+Back up editable workspace	Crear copia del espacio editable	Sauvegarder l’espace modifiable	Bearbeitbaren Arbeitsbereich sichern	Fazer backup do espaço editável	Salva backup dello spazio modificabile	Резервировать рабочую папку	編集可能な作業フォルダーをバックアップ	편집 가능한 작업 공간 백업	备份可编辑工作区	نسخ مساحة العمل القابلة للتحرير	संपादन योग्य कार्यस्थान का बैकअप बनाएँ
+Restore backup into empty folder	Restaurar copia en carpeta vacía	Restaurer dans un dossier vide	Sicherung in leeren Ordner wiederherstellen	Restaurar backup em pasta vazia	Ripristina backup in cartella vuota	Восстановить в пустую папку	空のフォルダーに復元	빈 폴더에 백업 복원	将备份恢复到空文件夹	استعادة النسخة في مجلد فارغ	खाली फ़ोल्डर में बैकअप बहाल करें
+Verify bundled model hashes	Verificar hashes de modelos	Vérifier les empreintes des modèles	Modell-Prüfsummen prüfen	Verificar hashes dos modelos	Verifica hash dei modelli	Проверить хеши моделей	モデルのハッシュを検証	모델 해시 검증	验证模型哈希	التحقق من بصمات النماذج	मॉडल हैश सत्यापित करें
+Operation could not complete	No se pudo completar la operación	L’opération n’a pas abouti	Vorgang konnte nicht abgeschlossen werden	Não foi possível concluir a operação	Impossibile completare l’operazione	Не удалось завершить операцию	処理を完了できませんでした	작업을 완료하지 못했습니다	操作未能完成	تعذر إكمال العملية	कार्य पूरा नहीं हो सका
+Processing failed	Falló el procesamiento	Échec du traitement	Verarbeitung fehlgeschlagen	Falha no processamento	Elaborazione non riuscita	Ошибка обработки	処理に失敗しました	처리 실패	处理失败	فشلت المعالجة	प्रसंस्करण विफल
+Operation result	Resultado	Résultat	Ergebnis	Resultado	Risultato	Результат	処理結果	작업 결과	操作结果	نتيجة العملية	कार्य परिणाम
+Voice name:	Nombre de voz:	Nom de la voix :	Stimmenname:	Nome da voz:	Nome della voce:	Название голоса:	音声の名前：	목소리 이름:	声音名称：	اسم الصوت:	आवाज़ का नाम:
+Import audio or video	Importar audio o vídeo	Importer audio ou vidéo	Audio oder Video importieren	Importar áudio ou vídeo	Importa audio o video	Импорт аудио или видео	音声・動画を読み込む	오디오/비디오 가져오기	导入音频或视频	استيراد الصوت أو الفيديو	ऑडियो या वीडियो आयात करें
+Import local character source	Importar fuente local del personaje	Importer une source locale du personnage	Lokale Charakterquelle importieren	Importar fonte local do personagem	Importa fonte locale del personaggio	Импорт источника о персонаже	キャラクターのローカル資料を読み込む	캐릭터 로컬 자료 가져오기	导入角色本地来源	استيراد مصدر محلي للشخصية	पात्र का स्थानीय स्रोत आयात करें
+Save test clip	Guardar clip de prueba	Enregistrer l’extrait de test	Testclip speichern	Salvar clipe de teste	Salva clip di prova	Сохранить тестовый фрагмент	テスト音声を保存	테스트 클립 저장	保存测试音频	حفظ المقطع التجريبي	परीक्षण क्लिप सहेजें
+Save editable workspace backup	Guardar copia editable	Enregistrer la sauvegarde modifiable	Bearbeitbare Sicherung speichern	Salvar backup editável	Salva backup modificabile	Сохранить редактируемую копию	編集可能なバックアップを保存	편집 가능한 백업 저장	保存可编辑备份	حفظ نسخة قابلة للتحرير	संपादन योग्य बैकअप सहेजें
+Select workspace backup	Seleccionar copia	Sélectionner la sauvegarde	Sicherung auswählen	Selecionar backup	Seleziona backup	Выбрать резервную копию	バックアップを選択	백업 선택	选择工作区备份	اختيار النسخة الاحتياطية	कार्यस्थान बैकअप चुनें
+Select an empty destination	Seleccionar destino vacío	Sélectionner un dossier vide	Leeres Ziel auswählen	Selecionar destino vazio	Seleziona destinazione vuota	Выбрать пустую папку	空の保存先を選択	빈 대상 폴더 선택	选择空目标文件夹	اختيار وجهة فارغة	खाली गंतव्य चुनें
+Save exported reference pack	Guardar paquete exportado	Enregistrer le pack exporté	Exportiertes Referenzpaket speichern	Salvar pacote exportado	Salva pacchetto esportato	Сохранить экспортированный набор	エクスポートした参照パックを保存	내보낸 참조 패키지 저장	保存导出的参考包	حفظ حزمة العينات المصدرة	निर्यात किया संदर्भ पैकेज सहेजें
+Processing {operation} locally…	Procesando {operation} localmente…	Traitement local : {operation}…	{operation} wird lokal verarbeitet…	Processando {operation} localmente…	Elaborazione locale: {operation}…	Локальная обработка: {operation}…	{operation}をローカルで処理中…	{operation} 로컬 처리 중…	正在本地处理 {operation}…	معالجة {operation} محليًا…	{operation} स्थानीय रूप से चल रहा है…
+Worker could not start.	No se pudo iniciar el proceso.	Le processus n’a pas démarré.	Arbeitsprozess konnte nicht starten.	Não foi possível iniciar o processo.	Impossibile avviare il processo.	Не удалось запустить процесс.	処理プロセスを起動できませんでした。	작업 프로세스를 시작하지 못했습니다.	工作进程无法启动。	تعذر بدء عملية المعالجة.	कार्य प्रक्रिया शुरू नहीं हो सकी।
+Task interrupted. Partial generation evidence is retained.	Tarea interrumpida. Se conservan las pruebas parciales.	Tâche interrompue. Les preuves partielles sont conservées.	Aufgabe unterbrochen. Teilnachweise bleiben erhalten.	Tarefa interrompida. Evidências parciais são preservadas.	Operazione interrotta. Le evidenze parziali sono conservate.	Задача прервана. Частичные данные сохранены.	処理が中断されました。途中の記録は保持されます。	작업이 중단되었습니다. 부분 기록은 보존됩니다.	任务已中断，部分生成证据已保留。	توقفت المهمة؛ تم حفظ الأدلة الجزئية.	कार्य बाधित हुआ। आंशिक रिकॉर्ड सुरक्षित हैं।
+Technical details are retained in their original language.	Los detalles técnicos conservan su idioma original.	Les détails techniques restent dans leur langue d’origine.	Technische Details bleiben in der ursprünglichen Sprache.	Detalhes técnicos mantêm o idioma original.	I dettagli tecnici conservano la lingua originale.	Технические данные сохранены на исходном языке.	技術情報は元の言語のまま保持されます。	기술 세부 정보는 원래 언어로 보존됩니다.	技术详情保留其原始语言。	تبقى التفاصيل التقنية بلغتها الأصلية.	तकनीकी विवरण अपनी मूल भाषा में रखे जाते हैं।
+OK	Aceptar	OK	OK	OK	OK	ОК	OK	확인	确定	موافق	ठीक है
+Cancel	Cancelar	Annuler	Abbrechen	Cancelar	Annulla	Отмена	キャンセル	취소	取消	إلغاء	रद्द करें
+Open	Abrir	Ouvrir	Öffnen	Abrir	Apri	Открыть	開く	열기	打开	فتح	खोलें
+Save	Guardar	Enregistrer	Speichern	Salvar	Salva	Сохранить	保存	저장	保存	حفظ	सहेजें
+Close	Cerrar	Fermer	Schließen	Fechar	Chiudi	Закрыть	閉じる	닫기	关闭	إغلاق	बंद करें
+Show Details...	Mostrar detalles…	Afficher les détails…	Details anzeigen…	Mostrar detalhes…	Mostra dettagli…	Подробности…	詳細を表示…	세부 정보 표시…	显示详情…	عرض التفاصيل…	विवरण दिखाएँ…
+Hide Details...	Ocultar detalles…	Masquer les détails…	Details ausblenden…	Ocultar detalhes…	Nascondi dettagli…	Скрыть подробности…	詳細を隠す…	세부 정보 숨기기…	隐藏详情…	إخفاء التفاصيل…	विवरण छिपाएँ…
+Offline	Sin conexión	Hors ligne	Offline	Offline	Offline	Без сети	オフライン	오프라인	离线	دون اتصال	ऑफ़लाइन
+ready_for_listening_review	Listo para revisión de escucha	Prêt pour l’évaluation d’écoute	Bereit zur Hörprüfung	Pronto para revisão de escuta	Pronto per la valutazione d’ascolto	Готово к прослушиванию	試聴評価の準備完了	청취 검토 준비 완료	可进行试听审核	جاهز لمراجعة الاستماع	श्रवण समीक्षा के लिए तैयार
+failed	Fallido	Échec	Fehlgeschlagen	Falhou	Non riuscito	Ошибка	失敗	실패	失败	فشل	विफल
+interrupted	Interrumpido	Interrompu	Unterbrochen	Interrompido	Interrotto	Прервано	中断	중단됨	已中断	متوقف	बाधित
+preparing	Preparando	Préparation	Vorbereitung	Preparando	Preparazione	Подготовка	準備中	준비 중	准备中	التحضير	तैयारी जारी
+generating	Generando	Génération	Erzeugung	Gerando	Generazione	Синтез	生成中	생성 중	生成中	التوليد	उत्पन्न हो रहा है
+Look in:	Buscar en:	Rechercher dans :	Suchen in:	Procurar em:	Cerca in:	Поиск в:	場所：	찾는 위치:	查找范围：	البحث في:	यहाँ खोजें:
+File name:	Nombre de archivo:	Nom du fichier :	Dateiname:	Nome do arquivo:	Nome del file:	Имя файла:	ファイル名：	파일 이름:	文件名：	اسم الملف:	फ़ाइल का नाम:
+Files of type:	Tipo de archivo:	Type de fichier :	Dateityp:	Tipo de arquivo:	Tipo di file:	Тип файлов:	ファイルの種類：	파일 형식:	文件类型：	نوع الملفات:	फ़ाइल का प्रकार:
+All Files (*)	Todos los archivos (*)	Tous les fichiers (*)	Alle Dateien (*)	Todos os arquivos (*)	Tutti i file (*)	Все файлы (*)	すべてのファイル (*)	모든 파일 (*)	所有文件 (*)	كل الملفات (*)	सभी फ़ाइलें (*)
+Back	Atrás	Retour	Zurück	Voltar	Indietro	Назад	戻る	뒤로	返回	رجوع	पीछे
+Parent Directory	Carpeta superior	Dossier parent	Übergeordneter Ordner	Pasta superior	Cartella superiore	Родительская папка	親フォルダー	상위 폴더	上级文件夹	المجلد الأعلى	मूल फ़ोल्डर
+Create New Folder	Crear carpeta	Créer un dossier	Neuen Ordner erstellen	Criar pasta	Crea cartella	Создать папку	フォルダーを作成	새 폴더 만들기	新建文件夹	إنشاء مجلد	नया फ़ोल्डर बनाएँ
+List View	Vista de lista	Affichage en liste	Listenansicht	Exibir lista	Vista elenco	Список	一覧表示	목록 보기	列表视图	عرض قائمة	सूची दृश्य
+Detail View	Vista detallada	Affichage détaillé	Detailansicht	Exibir detalhes	Vista dettagli	Подробности	詳細表示	자세히 보기	详细视图	عرض تفصيلي	विस्तृत दृश्य
+Type	Tipo	Type	Typ	Tipo	Tipo	Тип	種類	유형	类型	النوع	प्रकार
+Size	Tamaño	Taille	Größe	Tamanho	Dimensione	Размер	サイズ	크기	大小	الحجم	आकार
+Date Modified	Fecha de modificación	Date de modification	Änderungsdatum	Data de modificação	Data di modifica	Дата изменения	更新日時	수정한 날짜	修改日期	تاريخ التعديل	संशोधन तिथि
+Folder	Carpeta	Dossier	Ordner	Pasta	Cartella	Папка	フォルダー	폴더	文件夹	مجلد	फ़ोल्डर
+Computer	Equipo	Ordinateur	Computer	Computador	Computer	Компьютер	コンピューター	컴퓨터	计算机	الحاسوب	कंप्यूटर
+Yes	Sí	Oui	Ja	Sim	Sì	Да	はい	예	是	نعم	हाँ
+No	No	Non	Nein	Não	No	Нет	いいえ	아니요	否	لا	नहीं
+Character companion	Compañero de personaje	Compagnon de personnage	Charakterbegleiter	Companheiro de personagem	Compagno personaggio	Персонаж-компаньон	キャラクターコンパニオン	캐릭터 동반자	角色伙伴	رفيق الشخصية	चरित्र साथी
+Import chat log	Importar chat	Importer le chat	Chat importieren	Importar conversa	Importa chat	Импорт чата	チャットを読み込む	채팅 가져오기	导入聊天记录	استيراد المحادثة	चैट आयात करें
+Send and speak	Enviar y hablar	Envoyer et parler	Senden und sprechen	Enviar e falar	Invia e parla	Отправить и озвучить	送信して読み上げる	전송 및 음성 생성	发送并朗读	إرسال ونطق	भेजें और बोलें
+Open companion window	Abrir ventana del compañero	Ouvrir la fenêtre du compagnon	Begleiterfenster öffnen	Abrir janela do companheiro	Apri finestra del compagno	Открыть окно компаньона	コンパニオンウィンドウを開く	동반자 창 열기	打开伙伴窗口	فتح نافذة الرفيق	साथी विंडो खोलें
+2D authored views	Vistas 2D creadas	Vues 2D créées	Erstellte 2D-Ansichten	Vistas 2D criadas	Viste 2D create	Авторские виды 2D	制作済み2Dビュー	제작된 2D 뷰	已制作的2D视图	مناظر ثنائية الأبعاد مؤلفة	निर्मित 2D दृश्य
+3D surfaces	Superficies 3D	Surfaces 3D	3D-Oberflächen	Superfícies 3D	Superfici 3D	Поверхности 3D	3Dサーフェス	3D 표면	3D表面	أسطح ثلاثية الأبعاد	3D सतहें
+Export companion movie	Exportar película del personaje	Exporter le film du personnage	Charakterfilm exportieren	Exportar filme do personagem	Esporta filmato del personaggio	Экспорт фильма персонажа	キャラクター動画を書き出す	캐릭터 동영상 내보내기	导出角色影片	تصدير فيلم الشخصية	चरित्र वीडियो निर्यात करें
+Animation comparison	Comparación de animación	Comparaison des animations	Animationsvergleich	Comparação de animações	Confronto animazioni	Сравнение анимации	アニメーション比較	애니메이션 비교	动画对比	مقارنة الرسوم المتحركة	एनीमेशन तुलना

@@ -97,6 +97,13 @@ const resourcesDir = app.isPackaged
 const serverEntry = path.join(resourcesDir, "server", "index.mjs");
 const webDist = path.join(resourcesDir, "web");
 const migrationsDir = path.join(resourcesDir, "drizzle");
+const fullRezzRoot = path.join(resourcesDir, "full-rezz");
+const fullRezzPython = path.join(
+  fullRezzRoot,
+  "runtime",
+  "python",
+  "python.exe",
+);
 
 // Bundled ffmpeg/ffprobe (staged by prepare-resources.mjs, shipped via
 // extraResources). The embedded server spawns these for the VIDEO modality, so
@@ -704,6 +711,8 @@ function buildServerEnv(settings: Settings, port: number): NodeJS.ProcessEnv {
     PGLITE_DATA_DIR: userDataPath("db"),
     DRIZZLE_MIGRATIONS_DIR: migrationsDir,
     WEB_DIST: webDist,
+    FULL_REZZ_ROOT: fullRezzRoot,
+    FULL_REZZ_WORKSPACE_DIR: userDataPath("full-rezz"),
     // LAN access is opt-in: when enabled the embedded api-server listens on
     // all interfaces so the ENGRAM mobile app can connect from the same
     // network. The bundled llama-server always stays loopback-only.
@@ -718,6 +727,7 @@ function buildServerEnv(settings: Settings, port: number): NodeJS.ProcessEnv {
   // the var unset so the extractor falls back to a system install on PATH.
   if (existsSync(ffmpegBin)) env.FFMPEG_PATH = ffmpegBin;
   if (existsSync(ffprobeBin)) env.FFPROBE_PATH = ffprobeBin;
+  if (existsSync(fullRezzPython)) env.FULL_REZZ_PYTHON = fullRezzPython;
   return env;
 }
 
