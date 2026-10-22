@@ -5,7 +5,9 @@
  * ENGRAM AI Persona Framework API
  * OpenAPI spec version: 0.1.0
  */
+import type { MediaAssetFailureKind } from './mediaAssetFailureKind';
 import type { MediaAssetModality } from './mediaAssetModality';
+import type { MediaAssetResultState } from './mediaAssetResultState';
 import type { MediaAssetStatus } from './mediaAssetStatus';
 
 export interface MediaAsset {
@@ -19,6 +21,8 @@ export interface MediaAsset {
   modality: MediaAssetModality;
   sizeBytes: number;
   status: MediaAssetStatus;
+  /** Whether this asset has no derived result, a partial result, or a complete result. */
+  resultState: MediaAssetResultState;
   /** @nullable */
   summary: string | null;
   /** @nullable */
@@ -27,6 +31,11 @@ export interface MediaAsset {
   transcript: string | null;
   /** @nullable */
   error: string | null;
+  /**
+     * Stable category for known media processing failures and recovery.
+     * @nullable
+     */
+  failureKind: MediaAssetFailureKind;
   observationCount: number;
   /** @nullable */
   startedAt: string | null;

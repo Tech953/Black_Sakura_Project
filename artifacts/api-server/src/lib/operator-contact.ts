@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { conversations, messages } from "@workspace/db/schema";
 import type { Engram, EngramMessage, Message } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { attemptHumanContact } from "./human-contact";
 import type { Capabilities } from "./engram-policy";
 import { publishEvent } from "./events";
@@ -36,11 +36,11 @@ export interface OperatorContactOutcome {
  * thread carries `engramId` so the existing chat route answers in that engram's
  * persona on any follow-up.
  */
-export async function ensureEngramConversation(engram: Engram): Promise<{ id: number }> {
+export async function ensureEngramConversation(engram: Engram, ownerId: string): Promise<{ id: number }> {
   const [existing] = await db
     .select({ id: conversations.id })
     .from(conversations)
-    .where(eq(conversations.engramId, engram.id))
+    .where(and(eq(conversations.engramId, engram.id), eq(conversations.ownerId, ownerId)))
     .orderBy(desc(conversations.createdAt))
     .limit(1);
   if (existing) return existing;
@@ -48,6 +48,7 @@ export async function ensureEngramConversation(engram: Engram): Promise<{ id: nu
   const [created] = await db
     .insert(conversations)
     .values({
+      ownerId,
       title: `${engram.name} — direct line`,
       mode: "companion",
       engramId: engram.id,
@@ -69,6 +70,7 @@ export async function ensureEngramConversation(engram: Engram): Promise<{ id: nu
  * route emits, so the chat UI appends/refetches identically for both.
  */
 export async function attemptOperatorContact(opts: {
+  ownerId: string;
   engram: Engram;
   capabilities: Capabilities;
   charge: number;
@@ -76,10 +78,11 @@ export async function attemptOperatorContact(opts: {
   target: ContactTarget;
   now?: Date;
 }): Promise<OperatorContactOutcome> {
-  const { engram, capabilities, charge, content, target } = opts;
+  const { ownerId, engram, capabilities, charge, content, target } = opts;
   const now = opts.now ?? new Date();
 
   const { message, delivered } = await attemptHumanContact({
+    ownerId,
     engram,
     capabilities,
     charge,
@@ -91,7 +94,7 @@ export async function attemptOperatorContact(opts: {
   let chatMessage: Message | null = null;
 
   if (target === "chatConversation" && message.status !== "blocked") {
-    const conv = await ensureEngramConversation(engram);
+    const conv = await ensureEngramConversation(engram, ownerId);
     const [row] = await db
       .insert(messages)
       .values({ conversationId: conv.id, role: "assistant", content })
@@ -101,6 +104,7 @@ export async function attemptOperatorContact(opts: {
 
     publishEvent({
       type: "chat.self_initiated",
+      ownerId,
       engramId: engram.id,
       conversationId: conv.id,
       data: {
@@ -112,6 +116,7 @@ export async function attemptOperatorContact(opts: {
     });
     publishEvent({
       type: "message.created",
+      ownerId,
       engramId: engram.id,
       conversationId: conv.id,
       data: row,

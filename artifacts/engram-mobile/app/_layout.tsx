@@ -1,4 +1,12 @@
 import {
+  beginLaunchCrashMonitoring,
+  clearPreviousCrash,
+  markLaunchReady,
+  persistFatalCrash,
+  updateLaunchBreadcrumb,
+  type CrashReport,
+} from "@/lib/crash-log";
+import {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
@@ -15,31 +23,182 @@ import {
   Rajdhani_700Bold,
 } from "@expo-google-fonts/rajdhani";
 import { useFonts } from "expo-font";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { reloadAppAsync } from "expo";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Redirect, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { AppState, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ClerkLoaded, ClerkProvider, useAuth, useUser } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 
+import "@/lib/i18n";
+import { i18nReady } from "@/lib/i18n";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PreviousCrashScreen } from "@/components/PreviousCrashScreen";
+import { MobilePushNotifications } from "@/components/MobilePushNotifications";
 import { EngramProvider } from "@/context/engram-context";
-import { setBaseUrl } from "@workspace/api-client-react";
+import {
+  setAuthTokenGetter,
+  setBaseUrl,
+  setLocalHandler,
+} from "@workspace/api-client-react";
+import { DEFAULT_SERVER_URL, resolveServerUrl } from "@/lib/server-url";
+import {
+  isOfflineMode,
+  loadOfflineMode,
+  subscribeOfflineMode,
+} from "@/lib/offline/mode";
+import { offlineHandler } from "@/lib/offline/handlers";
+import { syncOfflineData } from "@/lib/offline/sync";
+import { setOfflineStoreAccount } from "@/lib/offline/store";
+import { queryClient } from "@/lib/query-client";
+import { isAccountReadyFor } from "@/lib/account-query-scope";
+import {
+  e2eAuthBypass,
+  useE2EAuthUserId,
+} from "@/lib/e2e-auth";
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
+
+// Apply the built-in default synchronously, then swap in any persisted
+// override (e.g. the desktop app's LAN address) as soon as storage resolves —
+// before fonts finish loading, so first queries already hit the right server.
+setBaseUrl(DEFAULT_SERVER_URL);
+const serverUrlReady = Promise.all([
+  resolveServerUrl().then((url) => setBaseUrl(url)),
+  // On-device offline mode: when active, all API calls are served locally.
+  loadOfflineMode().then((on) => setLocalHandler(on ? offlineHandler : null)),
+]).catch(() => {});
+
+subscribeOfflineMode((on) => {
+  setLocalHandler(on ? offlineHandler : null);
+  // Entering offline mode changes the backing store immediately. When
+  // reconnecting, the settings screen clears only after sync succeeds so local
+  // history remains visible if the server is unavailable.
+  if (on) queryClient.clear();
+});
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient();
-
 function RootLayoutNav() {
+  const { t } = useTranslation("mobile");
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
+    <Stack screenOptions={{ headerBackTitle: t("nav.back") }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="server-settings"
+        options={{ presentation: "modal", title: t("nav.server") }}
+      />
     </Stack>
+  );
+}
+
+/**
+ * No query or offline sync work runs until the active Clerk account has been
+ * selected. This makes account transitions an isolation boundary rather than
+ * merely a visual redirect.
+ */
+function AuthenticatedApp() {
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
+  const [readyAccountId, setReadyAccountId] = React.useState<string | null>(null);
+  const e2eUserId = useE2EAuthUserId();
+  const userId = isSignedIn ? user?.id ?? null : null;
+  const effectiveSignedIn = e2eAuthBypass || isSignedIn;
+  const effectiveUserId = e2eAuthBypass ? e2eUserId : userId;
+  const accountReady = isAccountReadyFor(effectiveUserId, readyAccountId);
+  const accountTokenDependency = e2eAuthBypass ? null : getToken;
+
+  useEffect(() => {
+    let active = true;
+    setReadyAccountId(null);
+    setAuthTokenGetter(null);
+    queryClient.clear();
+
+    if (!effectiveUserId) return () => {
+      active = false;
+    };
+
+    void setOfflineStoreAccount(effectiveUserId)
+      .then(() => {
+        if (!active) return;
+        setAuthTokenGetter(
+          e2eAuthBypass ? () => "e2e-history-token" : () => getToken(),
+        );
+        setReadyAccountId(effectiveUserId);
+      })
+      .catch((error) => {
+        // Fail closed: a store-selection failure must not expose an earlier
+        // account's local state or permit its queued history to synchronize.
+        console.error("Unable to isolate offline data for this account:", error);
+      });
+
+    return () => {
+      active = false;
+      setAuthTokenGetter(null);
+      queryClient.clear();
+    };
+  }, [accountTokenDependency, effectiveUserId]);
+
+  useEffect(() => {
+    if (!accountReady || !effectiveUserId) return;
+    const retryPendingHistory = () => {
+      if (isOfflineMode()) return;
+      void syncOfflineData()
+        .then((result) => {
+          if (
+            result.syncedRows > 0 &&
+            result.blockedRows === undefined &&
+            !isOfflineMode()
+          ) {
+            queryClient.clear();
+          }
+        })
+        .catch(() => {
+          // Pending rows remain isolated in this user's database for a later retry.
+        });
+    };
+    retryPendingHistory();
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") retryPendingHistory();
+    });
+    const retryTimer = setInterval(retryPendingHistory, 30_000);
+    return () => {
+      appStateSubscription.remove();
+      clearInterval(retryTimer);
+    };
+  }, [accountReady, effectiveUserId]);
+
+  if (!isLoaded) return null;
+  if (!effectiveSignedIn) {
+    return (
+      <>
+        <RootLayoutNav />
+        <Redirect href="/(auth)/sign-in" />
+      </>
+    );
+  }
+  if (!effectiveUserId || !accountReady) return null;
+
+  return (
+    <EngramProvider key={effectiveUserId} accountId={effectiveUserId!}>
+      <GestureHandlerRootView>
+        <KeyboardProvider>
+          <StatusBar style="light" />
+          <MobilePushNotifications accountReady={accountReady} />
+          <RootLayoutNav />
+        </KeyboardProvider>
+      </GestureHandlerRootView>
+    </EngramProvider>
   );
 }
 
@@ -57,28 +216,130 @@ export default function RootLayout() {
     JetBrainsMono_700Bold,
   });
 
+  const [serverReady, setServerReady] = React.useState(false);
+  const [languageReady, setLanguageReady] = React.useState(false);
+  const [crashStateLoaded, setCrashStateLoaded] = React.useState(false);
+  const [previousCrash, setPreviousCrash] =
+    React.useState<CrashReport | null>(null);
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    let active = true;
+    void beginLaunchCrashMonitoring()
+      .then((report) => {
+        if (active) setPreviousCrash(report);
+      })
+      .finally(() => {
+        if (active) setCrashStateLoaded(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    serverUrlReady.finally(() => setServerReady(true));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void i18nReady.then(async (restartRequired) => {
+      if (!active) return;
+      if (restartRequired && Platform.OS !== "web") {
+        try {
+          await reloadAppAsync();
+          return;
+        } catch (error) {
+          console.error("Failed to restart after changing layout direction:", error);
+        }
+      }
+      if (active) setLanguageReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      (fontsLoaded || fontError) &&
+      crashStateLoaded &&
+      languageReady &&
+      (previousCrash || serverReady)
+    ) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [
+    crashStateLoaded,
+    fontsLoaded,
+    fontError,
+    languageReady,
+    previousCrash,
+    serverReady,
+  ]);
 
-  if (!fontsLoaded && !fontError) return null;
+  useEffect(() => {
+    if (
+      !crashStateLoaded ||
+      !languageReady ||
+      previousCrash ||
+      !serverReady ||
+      (!fontsLoaded && !fontError)
+    ) {
+      return;
+    }
+    void updateLaunchBreadcrumb("ui-rendered");
+    const timer = setTimeout(() => {
+      void markLaunchReady();
+    }, 1_000);
+    return () => clearTimeout(timer);
+  }, [
+    crashStateLoaded,
+    fontsLoaded,
+    fontError,
+    languageReady,
+    previousCrash,
+    serverReady,
+  ]);
+
+  if ((!fontsLoaded && !fontError) || !crashStateLoaded || !languageReady) return null;
+
+  if (previousCrash) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <PreviousCrashScreen
+          report={previousCrash}
+          onContinue={() => {
+            void clearPreviousCrash().finally(() => setPreviousCrash(null));
+          }}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (!serverReady) return null;
 
   return (
-    <SafeAreaProvider>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <EngramProvider>
-            <GestureHandlerRootView>
-              <KeyboardProvider>
-                <StatusBar style="light" />
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </EngramProvider>
-        </QueryClientProvider>
-      </ErrorBoundary>
-    </SafeAreaProvider>
+    <ClerkProvider
+      publishableKey={publishableKey}
+      tokenCache={tokenCache}
+      proxyUrl={proxyUrl}
+    >
+      <ClerkLoaded>
+        <SafeAreaProvider>
+          <ErrorBoundary
+            onError={(error, componentStack) => {
+              void persistFatalCrash(error, {
+                source: "react-boundary",
+                componentStack,
+              });
+            }}
+          >
+            <QueryClientProvider client={queryClient}>
+              <AuthenticatedApp />
+            </QueryClientProvider>
+          </ErrorBoundary>
+        </SafeAreaProvider>
+      </ClerkLoaded>
+    </ClerkProvider>
   );
 }

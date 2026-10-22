@@ -7,9 +7,21 @@
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:browser:chat": "node scripts/chat-browser-regression.mjs",
+    "test:browser:chat:real-clerk": "ENGRAM_BROWSER_REAL_CLERK=true node scripts/chat-browser-regression.mjs",
+    "test:browser:analytics": "node scripts/run-analytics-browser.mjs",
+    "test:browser:download": "node scripts/download-browser-regression.mjs",
+    "test:browser:update-banner-accessibility": "node ../desktop/scripts/update-banner-accessibility-browser.mjs",
+    "test:browser:settings": "node scripts/settings-browser-regression.mjs",
+    "test:browser:simulations": "node scripts/run-simulations-browser.mjs",
+    "test:browser:simulations:real-clerk": "ENGRAM_BROWSER_REAL_CLERK=true node scripts/run-simulations-browser.mjs",
+    "test:browser:terminal-digest": "node scripts/run-terminal-digest-browser.mjs",
+    "test:browser:group-chat": "node scripts/group-chat-browser-regression.mjs"
   },
   "devDependencies": {
+    "@clerk/react": "^6.15.1",
+    "@clerk/themes": "^2.4.57",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/rajdhani": "^5.2.7",
@@ -50,8 +62,10 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@types/three": "0.180.0",
     "@vitejs/plugin-react": "catalog:",
     "@workspace/api-client-react": "workspace:*",
+    "@workspace/i18n": "workspace:*",
     "@workspace/integrations-openai-ai-react": "workspace:*",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
@@ -59,6 +73,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "catalog:",
+    "i18next": "^25.4.2",
     "input-otp": "^1.4.2",
     "lucide-react": "catalog:",
     "next-themes": "^0.4.6",
@@ -66,6 +81,7 @@
     "react-day-picker": "^9.11.1",
     "react-dom": "catalog:",
     "react-hook-form": "^7.55.0",
+    "react-i18next": "^15.7.3",
     "react-icons": "^5.4.0",
     "react-resizable-panels": "^2.1.7",
     "recharts": "^2.15.2",
@@ -77,5 +93,10 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "docx": "^9.7.1",
+    "pdf-lib": "^1.17.1",
+    "three": "0.180.0"
   }
 }

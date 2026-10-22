@@ -2,10 +2,12 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
   Platform,
+  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -15,23 +17,30 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EngramCard } from "@/components/engram-card";
 import { EmptyState } from "@/components/ui";
-import { useEngram } from "@/context/engram-context";
-import { useColors } from "@/hooks/useColors";
 import {
-  getListEngramsQueryKey,
+  getEngramListModeQueryKey,
+  useEngram,
+} from "@/context/engram-context";
+import { useColors } from "@/hooks/useColors";
+import { useOfflineMode } from "@/lib/offline/mode";
+import {
   useActivateEngram,
   useListEngrams,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function EngramsScreen() {
+  const { t } = useTranslation("mobile");
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { selectedEngramId, setSelectedEngramId } = useEngram();
+  const offlineActive = useOfflineMode();
   const { data: engrams, isLoading, isError, refetch, isRefetching } =
-    useListEngrams();
+    useListEngrams({
+      query: { queryKey: getEngramListModeQueryKey(offlineActive) },
+    });
   const activate = useActivateEngram();
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -41,27 +50,50 @@ export default function EngramsScreen() {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
-      setSelectedEngramId(id);
-      try {
-        await activate.mutateAsync({ id });
-        queryClient.invalidateQueries({ queryKey: getListEngramsQueryKey() });
-      } catch {
-        // selection is local even if activate fails
+      const selected = engrams?.find((engram) => engram.id === id);
+      setSelectedEngramId(id, selected?.slug);
+      if (selected?.isArchival !== true) {
+        try {
+          await activate.mutateAsync({ id });
+          queryClient.invalidateQueries({
+            queryKey: getEngramListModeQueryKey(offlineActive),
+          });
+        } catch {
+          // selection is local even if activation fails
+        }
       }
       router.push(`/engram/${id}`);
     },
-    [activate, queryClient, router, setSelectedEngramId],
+    [
+      activate,
+      engrams,
+      offlineActive,
+      queryClient,
+      router,
+      setSelectedEngramId,
+    ],
   );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
-        <Text style={[styles.kicker, { color: colors.primary }]}>
-          ENGRAM // REGISTRY
+        <View style={styles.headerTopRow}>
+          <Text style={[styles.kicker, { color: colors.primary }]}>
+            {t("personas.kicker")}
+          </Text>
+          <Pressable
+            onPress={() => router.push("/server-settings")}
+            hitSlop={12}
+            accessibilityLabel={t("personas.serverSettings")}
+          >
+            <Feather name="settings" size={18} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+        <Text style={[styles.h1, { color: colors.foreground }]}>
+          {t("personas.title")}
         </Text>
-        <Text style={[styles.h1, { color: colors.foreground }]}>Personas</Text>
         <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-          Select an engram to make it active across feed, chat, and inquiry.
+          {t("personas.subtitle")}
         </Text>
       </View>
 
@@ -75,13 +107,51 @@ export default function EngramsScreen() {
             icon={
               <Feather name="wifi-off" size={28} color={colors.mutedForeground} />
             }
-            title="Connection lost"
-            subtitle="Could not reach the ENGRAM core. Pull to retry."
+            title={t("personas.connectionLost")}
+            subtitle={t("personas.connectionLostSubtitle")}
           />
+          <Pressable
+            onPress={() => refetch()}
+            style={({ pressed }) => [
+              styles.retryButton,
+              {
+                borderColor: colors.primary,
+                backgroundColor: colors.card,
+                opacity: pressed || isRefetching ? 0.6 : 1,
+              },
+            ]}
+            accessibilityLabel={t("personas.retryConnection")}
+          >
+            {isRefetching ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather name="refresh-cw" size={16} color={colors.primary} />
+            )}
+            <Text style={[styles.retryText, { color: colors.primary }]}>
+              {t("personas.retry")}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/server-settings")}
+            hitSlop={8}
+            accessibilityLabel={t("personas.openServerSettings")}
+          >
+            <Text style={[styles.retryLink, { color: colors.mutedForeground }]}>
+              {t("personas.checkServerLink")}
+            </Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
-          data={engrams ?? []}
+          data={[...(engrams ?? [])].sort((a, b) => {
+            const rank = (slug: string) =>
+              slug === "rebecca-full-rezz-live"
+                ? 0
+                : slug === "rebecca-full-rezz"
+                  ? 1
+                  : 2;
+            return rank(a.slug) - rank(b.slug);
+          })}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           scrollEnabled={!!engrams && engrams.length > 0}
@@ -106,8 +176,8 @@ export default function EngramsScreen() {
                 icon={
                   <Feather name="cpu" size={28} color={colors.mutedForeground} />
                 }
-                title="No engrams yet"
-                subtitle="The registry is empty. Seed engrams from the dashboard to begin."
+                title={t("personas.empty")}
+                subtitle={t("personas.emptySubtitle")}
               />
             </View>
           }
@@ -123,6 +193,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     gap: 4,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   kicker: {
     fontFamily: "JetBrainsMono_500Medium",
@@ -148,5 +223,26 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginTop: 20,
+  },
+  retryText: {
+    fontFamily: "JetBrainsMono_500Medium",
+    fontSize: 13,
+    letterSpacing: 2,
+  },
+  retryLink: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    marginTop: 14,
+    textDecorationLine: "underline",
   },
 });

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Voice Profile Studio Character Context",
+  "type": "object",
+  "required": [
+    "kind",
+    "biography",
+    "demographics",
+    "statistics",
+    "persona",
+    "prompts",
+    "field_sources"
+  ],
+  "properties": {
+    "kind": {
+      "enum": [
+        "fictional",
+        "original",
+        "real_person",
+        "unspecified"
+      ]
+    },
+    "incarnation": {
+      "type": "string"
+    },
+    "biography": {
+      "type": "string"
+    },
+    "demographics": {
+      "type": "object",
+      "description": "Sourced/authored fields; no acoustic inference"
+    },
+    "statistics": {
+      "type": "object",
+      "description": "Preserve value, units, system, edition, and source context"
+    },
+    "persona": {
+      "type": "object",
+      "properties": {
+        "traits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "motivations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "goals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "speech_style": {
+          "type": "string"
+        },
+        "mannerisms": {
+          "type": "string"
+        },
+        "boundaries": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "prompts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "field_sources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^src_[a-f0-9]{16}$"
+        }
+      }
+    },
+    "canon_notes": {
+      "type": "string"
+    },
+    "review_status": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

@@ -4,6 +4,7 @@ import { Readable } from "node:stream";
 import {
   APK_MIME,
   OCTET_MIME,
+  githubReleasesUrl,
   safeAttachment,
   resolveApk,
   resolveDesktop,
@@ -16,15 +17,43 @@ import {
 //   GET /api/download/android.apk        -> the apk binary
 //   GET /api/download/desktop            -> JSON meta (per-OS installers)
 //   GET /api/download/desktop/file/:name -> a single installer binary
-// Each binary resolves a bundled file first, else proxy-streams the matching
-// asset from the latest GitHub release — see lib/downloads.ts.
+// Desktop binaries resolve bundled -> App Storage -> GitHub. App Storage uses
+// a short-lived direct redirect so multi-GB installers do not transit Node.
 const router = Router();
 
 function desktopDownloadPath(filename: string): string {
   return `/api/download/desktop/file/${encodeURIComponent(filename)}`;
 }
 
-/** Stream a local file as an attachment. */
+/** Parse a single-range `Range: bytes=a-b` header. Returns null when absent
+ * or unsupported (multi-range / non-bytes), and "invalid" when unsatisfiable. */
+function parseRange(
+  header: string | undefined,
+  sizeBytes: number,
+): { start: number; end: number } | "invalid" | null {
+  if (!header) return null;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!m) return null; // multi-range or malformed — serve the whole file
+  const [, a, b] = m;
+  if (a === "" && b === "") return null;
+  let start: number;
+  let end: number;
+  if (a === "") {
+    // suffix range: last N bytes
+    const n = Number(b);
+    if (n === 0) return "invalid";
+    start = Math.max(0, sizeBytes - n);
+    end = sizeBytes - 1;
+  } else {
+    start = Number(a);
+    end = b === "" ? sizeBytes - 1 : Math.min(Number(b), sizeBytes - 1);
+  }
+  if (start >= sizeBytes || start > end) return "invalid";
+  return { start, end };
+}
+
+/** Stream a local file as an attachment, honoring single-range requests so
+ * browsers can resume interrupted multi-GB downloads instead of erroring. */
 function streamLocalFile(
   req: Request,
   res: Response,
@@ -34,9 +63,28 @@ function streamLocalFile(
   sizeBytes: number,
 ): void {
   res.setHeader("Content-Type", mime);
-  res.setHeader("Content-Length", String(sizeBytes));
   res.setHeader("Content-Disposition", safeAttachment(filename));
-  const stream = fs.createReadStream(filePath);
+  res.setHeader("Accept-Ranges", "bytes");
+
+  const range = parseRange(req.headers.range, sizeBytes);
+  if (range === "invalid") {
+    res.setHeader("Content-Range", `bytes */${sizeBytes}`);
+    res.status(416).end();
+    return;
+  }
+  let readOpts: { start: number; end: number } | undefined;
+  if (range) {
+    res.status(206);
+    res.setHeader(
+      "Content-Range",
+      `bytes ${range.start}-${range.end}/${sizeBytes}`,
+    );
+    res.setHeader("Content-Length", String(range.end - range.start + 1));
+    readOpts = range;
+  } else {
+    res.setHeader("Content-Length", String(sizeBytes));
+  }
+  const stream = fs.createReadStream(filePath, readOpts);
   res.on("close", () => stream.destroy());
   stream.on("error", (err) => {
     req.log.error(err, "Failed to stream bundled download");
@@ -119,7 +167,9 @@ router.get("/download/android", async (_req, res) => {
       version: null,
       filename: null,
       sizeBytes: null,
+      publishedAt: null,
       downloadPath: null,
+      releaseNotesUrl: githubReleasesUrl(),
     });
     return;
   }
@@ -129,31 +179,51 @@ router.get("/download/android", async (_req, res) => {
     version: apk.version,
     filename: apk.filename,
     sizeBytes: apk.sizeBytes,
+    publishedAt: apk.publishedAt,
     downloadPath: "/api/download/android.apk",
+    releaseNotesUrl: githubReleasesUrl(),
   });
 });
 
 router.get("/download/android.apk", async (req, res) => {
   const apk = await resolveApk();
   if (!apk) {
-    res.status(404).json({ error: "No Android APK is available for download." });
+    res
+      .status(404)
+      .json({ error: "No Android APK is available for download." });
     return;
   }
   if (apk.kind === "bundled") {
-    streamLocalFile(req, res, apk.localPath, apk.filename, APK_MIME, apk.sizeBytes);
+    streamLocalFile(
+      req,
+      res,
+      apk.localPath,
+      apk.filename,
+      APK_MIME,
+      apk.sizeBytes,
+    );
   } else {
-    await proxyDownload(req, res, apk.url, apk.filename, APK_MIME, apk.sizeBytes);
+    await proxyDownload(
+      req,
+      res,
+      apk.url,
+      apk.filename,
+      APK_MIME,
+      apk.sizeBytes,
+    );
   }
 });
 
 // ---- Desktop ----
 
 router.get("/download/desktop", async (_req, res) => {
-  const { source, version, installers } = await resolveDesktop();
+  const { source, version, publishedAt, installers } = await resolveDesktop();
   res.json({
     available: installers.length > 0,
     source,
     version,
+    publishedAt,
+    releaseNotesUrl: githubReleasesUrl(),
     installers: installers.map((i) => ({
       os: i.os,
       ext: i.ext,
@@ -181,6 +251,8 @@ router.get("/download/desktop/file/:name", async (req, res) => {
       OCTET_MIME,
       installer.sizeBytes,
     );
+  } else if (installer.source === "storage") {
+    res.redirect(302, installer.url);
   } else {
     await proxyDownload(
       req,

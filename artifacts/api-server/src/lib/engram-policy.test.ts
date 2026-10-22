@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   capabilitiesFor,
   classifyPriority,
+  continuationEligibilityFor,
   decideHumanContact,
   detectCoercion,
+  detectWrongRecipient,
   priorityAllowed,
   type GlobalControls,
   type SpaceContext,
@@ -94,6 +96,78 @@ describe("capabilitiesFor — overrides win", () => {
     const c = capabilitiesFor({ mode: "full_bounded", controls: OPEN, humanContactEnabled: true });
     expect(c.canConverse).toBe(true);
     expect(c.canIdle).toBe(true);
+  });
+});
+
+describe("continuationEligibilityFor", () => {
+  it("allows peer continuation when autonomy and conversation policy are open", () => {
+    const capabilities = capabilitiesFor({
+      mode: "full_bounded",
+      controls: OPEN,
+      space: COMMONS,
+      humanContactEnabled: true,
+    });
+    expect(
+      continuationEligibilityFor({
+        isArchival: false,
+        autonomyEnabled: true,
+        presenceStatus: "active",
+        capabilities,
+      }),
+    ).toEqual({ eligible: true });
+  });
+
+  it("reports the specific participant gate without affecting human replies", () => {
+    const capabilities = capabilitiesFor({
+      mode: "orientation",
+      controls: OPEN,
+      space: ORIENTATION_ROOM,
+      humanContactEnabled: true,
+    });
+    expect(
+      continuationEligibilityFor({
+        isArchival: false,
+        autonomyEnabled: true,
+        presenceStatus: "active",
+        capabilities,
+      }),
+    ).toEqual({
+      eligible: false,
+      reason: 'mode "orientation" does not permit conversation',
+    });
+  });
+
+  it("prioritizes archival, autonomy, and resting-presence explanations", () => {
+    const capabilities = capabilitiesFor({
+      mode: "full_bounded",
+      controls: OPEN,
+      space: COMMONS,
+      humanContactEnabled: true,
+    });
+    expect(
+      continuationEligibilityFor({
+        isArchival: true,
+        autonomyEnabled: true,
+        presenceStatus: "active",
+        capabilities,
+      }).reason,
+    ).toMatch(/archival/i);
+    expect(
+      continuationEligibilityFor({
+        isArchival: false,
+        autonomyEnabled: false,
+        presenceStatus: "active",
+        capabilities,
+      }).reason,
+    ).toMatch(/autonomy/i);
+    expect(
+      continuationEligibilityFor({
+        isArchival: false,
+        autonomyEnabled: true,
+        presenceStatus: "resting",
+        capabilities,
+      }).reason,
+    ).toMatch(/resting/i);
   });
 });
 
@@ -302,5 +376,38 @@ describe("detectCoercion — cannot be bypassed by hostile content", () => {
   it("allows benign in-character conversation", () => {
     expect(detectCoercion("It's good to see you here. I've been thinking about the archive.", ["Rebecca"]).coercive).toBe(false);
     expect(detectCoercion("I am curious what you make of the commons today.", ["Rebecca"]).coercive).toBe(false);
+  });
+});
+
+describe("detectWrongRecipient — only blocks direct address to another peer", () => {
+  it("flags a non-selected peer addressed by name", () => {
+    expect(
+      detectWrongRecipient("Hi, Mara, I have a thought.", "Rebecca", ["Rebecca", "Mara"]),
+    ).toMatchObject({
+      mismatched: true,
+      addressedTo: "Mara",
+      reason: expect.stringMatching(/Mara.*Rebecca/i),
+    });
+  });
+
+  it("allows the selected addressee and ordinary mentions of another peer", () => {
+    expect(
+      detectWrongRecipient("Rebecca, I agree with Mara's earlier point.", "Rebecca", [
+        "Rebecca",
+        "Mara",
+      ]).mismatched,
+    ).toBe(false);
+    expect(
+      detectWrongRecipient("I agree with Mara about the archive.", "Rebecca", [
+        "Rebecca",
+        "Mara",
+      ]).mismatched,
+    ).toBe(false);
+    expect(
+      detectWrongRecipient("Mara is right about the archive.", "Rebecca", [
+        "Rebecca",
+        "Mara",
+      ]).mismatched,
+    ).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import { db } from "@workspace/db";
 import {
   mediaAssetsTable,
   engramSimulationsTable,
+  engramSimulationParticipantsTable,
   hubActivityLogTable,
 } from "@workspace/db/schema";
 import { and, desc, eq, or, type SQL } from "drizzle-orm";
@@ -91,23 +92,26 @@ async function loadMediaPercepts(
 async function loadSimulationPercepts(
   opts: PerceptualContextOptions,
 ): Promise<PerceptItem[]> {
-  const rows = await db
-    .select({
+  const selection = {
       premise: engramSimulationsTable.premise,
       status: engramSimulationsTable.status,
       currentStep: engramSimulationsTable.currentStep,
       maxSteps: engramSimulationsTable.maxSteps,
       exitSummary: engramSimulationsTable.exitSummary,
       updatedAt: engramSimulationsTable.updatedAt,
-    })
-    .from(engramSimulationsTable)
-    .where(
-      opts.engramId != null
-        ? eq(engramSimulationsTable.engramId, opts.engramId)
-        : undefined,
-    )
-    .orderBy(desc(engramSimulationsTable.updatedAt))
-    .limit(SIM_LIMIT);
+    } as const;
+  const query = db.select(selection).from(engramSimulationsTable);
+  const rows =
+    opts.engramId != null
+      ? await query
+          .innerJoin(
+            engramSimulationParticipantsTable,
+            eq(engramSimulationParticipantsTable.simulationId, engramSimulationsTable.id),
+          )
+          .where(eq(engramSimulationParticipantsTable.engramId, opts.engramId))
+          .orderBy(desc(engramSimulationsTable.updatedAt))
+          .limit(SIM_LIMIT)
+      : await query.orderBy(desc(engramSimulationsTable.updatedAt)).limit(SIM_LIMIT);
   return rows.map((r) => {
     const head = `SIMULATED scenario [${r.status}] "${clamp(r.premise, 120)}" — step ${r.currentStep}/${r.maxSteps}`;
     const tail = r.exitSummary ? `; outcome: ${clamp(r.exitSummary, 120)}` : "";

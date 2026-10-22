@@ -17,6 +17,27 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
+let _localHandler: LocalHandler | null = null;
+
+/**
+ * A local (in-process) request handler. When registered, every relative-path
+ * request (`/api/...`) is offered to the handler BEFORE any network fetch.
+ * Return a result to serve the request locally; return `undefined` to fall
+ * through to the network.
+ *
+ * Used by the mobile app's on-device offline mode to route all generated hooks
+ * to a local SQLite-backed implementation without touching call sites.
+ */
+export type LocalHandler = (req: {
+  method: string;
+  path: string;
+  body: string | null;
+}) => Promise<{ status: number; body: unknown } | undefined>;
+
+/** Register (or clear with `null`) the local offline request handler. */
+export function setLocalHandler(handler: LocalHandler | null): void {
+  _localHandler = handler;
+}
 
 /**
  * Set a base URL that is prepended to every relative request URL
@@ -326,6 +347,29 @@ export async function customFetch<T = unknown>(
   input: RequestInfo | URL,
   options: CustomFetchOptions = {},
 ): Promise<T> {
+  // Offline / local mode: offer relative-path requests to the registered local
+  // handler before any base-URL resolution or network fetch.
+  if (_localHandler) {
+    const rawUrl = resolveUrl(input);
+    if (rawUrl.startsWith("/")) {
+      const method = resolveMethod(input, options.method);
+      const body = typeof options.body === "string" ? options.body : null;
+      const local = await _localHandler({ method, path: rawUrl, body });
+      if (local) {
+        const synthetic = new Response(
+          local.body == null ? null : JSON.stringify(local.body),
+          {
+            status: local.status,
+            headers: { "content-type": "application/json" },
+          },
+        );
+        if (local.status >= 400) {
+          throw new ApiError(synthetic, local.body, { method, url: rawUrl });
+        }
+        return local.body as T;
+      }
+    }
+  }
   input = applyBaseUrl(input);
   const { responseType = "auto", headers: headersInit, ...init } = options;
 

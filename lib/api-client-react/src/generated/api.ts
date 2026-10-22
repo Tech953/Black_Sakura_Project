@@ -29,11 +29,15 @@ import type {
   Engram,
   EngramArtifact,
   EngramConfigInput,
+  EngramImportConfirmation,
+  EngramImportPreview,
   EngramInquiry,
+  EngramInquiryError,
   EngramInquiryInput,
   EngramLiveState,
   EngramMessage,
   EngramPresence,
+  EngramSynthesisInput,
   EngramTickResult,
   EngramTransmission,
   EvolutionEntry,
@@ -53,6 +57,7 @@ import type {
   ListHubActivityParams,
   ListMediaParams,
   ListMemoriesParams,
+  ListOpenaiConversationsParams,
   ListSimulationsParams,
   MarkMessagesSeenInput,
   MarkMessagesSeenResult,
@@ -63,7 +68,11 @@ import type {
   MemoryEntry,
   MemoryInput,
   MovePresenceInput,
+  OfflineSyncInput,
+  OfflineSyncResult,
   OpenaiConversation,
+  OpenaiConversationArchiveInput,
+  OpenaiConversationContinuationInput,
   OpenaiConversationInput,
   OpenaiConversationWithMessages,
   OpenaiError,
@@ -73,8 +82,11 @@ import type {
   PersonaActivation,
   PersonalityInput,
   PersonalityProfile,
+  PushTokenInput,
+  ReplyToEngramMessageInput,
   Simulation,
   SimulationControlInput,
+  SimulationCreateInput,
   SimulationStep,
   SystemStats,
   WorldModelEntry,
@@ -186,6 +198,216 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getSyncOfflineHistoryUrl = () => {
+
+
+
+
+  return `/api/mobile/offline-sync`
+}
+
+/**
+ * @summary Import locally-created mobile history after reconnecting
+ */
+export const syncOfflineHistory = async (offlineSyncInput: OfflineSyncInput, options?: RequestInit): Promise<OfflineSyncResult> => {
+
+  return customFetch<OfflineSyncResult>(getSyncOfflineHistoryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(offlineSyncInput)
+  }
+);}
+
+
+
+
+export const getSyncOfflineHistoryMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncOfflineHistory>>, TError,{data: BodyType<OfflineSyncInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncOfflineHistory>>, TError,{data: BodyType<OfflineSyncInput>}, TContext> => {
+
+const mutationKey = ['syncOfflineHistory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncOfflineHistory>>, {data: BodyType<OfflineSyncInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  syncOfflineHistory(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncOfflineHistoryMutationResult = NonNullable<Awaited<ReturnType<typeof syncOfflineHistory>>>
+    export type SyncOfflineHistoryMutationBody = BodyType<OfflineSyncInput>
+    export type SyncOfflineHistoryMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Import locally-created mobile history after reconnecting
+ */
+export const useSyncOfflineHistory = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncOfflineHistory>>, TError,{data: BodyType<OfflineSyncInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncOfflineHistory>>,
+        TError,
+        {data: BodyType<OfflineSyncInput>},
+        TContext
+      > => {
+      return useMutation(getSyncOfflineHistoryMutationOptions(options));
+    }
+
+export const getRegisterPushTokenUrl = () => {
+
+
+
+
+  return `/api/mobile/push-tokens`
+}
+
+/**
+ * @summary Register an Expo push token for the signed-in mobile account
+ */
+export const registerPushToken = async (pushTokenInput: PushTokenInput, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRegisterPushTokenUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pushTokenInput)
+  }
+);}
+
+
+
+
+export const getRegisterPushTokenMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerPushToken>>, TError,{data: BodyType<PushTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerPushToken>>, TError,{data: BodyType<PushTokenInput>}, TContext> => {
+
+const mutationKey = ['registerPushToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerPushToken>>, {data: BodyType<PushTokenInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerPushToken(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterPushTokenMutationResult = NonNullable<Awaited<ReturnType<typeof registerPushToken>>>
+    export type RegisterPushTokenMutationBody = BodyType<PushTokenInput>
+    export type RegisterPushTokenMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Register an Expo push token for the signed-in mobile account
+ */
+export const useRegisterPushToken = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerPushToken>>, TError,{data: BodyType<PushTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof registerPushToken>>,
+        TError,
+        {data: BodyType<PushTokenInput>},
+        TContext
+      > => {
+      return useMutation(getRegisterPushTokenMutationOptions(options));
+    }
+
+export const getUnregisterPushTokenUrl = () => {
+
+
+
+
+  return `/api/mobile/push-tokens`
+}
+
+/**
+ * @summary Remove an Expo push token from the signed-in mobile account
+ */
+export const unregisterPushToken = async (pushTokenInput: PushTokenInput, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUnregisterPushTokenUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pushTokenInput)
+  }
+);}
+
+
+
+
+export const getUnregisterPushTokenMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unregisterPushToken>>, TError,{data: BodyType<PushTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unregisterPushToken>>, TError,{data: BodyType<PushTokenInput>}, TContext> => {
+
+const mutationKey = ['unregisterPushToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unregisterPushToken>>, {data: BodyType<PushTokenInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  unregisterPushToken(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnregisterPushTokenMutationResult = NonNullable<Awaited<ReturnType<typeof unregisterPushToken>>>
+    export type UnregisterPushTokenMutationBody = BodyType<PushTokenInput>
+    export type UnregisterPushTokenMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Remove an Expo push token from the signed-in mobile account
+ */
+export const useUnregisterPushToken = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unregisterPushToken>>, TError,{data: BodyType<PushTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unregisterPushToken>>,
+        TError,
+        {data: BodyType<PushTokenInput>},
+        TContext
+      > => {
+      return useMutation(getUnregisterPushTokenMutationOptions(options));
+    }
 
 export const getGetPersonalityUrl = () => {
 
@@ -1596,20 +1818,27 @@ export function useGetStats<TData = Awaited<ReturnType<typeof getStats>>, TError
 
 
 
-export const getListOpenaiConversationsUrl = () => {
+export const getListOpenaiConversationsUrl = (params?: ListOpenaiConversationsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/openai/conversations`
+  return stringifiedParams.length > 0 ? `/api/openai/conversations?${stringifiedParams}` : `/api/openai/conversations`
 }
 
 /**
  * @summary List all conversations
  */
-export const listOpenaiConversations = async ( options?: RequestInit): Promise<OpenaiConversation[]> => {
+export const listOpenaiConversations = async (params?: ListOpenaiConversationsParams, options?: RequestInit): Promise<OpenaiConversation[]> => {
 
-  return customFetch<OpenaiConversation[]>(getListOpenaiConversationsUrl(),
+  return customFetch<OpenaiConversation[]>(getListOpenaiConversationsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1622,23 +1851,23 @@ export const listOpenaiConversations = async ( options?: RequestInit): Promise<O
 
 
 
-export const getListOpenaiConversationsQueryKey = () => {
+export const getListOpenaiConversationsQueryKey = (params?: ListOpenaiConversationsParams,) => {
     return [
-    `/api/openai/conversations`
+    `/api/openai/conversations`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListOpenaiConversationsQueryOptions = <TData = Awaited<ReturnType<typeof listOpenaiConversations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpenaiConversations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListOpenaiConversationsQueryOptions = <TData = Awaited<ReturnType<typeof listOpenaiConversations>>, TError = ErrorType<unknown>>(params?: ListOpenaiConversationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpenaiConversations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListOpenaiConversationsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListOpenaiConversationsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOpenaiConversations>>> = ({ signal }) => listOpenaiConversations({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOpenaiConversations>>> = ({ signal }) => listOpenaiConversations(params, { signal, ...requestOptions });
 
 
 
@@ -1656,11 +1885,11 @@ export type ListOpenaiConversationsQueryError = ErrorType<unknown>
  */
 
 export function useListOpenaiConversations<TData = Awaited<ReturnType<typeof listOpenaiConversations>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpenaiConversations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListOpenaiConversationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOpenaiConversations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListOpenaiConversationsQueryOptions(options)
+  const queryOptions = getListOpenaiConversationsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1888,6 +2117,148 @@ export const useDeleteOpenaiConversation = <TError = ErrorType<OpenaiError>,
         TContext
       > => {
       return useMutation(getDeleteOpenaiConversationMutationOptions(options));
+    }
+
+export const getArchiveOpenaiConversationUrl = (id: number,) => {
+
+
+
+
+  return `/api/openai/conversations/${id}/archive`
+}
+
+/**
+ * @summary Archive or restore a conversation
+ */
+export const archiveOpenaiConversation = async (id: number,
+    openaiConversationArchiveInput: OpenaiConversationArchiveInput, options?: RequestInit): Promise<OpenaiConversation> => {
+
+  return customFetch<OpenaiConversation>(getArchiveOpenaiConversationUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(openaiConversationArchiveInput)
+  }
+);}
+
+
+
+
+export const getArchiveOpenaiConversationMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveOpenaiConversation>>, TError,{id: number;data: BodyType<OpenaiConversationArchiveInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof archiveOpenaiConversation>>, TError,{id: number;data: BodyType<OpenaiConversationArchiveInput>}, TContext> => {
+
+const mutationKey = ['archiveOpenaiConversation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof archiveOpenaiConversation>>, {id: number;data: BodyType<OpenaiConversationArchiveInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  archiveOpenaiConversation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ArchiveOpenaiConversationMutationResult = NonNullable<Awaited<ReturnType<typeof archiveOpenaiConversation>>>
+    export type ArchiveOpenaiConversationMutationBody = BodyType<OpenaiConversationArchiveInput>
+    export type ArchiveOpenaiConversationMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Archive or restore a conversation
+ */
+export const useArchiveOpenaiConversation = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveOpenaiConversation>>, TError,{id: number;data: BodyType<OpenaiConversationArchiveInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof archiveOpenaiConversation>>,
+        TError,
+        {id: number;data: BodyType<OpenaiConversationArchiveInput>},
+        TContext
+      > => {
+      return useMutation(getArchiveOpenaiConversationMutationOptions(options));
+    }
+
+export const getUpdateOpenaiConversationContinuationUrl = (id: number,) => {
+
+
+
+
+  return `/api/openai/conversations/${id}/continuation`
+}
+
+/**
+ * @summary Update group continuation consent
+ */
+export const updateOpenaiConversationContinuation = async (id: number,
+    openaiConversationContinuationInput: OpenaiConversationContinuationInput, options?: RequestInit): Promise<OpenaiConversation> => {
+
+  return customFetch<OpenaiConversation>(getUpdateOpenaiConversationContinuationUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(openaiConversationContinuationInput)
+  }
+);}
+
+
+
+
+export const getUpdateOpenaiConversationContinuationMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>, TError,{id: number;data: BodyType<OpenaiConversationContinuationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>, TError,{id: number;data: BodyType<OpenaiConversationContinuationInput>}, TContext> => {
+
+const mutationKey = ['updateOpenaiConversationContinuation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>, {id: number;data: BodyType<OpenaiConversationContinuationInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateOpenaiConversationContinuation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOpenaiConversationContinuationMutationResult = NonNullable<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>>
+    export type UpdateOpenaiConversationContinuationMutationBody = BodyType<OpenaiConversationContinuationInput>
+    export type UpdateOpenaiConversationContinuationMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Update group continuation consent
+ */
+export const useUpdateOpenaiConversationContinuation = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>, TError,{id: number;data: BodyType<OpenaiConversationContinuationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOpenaiConversationContinuation>>,
+        TError,
+        {id: number;data: BodyType<OpenaiConversationContinuationInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateOpenaiConversationContinuationMutationOptions(options));
     }
 
 export const getListOpenaiMessagesUrl = (id: number,) => {
@@ -2183,6 +2554,217 @@ export const useTickEngrams = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getTickEngramsMutationOptions(options));
+    }
+
+export const getSynthesizeEngramUrl = () => {
+
+
+
+
+  return `/api/engrams/synthesize`
+}
+
+/**
+ * @summary Synthesize a new engram from the processed observation archive plus operator stipulations
+ */
+export const synthesizeEngram = async (engramSynthesisInput: EngramSynthesisInput, options?: RequestInit): Promise<Engram> => {
+
+  return customFetch<Engram>(getSynthesizeEngramUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(engramSynthesisInput)
+  }
+);}
+
+
+
+
+export const getSynthesizeEngramMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof synthesizeEngram>>, TError,{data: BodyType<EngramSynthesisInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof synthesizeEngram>>, TError,{data: BodyType<EngramSynthesisInput>}, TContext> => {
+
+const mutationKey = ['synthesizeEngram'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof synthesizeEngram>>, {data: BodyType<EngramSynthesisInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  synthesizeEngram(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SynthesizeEngramMutationResult = NonNullable<Awaited<ReturnType<typeof synthesizeEngram>>>
+    export type SynthesizeEngramMutationBody = BodyType<EngramSynthesisInput>
+    export type SynthesizeEngramMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Synthesize a new engram from the processed observation archive plus operator stipulations
+ */
+export const useSynthesizeEngram = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof synthesizeEngram>>, TError,{data: BodyType<EngramSynthesisInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof synthesizeEngram>>,
+        TError,
+        {data: BodyType<EngramSynthesisInput>},
+        TContext
+      > => {
+      return useMutation(getSynthesizeEngramMutationOptions(options));
+    }
+
+export const getPreviewEngramCsvImportUrl = () => {
+
+
+
+
+  return `/api/engrams/import-csv/preview`
+}
+
+/**
+ * Accepts multipart/form-data at runtime with a required file field and optional stipulations field. The multipart body is intentionally not modeled because the shared server validator does not include browser File globals.
+ * @summary Parse a CSV upload and prepare a short-lived editable engram draft without writing to the database
+ */
+export const previewEngramCsvImport = async ( options?: RequestInit): Promise<EngramImportPreview> => {
+
+  return customFetch<EngramImportPreview>(getPreviewEngramCsvImportUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPreviewEngramCsvImportMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewEngramCsvImport>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewEngramCsvImport>>, TError,void, TContext> => {
+
+const mutationKey = ['previewEngramCsvImport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewEngramCsvImport>>, void> = () => {
+
+
+          return  previewEngramCsvImport(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewEngramCsvImportMutationResult = NonNullable<Awaited<ReturnType<typeof previewEngramCsvImport>>>
+
+    export type PreviewEngramCsvImportMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Parse a CSV upload and prepare a short-lived editable engram draft without writing to the database
+ */
+export const usePreviewEngramCsvImport = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewEngramCsvImport>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewEngramCsvImport>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPreviewEngramCsvImportMutationOptions(options));
+    }
+
+export const getConfirmEngramCsvImportUrl = () => {
+
+
+
+
+  return `/api/engrams/import-csv/confirm`
+}
+
+/**
+ * @summary Confirm a short-lived CSV import draft and atomically create one mutable engram
+ */
+export const confirmEngramCsvImport = async (engramImportConfirmation: EngramImportConfirmation, options?: RequestInit): Promise<Engram> => {
+
+  return customFetch<Engram>(getConfirmEngramCsvImportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(engramImportConfirmation)
+  }
+);}
+
+
+
+
+export const getConfirmEngramCsvImportMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmEngramCsvImport>>, TError,{data: BodyType<EngramImportConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmEngramCsvImport>>, TError,{data: BodyType<EngramImportConfirmation>}, TContext> => {
+
+const mutationKey = ['confirmEngramCsvImport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmEngramCsvImport>>, {data: BodyType<EngramImportConfirmation>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmEngramCsvImport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmEngramCsvImportMutationResult = NonNullable<Awaited<ReturnType<typeof confirmEngramCsvImport>>>
+    export type ConfirmEngramCsvImportMutationBody = BodyType<EngramImportConfirmation>
+    export type ConfirmEngramCsvImportMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Confirm a short-lived CSV import draft and atomically create one mutable engram
+ */
+export const useConfirmEngramCsvImport = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmEngramCsvImport>>, TError,{data: BodyType<EngramImportConfirmation>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmEngramCsvImport>>,
+        TError,
+        {data: BodyType<EngramImportConfirmation>},
+        TContext
+      > => {
+      return useMutation(getConfirmEngramCsvImportMutationOptions(options));
     }
 
 export const getGetEngramStatesUrl = () => {
@@ -2801,7 +3383,7 @@ export const createEngramInquiry = async (id: number,
 
 
 
-export const getCreateEngramInquiryMutationOptions = <TError = ErrorType<OpenaiError>,
+export const getCreateEngramInquiryMutationOptions = <TError = ErrorType<OpenaiError | EngramInquiryError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEngramInquiry>>, TError,{id: number;data: BodyType<EngramInquiryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createEngramInquiry>>, TError,{id: number;data: BodyType<EngramInquiryInput>}, TContext> => {
 
@@ -2830,12 +3412,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateEngramInquiryMutationResult = NonNullable<Awaited<ReturnType<typeof createEngramInquiry>>>
     export type CreateEngramInquiryMutationBody = BodyType<EngramInquiryInput>
-    export type CreateEngramInquiryMutationError = ErrorType<OpenaiError>
+    export type CreateEngramInquiryMutationError = ErrorType<OpenaiError | EngramInquiryError>
 
     /**
  * @summary Submit a probe or develop inquiry to an engram
  */
-export const useCreateEngramInquiry = <TError = ErrorType<OpenaiError>,
+export const useCreateEngramInquiry = <TError = ErrorType<OpenaiError | EngramInquiryError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEngramInquiry>>, TError,{id: number;data: BodyType<EngramInquiryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createEngramInquiry>>,
@@ -3448,6 +4030,83 @@ export function useListHubActivity<TData = Awaited<ReturnType<typeof listHubActi
 
 
 
+export const getListHubSpaceTranscriptUrl = (spaceId: number,) => {
+
+
+
+
+  return `/api/hub/spaces/${spaceId}/transcript`
+}
+
+/**
+ * @summary List the recent Commons transcript for a Hub space
+ */
+export const listHubSpaceTranscript = async (spaceId: number, options?: RequestInit): Promise<EngramMessage[]> => {
+
+  return customFetch<EngramMessage[]>(getListHubSpaceTranscriptUrl(spaceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListHubSpaceTranscriptQueryKey = (spaceId: number,) => {
+    return [
+    `/api/hub/spaces/${spaceId}/transcript`
+    ] as const;
+    }
+
+
+export const getListHubSpaceTranscriptQueryOptions = <TData = Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError = ErrorType<OpenaiError>>(spaceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListHubSpaceTranscriptQueryKey(spaceId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listHubSpaceTranscript>>> = ({ signal }) => listHubSpaceTranscript(spaceId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: spaceId !== null && spaceId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListHubSpaceTranscriptQueryResult = NonNullable<Awaited<ReturnType<typeof listHubSpaceTranscript>>>
+export type ListHubSpaceTranscriptQueryError = ErrorType<OpenaiError>
+
+
+/**
+ * @summary List the recent Commons transcript for a Hub space
+ */
+
+export function useListHubSpaceTranscript<TData = Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError = ErrorType<OpenaiError>>(
+ spaceId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listHubSpaceTranscript>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListHubSpaceTranscriptQueryOptions(spaceId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetHubControlsUrl = () => {
 
 
@@ -3747,6 +4406,147 @@ export const useMarkEngramMessagesSeen = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getMarkEngramMessagesSeenMutationOptions(options));
+    }
+
+export const getReplyToEngramMessageUrl = (id: number,) => {
+
+
+
+
+  return `/api/messages/${id}/reply`
+}
+
+/**
+ * @summary Reply to an engram's human-channel message
+ */
+export const replyToEngramMessage = async (id: number,
+    replyToEngramMessageInput: ReplyToEngramMessageInput, options?: RequestInit): Promise<EngramMessage> => {
+
+  return customFetch<EngramMessage>(getReplyToEngramMessageUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(replyToEngramMessageInput)
+  }
+);}
+
+
+
+
+export const getReplyToEngramMessageMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replyToEngramMessage>>, TError,{id: number;data: BodyType<ReplyToEngramMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof replyToEngramMessage>>, TError,{id: number;data: BodyType<ReplyToEngramMessageInput>}, TContext> => {
+
+const mutationKey = ['replyToEngramMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof replyToEngramMessage>>, {id: number;data: BodyType<ReplyToEngramMessageInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  replyToEngramMessage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReplyToEngramMessageMutationResult = NonNullable<Awaited<ReturnType<typeof replyToEngramMessage>>>
+    export type ReplyToEngramMessageMutationBody = BodyType<ReplyToEngramMessageInput>
+    export type ReplyToEngramMessageMutationError = ErrorType<void>
+
+    /**
+ * @summary Reply to an engram's human-channel message
+ */
+export const useReplyToEngramMessage = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof replyToEngramMessage>>, TError,{id: number;data: BodyType<ReplyToEngramMessageInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof replyToEngramMessage>>,
+        TError,
+        {id: number;data: BodyType<ReplyToEngramMessageInput>},
+        TContext
+      > => {
+      return useMutation(getReplyToEngramMessageMutationOptions(options));
+    }
+
+export const getCreateSimulationUrl = () => {
+
+
+
+
+  return `/api/simulations`
+}
+
+/**
+ * @summary Open an operator-directed simulation with an optional scenario premise
+ */
+export const createSimulation = async (simulationCreateInput: SimulationCreateInput, options?: RequestInit): Promise<Simulation> => {
+
+  return customFetch<Simulation>(getCreateSimulationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(simulationCreateInput)
+  }
+);}
+
+
+
+
+export const getCreateSimulationMutationOptions = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSimulation>>, TError,{data: BodyType<SimulationCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSimulation>>, TError,{data: BodyType<SimulationCreateInput>}, TContext> => {
+
+const mutationKey = ['createSimulation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSimulation>>, {data: BodyType<SimulationCreateInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSimulation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSimulationMutationResult = NonNullable<Awaited<ReturnType<typeof createSimulation>>>
+    export type CreateSimulationMutationBody = BodyType<SimulationCreateInput>
+    export type CreateSimulationMutationError = ErrorType<OpenaiError>
+
+    /**
+ * @summary Open an operator-directed simulation with an optional scenario premise
+ */
+export const useCreateSimulation = <TError = ErrorType<OpenaiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSimulation>>, TError,{data: BodyType<SimulationCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSimulation>>,
+        TError,
+        {data: BodyType<SimulationCreateInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSimulationMutationOptions(options));
     }
 
 export const getListSimulationsUrl = (params?: ListSimulationsParams,) => {

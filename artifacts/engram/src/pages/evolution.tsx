@@ -1,9 +1,11 @@
+import { useTranslation } from "react-i18next";
 import { useListEvolutionLog } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp } from "lucide-react";
 
 export default function Evolution() {
+  const { t } = useTranslation("evolution");
   const { data: entries, isLoading } = useListEvolutionLog();
 
   const sorted = entries ? [...entries].sort((a, b) => b.revision - a.revision) : [];
@@ -11,13 +13,13 @@ export default function Evolution() {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div>
-        <h2 className="text-3xl font-bold tracking-widest text-primary">EVOLUTION LOG</h2>
-        <p className="text-sm font-mono text-muted-foreground mt-1">Behavioral changelog — every adaptation, its trigger, evidence, and outcome</p>
+        <h2 className="text-3xl font-bold tracking-widest text-primary">{t("title")}</h2>
+        <p className="text-sm font-mono text-muted-foreground mt-1">{t("subtitle")}</p>
       </div>
 
       <div className="bg-card/20 border border-border/30 p-4 font-mono text-xs text-muted-foreground space-y-1">
-        <p className="text-primary/70">DESIGN PRINCIPLE:</p>
-        <p>Core code changes only through explicit review. Data, heuristics, and confidence values evolve continuously. All growth is inspectable and reversible.</p>
+        <p className="text-primary/70">{t("designPrinciple")}</p>
+        <p>{t("designPrincipleBody")}</p>
       </div>
 
       {isLoading ? (
@@ -27,7 +29,7 @@ export default function Evolution() {
       ) : !sorted.length ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground font-mono text-center">
           <TrendingUp className="w-8 h-8 mb-4 opacity-30" />
-          <p className="text-xs uppercase tracking-widest">No evolution entries recorded</p>
+          <p className="text-xs uppercase tracking-widest">{t("emptyState")}</p>
         </div>
       ) : (
         <div className="relative">
@@ -51,7 +53,7 @@ export default function Evolution() {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2 flex-wrap">
                             <span className="font-mono text-[10px] uppercase text-muted-foreground/60 tracking-widest">
-                              Trigger: <span className="text-primary/70">{entry.trigger}</span>
+                              {t("triggerLabel")} <span className="text-primary/70">{entry.trigger}</span>
                             </span>
                             <span className="font-mono text-[10px] text-muted-foreground/40">{new Date(entry.createdAt).toLocaleDateString()}</span>
                           </div>
@@ -67,19 +69,19 @@ export default function Evolution() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] font-mono pt-1">
                         {entry.evidenceConsidered && (
                           <div>
-                            <span className="text-muted-foreground/60 uppercase block mb-1">Evidence</span>
+                            <span className="text-muted-foreground/60 uppercase block mb-1">{t("evidence")}</span>
                             <p className="text-foreground/60 leading-relaxed">{entry.evidenceConsidered}</p>
                           </div>
                         )}
                         {entry.expectedImpact && (
                           <div>
-                            <span className="text-muted-foreground/60 uppercase block mb-1">Expected Impact</span>
+                            <span className="text-muted-foreground/60 uppercase block mb-1">{t("expectedImpact")}</span>
                             <p className="text-foreground/60 leading-relaxed">{entry.expectedImpact}</p>
                           </div>
                         )}
                         {entry.validationOutcome && (
                           <div>
-                            <span className="text-muted-foreground/60 uppercase block mb-1">Validation</span>
+                            <span className="text-muted-foreground/60 uppercase block mb-1">{t("validation")}</span>
                             <p className="text-emerald-400/70 leading-relaxed">{entry.validationOutcome}</p>
                           </div>
                         )}

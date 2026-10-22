@@ -18,6 +18,196 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Import locally-created mobile history after reconnecting
+ */
+export const syncOfflineHistoryBodyDeviceIdMax = 128;
+
+export const syncOfflineHistoryBodyConversationsItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyConversationsItemTitleMax = 500;
+
+export const syncOfflineHistoryBodyConversationsItemModeMax = 40;
+
+export const syncOfflineHistoryBodyConversationsItemEngramSlugMax = 120;
+
+export const syncOfflineHistoryBodyConversationsItemPersonaNameMax = 200;
+
+export const syncOfflineHistoryBodyConversationsItemCustomEngramMax = 40000;
+
+export const syncOfflineHistoryBodyConversationsItemMessagesItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyConversationsItemMessagesItemContentMax = 20000;
+
+export const syncOfflineHistoryBodyConversationsItemMessagesMax = 100;
+
+export const syncOfflineHistoryBodyConversationsMax = 100;
+
+export const syncOfflineHistoryBodyInquiriesItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyInquiriesItemEngramSlugMax = 120;
+
+export const syncOfflineHistoryBodyInquiriesItemKindMax = 40;
+
+export const syncOfflineHistoryBodyInquiriesItemQuestionMax = 20000;
+
+export const syncOfflineHistoryBodyInquiriesItemResponseMax = 40000;
+
+export const syncOfflineHistoryBodyInquiriesMax = 100;
+
+export const syncOfflineHistoryBodyTransmissionsItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyTransmissionsItemEngramSlugMax = 120;
+
+export const syncOfflineHistoryBodyTransmissionsItemKindMax = 40;
+
+export const syncOfflineHistoryBodyTransmissionsItemDriveMax = 120;
+
+export const syncOfflineHistoryBodyTransmissionsItemContentMax = 40000;
+
+export const syncOfflineHistoryBodyTransmissionsItemMoodMax = 120;
+
+export const syncOfflineHistoryBodyTransmissionsItemImportanceScoreMin = 0;
+export const syncOfflineHistoryBodyTransmissionsItemImportanceScoreMax = 1;
+
+export const syncOfflineHistoryBodyTransmissionsItemConfidenceScoreMin = 0;
+export const syncOfflineHistoryBodyTransmissionsItemConfidenceScoreMax = 1;
+
+export const syncOfflineHistoryBodyTransmissionsItemNoveltyScoreMin = 0;
+export const syncOfflineHistoryBodyTransmissionsItemNoveltyScoreMax = 1;
+
+export const syncOfflineHistoryBodyTransmissionsItemOverallScoreMin = 0;
+export const syncOfflineHistoryBodyTransmissionsItemOverallScoreMax = 1;
+
+export const syncOfflineHistoryBodyTransmissionsMax = 100;
+
+export const syncOfflineHistoryBodyObservedEntriesItemSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyObservedEntriesItemEngramSlugMax = 120;
+
+export const syncOfflineHistoryBodyObservedEntriesItemConversationSyncIdMax = 80;
+
+export const syncOfflineHistoryBodyObservedEntriesItemContentMax = 20000;
+
+export const syncOfflineHistoryBodyObservedEntriesItemConfidenceMin = 0;
+export const syncOfflineHistoryBodyObservedEntriesItemConfidenceMax = 1;
+
+export const syncOfflineHistoryBodyObservedEntriesMax = 100;
+
+export const syncOfflineHistoryBodyOperatorRepliesItemSyncIdMax = 80;
+
+
+export const syncOfflineHistoryBodyOperatorRepliesItemContentMax = 2000;
+
+export const syncOfflineHistoryBodyOperatorRepliesMax = 100;
+
+
+
+export const SyncOfflineHistoryBody = zod.object({
+  "deviceId": zod.string().min(1).max(syncOfflineHistoryBodyDeviceIdMax),
+  "conversations": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemSyncIdMax),
+  "title": zod.string().max(syncOfflineHistoryBodyConversationsItemTitleMax).nullable(),
+  "mode": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemModeMax),
+  "engramSlug": zod.string().max(syncOfflineHistoryBodyConversationsItemEngramSlugMax).nullable(),
+  "personaName": zod.string().max(syncOfflineHistoryBodyConversationsItemPersonaNameMax).nullish(),
+  "customEngram": zod.string().max(syncOfflineHistoryBodyConversationsItemCustomEngramMax).nullish(),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullish(),
+  "seedKey": zod.enum(['rebecca-full-rezz-live-v1']).optional(),
+  "messages": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemMessagesItemSyncIdMax),
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string().min(1).max(syncOfflineHistoryBodyConversationsItemMessagesItemContentMax),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyConversationsItemMessagesMax)
+})).max(syncOfflineHistoryBodyConversationsMax),
+  "inquiries": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyInquiriesItemSyncIdMax),
+  "engramSlug": zod.string().min(1).max(syncOfflineHistoryBodyInquiriesItemEngramSlugMax),
+  "kind": zod.string().min(1).max(syncOfflineHistoryBodyInquiriesItemKindMax),
+  "question": zod.string().min(1).max(syncOfflineHistoryBodyInquiriesItemQuestionMax),
+  "response": zod.string().max(syncOfflineHistoryBodyInquiriesItemResponseMax),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyInquiriesMax),
+  "transmissions": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyTransmissionsItemSyncIdMax),
+  "engramSlug": zod.string().min(1).max(syncOfflineHistoryBodyTransmissionsItemEngramSlugMax),
+  "kind": zod.string().min(1).max(syncOfflineHistoryBodyTransmissionsItemKindMax),
+  "drive": zod.string().max(syncOfflineHistoryBodyTransmissionsItemDriveMax).nullable(),
+  "content": zod.string().min(1).max(syncOfflineHistoryBodyTransmissionsItemContentMax),
+  "mood": zod.string().max(syncOfflineHistoryBodyTransmissionsItemMoodMax).nullable(),
+  "importanceScore": zod.number().min(syncOfflineHistoryBodyTransmissionsItemImportanceScoreMin).max(syncOfflineHistoryBodyTransmissionsItemImportanceScoreMax),
+  "confidenceScore": zod.number().min(syncOfflineHistoryBodyTransmissionsItemConfidenceScoreMin).max(syncOfflineHistoryBodyTransmissionsItemConfidenceScoreMax),
+  "noveltyScore": zod.number().min(syncOfflineHistoryBodyTransmissionsItemNoveltyScoreMin).max(syncOfflineHistoryBodyTransmissionsItemNoveltyScoreMax),
+  "overallScore": zod.number().min(syncOfflineHistoryBodyTransmissionsItemOverallScoreMin).max(syncOfflineHistoryBodyTransmissionsItemOverallScoreMax),
+  "wasDelivered": zod.boolean(),
+  "seen": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyTransmissionsMax),
+  "observedEntries": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyObservedEntriesItemSyncIdMax),
+  "engramSlug": zod.string().min(1).max(syncOfflineHistoryBodyObservedEntriesItemEngramSlugMax),
+  "conversationSyncId": zod.string().max(syncOfflineHistoryBodyObservedEntriesItemConversationSyncIdMax).nullable(),
+  "content": zod.string().min(1).max(syncOfflineHistoryBodyObservedEntriesItemContentMax),
+  "confidence": zod.number().min(syncOfflineHistoryBodyObservedEntriesItemConfidenceMin).max(syncOfflineHistoryBodyObservedEntriesItemConfidenceMax),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyObservedEntriesMax),
+  "operatorReplies": zod.array(zod.object({
+  "syncId": zod.string().min(1).max(syncOfflineHistoryBodyOperatorRepliesItemSyncIdMax),
+  "messageId": zod.number().min(1),
+  "content": zod.string().min(1).max(syncOfflineHistoryBodyOperatorRepliesItemContentMax),
+  "createdAt": zod.coerce.date()
+})).max(syncOfflineHistoryBodyOperatorRepliesMax)
+})
+
+export const SyncOfflineHistoryResponse = zod.object({
+  "syncedIds": zod.array(zod.string()),
+  "imported": zod.object({
+  "conversations": zod.number(),
+  "messages": zod.number(),
+  "inquiries": zod.number(),
+  "transmissions": zod.number(),
+  "observedEntries": zod.number(),
+  "operatorReplies": zod.number()
+})
+})
+
+
+/**
+ * @summary Register an Expo push token for the signed-in mobile account
+ */
+export const registerPushTokenBodyTokenMax = 512;
+
+
+export const registerPushTokenBodyTokenRegExp = new RegExp('^(Expo|Exponent)PushToken\\[[^\\]]+\\]$');
+
+
+export const RegisterPushTokenBody = zod.object({
+  "token": zod.string().min(1).max(registerPushTokenBodyTokenMax).regex(registerPushTokenBodyTokenRegExp),
+  "platform": zod.enum(['ios', 'android'])
+})
+
+export const RegisterPushTokenResponse = zod.void()
+
+
+/**
+ * @summary Remove an Expo push token from the signed-in mobile account
+ */
+export const unregisterPushTokenBodyTokenMax = 512;
+
+
+export const unregisterPushTokenBodyTokenRegExp = new RegExp('^(Expo|Exponent)PushToken\\[[^\\]]+\\]$');
+
+
+export const UnregisterPushTokenBody = zod.object({
+  "token": zod.string().min(1).max(unregisterPushTokenBodyTokenMax).regex(unregisterPushTokenBodyTokenRegExp),
+  "platform": zod.enum(['ios', 'android'])
+})
+
+export const UnregisterPushTokenResponse = zod.void()
+
+
+/**
  * Returns the current ENGRAM personality trait values
  * @summary Get personality traits
  */
@@ -385,6 +575,16 @@ export const GetStatsResponse = zod.object({
 /**
  * @summary List all conversations
  */
+export const listOpenaiConversationsQueryArchivedDefault = false;
+
+export const ListOpenaiConversationsQueryParams = zod.object({
+  "archived": zod.coerce.boolean().default(listOpenaiConversationsQueryArchivedDefault).describe('When true, list archived conversations; otherwise list active conversations.')
+})
+
+export const listOpenaiConversationsResponseGroupContinuationRevisionMin = 0;
+
+
+
 export const ListOpenaiConversationsResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -392,7 +592,11 @@ export const ListOpenaiConversationsResponseItem = zod.object({
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
-  "createdAt": zod.coerce.date()
+  "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(listOpenaiConversationsResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable()
 })
 export const ListOpenaiConversationsResponse = zod.array(ListOpenaiConversationsResponseItem)
 
@@ -400,13 +604,24 @@ export const ListOpenaiConversationsResponse = zod.array(ListOpenaiConversations
 /**
  * @summary Create a new conversation
  */
+export const createOpenaiConversationBodyEngramIdsMin = 2;
+export const createOpenaiConversationBodyEngramIdsMax = 6;
+
+export const createOpenaiConversationBodyGroupContinuationModeDefault = `short`;
+
 export const CreateOpenaiConversationBody = zod.object({
   "title": zod.string(),
   "mode": zod.string(),
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
-  "engramId": zod.number().optional()
+  "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()).min(createOpenaiConversationBodyEngramIdsMin).max(createOpenaiConversationBodyEngramIdsMax).optional().describe('Select 2–6 non-archival engrams for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).default(createOpenaiConversationBodyGroupContinuationModeDefault).describe('Consent for peer-generated turns after the human-triggered group reply.')
 })
+
+export const createOpenaiConversationResponseGroupContinuationRevisionMin = 0;
+
+
 
 export const CreateOpenaiConversationResponse = zod.object({
   "id": zod.number(),
@@ -415,7 +630,11 @@ export const CreateOpenaiConversationResponse = zod.object({
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
-  "createdAt": zod.coerce.date()
+  "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(createOpenaiConversationResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable()
 })
 
 
@@ -426,6 +645,10 @@ export const GetOpenaiConversationParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const getOpenaiConversationResponseGroupContinuationRevisionMin = 0;
+
+
+
 export const GetOpenaiConversationResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -433,12 +656,17 @@ export const GetOpenaiConversationResponse = zod.object({
   "personaName": zod.string().optional(),
   "customEngram": zod.string().optional(),
   "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()).optional(),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(getOpenaiConversationResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
   "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable(),
   "messages": zod.array(zod.object({
   "id": zod.number(),
   "conversationId": zod.number(),
   "role": zod.string(),
   "content": zod.string(),
+  "speakerEngramId": zod.number().nullish(),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -455,6 +683,71 @@ export const DeleteOpenaiConversationResponse = zod.void()
 
 
 /**
+ * @summary Archive or restore a conversation
+ */
+export const ArchiveOpenaiConversationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ArchiveOpenaiConversationBody = zod.object({
+  "archived": zod.boolean()
+})
+
+export const archiveOpenaiConversationResponseGroupContinuationRevisionMin = 0;
+
+
+
+export const ArchiveOpenaiConversationResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "mode": zod.string(),
+  "personaName": zod.string().optional(),
+  "customEngram": zod.string().optional(),
+  "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(archiveOpenaiConversationResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Update group continuation consent
+ */
+export const UpdateOpenaiConversationContinuationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updateOpenaiConversationContinuationBodyExpectedRevisionMin = 0;
+
+
+
+export const UpdateOpenaiConversationContinuationBody = zod.object({
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "expectedRevision": zod.number().min(updateOpenaiConversationContinuationBodyExpectedRevisionMin).describe('Server-owned revision read with the conversation before saving.')
+})
+
+export const updateOpenaiConversationContinuationResponseGroupContinuationRevisionMin = 0;
+
+
+
+export const UpdateOpenaiConversationContinuationResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "mode": zod.string(),
+  "personaName": zod.string().optional(),
+  "customEngram": zod.string().optional(),
+  "engramId": zod.number().optional(),
+  "engramIds": zod.array(zod.number()).describe('Explicit participants for a human-mediated group conversation.'),
+  "groupContinuationMode": zod.enum(['off', 'short', 'extended']).describe('Consent for peer-generated turns after the human-triggered group reply.'),
+  "groupContinuationRevision": zod.number().min(updateOpenaiConversationContinuationResponseGroupContinuationRevisionMin).describe('Server-owned revision for optimistic concurrency on group continuation consent.'),
+  "createdAt": zod.coerce.date(),
+  "archivedAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary List messages in a conversation
  */
 export const ListOpenaiMessagesParams = zod.object({
@@ -466,6 +759,7 @@ export const ListOpenaiMessagesResponseItem = zod.object({
   "conversationId": zod.number(),
   "role": zod.string(),
   "content": zod.string(),
+  "speakerEngramId": zod.number().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListOpenaiMessagesResponse = zod.array(ListOpenaiMessagesResponseItem)
@@ -479,7 +773,8 @@ export const SendOpenaiMessageParams = zod.object({
 })
 
 export const SendOpenaiMessageBody = zod.object({
-  "content": zod.string()
+  "content": zod.string(),
+  "language": zod.string().optional().describe('Optional BCP-47 language code the assistant\/engram should respond in (e.g. \"es\", \"ja\"). Omit for automatic (match the user).')
 })
 
 export const SendOpenaiMessageResponse = zod.unknown()
@@ -536,15 +831,20 @@ export const ListEngramsResponseItem = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
   "humanContactEnabled": zod.boolean(),
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -572,6 +872,321 @@ export const TickEngramsResponse = zod.object({
   "seen": zod.boolean(),
   "createdAt": zod.string()
 }))
+})
+
+
+/**
+ * @summary Synthesize a new engram from the processed observation archive plus operator stipulations
+ */
+export const SynthesizeEngramBody = zod.object({
+  "stipulations": zod.string().describe('Operator instructions shaping the synthesized persona'),
+  "sourceEngramIds": zod.array(zod.number()).optional().describe('Restrict archive grounding to these engrams\' observed material')
+})
+
+export const SynthesizeEngramResponse = zod.object({
+  "id": zod.number(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "title": zod.string(),
+  "symbol": zod.string(),
+  "origin": zod.string(),
+  "voiceProfile": zod.object({
+  "speechStyle": zod.string(),
+  "formatting": zod.string(),
+  "vocabulary": zod.array(zod.string()),
+  "sampleLines": zod.array(zod.string()),
+  "narrationStyle": zod.string()
+}),
+  "emotionalBaseline": zod.object({
+  "valence": zod.number(),
+  "arousal": zod.number(),
+  "volatility": zod.number(),
+  "mood": zod.string()
+}),
+  "environmentAnchor": zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "locations": zod.array(zod.string()),
+  "items": zod.array(zod.string()),
+  "ambient": zod.string()
+}),
+  "memorySeed": zod.object({
+  "relationship": zod.string(),
+  "facts": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "guardrails": zod.object({
+  "framing": zod.string(),
+  "boundaries": zod.array(zod.string())
+}),
+  "drives": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "weight": zod.number(),
+  "baseRate": zod.number()
+})),
+  "focusThemes": zod.array(zod.string()),
+  "autonomyEnabled": zod.boolean(),
+  "tickCadenceSeconds": zod.number(),
+  "initiationThreshold": zod.number(),
+  "driveState": zod.record(zod.string(), zod.number()),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
+  "backoffUntil": zod.string().nullish(),
+  "isChatActive": zod.boolean(),
+  "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
+  "humanContactEnabled": zod.boolean(),
+  "simulationEnabled": zod.boolean(),
+  "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * Accepts multipart/form-data at runtime with a required file field and optional stipulations field. The multipart body is intentionally not modeled because the shared server validator does not include browser File globals.
+ * @summary Parse a CSV upload and prepare a short-lived editable engram draft without writing to the database
+ */
+export const previewEngramCsvImportResponseDraftNameMax = 100;
+
+export const previewEngramCsvImportResponseDraftTitleMax = 160;
+
+export const previewEngramCsvImportResponseDraftSymbolMax = 8;
+
+export const previewEngramCsvImportResponseDraftOriginMax = 500;
+
+export const previewEngramCsvImportResponseDraftMemoryCandidatesItemContentMax = 1000;
+
+export const previewEngramCsvImportResponseDraftMemoryCandidatesItemOperatorVerifiedContentMax = 1000;
+
+
+
+export const PreviewEngramCsvImportResponse = zod.object({
+  "draftId": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "source": zod.object({
+  "filename": zod.string(),
+  "rowsAccepted": zod.number(),
+  "rowsSkipped": zod.number(),
+  "charactersAccepted": zod.number(),
+  "warnings": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "row": zod.number().nullable()
+}))
+}),
+  "draft": zod.object({
+  "name": zod.string().min(1).max(previewEngramCsvImportResponseDraftNameMax),
+  "title": zod.string().min(1).max(previewEngramCsvImportResponseDraftTitleMax),
+  "symbol": zod.string().min(1).max(previewEngramCsvImportResponseDraftSymbolMax),
+  "origin": zod.string().min(1).max(previewEngramCsvImportResponseDraftOriginMax),
+  "voiceProfile": zod.object({
+  "speechStyle": zod.string(),
+  "formatting": zod.string(),
+  "vocabulary": zod.array(zod.string()),
+  "sampleLines": zod.array(zod.string()),
+  "narrationStyle": zod.string()
+}),
+  "emotionalBaseline": zod.object({
+  "valence": zod.number(),
+  "arousal": zod.number(),
+  "volatility": zod.number(),
+  "mood": zod.string()
+}),
+  "environmentAnchor": zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "locations": zod.array(zod.string()),
+  "items": zod.array(zod.string()),
+  "ambient": zod.string()
+}),
+  "memorySeed": zod.object({
+  "relationship": zod.string(),
+  "facts": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "guardrails": zod.object({
+  "framing": zod.string(),
+  "boundaries": zod.array(zod.string())
+}),
+  "drives": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "weight": zod.number(),
+  "baseRate": zod.number()
+})),
+  "focusThemes": zod.array(zod.string()),
+  "memoryCandidates": zod.array(zod.object({
+  "id": zod.string(),
+  "content": zod.string().min(1).max(previewEngramCsvImportResponseDraftMemoryCandidatesItemContentMax),
+  "provenance": zod.enum(['simulated', 'inferred', 'remembered']).describe('Uploads can never create observed entries; remembered requires explicit operator verification.'),
+  "operatorVerified": zod.boolean().describe('Must be true when provenance is remembered and is valid only for the exact operatorVerifiedContent.'),
+  "operatorVerifiedContent": zod.string().max(previewEngramCsvImportResponseDraftMemoryCandidatesItemOperatorVerifiedContentMax).nullable().describe('Exact content snapshot approved by the operator; null unless a remembered candidate is verified.'),
+  "sourceRows": zod.array(zod.number())
+})),
+  "autonomyEnabled": zod.boolean(),
+  "tickCadenceSeconds": zod.number(),
+  "initiationThreshold": zod.number(),
+  "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
+  "humanContactEnabled": zod.boolean(),
+  "simulationEnabled": zod.boolean(),
+  "artifactGenerationEnabled": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Confirm a short-lived CSV import draft and atomically create one mutable engram
+ */
+
+export const confirmEngramCsvImportBodyDraftNameMax = 100;
+
+export const confirmEngramCsvImportBodyDraftTitleMax = 160;
+
+export const confirmEngramCsvImportBodyDraftSymbolMax = 8;
+
+export const confirmEngramCsvImportBodyDraftOriginMax = 500;
+
+export const confirmEngramCsvImportBodyDraftMemoryCandidatesItemContentMax = 1000;
+
+export const confirmEngramCsvImportBodyDraftMemoryCandidatesItemOperatorVerifiedContentMax = 1000;
+
+
+
+export const ConfirmEngramCsvImportBody = zod.object({
+  "draftId": zod.string().min(1),
+  "draft": zod.object({
+  "name": zod.string().min(1).max(confirmEngramCsvImportBodyDraftNameMax),
+  "title": zod.string().min(1).max(confirmEngramCsvImportBodyDraftTitleMax),
+  "symbol": zod.string().min(1).max(confirmEngramCsvImportBodyDraftSymbolMax),
+  "origin": zod.string().min(1).max(confirmEngramCsvImportBodyDraftOriginMax),
+  "voiceProfile": zod.object({
+  "speechStyle": zod.string(),
+  "formatting": zod.string(),
+  "vocabulary": zod.array(zod.string()),
+  "sampleLines": zod.array(zod.string()),
+  "narrationStyle": zod.string()
+}),
+  "emotionalBaseline": zod.object({
+  "valence": zod.number(),
+  "arousal": zod.number(),
+  "volatility": zod.number(),
+  "mood": zod.string()
+}),
+  "environmentAnchor": zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "locations": zod.array(zod.string()),
+  "items": zod.array(zod.string()),
+  "ambient": zod.string()
+}),
+  "memorySeed": zod.object({
+  "relationship": zod.string(),
+  "facts": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "guardrails": zod.object({
+  "framing": zod.string(),
+  "boundaries": zod.array(zod.string())
+}),
+  "drives": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "weight": zod.number(),
+  "baseRate": zod.number()
+})),
+  "focusThemes": zod.array(zod.string()),
+  "memoryCandidates": zod.array(zod.object({
+  "id": zod.string(),
+  "content": zod.string().min(1).max(confirmEngramCsvImportBodyDraftMemoryCandidatesItemContentMax),
+  "provenance": zod.enum(['simulated', 'inferred', 'remembered']).describe('Uploads can never create observed entries; remembered requires explicit operator verification.'),
+  "operatorVerified": zod.boolean().describe('Must be true when provenance is remembered and is valid only for the exact operatorVerifiedContent.'),
+  "operatorVerifiedContent": zod.string().max(confirmEngramCsvImportBodyDraftMemoryCandidatesItemOperatorVerifiedContentMax).nullable().describe('Exact content snapshot approved by the operator; null unless a remembered candidate is verified.'),
+  "sourceRows": zod.array(zod.number())
+})),
+  "autonomyEnabled": zod.boolean(),
+  "tickCadenceSeconds": zod.number(),
+  "initiationThreshold": zod.number(),
+  "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
+  "humanContactEnabled": zod.boolean(),
+  "simulationEnabled": zod.boolean(),
+  "artifactGenerationEnabled": zod.boolean()
+})
+})
+
+export const ConfirmEngramCsvImportResponse = zod.object({
+  "id": zod.number(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "title": zod.string(),
+  "symbol": zod.string(),
+  "origin": zod.string(),
+  "voiceProfile": zod.object({
+  "speechStyle": zod.string(),
+  "formatting": zod.string(),
+  "vocabulary": zod.array(zod.string()),
+  "sampleLines": zod.array(zod.string()),
+  "narrationStyle": zod.string()
+}),
+  "emotionalBaseline": zod.object({
+  "valence": zod.number(),
+  "arousal": zod.number(),
+  "volatility": zod.number(),
+  "mood": zod.string()
+}),
+  "environmentAnchor": zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "locations": zod.array(zod.string()),
+  "items": zod.array(zod.string()),
+  "ambient": zod.string()
+}),
+  "memorySeed": zod.object({
+  "relationship": zod.string(),
+  "facts": zod.array(zod.string()),
+  "summary": zod.string()
+}),
+  "guardrails": zod.object({
+  "framing": zod.string(),
+  "boundaries": zod.array(zod.string())
+}),
+  "drives": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "description": zod.string(),
+  "weight": zod.number(),
+  "baseRate": zod.number()
+})),
+  "focusThemes": zod.array(zod.string()),
+  "autonomyEnabled": zod.boolean(),
+  "tickCadenceSeconds": zod.number(),
+  "initiationThreshold": zod.number(),
+  "driveState": zod.record(zod.string(), zod.number()),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
+  "backoffUntil": zod.string().nullish(),
+  "isChatActive": zod.boolean(),
+  "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
+  "humanContactEnabled": zod.boolean(),
+  "simulationEnabled": zod.boolean(),
+  "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
 })
 
 
@@ -658,15 +1273,20 @@ export const GetEngramResponse = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
   "humanContactEnabled": zod.boolean(),
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -751,15 +1371,20 @@ export const UpdateEngramConfigResponse = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
   "humanContactEnabled": zod.boolean(),
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -820,15 +1445,20 @@ export const ActivateEngramResponse = zod.object({
   "tickCadenceSeconds": zod.number(),
   "initiationThreshold": zod.number(),
   "driveState": zod.record(zod.string(), zod.number()),
-  "currentMood": zod.string().optional(),
-  "lastTickAt": zod.string().optional(),
-  "lastTransmissionAt": zod.string().optional(),
+  "currentMood": zod.string().nullish(),
+  "lastTickAt": zod.string().nullish(),
+  "lastTransmissionAt": zod.string().nullish(),
   "backoffUntil": zod.string().nullish(),
   "isChatActive": zod.boolean(),
   "mode": zod.enum(['orientation', 'social', 'simulation', 'initiative_limited', 'full_bounded', 'quiescent']),
   "humanContactEnabled": zod.boolean(),
   "simulationEnabled": zod.boolean(),
   "artifactGenerationEnabled": zod.boolean(),
+  "isArchival": zod.boolean().describe('Permanent archival branch — read-only, preserved for continuity fidelity.'),
+  "continuationEligibility": zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().optional()
+}).optional().describe('Whether this engram may take a peer-generated group continuation turn right now.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -927,7 +1557,8 @@ export const CreateEngramInquiryParams = zod.object({
 
 export const CreateEngramInquiryBody = zod.object({
   "kind": zod.enum(['probe', 'develop']),
-  "question": zod.string()
+  "question": zod.string(),
+  "language": zod.string().optional().describe('Optional BCP-47 language code the engram should respond in. Omit for automatic.')
 })
 
 export const CreateEngramInquiryResponse = zod.object({
@@ -955,7 +1586,7 @@ export const ListEngramWorldModelResponseItem = zod.object({
   "content": zod.string(),
   "confidence": zod.number(),
   "scope": zod.enum(['private', 'shared']),
-  "source": zod.string().optional(),
+  "source": zod.string().optional().describe('Optional source label; omitted when the entry has no source.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -974,7 +1605,7 @@ export const CreateEngramWorldModelEntryBody = zod.object({
   "content": zod.string(),
   "confidence": zod.number().optional(),
   "scope": zod.enum(['private', 'shared']).optional(),
-  "source": zod.string().optional()
+  "source": zod.string().optional().describe('Optional source label; omit when no source is available.')
 })
 
 export const CreateEngramWorldModelEntryResponse = zod.object({
@@ -984,7 +1615,7 @@ export const CreateEngramWorldModelEntryResponse = zod.object({
   "content": zod.string(),
   "confidence": zod.number(),
   "scope": zod.enum(['private', 'shared']),
-  "source": zod.string().optional(),
+  "source": zod.string().optional().describe('Optional source label; omitted when the entry has no source.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -1002,7 +1633,7 @@ export const UpdateEngramWorldModelEntryBody = zod.object({
   "content": zod.string().optional(),
   "confidence": zod.number().optional(),
   "scope": zod.enum(['private', 'shared']).optional(),
-  "source": zod.string().optional()
+  "source": zod.string().optional().describe('Optional replacement source label; omit to keep the existing value.')
 })
 
 export const UpdateEngramWorldModelEntryResponse = zod.object({
@@ -1012,7 +1643,7 @@ export const UpdateEngramWorldModelEntryResponse = zod.object({
   "content": zod.string(),
   "confidence": zod.number(),
   "scope": zod.enum(['private', 'shared']),
-  "source": zod.string().optional(),
+  "source": zod.string().optional().describe('Optional source label; omitted when the entry has no source.'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 })
@@ -1101,11 +1732,39 @@ export const ListHubActivityResponseItem = zod.object({
   "id": zod.number(),
   "spaceId": zod.number(),
   "engramId": zod.number().nullable(),
-  "kind": zod.enum(['enter', 'move', 'rest', 'wake', 'system']),
+  "kind": zod.enum(['enter', 'move', 'rest', 'wake', 'converse', 'simulate', 'system']),
   "summary": zod.string(),
   "createdAt": zod.string()
 })
 export const ListHubActivityResponse = zod.array(ListHubActivityResponseItem)
+
+
+/**
+ * @summary List the recent Commons transcript for a Hub space
+ */
+export const ListHubSpaceTranscriptParams = zod.object({
+  "spaceId": zod.coerce.number()
+})
+
+export const ListHubSpaceTranscriptResponseItem = zod.object({
+  "id": zod.number(),
+  "fromEngramId": zod.number(),
+  "toEngramId": zod.number().nullable(),
+  "spaceId": zod.number().nullable(),
+  "channel": zod.enum(['engram', 'human']),
+  "author": zod.enum(['engram', 'operator']),
+  "priority": zod.enum(['urgent', 'meaningful', 'social']),
+  "status": zod.enum(['delivered', 'queued', 'digest', 'blocked']),
+  "content": zod.string(),
+  "reason": zod.string().nullable(),
+  "seen": zod.boolean(),
+  "isDigest": zod.boolean(),
+  "digestGroupId": zod.string().nullable().describe('Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.'),
+  "deliveredAt": zod.string().nullable(),
+  "acknowledgedAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+export const ListHubSpaceTranscriptResponse = zod.array(ListHubSpaceTranscriptResponseItem)
 
 
 /**
@@ -1140,7 +1799,9 @@ export const UpdateHubControlsResponse = zod.object({
  */
 export const ListEngramMessagesQueryParams = zod.object({
   "channel": zod.enum(['engram', 'human']).optional(),
-  "limit": zod.coerce.number().optional()
+  "limit": zod.coerce.number().optional(),
+  "before": zod.coerce.string().optional().describe('Return rows older than this ISO timestamp. Pair with beforeId to disambiguate rows sharing the same timestamp.'),
+  "beforeId": zod.coerce.number().optional().describe('Message id tie-breaker for the before timestamp cursor.')
 })
 
 export const ListEngramMessagesResponseItem = zod.object({
@@ -1149,12 +1810,16 @@ export const ListEngramMessagesResponseItem = zod.object({
   "toEngramId": zod.number().nullable(),
   "spaceId": zod.number().nullable(),
   "channel": zod.enum(['engram', 'human']),
+  "author": zod.enum(['engram', 'operator']),
   "priority": zod.enum(['urgent', 'meaningful', 'social']),
   "status": zod.enum(['delivered', 'queued', 'digest', 'blocked']),
   "content": zod.string(),
   "reason": zod.string().nullable(),
   "seen": zod.boolean(),
+  "isDigest": zod.boolean(),
+  "digestGroupId": zod.string().nullable().describe('Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.'),
   "deliveredAt": zod.string().nullable(),
+  "acknowledgedAt": zod.string().nullable(),
   "createdAt": zod.string()
 })
 export const ListEngramMessagesResponse = zod.array(ListEngramMessagesResponseItem)
@@ -1173,6 +1838,75 @@ export const MarkEngramMessagesSeenResponse = zod.object({
 
 
 /**
+ * @summary Reply to an engram's human-channel message
+ */
+export const ReplyToEngramMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const replyToEngramMessageBodyContentMax = 2000;
+
+
+
+export const ReplyToEngramMessageBody = zod.object({
+  "content": zod.string().min(1).max(replyToEngramMessageBodyContentMax)
+})
+
+export const ReplyToEngramMessageResponse = zod.object({
+  "id": zod.number(),
+  "fromEngramId": zod.number(),
+  "toEngramId": zod.number().nullable(),
+  "spaceId": zod.number().nullable(),
+  "channel": zod.enum(['engram', 'human']),
+  "author": zod.enum(['engram', 'operator']),
+  "priority": zod.enum(['urgent', 'meaningful', 'social']),
+  "status": zod.enum(['delivered', 'queued', 'digest', 'blocked']),
+  "content": zod.string(),
+  "reason": zod.string().nullable(),
+  "seen": zod.boolean(),
+  "isDigest": zod.boolean(),
+  "digestGroupId": zod.string().nullable().describe('Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.'),
+  "deliveredAt": zod.string().nullable(),
+  "acknowledgedAt": zod.string().nullable(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Open an operator-directed simulation with an optional scenario premise
+ */
+export const createSimulationBodyParticipantEngramIdsMax = 8;
+
+
+
+export const CreateSimulationBody = zod.object({
+  "engramId": zod.number(),
+  "participantEngramIds": zod.array(zod.number()).min(1).max(createSimulationBodyParticipantEngramIdsMax).optional(),
+  "premise": zod.string().optional().describe('Optional specific scenario; omitted to generate one from the engram\'s context'),
+  "maxSteps": zod.number().optional().describe('Optional step budget (capped server-side)')
+})
+
+export const CreateSimulationResponse = zod.object({
+  "id": zod.number(),
+  "engramId": zod.number(),
+  "participantEngramIds": zod.array(zod.number()),
+  "spaceId": zod.number(),
+  "premise": zod.string(),
+  "status": zod.enum(['proposed', 'running', 'paused', 'ended']),
+  "currentStep": zod.number(),
+  "maxSteps": zod.number(),
+  "stepCooldownSeconds": zod.number(),
+  "lastSteppedAt": zod.string().nullable(),
+  "exitSummary": zod.string().nullable(),
+  "startedAt": zod.string().nullable(),
+  "pausedAt": zod.string().nullable(),
+  "endedAt": zod.string().nullable(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
  * @summary List bounded simulations, newest first
  */
 export const ListSimulationsQueryParams = zod.object({
@@ -1183,6 +1917,7 @@ export const ListSimulationsQueryParams = zod.object({
 export const ListSimulationsResponseItem = zod.object({
   "id": zod.number(),
   "engramId": zod.number(),
+  "participantEngramIds": zod.array(zod.number()),
   "spaceId": zod.number(),
   "premise": zod.string(),
   "status": zod.enum(['proposed', 'running', 'paused', 'ended']),
@@ -1211,6 +1946,7 @@ export const ListSimulationStepsResponseItem = zod.object({
   "id": zod.number(),
   "simulationId": zod.number(),
   "stepNumber": zod.number(),
+  "speakerEngramId": zod.number().nullable(),
   "narrative": zod.string(),
   "worldModelEntryId": zod.number().nullable(),
   "createdAt": zod.string()
@@ -1232,6 +1968,7 @@ export const ControlSimulationBody = zod.object({
 export const ControlSimulationResponse = zod.object({
   "id": zod.number(),
   "engramId": zod.number(),
+  "participantEngramIds": zod.array(zod.number()),
   "spaceId": zod.number(),
   "premise": zod.string(),
   "status": zod.enum(['proposed', 'running', 'paused', 'ended']),
@@ -1265,10 +2002,12 @@ export const ListMediaResponseItem = zod.object({
   "modality": zod.enum(['text', 'image', 'audio', 'video']),
   "sizeBytes": zod.number(),
   "status": zod.enum(['pending', 'processing', 'completed', 'failed']),
+  "resultState": zod.enum(['none', 'partial', 'complete']).describe('Whether this asset has no derived result, a partial result, or a complete result.'),
   "summary": zod.string().nullable(),
   "commentary": zod.string().nullable(),
   "transcript": zod.string().nullable(),
   "error": zod.string().nullable(),
+  "failureKind": zod.union([zod.literal('provider'),zod.literal('extraction'),zod.literal('recovered'),zod.literal(null)]).nullable().describe('Stable category for known media processing failures and recovery.'),
   "observationCount": zod.number(),
   "startedAt": zod.string().nullable(),
   "completedAt": zod.string().nullable(),
@@ -1295,10 +2034,12 @@ export const GetMediaAssetResponse = zod.object({
   "modality": zod.enum(['text', 'image', 'audio', 'video']),
   "sizeBytes": zod.number(),
   "status": zod.enum(['pending', 'processing', 'completed', 'failed']),
+  "resultState": zod.enum(['none', 'partial', 'complete']).describe('Whether this asset has no derived result, a partial result, or a complete result.'),
   "summary": zod.string().nullable(),
   "commentary": zod.string().nullable(),
   "transcript": zod.string().nullable(),
   "error": zod.string().nullable(),
+  "failureKind": zod.union([zod.literal('provider'),zod.literal('extraction'),zod.literal('recovered'),zod.literal(null)]).nullable().describe('Stable category for known media processing failures and recovery.'),
   "observationCount": zod.number(),
   "startedAt": zod.string().nullable(),
   "completedAt": zod.string().nullable(),
@@ -1345,10 +2086,12 @@ export const RetryMediaAssetResponse = zod.object({
   "modality": zod.enum(['text', 'image', 'audio', 'video']),
   "sizeBytes": zod.number(),
   "status": zod.enum(['pending', 'processing', 'completed', 'failed']),
+  "resultState": zod.enum(['none', 'partial', 'complete']).describe('Whether this asset has no derived result, a partial result, or a complete result.'),
   "summary": zod.string().nullable(),
   "commentary": zod.string().nullable(),
   "transcript": zod.string().nullable(),
   "error": zod.string().nullable(),
+  "failureKind": zod.union([zod.literal('provider'),zod.literal('extraction'),zod.literal('recovered'),zod.literal(null)]).nullable().describe('Stable category for known media processing failures and recovery.'),
   "observationCount": zod.number(),
   "startedAt": zod.string().nullable(),
   "completedAt": zod.string().nullable(),

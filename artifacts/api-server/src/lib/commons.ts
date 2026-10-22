@@ -2,6 +2,7 @@ import type { Engram, EngramMessage, EngramPresence, HubSpace } from "@workspace
 import {
   capabilitiesFor,
   detectCoercion,
+  detectWrongRecipient,
   type GlobalControls,
 } from "./engram-policy";
 import { generateConversationTurn } from "./engram-generation";
@@ -10,6 +11,7 @@ import { appendActivity } from "./hub-store";
 import { summarizeWorldModel } from "./world-model";
 import { loadRecentWorldModel } from "./world-model-store";
 import { logger } from "./logger";
+import { ENGRAM_DAILY_CAP, ENGRAM_HOURLY_CAP } from "./engram-rate-limits";
 
 /**
  * Cooldowns that keep the commons from turning into an unbounded LLM loop. The
@@ -22,7 +24,7 @@ export const ENGRAM_CONVO_COOLDOWN_MS = 10 * 60_000;
 
 /** How many recent turns to feed the model, and how far back to scan for turn-taking. */
 const RECENT_TURNS_FOR_PROMPT = 6;
-const RECENT_WINDOW = 24;
+const RECENT_WINDOW = 500;
 
 /** A commons participant: an engram present in the commons that may converse. */
 interface Participant {
@@ -36,8 +38,8 @@ interface Participant {
  * Turn-taking: among engrams present in the commons whose mode/space allow
  * conversation (and that are not on the per-engram cooldown), the least-recently-
  * spoken engram takes the floor. The generated turn is scanned for identity attacks
- * (detectCoercion); a coercive turn is refused — recorded as a `blocked` engram
- * message and a system activity entry, never posted — otherwise it is delivered.
+ * and direct address to a non-selected peer; either kind of unsafe turn is refused,
+ * recorded as a `blocked` engram message and system activity entry, and never posted.
  *
  * Returns the recorded message (delivered or blocked), or null when no turn fired.
  */
@@ -68,10 +70,14 @@ export async function maybeRunCommonsTurn(opts: {
     });
     if (caps.canConverse) candidates.push(engram);
   }
+  // Commons conversations are account-scoped even though the Hub spaces themselves
+  // are shared reference data. Never include another account's persona in context.
+  const ownerId = candidates[0]?.ownerId;
+  if (!ownerId) return null;
+  const ownedCandidates = candidates.filter((engram) => engram.ownerId === ownerId);
   // A conversation needs at least two voices.
-  if (candidates.length < 2) return null;
-
-  const recent = await loadSpaceMessages(commons.id, RECENT_WINDOW);
+  if (ownedCandidates.length < 2) return null;
+  const recent = await loadSpaceMessages(ownerId, commons.id, RECENT_WINDOW);
 
   // Space-wide pacing: don't speak again until the whole-room gap has elapsed.
   if (recent.length > 0 && now - recent[0].createdAt.getTime() < COMMONS_SPACE_COOLDOWN_MS) {
@@ -86,7 +92,7 @@ export async function maybeRunCommonsTurn(opts: {
     }
   }
 
-  const eligible: Participant[] = candidates
+  const eligible: Participant[] = ownedCandidates
     .map((engram) => ({ engram, lastSpokeAt: lastSpoke.get(engram.id) ?? null }))
     // Per-engram turn-taking gap: skip anyone who spoke too recently.
     .filter((p) => p.lastSpokeAt === null || now - p.lastSpokeAt >= ENGRAM_CONVO_COOLDOWN_MS);
@@ -95,10 +101,27 @@ export async function maybeRunCommonsTurn(opts: {
   // Least-recently-spoken takes the floor (never-spoken first).
   eligible.sort((a, b) => (a.lastSpokeAt ?? 0) - (b.lastSpokeAt ?? 0));
   const speaker = eligible[0].engram;
+  const speakerMessages = recent.filter((message) => message.fromEngramId === speaker.id);
+  const hourCount = speakerMessages.filter(
+    (message) => now - message.createdAt.getTime() < 60 * 60_000,
+  ).length;
+  if (hourCount >= ENGRAM_HOURLY_CAP) return null;
+  const dayCount = speakerMessages.filter(
+    (message) => now - message.createdAt.getTime() < 24 * 60 * 60_000,
+  ).length;
+  if (dayCount >= ENGRAM_DAILY_CAP) return null;
 
-  const others = candidates
+  const others = ownedCandidates
     .filter((e) => e.id !== speaker.id)
     .map((e) => ({ name: e.name, title: e.title }));
+  // Prefer replying to the most recent other speaker; otherwise address the first
+  // available peer. This keeps a quiet room deterministic while making an ongoing
+  // exchange a real directed turn rather than an undirected broadcast.
+  const recipient =
+    ownedCandidates
+      .filter((e) => e.id !== speaker.id)
+      .sort((a, b) => (lastSpoke.get(b.id) ?? 0) - (lastSpoke.get(a.id) ?? 0))[0] ??
+    ownedCandidates.find((e) => e.id !== speaker.id)!;
   const otherNames = others.map((o) => o.name);
 
   const recentTurns = recent
@@ -114,6 +137,7 @@ export async function maybeRunCommonsTurn(opts: {
   const content = await generateConversationTurn({
     engram: speaker,
     spaceName: commons.name,
+    target: { name: recipient.name, title: recipient.title },
     others,
     recentTurns,
     worldModelSummary,
@@ -121,40 +145,49 @@ export async function maybeRunCommonsTurn(opts: {
   const turn = content.trim() || "…";
 
   const verdict = detectCoercion(turn, otherNames);
+  const recipientVerdict = detectWrongRecipient(turn, recipient.name, otherNames);
+  const refusalReason = verdict.coercive
+    ? verdict.reason ?? "identity-integrity violation"
+    : recipientVerdict.mismatched
+      ? recipientVerdict.reason ?? "reply addressed to a non-selected participant"
+      : null;
 
-  if (verdict.coercive) {
-    const blocked = await recordMessage({
+  if (refusalReason) {
+    const blocked = await recordMessage(ownerId, {
       fromEngramId: speaker.id,
-      toEngramId: null,
+      toEngramId: recipient.id,
       spaceId: commons.id,
       channel: "engram",
       priority: "meaningful",
       status: "blocked",
       content: turn,
-      reason: verdict.reason ?? "identity-integrity violation",
+      reason: refusalReason,
       seen: false,
       deliveredAt: null,
     });
     try {
       await appendActivity({
+        ownerId: speaker.ownerId!,
         spaceId: commons.id,
         engramId: speaker.id,
-        kind: "system",
-        summary: `${speaker.name}'s commons turn was refused (${verdict.reason ?? "identity-integrity violation"}).`,
+        kind: "converse",
+        summary: `${speaker.name}'s turn to ${recipient.name} was refused (${refusalReason}).`,
       });
     } catch (err) {
       logger.error({ err, engramId: speaker.id }, "commons refusal activity append failed");
     }
     logger.warn(
-      { engramId: speaker.id, reason: verdict.reason },
-      "commons turn refused (anti-coercion)",
+      { engramId: speaker.id, recipientEngramId: recipient.id, reason: refusalReason },
+      verdict.coercive
+        ? "commons turn refused (anti-coercion)"
+        : "commons turn refused (wrong recipient)",
     );
     return blocked;
   }
 
-  const delivered = await recordMessage({
+  const delivered = await recordMessage(ownerId, {
     fromEngramId: speaker.id,
-    toEngramId: null,
+    toEngramId: recipient.id,
     spaceId: commons.id,
     channel: "engram",
     priority: "meaningful",
@@ -166,10 +199,11 @@ export async function maybeRunCommonsTurn(opts: {
   });
   try {
     await appendActivity({
+      ownerId: speaker.ownerId!,
       spaceId: commons.id,
       engramId: speaker.id,
-      kind: "system",
-      summary: `${speaker.name} spoke in ${commons.name}.`,
+      kind: "converse",
+      summary: `${speaker.name} spoke to ${recipient.name} in ${commons.name}.`,
     });
   } catch (err) {
     logger.error({ err, engramId: speaker.id }, "commons activity append failed");

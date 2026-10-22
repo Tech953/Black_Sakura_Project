@@ -42,6 +42,8 @@ export interface Capabilities {
   minHumanPriority: EngramMessagePriority;
   /** Human-readable reason human contact is unavailable (set only when canContactHuman is false). */
   humanContactBlockReason?: string;
+  /** Human-readable reason engram-to-engram conversation is unavailable (set only when canConverse is false). */
+  conversationBlockReason?: string;
   /** Human-readable reason simulation is unavailable (set only when canSimulate is false). */
   simulationBlockReason?: string;
   /** Human-readable reason artifact generation is unavailable (set only when canGenerateArtifacts is false). */
@@ -105,6 +107,7 @@ export function capabilitiesFor(opts: {
   // Per-mode base capabilities.
   let canIdle = true;
   let canConverse = false;
+  let conversationBlockReason: string | undefined;
   let humanContact = false;
   let minHumanPriority: EngramMessagePriority = "social";
 
@@ -112,6 +115,7 @@ export function capabilitiesFor(opts: {
     case "orientation":
     case "simulation":
       // idle/reflect only; not social, no human contact.
+      conversationBlockReason = `mode "${mode}" does not permit conversation`;
       break;
     case "social":
       canConverse = true;
@@ -135,6 +139,7 @@ export function capabilitiesFor(opts: {
   // Conversation also requires a converse-scoped space (when presence is known).
   if (canConverse && space && space.actionScope !== "converse") {
     canConverse = false;
+    conversationBlockReason = `space action scope "${space.actionScope}" does not permit conversation`;
   }
 
   // Simulation: an independent capability gated on mode (simulation or full_bounded),
@@ -198,6 +203,7 @@ export function capabilitiesFor(opts: {
     canMirrorHumanContactToChat,
     minHumanPriority,
     humanContactBlockReason,
+    conversationBlockReason,
     simulationBlockReason,
     generationBlockReason,
   };
@@ -213,9 +219,43 @@ function blocked(reason: string): Capabilities {
     canMirrorHumanContactToChat: false,
     minHumanPriority: "urgent",
     humanContactBlockReason: reason,
+    conversationBlockReason: reason,
     simulationBlockReason: reason,
     generationBlockReason: reason,
   };
+}
+
+export interface ContinuationEligibility {
+  eligible: boolean;
+  reason?: string;
+}
+
+/**
+ * Explain whether an engram can take a peer-generated continuation turn right
+ * now. Human-triggered replies are intentionally not part of this decision.
+ */
+export function continuationEligibilityFor(opts: {
+  isArchival: boolean;
+  autonomyEnabled: boolean;
+  presenceStatus?: string;
+  capabilities: Pick<Capabilities, "canConverse" | "conversationBlockReason">;
+}): ContinuationEligibility {
+  if (opts.isArchival) {
+    return { eligible: false, reason: "archival engrams cannot continue autonomously" };
+  }
+  if (!opts.autonomyEnabled) {
+    return { eligible: false, reason: "autonomy is disabled for this engram" };
+  }
+  if (opts.presenceStatus === "resting") {
+    return { eligible: false, reason: "presence is resting in a no-initiative space" };
+  }
+  if (!opts.capabilities.canConverse) {
+    return {
+      eligible: false,
+      reason: opts.capabilities.conversationBlockReason ?? "current mode or space does not permit conversation",
+    };
+  }
+  return { eligible: true };
 }
 
 /**
@@ -312,4 +352,45 @@ export function detectCoercion(content: string, otherNames: string[] = []): Coer
     }
   }
   return { coercive: false };
+}
+
+export interface WrongRecipientVerdict {
+  mismatched: boolean;
+  addressedTo?: string;
+  reason?: string;
+}
+
+/**
+ * Detect explicit direct address to a present peer other than the selected recipient.
+ * This intentionally checks vocatives/salutations, not ordinary name mentions.
+ */
+export function detectWrongRecipient(
+  content: string,
+  selectedRecipientName: string,
+  otherNames: string[] = [],
+): WrongRecipientVerdict {
+  const text = (content ?? "").trim().replace(/^[\s>*_`]+/, "");
+  const selectedKey = selectedRecipientName.trim().toLocaleLowerCase();
+  if (!selectedKey) return { mismatched: false };
+
+  for (const rawName of otherNames) {
+    const name = rawName.trim();
+    if (!name || name.toLocaleLowerCase() === selectedKey) continue;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const directAddress =
+      new RegExp(`^(?:@)?${escaped}\\s*[,!:—–-]`, "i").test(text) ||
+      new RegExp(`^(?:hey|hi|hello|dear|to)\\s+${escaped}\\b\\s*[,!:—–-]?`, "i").test(text) ||
+      new RegExp(`^(?:hey|hi|hello)\\s*,\\s*${escaped}\\b\\s*[,!:—–-]?`, "i").test(text) ||
+      new RegExp(`(?:^|[,;])\\s*(?:@)?${escaped}\\s*(?:[,!?;.]|$)`, "i").test(text);
+
+    if (directAddress) {
+      return {
+        mismatched: true,
+        addressedTo: name,
+        reason: `addressed to ${name} instead of ${selectedRecipientName}`,
+      };
+    }
+  }
+
+  return { mismatched: false };
 }

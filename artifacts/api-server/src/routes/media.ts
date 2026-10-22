@@ -1,16 +1,19 @@
 import { Router } from "express";
 import multer from "multer";
 import { db } from "@workspace/db";
-import { engramsTable } from "@workspace/db/schema";
 import type { MediaAsset, EngramWorldModelEntry, MediaJobStatus } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import {
   ListMediaQueryParams,
   GetMediaAssetParams,
   RetryMediaAssetParams,
   DeleteMediaAssetParams,
 } from "@workspace/api-zod";
-import { detectModality } from "../lib/media-extraction";
+import {
+  contentMatchesMime,
+  detectModality,
+  filenameMatchesMime,
+  normalizeMediaMimeType,
+} from "../lib/media-extraction";
 import {
   createMediaAsset,
   loadMediaAssets,
@@ -19,9 +22,17 @@ import {
   loadMediaBlob,
   requeueMediaAsset,
   deleteMediaAsset,
+  MEDIA_RECOVERY_ERROR,
 } from "../lib/media-store";
+import { decodeStoredMediaFailure } from "../lib/media-failure";
+import { isArchivalEngram, ARCHIVAL_READ_ONLY_ERROR } from "../lib/archival";
+import { loadOwnedConversation, loadOwnedEngram } from "../lib/account-bootstrap";
 
 const router = Router();
+
+async function isOwnedAsset(asset: MediaAsset, ownerId: string): Promise<boolean> {
+  return asset.ownerId === ownerId;
+}
 
 /** Hard cap on a single upload's size. Defaults to 25 MiB; overridable via env. */
 const MEDIA_MAX_BYTES = Number(process.env["MEDIA_MAX_BYTES"]) || 25 * 1024 * 1024;
@@ -33,6 +44,15 @@ const upload = multer({
 const uploadSingle = upload.single("file");
 
 function serializeAsset(a: MediaAsset) {
+  const resultState =
+    a.status === "completed"
+      ? "complete"
+      : a.observationCount > 0
+        ? "partial"
+        : "none";
+
+  const decodedFailure = decodeStoredMediaFailure(a.error);
+
   return {
     id: a.id,
     engramId: a.engramId,
@@ -42,10 +62,15 @@ function serializeAsset(a: MediaAsset) {
     modality: a.modality,
     sizeBytes: a.sizeBytes,
     status: a.status,
+    resultState,
     summary: a.summary ?? null,
     commentary: a.commentary ?? null,
     transcript: a.transcript ?? null,
-    error: a.error ?? null,
+    error: decodedFailure.diagnostic,
+    failureKind:
+      a.error === MEDIA_RECOVERY_ERROR
+        ? "recovered"
+        : decodedFailure.failureKind,
     observationCount: a.observationCount,
     startedAt: a.startedAt ? a.startedAt.toISOString() : null,
     completedAt: a.completedAt ? a.completedAt.toISOString() : null,
@@ -72,6 +97,11 @@ function serializeObservation(e: EngramWorldModelEntry) {
  */
 router.post("/media", (req, res) => {
   uploadSingle(req, res, async (err: unknown) => {
+    // Multer buffers uploads in memory and persistence starts only after it has
+    // parsed the complete multipart body. Never continue work for a cancelled
+    // or disconnected client.
+    if (req.aborted || res.destroyed) return;
+
     if (err) {
       if (err instanceof multer.MulterError) {
         const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
@@ -95,27 +125,44 @@ router.post("/media", (req, res) => {
       return;
     }
 
-    const modality = detectModality(file.mimetype);
+    const mimeType = normalizeMediaMimeType(file.mimetype);
+    const modality = detectModality(mimeType);
     if (!modality) {
       res
         .status(415)
-        .json({ error: `Unsupported media type: ${file.mimetype}` });
+        .json({ error: `Unsupported media type: ${mimeType}` });
+      return;
+    }
+    if (!contentMatchesMime(file.buffer, mimeType)) {
+      res.status(415).json({
+        error: `Uploaded bytes do not match the claimed media type: ${mimeType}`,
+      });
+      return;
+    }
+    if (!filenameMatchesMime(file.originalname, mimeType)) {
+      res.status(415).json({
+        error: `Uploaded filename extension does not match the claimed media type: ${mimeType}`,
+      });
       return;
     }
 
     try {
-      const [engram] = await db
-        .select({ id: engramsTable.id })
-        .from(engramsTable)
-        .where(eq(engramsTable.id, engramId));
+      const engram = await loadOwnedEngram(engramId, req.userId!);
+      if (req.aborted || res.destroyed) return;
       if (!engram) {
         res.status(404).json({ error: "Engram not found" });
         return;
       }
+      if (engram.isArchival) {
+        res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
+        return;
+      }
+      if (req.aborted || res.destroyed) return;
       const asset = await createMediaAsset({
+        ownerId: req.userId!,
         engramId,
         filename: file.originalname || "upload",
-        mimeType: file.mimetype,
+        mimeType,
         modality,
         data: file.buffer,
       });
@@ -133,11 +180,17 @@ router.get("/media", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (parsed.data.engramId != null && !(await loadOwnedEngram(parsed.data.engramId, req.userId!))) {
+    res.status(404).json({ error: "Engram not found" });
+    return;
+  }
   const rows = await loadMediaAssets({
+    ownerId: req.userId!,
     engramId: parsed.data.engramId,
     status: parsed.data.status as MediaJobStatus | undefined,
   });
-  res.json(rows.map(serializeAsset));
+  const owned = await Promise.all(rows.map(async (asset) => (await isOwnedAsset(asset, req.userId!)) ? asset : null));
+  res.json(owned.filter((asset): asset is MediaAsset => asset !== null).map(serializeAsset));
 });
 
 router.get("/media/:id", async (req, res) => {
@@ -146,8 +199,8 @@ router.get("/media/:id", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const asset = await loadMediaAssetById(parsed.data.id);
-  if (!asset) {
+  const asset = await loadMediaAssetById(parsed.data.id, req.userId!);
+  if (!asset || !(await isOwnedAsset(asset, req.userId!))) {
     res.status(404).json({ error: "Media asset not found" });
     return;
   }
@@ -168,9 +221,24 @@ router.get("/media/:id/raw", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const blob = await loadMediaBlob(parsed.data.id);
+  const asset = await loadMediaAssetById(parsed.data.id, req.userId!);
+  if (!asset || !(await isOwnedAsset(asset, req.userId!))) {
+    res.status(404).json({ error: "Media bytes not found" });
+    return;
+  }
+  const blob = await loadMediaBlob(parsed.data.id, req.userId!);
   if (!blob) {
     res.status(404).json({ error: "Media bytes not found" });
+    return;
+  }
+  if (
+    !detectModality(asset.mimeType) ||
+    !contentMatchesMime(blob.data, asset.mimeType) ||
+    !filenameMatchesMime(asset.filename, asset.mimeType)
+  ) {
+    res.status(415).json({
+      error: "This media asset failed upload validation and cannot be previewed.",
+    });
     return;
   }
   res.setHeader("Content-Type", blob.mimeType);
@@ -185,15 +253,31 @@ router.post("/media/:id/retry", async (req, res) => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const asset = await loadMediaAssetById(parsed.data.id);
-  if (!asset) {
+  const asset = await loadMediaAssetById(parsed.data.id, req.userId!);
+  if (!asset || !(await isOwnedAsset(asset, req.userId!))) {
     res.status(404).json({ error: "Media asset not found" });
+    return;
+  }
+  if (await isArchivalEngram(asset.engramId)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
   if (asset.status !== "failed") {
     res
       .status(400)
       .json({ error: "Only failed assets can be retried." });
+    return;
+  }
+  const blob = await loadMediaBlob(asset.id, req.userId!);
+  if (
+    !blob ||
+    !detectModality(asset.mimeType) ||
+    !contentMatchesMime(blob.data, asset.mimeType) ||
+    !filenameMatchesMime(asset.filename, asset.mimeType)
+  ) {
+    res.status(415).json({
+      error: "This media asset failed upload validation. Delete it and upload the original file again.",
+    });
     return;
   }
   // The status guard lives inside requeueMediaAsset's UPDATE; a concurrent retry
@@ -210,6 +294,15 @@ router.delete("/media/:id", async (req, res) => {
   const parsed = DeleteMediaAssetParams.safeParse({ id: req.params.id });
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const existing = await loadMediaAssetById(parsed.data.id, req.userId!);
+  if (!existing || !(await isOwnedAsset(existing, req.userId!))) {
+    res.status(404).json({ error: "Media asset not found" });
+    return;
+  }
+  if (await isArchivalEngram(existing.engramId)) {
+    res.status(403).json({ error: ARCHIVAL_READ_ONLY_ERROR });
     return;
   }
   const deleted = await deleteMediaAsset(parsed.data.id);

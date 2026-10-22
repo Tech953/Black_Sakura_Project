@@ -14,5 +14,7 @@ export const HubActivityEntryKind = {
   move: 'move',
   rest: 'rest',
   wake: 'wake',
+  converse: 'converse',
+  simulate: 'simulate',
   system: 'system',
 } as const;

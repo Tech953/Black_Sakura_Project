@@ -64,3 +64,32 @@ export async function installDownloadedUpdate(deps: {
     deps.quitAndInstall();
   }
 }
+
+export async function stopDesktopWork(deps: {
+  stopImports: () => Promise<void>;
+  stopServer: () => Promise<void>;
+  stopLlama: () => Promise<void>;
+}): Promise<void> {
+  await deps.stopImports();
+  await deps.stopServer();
+  await deps.stopLlama();
+}
+
+export type BeforeQuitEvent = {
+  preventDefault: () => void;
+};
+
+export function createBeforeQuitHandler(deps: {
+  hasWork: () => boolean;
+  isQuitting: () => boolean;
+  markQuitting: () => void;
+  stopDesktopWork: () => Promise<void>;
+  quit: () => void;
+}): (event: BeforeQuitEvent) => void {
+  return (event) => {
+    if (!deps.hasWork() || deps.isQuitting()) return;
+    event.preventDefault();
+    deps.markQuitting();
+    void deps.stopDesktopWork().finally(deps.quit);
+  };
+}

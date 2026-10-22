@@ -11,5 +11,6 @@ export interface OpenaiMessage {
   conversationId: number;
   role: string;
   content: string;
+  speakerEngramId?: number | null;
   createdAt: Date;
 }

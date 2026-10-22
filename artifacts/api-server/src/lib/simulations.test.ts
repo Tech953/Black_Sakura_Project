@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import type { Engram, EngramSimulation, EngramPresence, HubSpace } from "@workspace/db";
+import type {
+  Engram,
+  EngramSimulation,
+  EngramSimulationParticipant,
+  EngramPresence,
+  HubSpace,
+} from "@workspace/db";
 import type { GlobalControls } from "./engram-policy";
+import { HUB_ACTIVITY_EXCERPT_MAX } from "./hub-activity-summary";
 
 // --- Hoisted mock state -------------------------------------------------------
 // We mock the stores + generation seam + side-effect modules, but keep the REAL
@@ -23,18 +30,46 @@ const h = vi.hoisted(() => {
     db,
     appendSimulationStep: vi.fn(async () => ({ id: 1 })),
     createSimulation: vi.fn(async (v: Record<string, unknown>) => ({ id: 7, ...v })),
-    loadActiveSimulationForEngram: vi.fn(async () => null as EngramSimulation | null),
+    loadActiveSimulationForEngram: vi.fn(
+      async (_engramId?: number) => null as EngramSimulation | null,
+    ),
     loadRunningSimulations: vi.fn(async () => [] as EngramSimulation[]),
+    loadSimulationParticipants: vi.fn(async (): Promise<EngramSimulationParticipant[]> => []),
     loadSimulationSteps: vi.fn(async () => [] as { narrative: string }[]),
-    updateSimulation: vi.fn(async (id: number, patch: Record<string, unknown>) => ({
+    markSimulationParticipantSpoke: vi.fn(async () => undefined),
+     updateSimulation: vi.fn(
+       async (id: number, _ownerId: string, patch: Record<string, unknown>) => ({
+         id,
+         ...patch,
+       }),
+     ),
+     claimSimulationStep: vi.fn(
+       async (
+         id: number,
+         ownerId: string,
+         expectedCurrentStep: number,
+         now: Date,
+       ) => ({
       id,
-      ...patch,
-    })),
+         ownerId,
+      currentStep: expectedCurrentStep + 1,
+      lastSteppedAt: now,
+      status: "running",
+       }),
+     ),
     generateSimulationPremise: vi.fn(async () => "What if the vault flooded?"),
     generateSimulationStep: vi.fn(async () => "The water rises another inch."),
     generateSimulationExitSummary: vi.fn(async () => "I learned the drains hold."),
     loadRecentWorldModel: vi.fn(async () => [] as unknown[]),
     appendActivity: vi.fn(async () => undefined),
+    loadPresenceForEngram: vi.fn(
+      async (_engramId?: number): Promise<EngramPresence | null> =>
+        ({
+          engramId: 1,
+          spaceId: 5,
+          status: "active",
+        }) as unknown as EngramPresence,
+    ),
   };
 });
 
@@ -49,8 +84,11 @@ vi.mock("./simulations-store", () => ({
   createSimulation: h.createSimulation,
   loadActiveSimulationForEngram: h.loadActiveSimulationForEngram,
   loadRunningSimulations: h.loadRunningSimulations,
+  loadSimulationParticipants: h.loadSimulationParticipants,
   loadSimulationSteps: h.loadSimulationSteps,
+  markSimulationParticipantSpoke: h.markSimulationParticipantSpoke,
   updateSimulation: h.updateSimulation,
+  claimSimulationStep: h.claimSimulationStep,
 }));
 vi.mock("./engram-generation", () => ({
   generateSimulationPremise: h.generateSimulationPremise,
@@ -58,9 +96,17 @@ vi.mock("./engram-generation", () => ({
   generateSimulationExitSummary: h.generateSimulationExitSummary,
 }));
 vi.mock("./world-model-store", () => ({ loadRecentWorldModel: h.loadRecentWorldModel }));
-vi.mock("./hub-store", () => ({ appendActivity: h.appendActivity }));
+vi.mock("./hub-store", () => ({
+  appendActivity: h.appendActivity,
+  loadPresenceForEngram: h.loadPresenceForEngram,
+}));
 
-import { maybeRunSimulationStep, SIMULATION_STEP_CONFIDENCE } from "./simulations";
+import {
+  maybeRunSimulationStep,
+  openOperatorSimulation,
+  SIMULATION_STEP_CONFIDENCE,
+  SimulationTransitionError,
+} from "./simulations";
 
 // --- Fixtures -----------------------------------------------------------------
 const CHAMBER: HubSpace = {
@@ -71,6 +117,7 @@ const CHAMBER: HubSpace = {
   description: "where engrams run hypotheticals",
   allowsInitiative: true,
   actionScope: "simulate",
+  ownerId: "test-owner",
   createdAt: new Date(),
   updatedAt: new Date(),
 } as unknown as HubSpace;
@@ -78,6 +125,7 @@ const CHAMBER: HubSpace = {
 function makeEngram(overrides: Partial<Engram> = {}): Engram {
   return {
     id: 1,
+    ownerId: "test-owner",
     slug: "test",
     name: "Testra",
     title: "Test Construct",
@@ -95,6 +143,7 @@ function makeEngram(overrides: Partial<Engram> = {}): Engram {
 function makeSim(overrides: Partial<EngramSimulation> = {}): EngramSimulation {
   return {
     id: 7,
+    ownerId: "test-owner",
     engramId: 1,
     spaceId: CHAMBER.id,
     premise: "What if the vault flooded?",
@@ -142,6 +191,14 @@ beforeEach(() => {
   h.loadActiveSimulationForEngram.mockResolvedValue(null);
   h.loadRunningSimulations.mockResolvedValue([]);
   h.loadSimulationSteps.mockResolvedValue([]);
+  h.loadPresenceForEngram.mockImplementation(
+    async (_engramId?: number): Promise<EngramPresence | null> =>
+      ({
+        engramId: 1,
+        spaceId: 5,
+        status: "active",
+      }) as unknown as EngramPresence,
+  );
 });
 
 // --- Stepping a running simulation --------------------------------------------
@@ -158,10 +215,99 @@ describe("maybeRunSimulationStep — stepping", () => {
     // appendSimulationStep, and the engine never calls any other append.
     expect(h.appendSimulationStep).toHaveBeenCalledTimes(1);
     expect(h.appendSimulationStep).toHaveBeenCalledWith(
-      expect.objectContaining({ stepNumber: 2, confidence: SIMULATION_STEP_CONFIDENCE }),
+      expect.objectContaining({
+        stepNumber: 2,
+        confidence: SIMULATION_STEP_CONFIDENCE,
+        speakerEngramId: 1,
+      }),
     );
-    expect(h.updateSimulation).toHaveBeenCalledWith(7, expect.objectContaining({ currentStep: 2 }));
+    expect(h.appendActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "simulate",
+        summary: expect.stringContaining("The water rises another inch."),
+      }),
+    );
+    // The step counter is bumped atomically via the CAS claim, not a blind update.
+    expect(h.claimSimulationStep).toHaveBeenCalledWith(
+      7,
+      "test-owner",
+      1,
+      expect.any(Date),
+    );
     expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+  });
+
+  it("normalizes and bounds long activity excerpts without losing simulation metadata", async () => {
+    const longNarrative = `\n  first line\n\n\tsecond line   ${"x".repeat(300)}\n trailing text`;
+    h.generateSimulationStep.mockResolvedValueOnce(longNarrative);
+    h.loadRunningSimulations.mockResolvedValue([makeSim({ currentStep: 1, maxSteps: 5 })]);
+
+    await maybeRunSimulationStep(makeOpts({ engrams: [makeEngram({ name: "Longform" })] }));
+
+    const lastActivityCall = h.appendActivity.mock.calls.at(-1) as unknown[] | undefined;
+    const summary =
+      (lastActivityCall?.[0] as { summary?: string } | undefined)?.summary ?? "";
+    expect(lastActivityCall?.[0]).toEqual(
+      expect.objectContaining({
+        ownerId: "test-owner",
+        spaceId: CHAMBER.id,
+        engramId: 1,
+        kind: "simulate",
+      }),
+    );
+    expect(summary).toMatch(/^Longform advanced a simulation \(step 2\/5\): /);
+    expect(summary).toContain("first line second line");
+    expect(summary).not.toContain("\n");
+    expect(summary).not.toContain("trailing text");
+    const excerpt = summary.slice(summary.indexOf(": ") + 2);
+    expect(excerpt.length).toBe(HUB_ACTIVITY_EXCERPT_MAX);
+  });
+
+  it("alternates eligible participants by least-recently-spoken time and records the speaker", async () => {
+    const first = makeEngram({ id: 1, name: "First" });
+    const second = makeEngram({ id: 2, name: "Second" });
+    h.loadRunningSimulations.mockResolvedValue([makeSim({ currentStep: 1 })]);
+    h.loadSimulationParticipants.mockResolvedValue([
+      { simulationId: 7, engramId: 1, lastSpokeAt: new Date(2000) },
+      { simulationId: 7, engramId: 2, lastSpokeAt: new Date(1000) },
+    ] as EngramSimulationParticipant[]);
+
+    const out = await maybeRunSimulationStep(makeOpts({ engrams: [first, second] }));
+
+    expect(out).toEqual({ kind: "stepped", simulationId: 7 });
+    expect(h.generateSimulationStep).toHaveBeenCalledWith(
+      expect.objectContaining({ engram: second }),
+    );
+    expect(h.appendSimulationStep).toHaveBeenCalledWith(
+      expect.objectContaining({ speakerEngramId: 2 }),
+    );
+    expect(h.markSimulationParticipantSpoke).toHaveBeenCalledWith(
+      7,
+      2,
+      expect.any(Date),
+    );
+  });
+
+  it("does not step when every participant has left or lost capability", async () => {
+    const first = makeEngram({ id: 1 });
+    const second = makeEngram({ id: 2 });
+    h.loadRunningSimulations.mockResolvedValue([makeSim()]);
+
+    const out = await maybeRunSimulationStep(
+      makeOpts({
+        engrams: [first, second],
+        presence: [],
+      }),
+    );
+
+    expect(out).toBeNull();
+    expect(h.generateSimulationStep).not.toHaveBeenCalled();
+    expect(h.appendSimulationStep).not.toHaveBeenCalled();
+    expect(h.updateSimulation).toHaveBeenCalledWith(
+      7,
+      "test-owner",
+      expect.objectContaining({ status: "paused" }),
+    );
   });
 
   it("respects the per-step cooldown (does not step a recently-stepped sim)", async () => {
@@ -192,7 +338,7 @@ describe("maybeRunSimulationStep — bounds", () => {
     expect(h.generateSimulationExitSummary).toHaveBeenCalledTimes(1);
     // Last update flips status to ended.
     const lastCall = h.updateSimulation.mock.calls.at(-1);
-    expect(lastCall?.[1]).toEqual(expect.objectContaining({ status: "ended" }));
+    expect(lastCall?.[2]).toEqual(expect.objectContaining({ status: "ended" }));
   });
 
   it("clamps the effective step ceiling to the hard cap of 10", async () => {
@@ -220,6 +366,49 @@ describe("maybeRunSimulationStep — proposing", () => {
     expect(h.generateSimulationStep).not.toHaveBeenCalled();
   });
 
+  it("normalizes and bounds generated premise excerpts while preserving activity metadata", async () => {
+    const longPremise =
+      "\n  first premise\n\n\tsecond premise   " +
+      "x".repeat(HUB_ACTIVITY_EXCERPT_MAX + 80) +
+      "\n omitted tail";
+    h.generateSimulationPremise.mockResolvedValueOnce(longPremise);
+
+    const out = await maybeRunSimulationStep(
+      makeOpts({ engrams: [makeEngram({ name: "Longform" })] }),
+    );
+
+    expect(out).toEqual({ kind: "created", simulationId: 7 });
+    const latestActivityCall =
+      h.appendActivity.mock.calls.at(-1) as unknown[] | undefined;
+    const activity =
+      latestActivityCall?.[0] as
+        | {
+            ownerId?: string;
+            spaceId?: number;
+            engramId?: number;
+            kind?: string;
+            summary?: string;
+          }
+        | undefined;
+    expect(activity).toEqual(
+      expect.objectContaining({
+        ownerId: "test-owner",
+        spaceId: CHAMBER.id,
+        engramId: 1,
+        kind: "simulate",
+      }),
+    );
+    const summary = activity?.summary ?? "";
+    const prefix = 'Longform opened a simulation: "';
+    expect(summary.startsWith(prefix)).toBe(true);
+    expect(summary.endsWith('".')).toBe(true);
+    const excerpt = summary.slice(prefix.length, -2);
+    expect(excerpt).toMatch(/^first premise second premise/);
+    expect(excerpt).not.toContain("\n");
+    expect(excerpt).not.toContain("omitted tail");
+    expect(excerpt.length).toBe(HUB_ACTIVITY_EXCERPT_MAX);
+  });
+
   it("does not propose when the engram already has an active sim", async () => {
     h.loadActiveSimulationForEngram.mockResolvedValue(makeSim({ status: "paused" }));
 
@@ -238,6 +427,159 @@ describe("maybeRunSimulationStep — proposing", () => {
     expect(out).toBeNull();
     expect(h.loadRunningSimulations).not.toHaveBeenCalled();
     expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+  });
+
+  it("does not run in a simulation-chamber-shaped space without simulate action scope", async () => {
+    const restrictedChamber = {
+      ...CHAMBER,
+      actionScope: "observe",
+    } as HubSpace;
+    const out = await maybeRunSimulationStep(
+      makeOpts({
+        engrams: [makeEngram()],
+        spaces: [restrictedChamber],
+        presence: [{ engramId: 1, spaceId: restrictedChamber.id, status: "active" } as EngramPresence],
+      }),
+    );
+
+    expect(out).toBeNull();
+    expect(h.loadRunningSimulations).not.toHaveBeenCalled();
+    expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+    expect(h.createSimulation).not.toHaveBeenCalled();
+  });
+
+  it("rejects operator starts outside a simulate-scoped chamber", async () => {
+    const restrictedChamber = { ...CHAMBER, actionScope: "observe" } as HubSpace;
+
+    await expect(
+      openOperatorSimulation({
+        engram: makeEngram(),
+        chamber: restrictedChamber,
+        premise: "What if the lights fail?",
+        controls: { paused: false, quietMode: false },
+      }),
+    ).rejects.toBeInstanceOf(SimulationTransitionError);
+    expect(h.createSimulation).not.toHaveBeenCalled();
+  });
+
+  it("generates an operator premise only after the capability guards pass", async () => {
+    const longPremise =
+      "\n  first premise\n\n\tsecond premise   " +
+      "x".repeat(HUB_ACTIVITY_EXCERPT_MAX + 80) +
+      "\n omitted tail";
+    const engram = makeEngram({ name: "Longform" });
+    h.generateSimulationPremise.mockResolvedValueOnce(longPremise);
+
+    const sim = await openOperatorSimulation({
+      engram,
+      chamber: CHAMBER,
+      controls: { paused: false, quietMode: false },
+    });
+
+    expect(h.generateSimulationPremise).toHaveBeenCalledTimes(1);
+    expect(h.createSimulation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        premise: longPremise.trim(),
+        status: "running",
+        spaceId: CHAMBER.id,
+      }),
+      [1],
+    );
+    expect(sim).toMatchObject({ premise: longPremise.trim() });
+
+    const latestActivityCall =
+      h.appendActivity.mock.calls.at(-1) as unknown[] | undefined;
+    const activity =
+      latestActivityCall?.[0] as
+        | {
+            ownerId?: string;
+            spaceId?: number;
+            engramId?: number;
+            kind?: string;
+            summary?: string;
+          }
+        | undefined;
+    expect(activity).toEqual(
+      expect.objectContaining({
+        ownerId: "test-owner",
+        spaceId: CHAMBER.id,
+        engramId: engram.id,
+        kind: "simulate",
+      }),
+    );
+    const summary = activity?.summary ?? "";
+    const prefix = 'Operator opened a simulation for Longform: "';
+    expect(summary.startsWith(prefix)).toBe(true);
+    expect(summary.endsWith('".')).toBe(true);
+    const excerpt = summary.slice(prefix.length, -2);
+    expect(excerpt).toMatch(/^first premise second premise/);
+    expect(excerpt).not.toContain("\n");
+    expect(excerpt).not.toContain("omitted tail");
+    expect(excerpt).toHaveLength(HUB_ACTIVITY_EXCERPT_MAX);
+  });
+
+  it("does not call the model when an operator supplies a premise", async () => {
+    await openOperatorSimulation({
+      engram: makeEngram(),
+      chamber: CHAMBER,
+      premise: "  What if the lights fail?  ",
+      controls: { paused: false, quietMode: false },
+    });
+
+    expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+    expect(h.createSimulation).toHaveBeenCalledWith(
+      expect.objectContaining({ premise: "What if the lights fail?" }),
+      [1],
+    );
+  });
+
+  it("validates every shared participant before generating or creating", async () => {
+    const first = makeEngram({ id: 1 });
+    const second = makeEngram({ id: 2, name: "Elsewhere" });
+    h.loadPresenceForEngram.mockImplementation(async (engramId?: number) =>
+      engramId === second.id
+        ? null
+        : ({ engramId: 1, spaceId: 5, status: "active" } as unknown as EngramPresence),
+    );
+
+    await expect(
+      openOperatorSimulation({
+        engram: first,
+        participants: [second],
+        chamber: CHAMBER,
+        controls: { paused: false, quietMode: false },
+      }),
+    ).rejects.toThrow("Elsewhere");
+    expect(h.generateSimulationPremise).not.toHaveBeenCalled();
+    expect(h.createSimulation).not.toHaveBeenCalled();
+  });
+
+  it("rejects an incapable or already-active shared participant", async () => {
+    const first = makeEngram({ id: 1 });
+    const incapable = makeEngram({ id: 2, mode: "quiescent" });
+
+    await expect(
+      openOperatorSimulation({
+        engram: first,
+        participants: [incapable],
+        chamber: CHAMBER,
+        controls: { paused: false, quietMode: false },
+      }),
+    ).rejects.toThrow("cannot simulate");
+
+    const active = makeEngram({ id: 3 });
+    h.loadActiveSimulationForEngram.mockImplementation(async (engramId?: number) =>
+      engramId === active.id ? makeSim({ id: 99 }) : null,
+    );
+    await expect(
+      openOperatorSimulation({
+        engram: first,
+        participants: [active],
+        chamber: CHAMBER,
+        controls: { paused: false, quietMode: false },
+      }),
+    ).rejects.toThrow("already has an active simulation");
+    expect(h.createSimulation).not.toHaveBeenCalled();
   });
 });
 

@@ -3,7 +3,9 @@ import {
   applyWorldModelPatch,
   summarizeWorldModel,
   clampConfidence,
+  isReservedRebeccaAdaptiveSource,
   ProvenanceImmutableError,
+  TRUSTED_REBECCA_ADAPTIVE_SOURCES,
   WORLD_MODEL_PROVENANCE_ORDER,
   type WorldModelEntryView,
 } from "./world-model";
@@ -147,6 +149,97 @@ describe("summarizeWorldModel", () => {
       entry({ content: "PEAKVAL", confidence: 0.9 }),
     ]);
     expect(out.indexOf("PEAKVAL")).toBeLessThan(out.indexOf("BASEVAL"));
+  });
+
+  it("keeps Rebecca source authority and concrete source IDs in prompt order", () => {
+    const out = summarizeWorldModel([
+      entry({
+        provenance: "inferred",
+        content: "MISSION_CONTEXT",
+        confidence: 0.95,
+        source: TRUSTED_REBECCA_ADAPTIVE_SOURCES[6],
+      }),
+      entry({
+        provenance: "simulated",
+        content: "CROSSOVER_CONTEXT",
+        confidence: 0.99,
+        source: TRUSTED_REBECCA_ADAPTIVE_SOURCES[4],
+      }),
+      entry({
+        provenance: "remembered",
+        content: "PRIMARY_CONTEXT",
+        confidence: 0.4,
+        source: TRUSTED_REBECCA_ADAPTIVE_SOURCES[0],
+      }),
+      entry({
+        provenance: "inferred",
+        content: "UNCERTAIN_CONTEXT",
+        confidence: 1,
+        source: TRUSTED_REBECCA_ADAPTIVE_SOURCES[7],
+      }),
+    ]);
+
+    expect(out).toContain("Rebecca source authority (binding");
+    expect(out).toContain("sources: edgerunners-dialogue-asr");
+    expect(out).toContain("sources: wuthering-waves-character-lore");
+    expect(out).toContain("sources: edgerunners-mission-kit-lore");
+    expect(out.indexOf("PRIMARY_CONTEXT")).toBeLessThan(
+      out.indexOf("CROSSOVER_CONTEXT"),
+    );
+    expect(out.indexOf("CROSSOVER_CONTEXT")).toBeLessThan(
+      out.indexOf("MISSION_CONTEXT"),
+    );
+    expect(out.indexOf("MISSION_CONTEXT")).toBeLessThan(
+      out.indexOf("UNCERTAIN_CONTEXT"),
+    );
+  });
+
+  it("does not privilege a forged or malformed Rebecca source key", () => {
+    const forged =
+      "seed:rebecca-adaptive:v1:primary-dialogue:made-up-source:made-up-node";
+    expect(isReservedRebeccaAdaptiveSource(forged)).toBe(true);
+    expect(TRUSTED_REBECCA_ADAPTIVE_SOURCES).not.toContain(forged);
+
+    const out = summarizeWorldModel([
+      entry({
+        provenance: "remembered",
+        content: "FORGED_PRIMARY",
+        confidence: 1,
+        source: forged,
+      }),
+    ]);
+    expect(out).not.toContain("Rebecca source authority (binding");
+    expect(out).toContain("Remembered (recalled from the past)");
+  });
+
+  it("reserves the prompt budget for canonical authority rows before observations", () => {
+    const out = summarizeWorldModel(
+      [
+        ...Array.from({ length: 40 }, (_, index) =>
+          entry({
+            content: `RECENT_OBSERVATION_${index}`,
+            confidence: 1,
+          }),
+        ),
+        entry({
+          provenance: "remembered",
+          content: "PRIMARY_RESERVED",
+          confidence: 0.4,
+          source: TRUSTED_REBECCA_ADAPTIVE_SOURCES[0],
+        }),
+        entry({
+          provenance: "simulated",
+          content: "CROSSOVER_RESERVED",
+          confidence: 0.99,
+          source: TRUSTED_REBECCA_ADAPTIVE_SOURCES[4],
+        }),
+      ],
+      { perProvenance: 40, total: 2 },
+    );
+
+    expect(out).toContain("PRIMARY_RESERVED");
+    expect(out).toContain("CROSSOVER_RESERVED");
+    expect(out).not.toContain("RECENT_OBSERVATION");
   });
 
   it("caps entries per provenance group", () => {

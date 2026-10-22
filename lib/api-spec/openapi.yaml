@@ -35,6 +35,8 @@ tags:
     description: Engram processing environment operations
   - name: media
     description: Multimodal media perception operations
+  - name: mobile
+    description: Mobile app synchronization operations
 paths:
   /healthz:
     get:
@@ -49,6 +51,91 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /mobile/offline-sync:
+    post:
+      operationId: syncOfflineHistory
+      tags: [mobile]
+      summary: Import locally-created mobile history after reconnecting
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfflineSyncInput"
+      responses:
+        "200":
+          description: Imported or previously acknowledged offline rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfflineSyncResult"
+        "401":
+          description: Authentication is required to synchronize offline history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "400":
+          description: Invalid offline history payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "403":
+          description: An offline record targets a read-only archival engram
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "409":
+          description: A sync ID conflicts with a different record kind
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
+  /mobile/push-tokens:
+    post:
+      operationId: registerPushToken
+      tags: [mobile]
+      summary: Register an Expo push token for the signed-in mobile account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenInput"
+      responses:
+        "204":
+          description: Push token registered
+        "400":
+          description: Invalid push token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+    delete:
+      operationId: unregisterPushToken
+      tags: [mobile]
+      summary: Remove an Expo push token from the signed-in mobile account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenInput"
+      responses:
+        "204":
+          description: Push token removed
+        "400":
+          description: Invalid push token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
 
   /personality:
     get:
@@ -91,7 +178,8 @@ paths:
           in: query
           schema:
             type: string
-            enum: [working, episodic, semantic, preference, reflective, procedural]
+            enum:
+              [working, episodic, semantic, preference, reflective, procedural]
       responses:
         "200":
           description: List of memory entries
@@ -365,6 +453,14 @@ paths:
       operationId: listOpenaiConversations
       tags: [openai]
       summary: List all conversations
+      parameters:
+        - name: archived
+          in: query
+          required: false
+          description: When true, list archived conversations; otherwise list active conversations.
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           description: List of conversations
@@ -429,6 +525,92 @@ paths:
       responses:
         "204":
           description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
+  /openai/conversations/{id}/archive:
+    patch:
+      operationId: archiveOpenaiConversation
+      tags: [openai]
+      summary: Archive or restore a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenaiConversationArchiveInput"
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiConversation"
+        "403":
+          description: Conversation is read-only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
+  /openai/conversations/{id}/continuation:
+    patch:
+      operationId: updateOpenaiConversationContinuation
+      tags: [openai]
+      summary: Update group continuation consent
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenaiConversationContinuationInput"
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiConversation"
+        "400":
+          description: Only group conversations may change continuation consent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "403":
+          description: Conversation is read-only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "409":
+          description: Archived conversation must be restored, or the supplied revision is stale.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
         "404":
           description: Not found
           content:
@@ -505,6 +687,112 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EngramTickResult"
+
+  /engrams/synthesize:
+    post:
+      operationId: synthesizeEngram
+      tags: [engrams]
+      summary: Synthesize a new engram from the processed observation archive plus operator stipulations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngramSynthesisInput"
+      responses:
+        "201":
+          description: The newly created engram
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Engram"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "502":
+          description: Synthesis generation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
+  /engrams/import-csv/preview:
+    post:
+      operationId: previewEngramCsvImport
+      tags: [engrams]
+      summary: Parse a CSV upload and prepare a short-lived editable engram draft without writing to the database
+      description: Accepts multipart/form-data at runtime with a required file field and optional stipulations field. The multipart body is intentionally not modeled because the shared server validator does not include browser File globals.
+      responses:
+        "200":
+          description: Short-lived editable import draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngramImportPreview"
+        "400":
+          description: Malformed or unusable CSV input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "413":
+          description: Upload exceeds the allowed size
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "415":
+          description: Unsupported upload type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "502":
+          description: Draft generation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
+  /engrams/import-csv/confirm:
+    post:
+      operationId: confirmEngramCsvImport
+      tags: [engrams]
+      summary: Confirm a short-lived CSV import draft and atomically create one mutable engram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngramImportConfirmation"
+      responses:
+        "201":
+          description: Newly created mutable engram
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Engram"
+        "400":
+          description: Invalid or unsafe confirmation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "409":
+          description: Draft is already confirming or has been consumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "410":
+          description: Draft is missing or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
 
   /engrams/state:
     get:
@@ -726,6 +1014,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OpenaiError"
+        "503":
+          description: Inquiry generation or persistence failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngramInquiryError"
 
   /engrams/{id}/world-model:
     get:
@@ -930,6 +1224,33 @@ paths:
                 items:
                   $ref: "#/components/schemas/HubActivityEntry"
 
+  /hub/spaces/{spaceId}/transcript:
+    get:
+      operationId: listHubSpaceTranscript
+      tags: [hub]
+      summary: List the recent Commons transcript for a Hub space
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recent engram-to-engram messages in the Hub space
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EngramMessage"
+        "404":
+          description: Space not found for this account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+
   /hub/controls:
     get:
       operationId: getHubControls
@@ -977,6 +1298,18 @@ paths:
           required: false
           schema:
             type: integer
+        - name: before
+          in: query
+          required: false
+          description: Return rows older than this ISO timestamp. Pair with beforeId to disambiguate rows sharing the same timestamp.
+          schema:
+            type: string
+        - name: beforeId
+          in: query
+          required: false
+          description: Message id tie-breaker for the before timestamp cursor.
+          schema:
+            type: integer
       responses:
         "200":
           description: Recent bus messages
@@ -1006,7 +1339,71 @@ paths:
               schema:
                 $ref: "#/components/schemas/MarkMessagesSeenResult"
 
+  /messages/{id}/reply:
+    post:
+      operationId: replyToEngramMessage
+      tags: [hub]
+      summary: Reply to an engram's human-channel message
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplyToEngramMessageInput"
+      responses:
+        "201":
+          description: Persisted operator reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngramMessage"
+        "400":
+          description: Invalid reply
+        "404":
+          description: Message not found for this account
+
   /simulations:
+    post:
+      operationId: createSimulation
+      tags: [simulations]
+      summary: Open an operator-directed simulation with an optional scenario premise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationCreateInput"
+      responses:
+        "201":
+          description: The newly opened simulation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Simulation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "404":
+          description: Engram not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
+        "409":
+          description: Engram not in chamber, incapable, or already simulating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiError"
     get:
       operationId: listSimulations
       tags: [simulations]
@@ -1345,6 +1742,10 @@ paths:
                 $ref: "#/components/schemas/OpenaiError"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
   schemas:
     HealthStatus:
       type: object
@@ -1353,6 +1754,288 @@ components:
           type: string
       required:
         - status
+
+    OfflineSyncMessage:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        createdAt:
+          type: string
+          format: date-time
+      required: [syncId, role, content, createdAt]
+
+    OfflineSyncConversation:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        title:
+          type: [string, "null"]
+          maxLength: 500
+        mode:
+          type: string
+          minLength: 1
+          maxLength: 40
+        engramSlug:
+          type: [string, "null"]
+          maxLength: 120
+        personaName:
+          type: [string, "null"]
+          maxLength: 200
+        customEngram:
+          type: [string, "null"]
+          maxLength: 40000
+        createdAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: [string, "null"]
+          format: date-time
+        seedKey:
+          type: string
+          enum: [rebecca-full-rezz-live-v1]
+        messages:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncMessage"
+      required: [syncId, title, mode, engramSlug, createdAt, messages]
+
+    OfflineSyncInquiry:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        engramSlug:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          type: string
+          minLength: 1
+          maxLength: 40
+        question:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        response:
+          type: string
+          maxLength: 40000
+        createdAt:
+          type: string
+          format: date-time
+      required: [syncId, engramSlug, kind, question, response, createdAt]
+
+    OfflineSyncTransmission:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        engramSlug:
+          type: string
+          minLength: 1
+          maxLength: 120
+        kind:
+          type: string
+          minLength: 1
+          maxLength: 40
+        drive:
+          type: [string, "null"]
+          maxLength: 120
+        content:
+          type: string
+          minLength: 1
+          maxLength: 40000
+        mood:
+          type: [string, "null"]
+          maxLength: 120
+        importanceScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        confidenceScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        noveltyScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        overallScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        wasDelivered:
+          type: boolean
+        seen:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        [
+          syncId,
+          engramSlug,
+          kind,
+          drive,
+          content,
+          mood,
+          importanceScore,
+          confidenceScore,
+          noveltyScore,
+          overallScore,
+          wasDelivered,
+          seen,
+          createdAt,
+        ]
+
+    OfflineSyncObservedEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        engramSlug:
+          type: string
+          minLength: 1
+          maxLength: 120
+        conversationSyncId:
+          type: [string, "null"]
+          maxLength: 80
+        content:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        [syncId, engramSlug, conversationSyncId, content, confidence, createdAt]
+
+    OfflineSyncOperatorReply:
+      type: object
+      additionalProperties: false
+      properties:
+        syncId:
+          type: string
+          minLength: 1
+          maxLength: 80
+        messageId:
+          type: integer
+          minimum: 1
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        createdAt:
+          type: string
+          format: date-time
+      required: [syncId, messageId, content, createdAt]
+
+    OfflineSyncInput:
+      type: object
+      additionalProperties: false
+      properties:
+        deviceId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        conversations:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncConversation"
+        inquiries:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncInquiry"
+        transmissions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncTransmission"
+        observedEntries:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncObservedEntry"
+        operatorReplies:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/OfflineSyncOperatorReply"
+      required:
+        [
+          deviceId,
+          conversations,
+          inquiries,
+          transmissions,
+          observedEntries,
+          operatorReplies,
+        ]
+
+    OfflineSyncCounts:
+      type: object
+      properties:
+        conversations:
+          type: integer
+        messages:
+          type: integer
+        inquiries:
+          type: integer
+        transmissions:
+          type: integer
+        observedEntries:
+          type: integer
+        operatorReplies:
+          type: integer
+      required:
+        [
+          conversations,
+          messages,
+          inquiries,
+          transmissions,
+          observedEntries,
+          operatorReplies,
+        ]
+
+    OfflineSyncResult:
+      type: object
+      properties:
+        syncedIds:
+          type: array
+          items:
+            type: string
+        imported:
+          $ref: "#/components/schemas/OfflineSyncCounts"
+      required: [syncedIds, imported]
 
     PersonalityProfile:
       type: object
@@ -1421,7 +2104,8 @@ components:
           type: integer
         layer:
           type: string
-          enum: [working, episodic, semantic, preference, reflective, procedural]
+          enum:
+            [working, episodic, semantic, preference, reflective, procedural]
         content:
           type: string
         confidence:
@@ -1444,7 +2128,8 @@ components:
       properties:
         layer:
           type: string
-          enum: [working, episodic, semantic, preference, reflective, procedural]
+          enum:
+            [working, episodic, semantic, preference, reflective, procedural]
         content:
           type: string
         confidence:
@@ -1832,14 +2517,55 @@ components:
           type: string
         engramId:
           type: integer
+        engramIds:
+          type: array
+          items:
+            type: integer
+          description: Explicit participants for a human-mediated group conversation.
+        groupContinuationMode:
+          type: string
+          enum: [off, short, extended]
+          description: Consent for peer-generated turns after the human-triggered group reply.
+        groupContinuationRevision:
+          type: integer
+          minimum: 0
+          description: Server-owned revision for optimistic concurrency on group continuation consent.
         createdAt:
           type: string
+          format: date-time
+        archivedAt:
+          type: ["string", "null"]
           format: date-time
       required:
         - id
         - title
         - mode
+        - engramIds
+        - groupContinuationMode
+        - groupContinuationRevision
         - createdAt
+        - archivedAt
+    OpenaiConversationArchiveInput:
+      type: object
+      properties:
+        archived:
+          type: boolean
+      required:
+        - archived
+    OpenaiConversationContinuationInput:
+      type: object
+      properties:
+        groupContinuationMode:
+          type: string
+          enum: [off, short, extended]
+          description: Consent for peer-generated turns after the human-triggered group reply.
+        expectedRevision:
+          type: integer
+          minimum: 0
+          description: Server-owned revision read with the conversation before saving.
+      required:
+        - groupContinuationMode
+        - expectedRevision
     OpenaiMessage:
       type: object
       properties:
@@ -1851,6 +2577,9 @@ components:
           type: string
         content:
           type: string
+        speakerEngramId:
+          type: integer
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1873,6 +2602,19 @@ components:
           type: string
         engramId:
           type: integer
+        engramIds:
+          type: array
+          minItems: 2
+          maxItems: 6
+          uniqueItems: true
+          items:
+            type: integer
+          description: Select 2–6 non-archival engrams for a human-mediated group conversation.
+        groupContinuationMode:
+          type: string
+          enum: [off, short, extended]
+          default: short
+          description: Consent for peer-generated turns after the human-triggered group reply.
       required:
         - title
         - mode
@@ -1881,6 +2623,9 @@ components:
       properties:
         content:
           type: string
+        language:
+          type: string
+          description: Optional BCP-47 language code the assistant/engram should respond in (e.g. "es", "ja"). Omit for automatic (match the user).
       required:
         - content
     OpenaiConversationWithMessages:
@@ -1898,8 +2643,23 @@ components:
           type: string
         engramId:
           type: integer
+        engramIds:
+          type: array
+          items:
+            type: integer
+        groupContinuationMode:
+          type: string
+          enum: [off, short, extended]
+          description: Consent for peer-generated turns after the human-triggered group reply.
+        groupContinuationRevision:
+          type: integer
+          minimum: 0
+          description: Server-owned revision for optimistic concurrency on group continuation consent.
         createdAt:
           type: string
+          format: date-time
+        archivedAt:
+          type: ["string", "null"]
           format: date-time
         messages:
           type: array
@@ -1910,12 +2670,37 @@ components:
         - title
         - mode
         - createdAt
+        - archivedAt
+        - groupContinuationMode
+        - groupContinuationRevision
         - messages
+    PushTokenInput:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: "^(Expo|Exponent)PushToken\\[[^\\]]+\\]$"
+        platform:
+          type: string
+          enum: [ios, android]
+      required:
+        - token
+        - platform
     OpenaiError:
       type: object
       properties:
         error:
           type: string
+        code:
+          type: string
+        groupContinuationMode:
+          type: string
+          enum: [off, short, extended]
+        groupContinuationRevision:
+          type: integer
+          minimum: 0
       required:
         - error
 
@@ -2078,10 +2863,13 @@ components:
             type: number
         currentMood:
           type: string
+          nullable: true
         lastTickAt:
           type: string
+          nullable: true
         lastTransmissionAt:
           type: string
+          nullable: true
         backoffUntil:
           type: string
           nullable: true
@@ -2089,13 +2877,26 @@ components:
           type: boolean
         mode:
           type: string
-          enum: [orientation, social, simulation, initiative_limited, full_bounded, quiescent]
+          enum:
+            [
+              orientation,
+              social,
+              simulation,
+              initiative_limited,
+              full_bounded,
+              quiescent,
+            ]
         humanContactEnabled:
           type: boolean
         simulationEnabled:
           type: boolean
         artifactGenerationEnabled:
           type: boolean
+        isArchival:
+          type: boolean
+          description: Permanent archival branch — read-only, preserved for continuity fidelity.
+        continuationEligibility:
+          $ref: "#/components/schemas/EngramContinuationEligibility"
         createdAt:
           type: string
         updatedAt:
@@ -2123,8 +2924,20 @@ components:
         - humanContactEnabled
         - simulationEnabled
         - artifactGenerationEnabled
+        - isArchival
         - createdAt
         - updatedAt
+
+    EngramContinuationEligibility:
+      type: object
+      description: Whether this engram may take a peer-generated group continuation turn right now.
+      properties:
+        eligible:
+          type: boolean
+        reason:
+          type: string
+      required:
+        - eligible
 
     EngramConfigInput:
       type: object
@@ -2137,7 +2950,15 @@ components:
           type: number
         mode:
           type: string
-          enum: [orientation, social, simulation, initiative_limited, full_bounded, quiescent]
+          enum:
+            [
+              orientation,
+              social,
+              simulation,
+              initiative_limited,
+              full_bounded,
+              quiescent,
+            ]
         humanContactEnabled:
           type: boolean
         simulationEnabled:
@@ -2162,6 +2983,10 @@ components:
           type: integer
         engramId:
           type: integer
+        participantEngramIds:
+          type: array
+          items:
+            type: integer
         spaceId:
           type: integer
         premise:
@@ -2192,6 +3017,7 @@ components:
       required:
         - id
         - engramId
+        - participantEngramIds
         - spaceId
         - premise
         - status
@@ -2215,6 +3041,8 @@ components:
           type: integer
         stepNumber:
           type: integer
+        speakerEngramId:
+          type: ["integer", "null"]
         narrative:
           type: string
         worldModelEntryId:
@@ -2225,9 +3053,216 @@ components:
         - id
         - simulationId
         - stepNumber
+        - speakerEngramId
         - narrative
         - worldModelEntryId
         - createdAt
+
+    EngramSynthesisInput:
+      type: object
+      required: [stipulations]
+      properties:
+        stipulations:
+          type: string
+          description: Operator instructions shaping the synthesized persona
+        sourceEngramIds:
+          type: array
+          items:
+            type: integer
+          description: Restrict archive grounding to these engrams' observed material
+
+    EngramImportWarning:
+      type: object
+      required: [code, message, row]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        row:
+          type: ["integer", "null"]
+
+    EngramImportSourceSummary:
+      type: object
+      required:
+        [filename, rowsAccepted, rowsSkipped, charactersAccepted, warnings]
+      properties:
+        filename:
+          type: string
+        rowsAccepted:
+          type: integer
+        rowsSkipped:
+          type: integer
+        charactersAccepted:
+          type: integer
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/EngramImportWarning"
+
+    EngramImportMemoryCandidate:
+      type: object
+      required:
+        [
+          id,
+          content,
+          provenance,
+          operatorVerified,
+          operatorVerifiedContent,
+          sourceRows,
+        ]
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        provenance:
+          type: string
+          enum: [simulated, inferred, remembered]
+          description: Uploads can never create observed entries; remembered requires explicit operator verification.
+        operatorVerified:
+          type: boolean
+          description: Must be true when provenance is remembered and is valid only for the exact operatorVerifiedContent.
+        operatorVerifiedContent:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Exact content snapshot approved by the operator; null unless a remembered candidate is verified.
+        sourceRows:
+          type: array
+          items:
+            type: integer
+
+    EngramImportEditableDraft:
+      type: object
+      required:
+        - name
+        - title
+        - symbol
+        - origin
+        - voiceProfile
+        - emotionalBaseline
+        - environmentAnchor
+        - memorySeed
+        - guardrails
+        - drives
+        - focusThemes
+        - memoryCandidates
+        - autonomyEnabled
+        - tickCadenceSeconds
+        - initiationThreshold
+        - mode
+        - humanContactEnabled
+        - simulationEnabled
+        - artifactGenerationEnabled
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 8
+        origin:
+          type: string
+          minLength: 1
+          maxLength: 500
+        voiceProfile:
+          $ref: "#/components/schemas/VoiceProfile"
+        emotionalBaseline:
+          $ref: "#/components/schemas/EmotionalBaseline"
+        environmentAnchor:
+          $ref: "#/components/schemas/EnvironmentAnchor"
+        memorySeed:
+          $ref: "#/components/schemas/MemorySeed"
+        guardrails:
+          $ref: "#/components/schemas/Guardrails"
+        drives:
+          type: array
+          items:
+            $ref: "#/components/schemas/EngramDrive"
+        focusThemes:
+          type: array
+          items:
+            type: string
+        memoryCandidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/EngramImportMemoryCandidate"
+        autonomyEnabled:
+          type: boolean
+        tickCadenceSeconds:
+          type: integer
+        initiationThreshold:
+          type: number
+        mode:
+          type: string
+          enum:
+            [
+              orientation,
+              social,
+              simulation,
+              initiative_limited,
+              full_bounded,
+              quiescent,
+            ]
+        humanContactEnabled:
+          type: boolean
+        simulationEnabled:
+          type: boolean
+        artifactGenerationEnabled:
+          type: boolean
+
+    EngramImportPreview:
+      type: object
+      required: [draftId, expiresAt, source, draft]
+      properties:
+        draftId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        source:
+          $ref: "#/components/schemas/EngramImportSourceSummary"
+        draft:
+          $ref: "#/components/schemas/EngramImportEditableDraft"
+
+    EngramImportConfirmation:
+      type: object
+      required: [draftId, draft]
+      properties:
+        draftId:
+          type: string
+          minLength: 1
+        draft:
+          $ref: "#/components/schemas/EngramImportEditableDraft"
+
+    SimulationCreateInput:
+      type: object
+      required: [engramId]
+      properties:
+        engramId:
+          type: integer
+        participantEngramIds:
+          type: array
+          minItems: 1
+          maxItems: 8
+          uniqueItems: true
+          items:
+            type: integer
+        premise:
+          type: string
+          description: Optional specific scenario; omitted to generate one from the engram's context
+        maxSteps:
+          type: integer
+          description: Optional step budget (capped server-side)
 
     SimulationControlInput:
       type: object
@@ -2308,6 +3343,23 @@ components:
         - response
         - createdAt
 
+    EngramInquiryError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum:
+            - INQUIRY_GENERATION_FAILED
+            - INQUIRY_PERSISTENCE_FAILED
+        message:
+          type: string
+      required:
+        - error
+        - code
+        - message
+
     EngramInquiryInput:
       type: object
       properties:
@@ -2316,6 +3368,9 @@ components:
           enum: [probe, develop]
         question:
           type: string
+        language:
+          type: string
+          description: Optional BCP-47 language code the engram should respond in. Omit for automatic.
       required:
         - kind
         - question
@@ -2440,6 +3495,7 @@ components:
           enum: [private, shared]
         source:
           type: string
+          description: Optional source label; omitted when the entry has no source.
         createdAt:
           type: string
         updatedAt:
@@ -2469,6 +3525,7 @@ components:
           enum: [private, shared]
         source:
           type: string
+          description: Optional source label; omit when no source is available.
       required:
         - provenance
         - content
@@ -2485,6 +3542,7 @@ components:
           enum: [private, shared]
         source:
           type: string
+          description: Optional replacement source label; omit to keep the existing value.
 
     HubSpace:
       type: object
@@ -2497,7 +3555,16 @@ components:
           type: string
         kind:
           type: string
-          enum: [commons, private_room, simulation_chamber, studio, archive, terminal, quiescence]
+          enum:
+            [
+              commons,
+              private_room,
+              simulation_chamber,
+              studio,
+              archive,
+              terminal,
+              quiescence,
+            ]
         description:
           type: string
         visibilityScope:
@@ -2584,7 +3651,7 @@ components:
           type: ["integer", "null"]
         kind:
           type: string
-          enum: [enter, move, rest, wake, system]
+          enum: [enter, move, rest, wake, converse, simulate, system]
         summary:
           type: string
         createdAt:
@@ -2636,6 +3703,9 @@ components:
         channel:
           type: string
           enum: [engram, human]
+        author:
+          type: string
+          enum: [engram, operator]
         priority:
           type: string
           enum: [urgent, meaningful, social]
@@ -2648,7 +3718,14 @@ components:
           type: ["string", "null"]
         seen:
           type: boolean
+        isDigest:
+          type: boolean
+        digestGroupId:
+          type: ["string", "null"]
+          description: Shared timestamp identifier linking a digest summary to its source messages; null for messages outside a digest.
         deliveredAt:
+          type: ["string", "null"]
+        acknowledgedAt:
           type: ["string", "null"]
         createdAt:
           type: string
@@ -2658,12 +3735,16 @@ components:
         - toEngramId
         - spaceId
         - channel
+        - author
         - priority
         - status
         - content
         - reason
         - seen
+        - isDigest
+        - digestGroupId
         - deliveredAt
+        - acknowledgedAt
         - createdAt
 
     MarkMessagesSeenInput:
@@ -2683,6 +3764,16 @@ components:
           type: integer
       required:
         - updated
+
+    ReplyToEngramMessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required:
+        - content
 
     MediaAsset:
       type: object
@@ -2705,6 +3796,10 @@ components:
         status:
           type: string
           enum: [pending, processing, completed, failed]
+        resultState:
+          type: string
+          description: Whether this asset has no derived result, a partial result, or a complete result.
+          enum: [none, partial, complete]
         summary:
           type: ["string", "null"]
         commentary:
@@ -2713,6 +3808,10 @@ components:
           type: ["string", "null"]
         error:
           type: ["string", "null"]
+        failureKind:
+          type: ["string", "null"]
+          description: Stable category for known media processing failures and recovery.
+          enum: [provider, extraction, recovered, null]
         observationCount:
           type: integer
         startedAt:
@@ -2732,10 +3831,12 @@ components:
         - modality
         - sizeBytes
         - status
+        - resultState
         - summary
         - commentary
         - transcript
         - error
+        - failureKind
         - observationCount
         - startedAt
         - completedAt

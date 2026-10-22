@@ -1,27 +1,69 @@
+- [Local Android APK build](local-android-apk-build.md) — building the release APK inside the workspace (no CI): SDK setup, foreground Gradle windows, hermesc `-Xes6-class`, Babel 7 pins, worklets packageExtensions.
 - [Android APK CI release](android-apk-release.md) — building the Expo APK without an Expo account, attaching it to electron-builder's DRAFT release, plus signing + OS-detection gotchas.
+- [Mobile on-device offline mode](mobile-offline-mode.md) — local-handler seam, safety prompts single-sourced in engram-core, mode-scoped conversation IDs, Qwen3 think-block hold-back, expo resumeData.
+- [Mobile offline reconciliation](mobile-offline-sync.md) — retry-safe device history upload: receipts, dependency ordering, revision guards, bounded payloads, and post-ack cache clearing.
+- [Mobile crash recovery](mobile-crash-recovery.md) — device-local fatal reports plus startup breadcrumbs; preserve the platform handler and clear launch state only after stable UI.
+- [Expo native dependency pinning](expo-native-dependency-pinning.md) — match SDK versions and shared React types; run Doctor, then verify browser-heavy preflight and mobile tests serially.
+- [Bundled offline LLM (desktop)](bundled-offline-llm.md) — zero-setup offline mode via shipped llama.cpp server + model; staging, lifecycle, LAN, and workspace quota gotchas.
+- [Desktop server bundle boundary](desktop-server-bundle-boundary.md) — only explicitly staged runtime dependencies may remain external in the standalone packaged API child.
 - [Desktop auto-update](desktop-auto-update.md) — how the Electron app self-updates and the non-obvious constraints that make it actually fire.
+- [Deferred desktop updater recovery](deferred-desktop-update-recovery.md) — persist generic retryable install failures across launches without exposing updater internals.
+- [Desktop release draft ownership](desktop-release-draft-ownership.md) — tag-run serialization and push-only release guards prevent stale cleanup from deleting a newer draft.
+- [Desktop pre-release smoke](desktop-pre-release-smoke.md) — run the packaged Linux launch check on relevant pushes/PRs while keeping native release jobs tag/manual-only.
+- [Desktop packaged updater smoke](desktop-packaged-updater-smoke.md) — drive updater IPC from the Settings bridge, keep the fixture CI-only, and classify feed/download/shutdown phases.
+- [Desktop CI fixture caching](desktop-ci-fixture-caching.md) — cache keys must include immutable runtime/model checksums; cached fixtures still need local verification and atomic replacement.
+- [Packaged smoke diagnostics](packaged-smoke-diagnostics.md) — CI-only, bounded, redacted logs must survive Electron launch, child startup, and health failures.
 - [Desktop embedded DB seam (pglite)](desktop-embedded-db.md) — running with an embedded DB for desktop, and the non-obvious bundling constraints.
 - [Desktop online key storage](desktop-online-key-storage.md) — security rule for how the desktop build persists the cloud LLM API key (no plaintext).
+- [Desktop built-in model retry](desktop-built-in-retry.md) — strict candidate activation with non-strict rollback preserves the local-server fallback after retry failure.
 - [Offline LLM seam](offline-llm-seam.md) — why model calls go through an app-level OpenAI-compatible client, not the Replit integration package.
 - [Media perception provenance & idempotency](media-perception.md) — invariants for uploads→OBSERVED world-model entries: provenance hardcoding, retry idempotency, deletion, worker test mock.
+- [Engram synthesis & directed sims](engram-synthesis.md) — new personas seed from observed/remembered only; simulation steps are CAS-claimed (never bypass); initiation is drive-based, not cadence-bound.
 - [Simulation quarantine](simulation-quarantine.md) — how simulated engram state is structurally prevented from becoming observed reality.
 - [Artifact generation subsystem](artifact-generation.md) — how engram artifact generation mirrors media perception; why there is no world-model "generated" write path.
 - [Engram initiative & human-contact policy](engram-initiative-policy.md) — safety semantics of the autonomy/human-contact layer (quiet mode, fail-closed modes, anti-coercion).
+- [Human contact digests](human-contact-digest.md) — periodic low-priority contact summaries must claim source rows transactionally and remain visible as distinct bus messages.
+- [Hub controls updates](hub-controls.md) — preserve omitted flags and publish ordered, API-shaped control events.
 - [Engram engine restart safety](engram-engine-restart-safety.md) — why every autonomy guard in the engine must be DB-backed, not in-memory.
+- [Archival engram branches (Full Rezz)](archival-engram-branch.md) — original is read-only forever; the user-approved interactive continuation stays a separate writable branch.
 - [Engram authoring (seed data)](engram-authoring.md) — non-obvious couplings when adding a new engram to the seed.
-- [Expression layer safety boundary](expression-layer-safety.md) — how PYRI's QUERTY micro-expression vocabulary is kept safe when fed to the chat model.
+- [Expression layer safety boundary](expression-layer-safety.md) — neutral roles use one DB-free policy; `attachment` stays seed-only, and intimate rows/notes never reach prompts.
+- [Persona source authority](persona-source-authority.md) — curated persona evidence needs exact trusted source keys, prompt-ranked authority, and a write-reserved seed namespace.
+- [i18n architecture](i18n-architecture.md) — English JSONs are the only authored source; regenerate locales after string changes; reply-language allowlist; mobile async hydration; no mobile RTL.
+- [Mobile web and preview authentication](mobile-web-and-preview-auth.md) — Expo web needs wa-sqlite wasm asset handling, and preview API calls need a Clerk bearer fallback plus honest HTTP errors.
 - [ENGRAM chat SSE pattern](engram-chat-sse.md) — streaming chat uses raw fetch, not generated hooks.
+- [Group chat web flow](group-chat-web-flow.md) — keep the created/loaded conversation locally authoritative until the list query refreshes.
+- [Group continuation claims](group-continuation-claim.md) — serialize group reply ownership with a persisted, expiring, token-guarded conversation claim.
 - [ENGRAM DB table names](engram-db-table-names.md) — actual Drizzle table export names to use in route imports.
 - [Database seeding](seeding.md) — how reference/lookup data gets into the DB (no auto-seed exists).
 - [Schema apply dual path](schema-apply-dual-path.md) — a schema change must be both pushed AND generated; drizzle-kit generate out-path bug.
+- [Orval and Zod generation pin](orval-codegen-zod-pin.md) — keep API codegen on the Zod-3-compatible Orval version or generated validators use zod.int().
 - [OpenAPI codegen param collisions](openapi-codegen-collisions.md) — an op with BOTH a path param and query params breaks Orval codegen here; how to avoid it.
 - [Orval codegen gotchas](orval-codegen-gotchas.md) — non-obvious constraints when using the OpenAPI→Orval hooks/Zod codegen.
 - [ENGRAM AI lib template fixes](engram-ai-lib-fixes.md) — two fixes to make the Replit OpenAI integration template libs typecheck cleanly.
 - [engram web typecheck — duplicate @types/react](engram-typecheck-types-react-dup.md) — pre-existing shadcn TS errors from two @types/react versions; not feature-caused.
 - [API server testing](api-server-testing.md) — conventions and constraints for unit-testing the api-server artifact.
+- [Chromium CDP browser tests](chromium-cdp-browser-tests.md) — run local signed-in UI regressions with existing Chromium, CDP page targets, and no Playwright dependency.
+- [Chromium CDP navigation reconnect](chromium-cdp-navigation-reconnect.md) — page reloads can invalidate a Runtime socket; reconnect before post-navigation evaluation.
+- [Expo web E2E cold start](expo-web-e2e-cold-start.md) — the first Metro web bundle can leave Chromium on static HTML; retry once warm before debugging app code.
+- [Chromium CDP keyboard activation](chromium-cdp-keyboard-events.md) — CDP Enter events may focus native buttons without synthesizing their implicit click; use native semantics plus pointer coverage.
+- [CDP Radix switch limitation](chromium-cdp-radix-switch.md) — controlled Radix switches can deadlock CDP input under the DEV auth fixture; keep persistence checks on the same browser page.
 - [api-routes test db/schema mock](api-routes-test-mock.md) — why engine-touching route tests break, and how to keep the hand-rolled db/schema mock in sync.
 - [Engram engine test mock](engram-engine-test-mock.md) — how the engine unit test fakes the DB, and the trap when the engine reads a new table.
 - [PDF generation & install quirks](pdf-and-install-quirks.md) — generating/verifying PDFs without Chromium, plus a package-install fallback.
 - [pdfkit footer / pagination](pdfkit-footer-pagination.md) — why pdfkit text below the bottom margin with `width` set appends blank pages.
 - [Responsive portaled dialogs](responsive-portaled-dialog.md) — mobile/desktop variants sharing a Radix Dialog/Sheet must branch via a JS breakpoint hook, not CSS hidden.
+- [Android nested-route dismissal](android-nested-route-dismissal.md) — dismiss nested Expo Router screens to the root route instead of assuming Android back-stack state.
 - [Validation gate reviews cumulative diff](validation-gate-cumulative-diff.md) — mark_task_complete's code-review sees ALL merged work, so it can reject on unrelated pre-existing failures; verify isolation and skip with a reason.
+- [Native release playtest constraints](native-release-playtest.md) — native sign-off needs fresh artifact inspection and real Android/Windows execution; Linux/static checks are only proxies.
+- [Android release packaging](android-release-packaging.md) — release builds need an explicit META-INF collision exclusion for okhttp/jspecify dependency metadata.
+- [Locale generation fallback](locale-generation-fallback.md) — distinguish an unsupported model-list 405 from chat auth failures; preserve key parity when translations are unavailable.
+- [Desktop custom model library](desktop-custom-model-library.md) — content-addressed multi-model storage, legacy migration, transactional switching, and safe active removal.
+- [Web local-server health probe](web-local-server-health-probe.md) — origin-only persisted URL, credential-free health check, and public CORS limited to `/api/healthz`.
+- [Production preview auth readiness](production-preview-auth.md) — probe `/api/healthz`; unauthenticated HTML routes can return Clerk handshake redirects before browser sign-in.
+- [Native export cleanup](native-export-cleanup.md) — share temporary mobile export files before idempotently deleting them, including failed-share retries.
+- [Web export compatibility](web-export-compat.md) — test Safari/Firefox download timing through explicit engine-shaped runtimes until native runners exist.
+- [Media recovery contract](media-recovery-contract.md) — recovered timeouts are distinct from provider failures; explain transactional rollback and safe idempotent retry.
+- [Media upload MIME handling](media-upload-mime.md) — infer only generic picker MIME values from unambiguous extensions; preserve specific unsupported claims for clear server rejection.
+- [Media binary structure validation](media-structure-validation.md) — validate complete container structure at upload and again before worker extraction.
+- [Multipart upload cancellation](media-upload-cancellation.md) — use `req.aborted`, not `req.destroyed`, to distinguish a client abort from a completed Multer request.

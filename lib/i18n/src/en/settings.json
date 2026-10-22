@@ -1,0 +1,71 @@
+{
+  "title": "Settings",
+  "subtitle": "Operator preferences for this terminal",
+  "languageSection": "Language",
+  "uiLanguage": "Interface language",
+  "uiLanguageHint": "Menus, labels, and pages across the app.",
+  "replyLanguage": "Engram reply language",
+  "replyLanguageHint": "The language engrams and PYRI respond in during chat and inquiries.",
+  "replyMatchUi": "Match interface language",
+  "replyAuto": "Automatic — match whatever language I write in",
+  "rtlNote": "Right-to-left layout is applied for Arabic.",
+  "saved": "Settings saved",
+  "ggufSection": "Local AI",
+  "ggufTitle": "Custom GGUF models",
+  "ggufBody": "Use your own .gguf model with ENGRAM's managed local engine. The desktop app copies the model into protected app storage, checks it before launch, and keeps it available across updates.",
+  "ggufDesktopOnly": "Custom GGUF import runs in the ENGRAM desktop app. The web app can connect to a local server, but a browser cannot start or manage the desktop engine.",
+  "ggufDownloadAction": "Get the desktop app",
+  "localServerSection": "Desktop engine",
+  "localServerTitle": "Local server connection",
+  "localServerBody": "Check whether this browser can reach a desktop-hosted ENGRAM server. The check only requests the public health endpoint and never sends credentials or local file paths.",
+  "localServerAddress": "Local server address",
+  "localServerAddressPlaceholder": "http://127.0.0.1:3000",
+  "localServerCheckAction": "Check connection",
+  "localServerNotConfigured": "Not configured",
+  "localServerNotConfiguredHint": "Enter the address shown by the desktop app, then check the connection.",
+  "localServerChecking": "Checking",
+  "localServerCheckingHint": "Waiting for the local server to respond.",
+  "localServerReachable": "Reachable",
+  "localServerReachableHint": "The local server responded. You can use this browser with the desktop engine.",
+  "localServerUnavailable": "Unavailable",
+  "localServerUnavailableHint": "Start the desktop app or local server, verify the address, then try again.",
+  "localServerInvalid": "Use an http:// or https:// origin without a path, query, fragment, username, or password.",
+  "localModelFailure": {
+    "automaticRepair": "Automatic repair is available on this platform. Retry Built-in after the repair completes.",
+    "fallbackMessage": "The local model could not start.",
+    "retryBuiltIn": "Retry Built-in",
+    "retrying": "Retrying Built-in…",
+    "ready": "Built-in model is ready.",
+    "missingLinuxDependencies": {
+      "title": "Built-in model needs Linux libraries",
+      "message": "The built-in local model is missing Linux runtime libraries: {{libraries}}.",
+      "guidance": "Install the missing runtime packages for your distribution, or use a local server or online provider instead.",
+      "recovery": "Automatic repair is not available on Linux. Select Local server or Online, then choose Save & Restart."
+    },
+    "missingWindowsDlls": {
+      "title": "Built-in model runtime is incomplete",
+      "message": "The installed llama.cpp runtime is missing files: {{libraries}}.",
+      "guidance": "Reinstall or update ENGRAM, or use a local server or online provider instead.",
+      "recovery": "Automatic repair is not available for this installation. Select Local server or Online, then choose Save & Restart."
+    },
+    "generic": {
+      "title": "Built-in model could not start",
+      "message": "The local model could not start: {{details}}",
+      "guidance": "The built-in local model is unavailable, but the rest of ENGRAM can continue with another provider.",
+      "recovery": "Select Local server or Online, then choose Save & Restart. You can retry Built-in after fixing the runtime."
+    }
+  },
+  "update": {
+    "notAvailableInBuild": "Not available in this build",
+    "checking": "Checking for updates…",
+    "availableWithVersion": "Update {{version}} found — downloading…",
+    "available": "Update found — downloading…",
+    "downloading": "Downloading update… {{percent}}%",
+    "downloaded": "Restart to update",
+    "error": "Update check failed",
+    "upToDate": "Up to date",
+    "checkForUpdates": "Check for Updates",
+    "progressLabel": "Update download progress",
+    "downloadDetails": "{{transferred}} / {{total}} · {{speed}}"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "title": "PERSONALITY CORE",
+  "subtitle": "Dynamic trait parameters — bounded, revisable, evolving",
+  "reset": "Reset",
+  "saving": "Saving...",
+  "saveTraits": "Save Traits",
+  "updatedTitle": "Personality Updated",
+  "updatedDescription": "Trait values have been calibrated.",
+  "scale": {
+    "suppressed": "SUPPRESSED",
+    "calibrated": "CALIBRATED",
+    "dominant": "DOMINANT"
+  },
+  "traits": {
+    "curiosity": "Curiosity",
+    "curiosityDesc": "Tendency to explore new ideas and ask questions",
+    "stoicism": "Stoicism",
+    "stoicismDesc": "Preference for measured, calm responses under stress",
+    "empathy": "Empathy",
+    "empathyDesc": "Weight given to social and emotional context",
+    "skepticism": "Skepticism",
+    "skepticismDesc": "Degree of evidence required before accepting claims",
+    "precision": "Precision",
+    "precisionDesc": "Preference for detailed, evidence-based explanations",
+    "creativity": "Creativity",
+    "creativityDesc": "Willingness to generate unconventional ideas",
+    "initiative": "Initiative",
+    "initiativeDesc": "Likelihood of proactively starting interactions",
+    "formality": "Formality",
+    "formalityDesc": "Degree of formal language and tone in communication",
+    "humor": "Humor",
+    "humorDesc": "Frequency and warmth of levity in interactions"
+  }
+}

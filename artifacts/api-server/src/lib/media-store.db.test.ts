@@ -22,7 +22,7 @@ import {
   conversations,
   messages,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { MediaModality, MediaJobStatus, MediaAsset } from "@workspace/db/schema";
 import {
   claimNextPendingJob,
@@ -35,14 +35,17 @@ import {
   deleteMediaAsset,
   loadMediaAssetById,
   loadMediaBlob,
+  updateMediaAsset,
   upsertMediaContextMessage,
 } from "./media-store";
 
 // Bring the in-memory schema up before any test runs (migrate only — no seed).
 const ready = ensureDatabaseReady({ seed: false });
+const TEST_OWNER_ID = "test_media_store_owner";
 
 beforeEach(async () => {
   await ready;
+  await db.execute(sql`ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS owner_id text NOT NULL DEFAULT '__engram_system_template__'`);
   // Each test starts from an empty queue. Order matters: world-model + observation
   // rows reference assets/engrams, so clear children before parents. Media assets
   // reference messages (contextMessageId, set null) and conversations (cascade);
@@ -62,6 +65,7 @@ async function insertEngram(): Promise<number> {
   const [row] = await db
     .insert(engramsTable)
     .values({
+      ownerId: TEST_OWNER_ID,
       slug: `test-engram-${engramSeq}`,
       name: `Test Engram ${engramSeq}`,
       title: "Test",
@@ -107,6 +111,7 @@ async function insertAsset(overrides: {
   const [row] = await db
     .insert(mediaAssetsTable)
     .values({
+      ownerId: TEST_OWNER_ID,
       engramId: overrides.engramId ?? null,
       conversationId: overrides.conversationId ?? null,
       filename: "asset.txt",
@@ -125,7 +130,7 @@ async function insertAsset(overrides: {
 async function insertConversation(): Promise<number> {
   const [row] = await db
     .insert(conversations)
-    .values({ title: "Inline chat thread" })
+    .values({ ownerId: TEST_OWNER_ID, title: "Inline chat thread" })
     .returning({ id: conversations.id });
   return row.id;
 }
@@ -379,12 +384,59 @@ describe("appendMediaObservation — real world-model + mapping write", () => {
   });
 });
 
+describe("media perception transaction boundary", () => {
+  it("rolls back observations, mappings, and completed metadata together", async () => {
+    const engramId = await insertEngram();
+    const assetId = await insertAsset({ status: "processing", engramId });
+
+    await expect(
+      db.transaction(async (tx) => {
+        await appendMediaObservation(
+          {
+            assetId,
+            engramId,
+            content: "This observation must not escape the transaction.",
+            confidence: 0.85,
+          },
+          tx,
+        );
+        await updateMediaAsset(
+          assetId,
+          {
+            status: "completed",
+            summary: "This completion must not escape the transaction.",
+            observationCount: 1,
+            completedAt: new Date(),
+          },
+          tx,
+        );
+        throw new Error("simulate worker crash before commit");
+      }),
+    ).rejects.toThrow("simulate worker crash before commit");
+
+    expect(await statusOf(assetId)).toBe("processing");
+    expect(
+      await db
+        .select()
+        .from(engramWorldModelTable)
+        .where(eq(engramWorldModelTable.engramId, engramId)),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(mediaObservationsTable)
+        .where(eq(mediaObservationsTable.assetId, assetId)),
+    ).toHaveLength(0);
+  });
+});
+
 // --- deleteMediaAsset: removes the file, PRESERVES the observation ------------
 describe("deleteMediaAsset — drops asset/blob/mapping, keeps world-model entry", () => {
   it("removes the asset, its bytes, and its mapping rows but PRESERVES the OBSERVED entry", async () => {
     const engramId = await insertEngram();
     // Go through the real upload path so a genuine blob row exists alongside the asset.
     const asset = await createMediaAsset({
+      ownerId: TEST_OWNER_ID,
       engramId,
       filename: "scene.txt",
       mimeType: "text/plain",
@@ -456,6 +508,7 @@ describe("deleteMediaAsset — drops asset/blob/mapping, keeps world-model entry
     const engramId = await insertEngram();
 
     const assetA = await createMediaAsset({
+      ownerId: TEST_OWNER_ID,
       engramId,
       filename: "a.txt",
       mimeType: "text/plain",
@@ -463,6 +516,7 @@ describe("deleteMediaAsset — drops asset/blob/mapping, keeps world-model entry
       data: Buffer.from("scene A"),
     });
     const assetB = await createMediaAsset({
+      ownerId: TEST_OWNER_ID,
       engramId,
       filename: "b.txt",
       mimeType: "text/plain",

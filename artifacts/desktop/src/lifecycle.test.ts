@@ -3,7 +3,9 @@ import { EventEmitter } from "node:events";
 import {
   stopProcess,
   installDownloadedUpdate,
+  stopDesktopWork,
   STOP_TIMEOUT_MS,
+  createBeforeQuitHandler,
   type StoppableProcess,
 } from "./lifecycle";
 
@@ -58,9 +60,11 @@ describe("stopProcess (shared SIGTERM→SIGKILL shutdown)", () => {
     const proc = new FakeProcess(false);
     const killSpy = vi.spyOn(proc, "kill");
     // First call (SIGTERM) succeeds; the fallback SIGKILL throws ("already gone").
-    killSpy.mockImplementationOnce(() => true).mockImplementationOnce(() => {
-      throw new Error("ESRCH");
-    });
+    killSpy
+      .mockImplementationOnce(() => true)
+      .mockImplementationOnce(() => {
+        throw new Error("ESRCH");
+      });
     const done = stopProcess(proc, STOP_TIMEOUT_MS);
     await vi.advanceTimersByTimeAsync(STOP_TIMEOUT_MS);
     await expect(done).resolves.toBeUndefined();
@@ -153,5 +157,74 @@ describe("installDownloadedUpdate (DB-safe auto-update path)", () => {
 
     // Even though stop rejected, the install still fired (finally block).
     expect(quitAndInstall).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("stopDesktopWork", () => {
+  it("cancels model imports before stopping the API and llama runtime", async () => {
+    const order: string[] = [];
+    await stopDesktopWork({
+      stopImports: async () => {
+        order.push("imports");
+      },
+      stopServer: async () => {
+        order.push("server");
+      },
+      stopLlama: async () => {
+        order.push("llama");
+      },
+    });
+    expect(order).toEqual(["imports", "server", "llama"]);
+  });
+});
+
+describe("createBeforeQuitHandler", () => {
+  it("stops desktop work once before quitting", async () => {
+    let resolveStop: (() => void) | undefined;
+    let quitting = false;
+    const stopDesktopWork = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveStop = resolve;
+        }),
+    );
+    const quit = vi.fn();
+    const event = { preventDefault: vi.fn() };
+    const handleBeforeQuit = createBeforeQuitHandler({
+      hasWork: () => true,
+      isQuitting: () => quitting,
+      markQuitting: () => {
+        quitting = true;
+      },
+      stopDesktopWork,
+      quit,
+    });
+
+    handleBeforeQuit(event);
+    handleBeforeQuit(event);
+
+    expect(event.preventDefault).toHaveBeenCalledTimes(1);
+    expect(stopDesktopWork).toHaveBeenCalledTimes(1);
+    expect(quit).not.toHaveBeenCalled();
+
+    resolveStop?.();
+    await vi.waitFor(() => expect(quit).toHaveBeenCalledTimes(1));
+  });
+
+  it("does not intercept quit when there is no desktop work", () => {
+    const event = { preventDefault: vi.fn() };
+    const stopDesktopWork = vi.fn().mockResolvedValue(undefined);
+    const handleBeforeQuit = createBeforeQuitHandler({
+      hasWork: () => false,
+      isQuitting: () => false,
+      markQuitting: vi.fn(),
+      stopDesktopWork,
+      quit: vi.fn(),
+    });
+
+    handleBeforeQuit(event);
+
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(stopDesktopWork).not.toHaveBeenCalled();
   });
 });

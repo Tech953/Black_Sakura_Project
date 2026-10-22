@@ -35,8 +35,8 @@ export type EngramMessageStatus = (typeof ENGRAM_MESSAGE_STATUSES)[number];
 
 /**
  * The message bus: the single auditable record of every engram-to-engram exchange
- * and every engram-initiated contact attempt to the operator. Every attempt is
- * written here — including refusals (status "blocked") — so the log is complete.
+ * and every human-channel contact or reply. Every attempt is written here —
+ * including refusals (status "blocked") — so the log is complete.
  */
 export const engramMessagesTable = pgTable(
   "engram_messages",
@@ -55,6 +55,8 @@ export const engramMessagesTable = pgTable(
     }),
     /** One of ENGRAM_MESSAGE_CHANNELS. */
     channel: text("channel").notNull(),
+    /** Who authored the row; operator replies share the human channel for auditability. */
+    author: text("author").notNull().default("engram"),
     /** One of ENGRAM_MESSAGE_PRIORITIES (meaningful default for engram channel). */
     priority: text("priority").notNull(),
     /** One of ENGRAM_MESSAGE_STATUSES. */
@@ -63,7 +65,13 @@ export const engramMessagesTable = pgTable(
     /** Audit note: why a message was blocked, queued, or digested. */
     reason: text("reason"),
     seen: boolean("seen").notNull().default(false),
+    /** True for the single operator-facing summary created from digest messages. */
+    isDigest: boolean("is_digest").notNull().default(false),
+    /** Set when this digest-status source message has been included in a summary. */
+    digestedAt: timestamp("digested_at", { withTimezone: true }),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /** Set when the addressed engram has received this operator reply in a turn prompt. */
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

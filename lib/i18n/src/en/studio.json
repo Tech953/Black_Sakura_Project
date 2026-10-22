@@ -1,0 +1,53 @@
+{
+  "title": "CREATION STUDIO",
+  "subtitle": "Engrams author real files — PDFs offline, images & video via the cloud generation provider",
+  "artifactsBadge": "{{count}} artifacts",
+  "provenanceTitle": "GENERATION → GENERATED PROVENANCE",
+  "provenanceBodyStart": "Generated artifacts are a separate subsystem from perception. They never become OBSERVED reality — if a piece ever lands in the world model it is pinned",
+  "provenanceGenerated": "generated",
+  "provenanceSource": "/ source",
+  "provenanceArtifactId": "artifact:<id>",
+  "provenanceBodyEnd": ". PDF always works offline; image & video need an online generation provider and fail with a clear message otherwise.",
+  "createNow": "Create now",
+  "selectEngram": "Select engram…",
+  "titlePlaceholder": "Title",
+  "promptPlaceholder": "What should the engram create? (the generation brief)",
+  "generate": "Generate",
+  "queuedTitle": "Generation queued",
+  "queuedDescription": "{{kind}} job created.",
+  "couldNotQueue": "Could not queue",
+  "unknownError": "Unknown error",
+  "emptyTitle": "Nothing generated yet",
+  "emptyBody": "Queue a creation above, or let an engram autonomously author one within its caps. Each job runs asynchronously and produces a downloadable file.",
+  "kinds": {
+    "pdf": "PDF",
+    "pdfNote": "always offline",
+    "image": "Image",
+    "imageNote": "cloud / best-effort",
+    "video": "Video",
+    "videoNote": "cloud / best-effort"
+  },
+  "kindOption": "{{label}} — {{note}}",
+  "status": {
+    "pending": "Queued",
+    "processing": "Generating",
+    "completed": "Ready",
+    "failed": "Failed",
+    "canceled": "Canceled"
+  },
+  "requeued": "Re-queued for generation",
+  "retryFailed": "Retry failed",
+  "deleted": "Artifact deleted",
+  "deleteFailed": "Delete failed",
+  "generationFailed": "Generation failed",
+  "pdfPreviewUnavailable": "PDF preview unavailable — use Download.",
+  "download": "Download",
+  "retry": "Retry",
+  "delete": "Delete",
+  "relativeTime": {
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  }
+}

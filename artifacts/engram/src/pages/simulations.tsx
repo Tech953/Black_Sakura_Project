@@ -3,6 +3,7 @@ import {
   useListSimulations,
   useListSimulationSteps,
   useControlSimulation,
+  useCreateSimulation,
   useListEngrams,
   getListSimulationsQueryKey,
   getListSimulationStepsQueryKey,
@@ -12,6 +13,8 @@ import {
   type Engram,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,29 +28,32 @@ import {
   ChevronRight,
   ShieldCheck,
   ScrollText,
+  Loader2,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
-const STATUS_META: Record<string, { label: string; cls: string; pulse?: boolean }> = {
-  proposed: { label: "Proposed", cls: "border-amber-500/40 text-amber-400" },
-  running: { label: "Running", cls: "border-emerald-500/40 text-emerald-400", pulse: true },
-  paused: { label: "Paused", cls: "border-sky-500/40 text-sky-400" },
-  ended: { label: "Ended", cls: "border-border/60 text-muted-foreground" },
+const STATUS_META: Record<string, { statusKey: string; cls: string; pulse?: boolean }> = {
+  proposed: { statusKey: "proposed", cls: "border-amber-500/40 text-amber-400" },
+  running: { statusKey: "running", cls: "border-emerald-500/40 text-emerald-400", pulse: true },
+  paused: { statusKey: "paused", cls: "border-sky-500/40 text-sky-400" },
+  ended: { statusKey: "ended", cls: "border-border/60 text-muted-foreground" },
 };
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const sec = Math.round(diff / 1000);
-  if (sec < 60) return "just now";
+  if (sec < 60) return i18n.t("simulations:relativeTime.justNow");
   const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return i18n.t("simulations:relativeTime.minutesAgo", { count: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.round(hr / 24)}d ago`;
+  if (hr < 24) return i18n.t("simulations:relativeTime.hoursAgo", { count: hr });
+  return i18n.t("simulations:relativeTime.daysAgo", { count: Math.round(hr / 24) });
 }
 
 export default function Simulations() {
-  const { data: simulations, isLoading } = useListSimulations(undefined, {
+  const { t } = useTranslation("simulations");
+  const { data: simulations, isLoading, isError, refetch } = useListSimulations(undefined, {
     query: {
       queryKey: getListSimulationsQueryKey(),
       refetchInterval: 15000,
@@ -76,10 +82,10 @@ export default function Simulations() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-3xl font-bold tracking-widest text-rose-400 flex items-center gap-3">
-            <FlaskConical className="w-7 h-7" /> SIMULATION CHAMBERS
+            <FlaskConical className="w-7 h-7" /> {t("title")}
           </h2>
           <p className="text-sm font-mono text-muted-foreground mt-1">
-            Bounded scenario explorations — every step is SIMULATED and quarantined from observed reality
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -87,30 +93,57 @@ export default function Simulations() {
             variant="outline"
             className="font-mono text-[10px] uppercase tracking-wider border-rose-500/40 text-rose-400 gap-1.5"
           >
-            <FlaskConical className="w-3 h-3" /> {ordered.length} sims
+            <FlaskConical className="w-3 h-3" /> {t("simsBadge", { count: ordered.length })}
           </Badge>
           {activeCount > 0 && (
             <Badge
               variant="outline"
               className="font-mono text-[10px] uppercase tracking-wider border-emerald-500/40 text-emerald-400 gap-1.5"
             >
-              {activeCount} running
+              {t("runningBadge", { count: activeCount })}
             </Badge>
           )}
         </div>
       </div>
 
+      {isError ? (
+        <Card className="border-destructive/40 bg-destructive/[0.04]">
+          <CardContent className="p-5 flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="font-display text-sm uppercase tracking-wider text-destructive">
+                {t("openErrorTitle")}
+              </p>
+              <p className="font-mono text-xs text-muted-foreground mt-1">
+                {t("openError")}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              className="font-mono text-xs uppercase tracking-wider"
+            >
+              {t("retry")}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="bg-rose-500/[0.03] border border-rose-500/20 p-4 font-mono text-xs text-muted-foreground space-y-1">
         <p className="text-rose-400/80 flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5" /> SIMULATION QUARANTINE ACTIVE
+          <ShieldCheck className="w-3.5 h-3.5" /> {t("quarantineTitle")}
         </p>
         <p>
-          Everything an engram produces inside a chamber is tagged SIMULATED and written to the
-          world model as <span className="text-rose-300/80">simulated</span> provenance only. It is
-          never promoted to observed reality, and no engine path can merge it into the engram's base
-          state.
+          {t("quarantineBody")} <span className="text-rose-300/80">{t("quarantineProvenance")}</span> {t("quarantineBodyEnd")}
         </p>
       </div>
+
+      <LaunchSimulationPanel
+        engrams={(engrams ?? []).filter(
+          (engram) =>
+            engram.simulationEnabled &&
+            (engram.mode === "simulation" || engram.mode === "full_bounded"),
+        )}
+      />
 
       <div className="space-y-3">
         {isLoading ? (
@@ -120,15 +153,18 @@ export default function Simulations() {
         ) : !ordered.length ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground font-mono text-center">
             <FlaskConical className="w-8 h-8 mb-4 opacity-30" />
-            <p className="text-xs uppercase tracking-widest">No simulations yet</p>
+            <p className="text-xs uppercase tracking-widest">{t("emptyTitle")}</p>
             <p className="text-[10px] mt-2 opacity-60 max-w-sm">
-              When a simulation-capable engram enters a chamber, it can propose a scenario and run it
-              in bounded steps. Proposed runs wait for you to start them.
+              {t("emptyBody")}
             </p>
           </div>
         ) : (
           ordered.map((sim) => (
-            <SimulationCard key={sim.id} sim={sim} engram={engramById.get(sim.engramId)} />
+            <SimulationCard
+              key={sim.id}
+              sim={sim}
+              engramById={engramById}
+            />
           ))
         )}
       </div>
@@ -136,7 +172,142 @@ export default function Simulations() {
   );
 }
 
-function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
+function LaunchSimulationPanel({ engrams }: { engrams: Engram[] }) {
+  const { t } = useTranslation("simulations");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const createSim = useCreateSimulation();
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
+  const [premise, setPremise] = useState("");
+  const [autoPremise, setAutoPremise] = useState(true);
+
+  const selectedIds = participantIds.length ? participantIds : engrams[0] ? [engrams[0].id] : [];
+  const selectedId = selectedIds[0] ?? null;
+
+  function toggleParticipant(id: number) {
+    setParticipantIds((current) => {
+      const selected = current.length ? current : selectedId === null ? [] : [selectedId];
+      if (selected.includes(id)) return selected.filter((candidate) => candidate !== id);
+      if (selected.length >= 8) return selected;
+      return [...selected, id];
+    });
+  }
+
+  function handleLaunch() {
+    if (
+      selectedId === null ||
+      (!autoPremise && !premise.trim()) ||
+      createSim.isPending
+    )
+      return;
+    const data = autoPremise
+      ? { engramId: selectedId, participantEngramIds: selectedIds }
+      : { engramId: selectedId, participantEngramIds: selectedIds, premise: premise.trim() };
+    createSim.mutate(
+      { data },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListSimulationsQueryKey() });
+          setPremise("");
+          toast({ title: t("openedTitle"), description: t("openedDescription") });
+        },
+        onError: (err) => {
+          const msg =
+            (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+            t("openError");
+          toast({ title: t("openErrorTitle"), description: msg, variant: "destructive" });
+        },
+      },
+    );
+  }
+
+  return (
+    <Card className="bg-card/40 border-rose-500/25 bg-rose-500/[0.02] backdrop-blur-sm">
+      <CardContent className="p-4 space-y-3">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-rose-300 flex items-center gap-1.5">
+          <FlaskConical className="w-3.5 h-3.5" /> {t("directTitle")}
+        </p>
+        <p className="font-mono text-[11px] text-muted-foreground">
+          {t("directBody")}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {engrams.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => toggleParticipant(e.id)}
+              data-testid={`button-sim-engram-${e.id}`}
+              className={`max-w-full min-w-0 whitespace-normal break-words text-left px-3 py-1.5 border font-mono text-xs transition-all ${
+                selectedIds.includes(e.id)
+                  ? "border-rose-500/60 bg-rose-500/10 text-rose-300"
+                  : "border-border/40 text-muted-foreground hover:border-rose-500/30"
+              }`}
+            >
+              {selectedIds.includes(e.id) ? "✓ " : ""}
+              {e.symbol} {e.name}
+            </button>
+          ))}
+        </div>
+        {selectedIds.length > 1 && (
+          <p className="font-mono text-[10px] text-rose-300/70">
+            {t("sharedParticipants", { count: selectedIds.length })}
+          </p>
+        )}
+        {!engrams.length && (
+          <p className="font-mono text-[11px] text-amber-300/80">
+            {t("noCapableEngrams")}
+          </p>
+        )}
+        <label className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={autoPremise}
+            onChange={(event) => setAutoPremise(event.target.checked)}
+            className="accent-rose-500"
+            data-testid="checkbox-auto-premise"
+          />
+          {t("autoPremise")}
+        </label>
+        <Textarea
+          value={premise}
+          onChange={(e) => setPremise(e.target.value)}
+          disabled={autoPremise}
+          placeholder={autoPremise ? t("autoPremisePlaceholder") : t("premisePlaceholder")}
+          className="font-mono text-xs bg-background/40 border-rose-500/30 min-h-[64px]"
+          data-testid="input-sim-premise"
+        />
+        <Button
+          onClick={handleLaunch}
+          disabled={
+            selectedId === null ||
+            (!autoPremise && !premise.trim()) ||
+            createSim.isPending
+          }
+          data-testid="button-launch-simulation"
+          className="bg-rose-600/80 hover:bg-rose-600 text-white font-mono text-xs uppercase tracking-widest"
+        >
+          {createSim.isPending ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> {t("opening")}
+            </>
+          ) : (
+            <>
+              <Play className="w-3.5 h-3.5 mr-2" /> {t("launchSimulation")}
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SimulationCard({
+  sim,
+  engramById,
+}: {
+  sim: Simulation;
+  engramById: Map<number, Engram>;
+}) {
+  const { t } = useTranslation("simulations");
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
@@ -146,6 +317,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
   const status = STATUS_META[sim.status] ?? STATUS_META.proposed;
   const ended = sim.status === "ended";
   const progress = sim.maxSteps > 0 ? Math.min(100, Math.round((sim.currentStep / sim.maxSteps) * 100)) : 0;
+  const participants = sim.participantEngramIds.map((id) => engramById.get(id)).filter(Boolean) as Engram[];
 
   const { data: steps, isLoading: stepsLoading } = useListSimulationSteps(sim.id, {
     query: {
@@ -155,15 +327,16 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
     },
   });
 
-  function runControl(action: SimulationControlInputAction, label: string) {
+  function runControl(action: SimulationControlInputAction, labelKey: string) {
+    const label = t(`actions.${labelKey}`);
     control.mutate(
       { id: sim.id, data: { action } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListSimulationsQueryKey() });
-          toast({ title: `Simulation ${label}` });
+          toast({ title: t("controlSuccess", { label }) });
         },
-        onError: () => toast({ title: `Failed to ${label} simulation`, variant: "destructive" }),
+        onError: () => toast({ title: t("controlError", { label }), variant: "destructive" }),
       },
     );
   }
@@ -181,15 +354,23 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="font-display tracking-wider text-sm text-foreground flex items-center gap-1.5">
-                <span className="text-rose-300/90">{engram?.symbol ?? "◇"}</span>
-                {engram?.name ?? `Engram #${sim.engramId}`}
+                <span className="text-rose-300/90">{engramById.get(sim.engramId)?.symbol ?? "◇"}</span>
+                {engramById.get(sim.engramId)?.name ?? `Engram #${sim.engramId}`}
               </span>
               <Badge
                 variant="outline"
                 className="font-mono text-[8px] uppercase tracking-wider border-rose-500/40 text-rose-400"
               >
-                Simulated
+                {t("simulatedBadge")}
               </Badge>
+              {participants.length > 1 && (
+                <span
+                  className="min-w-0 break-words font-mono text-[9px] text-muted-foreground/70"
+                  data-testid={`simulation-participants-${sim.id}`}
+                >
+                  {participants.map((participant) => `${participant.symbol} ${participant.name}`).join(" · ")}
+                </span>
+              )}
               <Badge
                 variant="outline"
                 className={`font-mono text-[8px] uppercase tracking-wider ${status.cls}`}
@@ -197,7 +378,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
                 {status.pulse && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1" />
                 )}
-                {status.label}
+                {t(`status.${status.statusKey}`)}
               </Badge>
               <span className="font-mono text-[10px] text-muted-foreground/40 ml-auto">
                 {relativeTime(sim.updatedAt)}
@@ -210,9 +391,9 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
         {/* Progress */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
-            <span>Progress</span>
+            <span>{t("progress")}</span>
             <span className="text-rose-300/80">
-              Step {sim.currentStep} / {sim.maxSteps}
+              {t("stepCount", { current: sim.currentStep, max: sim.maxSteps })}
             </span>
           </div>
           <div className="h-1.5 w-full bg-rose-500/10 overflow-hidden">
@@ -228,7 +409,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
         {ended && sim.exitSummary && (
           <div className="border border-rose-500/20 bg-rose-500/[0.04] p-3 space-y-1">
             <p className="font-mono text-[10px] uppercase tracking-wider text-rose-400/80 flex items-center gap-1.5">
-              <ScrollText className="w-3 h-3" /> Exit Summary
+              <ScrollText className="w-3 h-3" /> {t("exitSummary")}
             </p>
             <p className="text-sm leading-relaxed font-sans text-foreground/80">{sim.exitSummary}</p>
           </div>
@@ -245,7 +426,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
               className="font-mono text-[10px] uppercase tracking-wider border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 h-8"
               data-testid={`button-start-${sim.id}`}
             >
-              <Play className="w-3 h-3 mr-1.5" /> Start
+              <Play className="w-3 h-3 mr-1.5" /> {t("start")}
             </Button>
           )}
           {sim.status === "running" && (
@@ -257,7 +438,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
               className="font-mono text-[10px] uppercase tracking-wider border-sky-500/40 text-sky-300 hover:bg-sky-500/10 h-8"
               data-testid={`button-pause-${sim.id}`}
             >
-              <Pause className="w-3 h-3 mr-1.5" /> Pause
+              <Pause className="w-3 h-3 mr-1.5" /> {t("pause")}
             </Button>
           )}
           {sim.status === "paused" && (
@@ -269,7 +450,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
               className="font-mono text-[10px] uppercase tracking-wider border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 h-8"
               data-testid={`button-resume-${sim.id}`}
             >
-              <Play className="w-3 h-3 mr-1.5" /> Resume
+              <Play className="w-3 h-3 mr-1.5" /> {t("resume")}
             </Button>
           )}
           {!ended && (
@@ -281,7 +462,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
               className="font-mono text-[10px] uppercase tracking-wider border-rose-500/40 text-rose-300 hover:bg-rose-500/10 h-8"
               data-testid={`button-end-${sim.id}`}
             >
-              <Square className="w-3 h-3 mr-1.5" /> End
+              <Square className="w-3 h-3 mr-1.5" /> {t("end")}
             </Button>
           )}
           <Button
@@ -292,7 +473,7 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
             data-testid={`button-steps-${sim.id}`}
           >
             {expanded ? <ChevronDown className="w-3 h-3 mr-1.5" /> : <ChevronRight className="w-3 h-3 mr-1.5" />}
-            Step Log
+            {t("stepLog")}
           </Button>
         </div>
 
@@ -303,12 +484,14 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
               Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-10 bg-rose-500/5" />)
             ) : !steps?.length ? (
               <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 text-center py-3">
-                No steps recorded yet
+                {t("noStepsYet")}
               </p>
             ) : (
               [...steps]
                 .sort((a, b) => a.stepNumber - b.stepNumber)
-                .map((step) => <StepRow key={step.id} step={step} />)
+                .map((step) => (
+                  <StepRow key={step.id} step={step} speaker={step.speakerEngramId ? engramById.get(step.speakerEngramId) : undefined} />
+                ))
             )}
           </div>
         )}
@@ -317,16 +500,26 @@ function SimulationCard({ sim, engram }: { sim: Simulation; engram?: Engram }) {
   );
 }
 
-function StepRow({ step }: { step: SimulationStep }) {
+function StepRow({ step, speaker }: { step: SimulationStep; speaker?: Engram }) {
+  const { t } = useTranslation("simulations");
   return (
-    <div className="flex gap-3 items-start" data-testid={`simulation-step-${step.id}`}>
+    <div className="flex min-w-0 gap-3 items-start" data-testid={`simulation-step-${step.id}`}>
       <div className="shrink-0 w-6 h-6 rounded-none border border-rose-500/25 text-rose-300/80 flex items-center justify-center font-mono text-[10px]">
         {step.stepNumber}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm leading-relaxed font-sans text-foreground/80">{step.narrative}</p>
-        <span className="font-mono text-[8px] uppercase tracking-wider text-rose-400/50">
-          Simulated · {relativeTime(step.createdAt)}
+        <p
+          className="break-words text-sm leading-relaxed font-sans text-foreground/80"
+          data-testid={`simulation-step-narrative-${step.id}`}
+        >
+          {step.narrative}
+        </p>
+        <span
+          className="block max-w-full break-words font-mono text-[8px] uppercase tracking-wider text-rose-400/50"
+          data-testid={`simulation-step-speaker-${step.id}`}
+        >
+          {speaker ? `${speaker.symbol} ${speaker.name} · ` : ""}
+          {t("stepSimulated", { time: relativeTime(step.createdAt) })}
         </span>
       </div>
     </div>

@@ -20,10 +20,22 @@ import mediaRouter from "./media";
 import artifactsRouter from "./artifacts";
 import eventsRouter from "./events";
 import downloadRouter from "./download";
+import offlineSyncRouter from "./offline-sync";
+import mobilePushRouter from "./mobile-push";
+import fullRezzRouter from "./full-rezz";
+import { requireAuth } from "../middlewares/require-auth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+// These endpoints contain no account data and are intentionally public so
+// installers can be discovered before a user signs in.
+router.use(downloadRouter);
+
+// Every remaining HTTP, SSE, and offline-sync endpoint derives its account
+// identity exclusively from Clerk. Route handlers must scope reads/writes by
+// req.userId and never accept an owner identifier from the request.
+router.use(requireAuth);
 router.use(personalityRouter);
 router.use(memoriesRouter);
 router.use(journalRouter);
@@ -43,6 +55,8 @@ router.use(simulationsRouter);
 router.use(mediaRouter);
 router.use(artifactsRouter);
 router.use(eventsRouter);
-router.use(downloadRouter);
+router.use(offlineSyncRouter);
+router.use(mobilePushRouter);
+router.use(fullRezzRouter);
 
 export default router;

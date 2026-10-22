@@ -29,6 +29,11 @@ export const engramTransmissionsTable = pgTable("engram_transmissions", {
   overallScore: real("overall_score").notNull(),
   wasDelivered: boolean("was_delivered").notNull().default(true),
   seen: boolean("seen").notNull().default(false),
+  /**
+   * Set before handing a delivered outreach to the push provider. The claim
+   * prevents an engine retry from sending the same transmission twice.
+   */
+  pushNotifiedAt: timestamp("push_notified_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
