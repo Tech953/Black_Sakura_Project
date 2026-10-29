@@ -2,7 +2,10 @@ import hashlib
 import importlib.util
 import io
 from pathlib import Path
+import runpy
+import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -62,6 +65,32 @@ class WindowsBuilderTests(unittest.TestCase):
         with patch.object(builder.os, "name", "posix"):
             with self.assertRaisesRegex(RuntimeError, "native Windows"):
                 builder.build("nonexistent-source", "nonexistent-output")
+
+    def test_legacy_ctranslate_requires_compatible_pkg_resources_provider(self):
+        requirements = Path(__file__).with_name("full-rezz-windows-requirements.txt").read_text()
+        dependencies = {line.strip() for line in requirements.splitlines()
+                        if line.strip() and not line.lstrip().startswith("#")}
+        self.assertIn("ctranslate2==4.5.0", dependencies)
+        self.assertIn("setuptools==80.9.0", dependencies)
+
+    def test_missing_asr_dependency_fails_before_audio_or_synthesis(self):
+        runtime = types.ModuleType("voice_studio.runtime")
+        runtime.enforce_offline = lambda: None
+        runtime.health = lambda full: {"passed": True}
+        modules = {
+            "voice_studio": types.ModuleType("voice_studio"),
+            "voice_studio.runtime": runtime,
+            "faster_whisper": None,
+        }
+        probe = Path(__file__).with_name("probe-full-rezz-windows.py")
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.dict(sys.modules, modules), patch.dict(builder.os.environ), \
+                    patch.object(sys, "argv", [str(probe), directory]), \
+                    patch.object(builder.subprocess, "run") as process:
+                with self.assertRaisesRegex(ModuleNotFoundError, "faster_whisper"):
+                    runpy.run_path(str(probe), run_name="__main__")
+                process.assert_not_called()
+                self.assertFalse((Path(directory) / "diagnostic").exists())
 
 
 if __name__ == "__main__":

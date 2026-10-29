@@ -17,6 +17,10 @@ enforce_offline()
 status = health(full=True)
 if not status["passed"]:
     raise RuntimeError(f"Bundled resource health failed: {status}")
+# Resolve the ASR dependency chain before spending time on CPU synthesis.
+# CTranslate2 4.5.0 needs the pkg_resources provider pinned in requirements.
+from faster_whisper import WhisperModel
+
 probe = root / "diagnostic"
 probe.mkdir()
 reference = probe / "neutral-reference.wav"
@@ -34,8 +38,6 @@ engine.infer(ref_file=str(reference), ref_text=text, gen_text="The local speech 
 if speech.stat().st_size < 48000:
     raise RuntimeError("Speech output is missing or too short")
 del engine
-from faster_whisper import WhisperModel
-
 asr = WhisperModel(str(root / "models/asr"), device="cpu", compute_type="int8")
 segments, _ = asr.transcribe(str(speech), language="en", beam_size=1, vad_filter=False)
 transcript = " ".join(segment.text for segment in segments).strip()
