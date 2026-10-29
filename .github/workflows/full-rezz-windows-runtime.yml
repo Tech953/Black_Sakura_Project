@@ -1,0 +1,50 @@
+name: FULL_REZZ Windows runtime candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: ["offline/full-rezz-windows-runtime*"]
+    paths:
+      - .github/workflows/full-rezz-windows-runtime.yml
+      - artifacts/desktop/scripts/full-rezz
+permissions:
+  contents: read
+jobs:
+  runtime:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.9"
+      - name: Check builder safety and source staging tests
+        run: |
+          python artifacts/desktop/scripts/test-full-rezz-windows-builder.py
+          node --test artifacts/desktop/scripts/prepare-full-rezz-assets.test.mjs
+      - name: Prepare verified source and core speech assets
+        run: node artifacts/desktop/scripts/prepare-full-rezz-assets.mjs generated-artifacts/full-rezz-assets
+      - name: Build and probe native Windows runtime
+        run: python artifacts/desktop/scripts/build-full-rezz-windows.py --source generated-artifacts/full-rezz-assets --out generated-artifacts/windows-full-rezz
+      - name: Retain native diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-rezz-windows-diagnostics
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            generated-artifacts/windows-full-rezz/diagnostic/*
+            generated-artifacts/windows-full-rezz/windows-pip-report.json
+            generated-artifacts/windows-full-rezz/windows-runtime-manifest.json
+            generated-artifacts/windows-full-rezz/WINDOWS_RUNTIME_NOTICE.md
+# No runtime binary upload/release until the distribution audit and actual
+# character-renderer/fresh-install acceptance are complete.
