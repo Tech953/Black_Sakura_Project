@@ -1,0 +1,27 @@
+# Inference/render dependencies. Training and Gradio are not shipped or used.
+# F5-TTS itself is separately hash-verified and installed without training deps.
+torch==2.6.0+cpu
+torchaudio==2.6.0+cpu
+numpy==1.26.4
+scipy==1.13.1
+librosa==0.10.2.post1
+matplotlib==3.10.1
+soundfile==0.13.1
+pydub==0.25.1
+cached-path==1.7.3
+hydra-core==1.3.2
+ema-pytorch==0.7.7
+torchdiffeq==0.2.5
+x-transformers==1.44.0
+transformers==4.49.0
+pypinyin==0.53.0
+jieba==0.42.1
+vocos==0.1.0
+faster-whisper==1.2.1
+ctranslate2==4.5.0
+speechbrain==1.0.3
+PySide6==6.8.3
+PyOpenGL==3.1.10
+pypdf==5.5.0
+opencc-python-reimplemented==0.1.7
+safetensors==0.5.3
