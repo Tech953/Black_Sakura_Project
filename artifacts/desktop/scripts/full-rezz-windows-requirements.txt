@@ -19,6 +19,9 @@ jieba==0.42.1
 vocos==0.1.0
 faster-whisper==1.2.1
 ctranslate2==4.5.0
+# CTranslate2 4.5.0 imports pkg_resources; newer setuptools removed that module.
+# Keep this compatibility pin until CTranslate2 is upgraded and natively probed.
+setuptools==80.9.0
 speechbrain==1.0.3
 PySide6==6.8.3
 PyOpenGL==3.1.10
