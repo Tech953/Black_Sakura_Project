@@ -1,0 +1,6 @@
+# Install only if you need overlapping two-speaker separation.
+# Use this optional backend separately if its torch/audio requirements conflict with pyannote.
+speechbrain>=1.1.1,<2
+torch>=2.2,<2.9
+torchaudio>=2.2,<2.9
+huggingface-hub>=0.25,<1

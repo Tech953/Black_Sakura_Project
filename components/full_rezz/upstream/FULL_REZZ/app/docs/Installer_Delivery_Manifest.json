@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0.0",
+  "program_version": "3.0.0",
+  "installer": {
+    "name": "Voice_Profile_Studio_3.0.0_Offline_Windows_x64_Setup.exe",
+    "bytes": 2142868921,
+    "sha256": "ded1b71d8205a992c7e272407a5f286407480e73c4388ad9901605966852a383"
+  },
+  "parts": [
+    {
+      "name": "Voice_Profile_Studio_3.0.0_Setup.part01",
+      "bytes": 535717231,
+      "sha256": "44dad6910e62b4d9f8260670f13eaf1516fce442d4b097cfbc179880c696efaf"
+    },
+    {
+      "name": "Voice_Profile_Studio_3.0.0_Setup.part02",
+      "bytes": 535717231,
+      "sha256": "19a267d9b018e36fefcab28d7524bbf80af3691212e556f927bf3744c3eb840b"
+    },
+    {
+      "name": "Voice_Profile_Studio_3.0.0_Setup.part03",
+      "bytes": 535717231,
+      "sha256": "b133b61f19a1860afe509fc48a6688aaa82798436056e848335e28ca439133d0"
+    },
+    {
+      "name": "Voice_Profile_Studio_3.0.0_Setup.part04",
+      "bytes": 535717228,
+      "sha256": "e5af1e4c6104d14bd88da6f9256e87048cce3c2b7662902961060c748a5d8287"
+    }
+  ],
+  "part_limit_bytes": 536870912,
+  "independent_concatenation_verified": true,
+  "delivery_parts_are_runtime_dependencies": false,
+  "publisher_signed": false,
+  "actual_windows_execution_verified": false,
+  "powerShell_execution_verified": false,
+  "python_stream_equivalent_verified": true
+}

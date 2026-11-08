@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:full-rezz:bridge:engram-context:1.0.0",
+  "title": "FULL_REZZ portable authored engram context",
+  "type": "object",
+  "properties": {
+    "bridge_schema_version": {
+      "const": "1.0.0"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^voice_[a-f0-9]{16}$"
+    },
+    "kind": {
+      "const": "full_rezz_engram_context"
+    },
+    "engram_key": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "authored_character": {
+      "type": "object"
+    },
+    "source_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "profile_snapshot": {
+      "type": "object"
+    },
+    "recording_snapshots": {
+      "type": "array"
+    },
+    "origin": {
+      "type": "object",
+      "properties": {
+        "pack_id": {
+          "type": "string",
+          "pattern": "^pack_[a-f0-9]{16}$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "pack_id",
+        "manifest_sha256"
+      ],
+      "additionalProperties": true
+    },
+    "integrity": {
+      "type": "object"
+    },
+    "trust": {
+      "type": "object",
+      "properties": {
+        "prompts_executed": {
+          "const": false
+        },
+        "reasoning_engine_executed": {
+          "const": false
+        },
+        "engram_embedding_generated": {
+          "const": false
+        }
+      },
+      "required": [
+        "prompts_executed",
+        "reasoning_engine_executed",
+        "engram_embedding_generated"
+      ],
+      "additionalProperties": true
+    },
+    "capabilities": {
+      "type": "object"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "bridge_schema_version",
+    "kind",
+    "profile_id",
+    "engram_key",
+    "authored_character",
+    "source_evidence",
+    "profile_snapshot",
+    "origin",
+    "integrity",
+    "trust"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,10 @@
+{
+  "key": "uploaded_crossover",
+  "title": "User-provided Wuthering Waves crossover audio",
+  "url": "",
+  "authority": "user_provided_crossover_media_provenance_unverified",
+  "evidence_section": "Five supplied crossover files",
+  "summary": "All five crossover uploads are retained, hashed, decoded, and measured over their full duration. Their dialogue has not been fully transcribed or perceptually reviewed. They are excluded from the selected original-anime conditioning set and cannot revise its canonical endpoint.",
+  "character": {},
+  "research_checked_at_utc": "2026-10-06"
+}

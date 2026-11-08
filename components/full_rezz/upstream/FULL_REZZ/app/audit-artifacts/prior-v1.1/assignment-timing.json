@@ -1,0 +1,53 @@
+{
+  "status": "passed",
+  "iterations": [
+    {
+      "iteration": 1,
+      "status": "passed"
+    },
+    {
+      "iteration": 2,
+      "status": "passed"
+    },
+    {
+      "iteration": 3,
+      "status": "passed"
+    },
+    {
+      "iteration": 4,
+      "status": "passed"
+    },
+    {
+      "iteration": 5,
+      "status": "passed"
+    },
+    {
+      "iteration": 6,
+      "status": "passed"
+    },
+    {
+      "iteration": 7,
+      "status": "passed"
+    },
+    {
+      "iteration": 8,
+      "status": "passed"
+    },
+    {
+      "iteration": 9,
+      "status": "passed"
+    },
+    {
+      "iteration": 10,
+      "status": "passed"
+    },
+    {
+      "iteration": 11,
+      "status": "passed"
+    },
+    {
+      "iteration": 12,
+      "status": "passed"
+    }
+  ]
+}

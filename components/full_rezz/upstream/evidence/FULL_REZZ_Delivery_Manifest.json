@@ -1,0 +1,51 @@
+{
+  "program": "FULL_REZZ",
+  "installer": {
+    "program": "FULL_REZZ",
+    "version": "2.0.0",
+    "installer_filename": "FULL_REZZ_2.0_Offline_Setup.exe",
+    "installer_sha256": "1232d1b909aa8031891d37a43a08718bc053527c3d04652b9dc4cfd70aa7888c",
+    "installer_bytes": 2089093210,
+    "payload_files_checked": 13171,
+    "payload_bytes_checked": 3065704333,
+    "all_payload_sizes_and_sha256_match": true,
+    "largest_model_streamed_and_fsynced": true,
+    "windows_native_execution_tested": false,
+    "human_listening_review_performed": false,
+    "unsigned": true,
+    "method": "Independent 7-Zip NSIS extraction plus every-file size/SHA256 comparison; large F5 payload separately streamed, hashed and fsynced."
+  },
+  "parts": [
+    {
+      "filename": "FULL_REZZ_Installer_Part_01.zip",
+      "size_bytes": 536003273,
+      "fragment": "FULL_REZZ_2.0_Offline_Setup.exe.part01",
+      "fragment_bytes": 536000000,
+      "fragment_sha256": "45cf0d139949f419ca555d797527f8eac496c2eb768fc67967fcaf280fc668c6"
+    },
+    {
+      "filename": "FULL_REZZ_Installer_Part_02.zip",
+      "size_bytes": 536000174,
+      "fragment": "FULL_REZZ_2.0_Offline_Setup.exe.part02",
+      "fragment_bytes": 536000000,
+      "fragment_sha256": "b1468a056d0dc8ce6b8f61f24a94389b898cf61c80aa64c8d725f305cb74ceb9"
+    },
+    {
+      "filename": "FULL_REZZ_Installer_Part_03.zip",
+      "size_bytes": 536000174,
+      "fragment": "FULL_REZZ_2.0_Offline_Setup.exe.part03",
+      "fragment_bytes": 536000000,
+      "fragment_sha256": "4951a8caf911548e1cc219c813cbf7ea2ed420633d1c0712be3f0c24af667573"
+    },
+    {
+      "filename": "FULL_REZZ_Installer_Part_04.zip",
+      "size_bytes": 481093384,
+      "fragment": "FULL_REZZ_2.0_Offline_Setup.exe.part04",
+      "fragment_bytes": 481093210,
+      "fragment_sha256": "969699087a7f5938004f0bf5af20a97dd61025197886ba20f2bf953ecbc70937"
+    }
+  ],
+  "assembly_byte_equivalence_verified": true,
+  "windows_cmd_execution_tested": false,
+  "delivery_limit_bytes": 536870912
+}

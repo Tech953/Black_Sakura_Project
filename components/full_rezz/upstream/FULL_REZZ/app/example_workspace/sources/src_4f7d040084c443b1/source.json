@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "Dark Horse Direct and CD PROJEKT RED — The Final Moment",
+  "url": "https://www.darkhorsedirect.com/products/cyberpunk-edgerunners-the-final-moment-premium-statue",
+  "authority": "licensed_partner_primary",
+  "evidence_section": "Description of Rebecca's last stand against Adam Smasher",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_4f7d040084c443b1",
+  "retrieved_at": "2026-10-07T08:25:19.302503+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "496ab4a90e75fab2beba4f861adc1bb8a8dae1685ef12b1dec638eeeb7b3e6c2",
+  "text_characters": 639,
+  "text_path": "sources/src_4f7d040084c443b1/text.txt",
+  "original_path": "sources/src_4f7d040084c443b1/original.json",
+  "original_sha256": "496ab4a90e75fab2beba4f861adc1bb8a8dae1685ef12b1dec638eeeb7b3e6c2"
+}

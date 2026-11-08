@@ -1,0 +1,284 @@
+{
+  "schema_version": "4.0.0",
+  "name": "FULL_REZZ mixed-exposure production test",
+  "fps": 60,
+  "duration_seconds": 12.0,
+  "voice_offset_seconds": 1.25,
+  "keys": [
+    {
+      "frame": 0,
+      "time_seconds": 0.0,
+      "authored_time_seconds": 0.0,
+      "source_frame": 0,
+      "pose_id": "a1",
+      "label": "Alert rest"
+    },
+    {
+      "frame": 40,
+      "time_seconds": 0.6666666666666666,
+      "authored_time_seconds": 0.6666666666666666,
+      "source_frame": 16,
+      "pose_id": "a2",
+      "label": "Head leads turn"
+    },
+    {
+      "frame": 60,
+      "time_seconds": 1.0,
+      "authored_time_seconds": 1.0,
+      "source_frame": 24,
+      "pose_id": "a3",
+      "label": "Anticipation hold"
+    },
+    {
+      "frame": 215,
+      "time_seconds": 3.5833333333333335,
+      "authored_time_seconds": 3.5833333333333335,
+      "source_frame": 86,
+      "pose_id": "a2",
+      "label": "Return glance"
+    },
+    {
+      "frame": 235,
+      "time_seconds": 3.9166666666666665,
+      "authored_time_seconds": 3.9166666666666665,
+      "source_frame": 94,
+      "pose_id": "a1",
+      "label": "Greeting hold"
+    },
+    {
+      "frame": 310,
+      "time_seconds": 5.166666666666667,
+      "authored_time_seconds": 5.166666666666667,
+      "source_frame": 124,
+      "pose_id": "c1",
+      "label": "Low palm transition"
+    },
+    {
+      "frame": 325,
+      "time_seconds": 5.416666666666667,
+      "authored_time_seconds": 5.416666666666667,
+      "source_frame": 130,
+      "pose_id": "c2",
+      "label": "Elbow leads transition"
+    },
+    {
+      "frame": 340,
+      "time_seconds": 5.666666666666667,
+      "authored_time_seconds": 5.666666666666667,
+      "source_frame": 136,
+      "pose_id": "a5",
+      "label": "Palm rise"
+    },
+    {
+      "frame": 350,
+      "time_seconds": 5.833333333333333,
+      "authored_time_seconds": 5.833333333333333,
+      "source_frame": 140,
+      "pose_id": "c3",
+      "label": "Extension transition"
+    },
+    {
+      "frame": 360,
+      "time_seconds": 6.0,
+      "authored_time_seconds": 6.0,
+      "source_frame": 144,
+      "pose_id": "a6",
+      "label": "Palm-up extension"
+    },
+    {
+      "frame": 370,
+      "time_seconds": 6.166666666666667,
+      "authored_time_seconds": 6.166666666666667,
+      "source_frame": 148,
+      "pose_id": "a7",
+      "label": "Gesture overshoot"
+    },
+    {
+      "frame": 380,
+      "time_seconds": 6.333333333333333,
+      "authored_time_seconds": 6.333333333333333,
+      "source_frame": 152,
+      "pose_id": "c4",
+      "label": "Overshoot recovery"
+    },
+    {
+      "frame": 390,
+      "time_seconds": 6.5,
+      "authored_time_seconds": 6.5,
+      "source_frame": 156,
+      "pose_id": "a8",
+      "label": "Big attitude hold"
+    },
+    {
+      "frame": 410,
+      "time_seconds": 6.833333333333333,
+      "authored_time_seconds": 6.833333333333333,
+      "source_frame": 164,
+      "pose_id": "b1",
+      "label": "Gesture release"
+    },
+    {
+      "frame": 420,
+      "time_seconds": 7.0,
+      "authored_time_seconds": 7.0,
+      "source_frame": 168,
+      "pose_id": "c5",
+      "label": "Retraction transition"
+    },
+    {
+      "frame": 435,
+      "time_seconds": 7.25,
+      "authored_time_seconds": 7.25,
+      "source_frame": 174,
+      "pose_id": "b2",
+      "label": "Impatient retraction"
+    },
+    {
+      "frame": 455,
+      "time_seconds": 7.583333333333333,
+      "authored_time_seconds": 7.583333333333333,
+      "source_frame": 182,
+      "pose_id": "c6",
+      "label": "Head and arm transition"
+    },
+    {
+      "frame": 465,
+      "time_seconds": 7.75,
+      "authored_time_seconds": 7.75,
+      "source_frame": 186,
+      "pose_id": "b3",
+      "label": "Head leads turn"
+    },
+    {
+      "frame": 475,
+      "time_seconds": 7.916666666666667,
+      "authored_time_seconds": 7.916666666666667,
+      "source_frame": 190,
+      "pose_id": "b4",
+      "label": "Three-quarter torso"
+    },
+    {
+      "frame": 485,
+      "time_seconds": 8.083333333333334,
+      "authored_time_seconds": 8.083333333333334,
+      "source_frame": 194,
+      "pose_id": "b5",
+      "label": "Tiny patience reaction"
+    },
+    {
+      "frame": 510,
+      "time_seconds": 8.5,
+      "authored_time_seconds": 8.5,
+      "source_frame": 204,
+      "pose_id": "c7",
+      "label": "Invitation transition"
+    },
+    {
+      "frame": 525,
+      "time_seconds": 8.75,
+      "authored_time_seconds": 8.75,
+      "source_frame": 210,
+      "pose_id": "b6",
+      "label": "Head leads return"
+    },
+    {
+      "frame": 540,
+      "time_seconds": 9.0,
+      "authored_time_seconds": 9.0,
+      "source_frame": 216,
+      "pose_id": "b7",
+      "label": "Your-turn invitation"
+    },
+    {
+      "frame": 555,
+      "time_seconds": 9.25,
+      "authored_time_seconds": 9.25,
+      "source_frame": 222,
+      "pose_id": "c8",
+      "label": "Invitation recovery"
+    },
+    {
+      "frame": 570,
+      "time_seconds": 9.5,
+      "authored_time_seconds": 9.5,
+      "source_frame": 228,
+      "pose_id": "b8",
+      "label": "Invitation settle"
+    }
+  ],
+  "exposures": [
+    {
+      "start_source_frame": 0,
+      "end_source_frame": 24,
+      "hold": 1,
+      "label": "head-led entrance"
+    },
+    {
+      "start_source_frame": 24,
+      "end_source_frame": 78,
+      "hold": 3,
+      "label": "anticipation hold"
+    },
+    {
+      "start_source_frame": 78,
+      "end_source_frame": 100,
+      "hold": 1,
+      "label": "return glance"
+    },
+    {
+      "start_source_frame": 100,
+      "end_source_frame": 116,
+      "hold": 3,
+      "label": "greeting hold"
+    },
+    {
+      "start_source_frame": 116,
+      "end_source_frame": 140,
+      "hold": 2,
+      "label": "palm anticipation"
+    },
+    {
+      "start_source_frame": 140,
+      "end_source_frame": 160,
+      "hold": 1,
+      "label": "gesture accent"
+    },
+    {
+      "start_source_frame": 160,
+      "end_source_frame": 174,
+      "hold": 2,
+      "label": "retraction"
+    },
+    {
+      "start_source_frame": 174,
+      "end_source_frame": 198,
+      "hold": 1,
+      "label": "head and torso turn"
+    },
+    {
+      "start_source_frame": 198,
+      "end_source_frame": 204,
+      "hold": 3,
+      "label": "reaction hold"
+    },
+    {
+      "start_source_frame": 204,
+      "end_source_frame": 232,
+      "hold": 2,
+      "label": "invitation"
+    },
+    {
+      "start_source_frame": 232,
+      "end_source_frame": 288,
+      "hold": 3,
+      "label": "settle"
+    }
+  ],
+  "source_fps": {
+    "numerator": 24,
+    "denominator": 1
+  },
+  "timing_basis": "Authored keys retain their original times; procedural arm/breath samples use held 24 Hz ones/twos/threes. Face and camera use delivery fps.",
+  "lip_sync": "Energy drive, no phoneme inference",
+  "camera": "Full-body push, 1.8% over 12 seconds; ground pivot"
+}

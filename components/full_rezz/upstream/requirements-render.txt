@@ -1,0 +1,5 @@
+# Optional local raster development; never install neural models for the bridge demo.
+# Versions exercised on Linux. Windows baseline retains NumPy 2.2.6 pending native acceptance.
+numpy==2.3.5
+PySide6==6.8.3
+av==16.0.1

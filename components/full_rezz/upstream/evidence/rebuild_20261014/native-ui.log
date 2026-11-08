@@ -1,0 +1,85 @@
+qt.multimedia.symbolsresolver: Couldn't load pipewire-0.3 library
+qt.multimedia.symbolsresolver: Couldn't resolve pipewire-0.3 symbols
+qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version 7.1 LGPL version 2.1 or later
+socket(): Operation not permitted
+socket(): Operation not permitted
+PulseAudioService: pa_context_connect() failed
+Input #0, matroska,webm, from '/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/animation_review/Body_Preservation_Review.webm':
+  Metadata:
+    title           : FULL_REZZ 2.1 render and audit refinement
+    COMMENT         : Authored cels; mixed procedural exposure cadence; energy mouth synchronization; studio equivalence unverified.
+    MAJOR_BRAND     : isom
+    MINOR_VERSION   : 512
+    COMPATIBLE_BRANDS: isomiso2avc1mp41
+    ENCODER         : Lavf60.16.100
+  Duration: 00:00:12.04, start: -0.007000, bitrate: 2805 kb/s
+  Stream #0:0: Video: vp9 (Profile 0), yuv420p(tv, progressive), 1920x1080, SAR 1:1 DAR 16:9, 60 fps, 60 tbr, 1k tbn (default)
+      Metadata:
+        HANDLER_NAME    : VideoHandler
+        VENDOR_ID       : [0][0][0][0]
+        ENCODER         : Lavc60.31.102 libvpx-vp9
+        DURATION        : 00:00:12.000000000
+  Stream #0:1: Audio: opus, 48000 Hz, mono, fltp (default)
+      Metadata:
+        HANDLER_NAME    : SoundHandler
+        VENDOR_ID       : [0][0][0][0]
+        ENCODER         : Lavc60.31.102 libopus
+        DURATION        : 00:00:12.040000000
+Input #0, matroska,webm, from '/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/animation_review/Previous_Render.webm':
+  Metadata:
+    title           : FULL_REZZ 2.1 render and audit refinement
+    COMMENT         : Authored cels; mixed procedural exposure cadence; energy mouth synchronization; studio equivalence unverified.
+    MAJOR_BRAND     : isom
+    MINOR_VERSION   : 512
+    COMPATIBLE_BRANDS: isomiso2avc1mp41
+    ENCODER         : Lavf60.16.100
+  Duration: 00:00:12.04, start: -0.007000, bitrate: 2988 kb/s
+  Stream #0:0: Video: vp9 (Profile 0), yuv420p(tv, progressive), 1920x1080, SAR 1:1 DAR 16:9, 60 fps, 60 tbr, 1k tbn (default)
+      Metadata:
+        HANDLER_NAME    : VideoHandler
+        VENDOR_ID       : [0][0][0][0]
+        ENCODER         : Lavc60.31.102 libvpx-vp9
+        DURATION        : 00:00:12.000000000
+  Stream #0:1: Audio: opus, 48000 Hz, mono, fltp (default)
+      Metadata:
+        HANDLER_NAME    : SoundHandler
+        VENDOR_ID       : [0][0][0][0]
+        ENCODER         : Lavc60.31.102 libopus
+        DURATION        : 00:00:12.040000000
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+This plugin does not support propagateSizeHints()
+qt.text.font.db: OpenType support missing for "DejaVu Sans", script 11
+{
+  "native_linux_offscreen_startup_passed": true,
+  "tabs": 9,
+  "embedded_and_detached_share_workspace_and_profile": true,
+  "localized_interface_switches": [
+    "en",
+    "es",
+    "fr",
+    "de",
+    "pt",
+    "it",
+    "ru",
+    "ja",
+    "ko",
+    "zh-Hans",
+    "ar",
+    "hi"
+  ],
+  "arabic_RTL_verified": true,
+  "actual_authored_2d_pixels_rendered": true,
+  "native_windows_execution_tested": false,
+  "audio_device_playback_tested": false,
+  "target_GPU_driver_tested": false
+}

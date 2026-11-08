@@ -1,0 +1,158 @@
+{
+  "transcription": {
+    "segments": [
+      {
+        "start": 0.0,
+        "end": 5.08,
+        "text": "The navigator checks the route, these voice profiles preserve clean audio and character context.",
+        "words": [
+          {
+            "start": 0.0,
+            "end": 0.44,
+            "word": " The",
+            "probability": 0.29248401522636414
+          },
+          {
+            "start": 0.44,
+            "end": 0.88,
+            "word": " navigator",
+            "probability": 0.8023918867111206
+          },
+          {
+            "start": 0.88,
+            "end": 1.16,
+            "word": " checks",
+            "probability": 0.9896000623703003
+          },
+          {
+            "start": 1.16,
+            "end": 1.36,
+            "word": " the",
+            "probability": 0.717095673084259
+          },
+          {
+            "start": 1.36,
+            "end": 1.58,
+            "word": " route,",
+            "probability": 0.7687454223632812
+          },
+          {
+            "start": 1.74,
+            "end": 1.88,
+            "word": " these",
+            "probability": 0.9577566385269165
+          },
+          {
+            "start": 1.88,
+            "end": 2.26,
+            "word": " voice",
+            "probability": 0.7907331585884094
+          },
+          {
+            "start": 2.26,
+            "end": 2.7,
+            "word": " profiles",
+            "probability": 0.9874908328056335
+          },
+          {
+            "start": 2.7,
+            "end": 3.14,
+            "word": " preserve",
+            "probability": 0.9302909970283508
+          },
+          {
+            "start": 3.14,
+            "end": 3.48,
+            "word": " clean",
+            "probability": 0.9438216090202332
+          },
+          {
+            "start": 3.48,
+            "end": 3.78,
+            "word": " audio",
+            "probability": 0.9971908926963806
+          },
+          {
+            "start": 3.78,
+            "end": 4.08,
+            "word": " and",
+            "probability": 0.9904943108558655
+          },
+          {
+            "start": 4.08,
+            "end": 4.5,
+            "word": " character",
+            "probability": 0.9875384569168091
+          },
+          {
+            "start": 4.5,
+            "end": 5.08,
+            "word": " context.",
+            "probability": 0.96753990650177
+          }
+        ]
+      }
+    ],
+    "language": "en",
+    "language_probability": 1.0,
+    "model": "tiny.en",
+    "backend": "faster-whisper-cpu-int8"
+  },
+  "research": {
+    "query": "Alice in Wonderland",
+    "results": [],
+    "errors": [
+      {
+        "provider": "wikipedia",
+        "message": "The research host could not be resolved."
+      },
+      {
+        "provider": "wikidata",
+        "message": "The research host could not be resolved."
+      }
+    ],
+    "note": "Select the exact character and incarnation before attaching a source. Search results are not verified facts."
+  },
+  "separation": {
+    "status": "passed",
+    "sample_rate_hz": 8000,
+    "frames": 43120,
+    "channels": 2,
+    "source_input_frames": 129360,
+    "source_input_rate": 24000
+  },
+  "two_speaker_separation": {
+    "status": "passed",
+    "output_rate_hz": 8000,
+    "output_channels": 2,
+    "output_frames": 48840,
+    "duration_preserved": true,
+    "matched_signals": [
+      {
+        "source_index": 0,
+        "output_index": 0,
+        "mixture_si_sdr_db": 3.708,
+        "separated_si_sdr_db": 13.572
+      },
+      {
+        "source_index": 1,
+        "output_index": 1,
+        "mixture_si_sdr_db": -3.697,
+        "separated_si_sdr_db": 8.943
+      }
+    ],
+    "note": "Optimal permutation against two known generated speech fixtures; not a real-world voice accuracy guarantee."
+  },
+  "separation_app_workflow": {
+    "status": "passed",
+    "recordings_created": 2,
+    "output_rate_hz": [
+      8000,
+      8000
+    ],
+    "anonymous_identity": [
+      false,
+      false
+    ]
+  }
+}

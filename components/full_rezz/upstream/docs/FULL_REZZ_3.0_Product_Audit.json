@@ -1,0 +1,1523 @@
+{
+  "program": "FULL_REZZ",
+  "version": "3.0.0",
+  "release_status": "release_candidate_pending_native_windows_and_artistic_acceptance",
+  "historical_voice_chat_audit_preserved": true,
+  "issues": [
+    {
+      "id": "FR-A01",
+      "status": "Implemented; artistic acceptance pending",
+      "change": "New 720-frame exports, different hashes and native synchronized before/after controls."
+    },
+    {
+      "id": "FR-A02",
+      "status": "Implemented controls; character artwork still limited",
+      "change": "Unsupported broad arm influence disabled; exact protected-geometry checks pass; neutral rig has separate shoulder/elbow/wrist joints. Rebecca needs authored parts and corrective poses."
+    },
+    {
+      "id": "FR-A03",
+      "status": "Open artwork review",
+      "change": "40 current flags retained with unchanged thresholds. Removal of unsafe warping exposes larger authored-pose jumps; no artist rationale or blanket approval has been invented."
+    },
+    {
+      "id": "FR-A04",
+      "status": "Implemented; character view coverage pending",
+      "change": "Shared six-shot timeline and actual camera orbit; original 720-frame 60 fps neutral-rig movie. Rebecca remains one supplied unmeasured view."
+    },
+    {
+      "id": "FR-A05",
+      "status": "Implemented supported subset",
+      "change": "glTF/GLB triangle surfaces, depth, base-color textures, skinning and TRS clips; actual OpenGL shader path tested. PBR, compressed extensions and morphs are outside the supported subset."
+    },
+    {
+      "id": "FR-A06",
+      "status": "Implemented",
+      "change": "Canonical 1.0.0 format, checked imports, stable profile bindings and explicit unsupported mode/view errors."
+    },
+    {
+      "id": "FR-A07",
+      "status": "Implemented",
+      "change": "Atomic full-history SQLite import, source byte/hash retention, explicit CSV/text mappings, pagination and complete export. Context retrieval does not delete stored history."
+    },
+    {
+      "id": "FR-A08",
+      "status": "Implemented local/provider core; host incorporation pending",
+      "change": "Actual bundled Qwen/llama.cpp text generation; validated host callback adapter. The ENGRAM repository has not been supplied or edited."
+    },
+    {
+      "id": "FR-A09",
+      "status": "Implemented energy-driven performance; acting review pending",
+      "change": "Actual F5 speech drives sample-clock mouth motion; new voiced 2D movie. Alignment is energy-only, not phonemes."
+    },
+    {
+      "id": "FR-A10",
+      "status": "Implemented shared widget; Windows/device acceptance pending",
+      "change": "Same session/identity core in embedded Qt panel and separate native window; Linux offscreen startup exercised."
+    },
+    {
+      "id": "FR-A11",
+      "status": "Installer rebuilt; native acceptance pending",
+      "change": "One internally complete installer with private runtime and 20 local model assets. Archive/hash validation is distinct from Windows loader/install acceptance."
+    },
+    {
+      "id": "FR-A12",
+      "status": "Measurement tools implemented; target-machine gate open",
+      "change": "Async workers, cancellation lifetime, 120 Hz presentation target, saved viewport observations and independent completed-frame GPU-path test. No ROG pacing guarantee."
+    },
+    {
+      "id": "FR-A13",
+      "status": "Original benchmark implemented; art comparison pending",
+      "change": "Actual six-shot geometry benchmark, new 60 fps media and explicit anatomy/cinematography criteria. No Studio Trigger fidelity score."
+    },
+    {
+      "id": "FR-A14",
+      "status": "Implemented local review workflow",
+      "change": "Transcript-to-issue ledger retained; current evidence and remaining inputs recorded without optional web lookup blocking local work."
+    }
+  ],
+  "core_tests": 117,
+  "voice_test_summary": {
+    "test_processes": [
+      {
+        "test_file": "test_audio_quality.py",
+        "tests": 24,
+        "exit_code": 0
+      },
+      {
+        "test_file": "test_audit.py",
+        "tests": 26,
+        "exit_code": 0
+      },
+      {
+        "test_file": "test_core.py",
+        "tests": 29,
+        "exit_code": 0
+      },
+      {
+        "test_file": "test_languages.py",
+        "tests": 21,
+        "exit_code": 0
+      },
+      {
+        "test_file": "test_offline.py",
+        "tests": 8,
+        "exit_code": 0
+      }
+    ],
+    "tests": 108,
+    "all_passed": true,
+    "execution": "one isolated process per native suite to keep offline-policy state independent",
+    "native_windows_execution_tested": false
+  },
+  "body_preservation_technical_checks": {
+    "passed": 11,
+    "failed": 0
+  },
+  "current_frame_flags": {
+    "silhouette_change": 24,
+    "hand_landmark_jump": 16
+  },
+  "historical_frame_flags": {
+    "silhouette_change": 26,
+    "hand_step": 6
+  },
+  "actual_neural_reply": {
+    "text": "Ready for updates.",
+    "audio_status": "ready",
+    "word_checks": [
+      {
+        "expected_text": "Ready for updates.",
+        "transcribed_text": "Ready for updates!",
+        "comparison_expected_text": "Ready for updates.",
+        "comparison_transcribed_text": "Ready for updates!",
+        "script_normalization": null,
+        "word_errors": 0,
+        "expected_word_count": 3,
+        "word_error_rate": 0.0,
+        "character_error_rate": null,
+        "error_rate": 0.0,
+        "metric": "WER",
+        "language": "en",
+        "threshold": 0.2,
+        "passed": true,
+        "normalization": "NFKC Unicode words with combining marks; optional Arabic vocalization ignored; no slang replacement",
+        "limits": "Text agreement cannot approve pronunciation, likeness, purity, delivery or naturalness.",
+        "at": "2026-10-13T14:19:32.314976+00:00",
+        "model": "bundled-base-multilingual",
+        "audio_sha256": "d69f517af8f659cf976033a6b3370343c30ce3fabb310829cfc7d05cc5bcb1a3"
+      }
+    ],
+    "scope": "One short actual reply; not a voice-likeness or language-wide approval"
+  },
+  "gpu_validation": {
+    "scope": "Actual surface draw code in Linux headless EGL; not Qt desktop/Windows presentation",
+    "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "gl_version": "4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.2",
+    "model_vertices": 1152,
+    "model_triangles": 384,
+    "views": [
+      {
+        "shot_id": "wide_front",
+        "image": "wide_front.png",
+        "rgba_sha256": "1d4623e30d93d7e9b3f9133bbd017a6af0c7d6508918f2659ae0cc0bb520feb7"
+      },
+      {
+        "shot_id": "medium_reaction",
+        "image": "medium_reaction.png",
+        "rgba_sha256": "4a1f342fc600716e2204e37bee1b0e05e6ce9e672df5ba16d52988f851f9a5f3"
+      },
+      {
+        "shot_id": "three_quarter",
+        "image": "three_quarter.png",
+        "rgba_sha256": "72bb4df7f7c2ad525e7c8b422d67cfbe66e569a845384da3d8d6333c1bcd048b"
+      },
+      {
+        "shot_id": "profile",
+        "image": "profile.png",
+        "rgba_sha256": "a92a4513f9ebec077e19c52331d027395b9907782513b6b734b0b7253eb4ae2f"
+      },
+      {
+        "shot_id": "rear_three_quarter",
+        "image": "rear_three_quarter.png",
+        "rgba_sha256": "773e211281c85b71414a232741ea618d5d0dd18be9529c7a6e0cae22b86beebd"
+      },
+      {
+        "shot_id": "low_angle",
+        "image": "low_angle.png",
+        "rgba_sha256": "1a33c868e5305640aeb9b163c14bcad42384a5dd0d8905df3e236ac9d82c47f8"
+      }
+    ],
+    "distinct_camera_views": 6,
+    "rendered_test_frames": 180,
+    "resolution": [
+      640,
+      640
+    ],
+    "completed_frame_p95_ms": 14.692421150016342,
+    "observed_completed_frames_per_second": 111.60562800174561,
+    "gl_finish_included": true,
+    "native_windows_execution_tested": false,
+    "qt_desktop_frame_pacing_tested": false,
+    "user_hardware_benchmarked": false,
+    "artistic_acceptance": false
+  },
+  "native_windows_execution_tested": false,
+  "engram_host_repository_modified": false,
+  "studio_equivalence_validated": false,
+  "neural_plasticity_or_new_geometry_from_chat_implemented": false,
+  "additional_actual_neural_turns": [
+    {
+      "exit_code": 0,
+      "reply_text": "The archive is ready. Let us inspect the next scene.",
+      "audio_status": "ready",
+      "speech_error": null,
+      "word_checks": [
+        {
+          "expected_text": "The archive is ready. Let us inspect the next scene.",
+          "transcribed_text": "The archive is ready. Let us inspect the next scene.",
+          "comparison_expected_text": "The archive is ready. Let us inspect the next scene.",
+          "comparison_transcribed_text": "The archive is ready. Let us inspect the next scene.",
+          "script_normalization": null,
+          "word_errors": 0,
+          "expected_word_count": 10,
+          "word_error_rate": 0.0,
+          "character_error_rate": null,
+          "error_rate": 0.0,
+          "metric": "WER",
+          "language": "en",
+          "threshold": 0.2,
+          "passed": true,
+          "normalization": "NFKC Unicode words with combining marks; optional Arabic vocalization ignored; no slang replacement",
+          "limits": "Text agreement cannot approve pronunciation, likeness, purity, delivery or naturalness.",
+          "at": "2026-10-13T14:28:27.216145+00:00",
+          "model": "bundled-base-multilingual",
+          "audio_sha256": "3e8077739acddb040dce247057d9ba55bc66e4f1254ddd1294eba623a9ad07f8"
+        }
+      ]
+    },
+    {
+      "exit_code": 0,
+      "reply_text": "I can continue reviewing the animation with you.",
+      "audio_status": "ready",
+      "speech_error": null,
+      "word_checks": [
+        {
+          "expected_text": "I can continue reviewing the animation with you.",
+          "transcribed_text": "I can continue reviewing the animation with you.",
+          "comparison_expected_text": "I can continue reviewing the animation with you.",
+          "comparison_transcribed_text": "I can continue reviewing the animation with you.",
+          "script_normalization": null,
+          "word_errors": 0,
+          "expected_word_count": 8,
+          "word_error_rate": 0.0,
+          "character_error_rate": null,
+          "error_rate": 0.0,
+          "metric": "WER",
+          "language": "en",
+          "threshold": 0.2,
+          "passed": true,
+          "normalization": "NFKC Unicode words with combining marks; optional Arabic vocalization ignored; no slang replacement",
+          "limits": "Text agreement cannot approve pronunciation, likeness, purity, delivery or naturalness.",
+          "at": "2026-10-13T14:29:50.530064+00:00",
+          "model": "bundled-base-multilingual",
+          "audio_sha256": "8e3705e5cee866163cddd10fee88ea5037fac09aa2df93dcb3c5c64d909a1dfe"
+        }
+      ]
+    }
+  ],
+  "actual_neural_turns_tested": 3,
+  "original_payload_validation": {
+    "original_payload_entries_checked": 20807,
+    "errors": [],
+    "voice_weight_repaired_from_independent_archive_stream": true,
+    "native_windows_execution_tested": false
+  },
+  "added_windows_pe_validation": {
+    "scope": "Static x64 PE imports; not Windows loader execution",
+    "checked_files": [
+      {
+        "file": "FULL_REZZ.exe",
+        "machine": "0x8664",
+        "imports": [
+          "kernel32.dll",
+          "msvcrt.dll",
+          "user32.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-minicpmv-cli.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "rpc-server.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-run.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "libcurl-x64.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-batched-bench.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "libcurl-x64.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-tokenize.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "shell32.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-cli.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "libcurl-x64.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "mtmd.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-qwen2vl-cli.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-gemma3-cli.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-server.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "libcurl-x64.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "mtmd.dll",
+          "vcruntime140.dll",
+          "ws2_32.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-completion.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "libcurl-x64.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-llava-cli.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-gguf-split.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-tts.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "libcurl-x64.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-perplexity.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "libcurl-x64.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-mtmd-cli.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "libcurl-x64.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "mtmd.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-imatrix.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "libcurl-x64.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-quantize.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama-bench.exe",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "msvcp140_codecvt_ids.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "libcurl-x64.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-private-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "bcrypt.dll",
+          "crypt32.dll",
+          "kernel32.dll",
+          "normaliz.dll",
+          "user32.dll",
+          "wldap32.dll",
+          "ws2_32.dll"
+        ],
+        "unresolved": [
+          "wldap32.dll"
+        ]
+      },
+      {
+        "file": "libomp140.x86_64.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "kernel32.dll",
+          "psapi.dll",
+          "vcruntime140.dll",
+          "vcruntime140_1.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-cpu-icelake.dll",
+        "machine": "0x8664",
+        "imports": [
+          "advapi32.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "libomp140.x86_64.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-cpu-alderlake.dll",
+        "machine": "0x8664",
+        "imports": [
+          "advapi32.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "libomp140.x86_64.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "llama.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-base.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "api-ms-win-crt-time-l1-1-0.dll",
+          "api-ms-win-crt-utility-l1-1-0.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-cpu-sapphirerapids.dll",
+        "machine": "0x8664",
+        "imports": [
+          "advapi32.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "libomp140.x86_64.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-cpu-haswell.dll",
+        "machine": "0x8664",
+        "imports": [
+          "advapi32.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "libomp140.x86_64.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-rpc.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll",
+          "ws2_32.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "mtmd.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-convert-l1-1-0.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "ggml.dll",
+          "kernel32.dll",
+          "llama.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-cpu-sse42.dll",
+        "machine": "0x8664",
+        "imports": [
+          "advapi32.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "libomp140.x86_64.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-cpu-x64.dll",
+        "machine": "0x8664",
+        "imports": [
+          "advapi32.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "libomp140.x86_64.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-cpu-sandybridge.dll",
+        "machine": "0x8664",
+        "imports": [
+          "advapi32.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "libomp140.x86_64.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ggml-cpu-skylakex.dll",
+        "machine": "0x8664",
+        "imports": [
+          "advapi32.dll",
+          "api-ms-win-crt-environment-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "ggml-base.dll",
+          "kernel32.dll",
+          "libomp140.x86_64.dll",
+          "msvcp140.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "avcodec-61.dll",
+        "machine": "0x8664",
+        "imports": [
+          "avutil-59.dll",
+          "kernel32.dll",
+          "ole32.dll",
+          "swresample-5.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "Qt6Multimedia.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "ole32.dll",
+          "qt6core.dll",
+          "qt6gui.dll",
+          "qt6network.dll",
+          "vcruntime140.dll",
+          "vcruntime140_1.dll",
+          "winmm.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "Qt6MultimediaWidgets.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "kernel32.dll",
+          "qt6core.dll",
+          "qt6gui.dll",
+          "qt6multimedia.dll",
+          "qt6widgets.dll",
+          "vcruntime140.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "swscale-8.dll",
+        "machine": "0x8664",
+        "imports": [
+          "avutil-59.dll",
+          "kernel32.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "avutil-59.dll",
+        "machine": "0x8664",
+        "imports": [
+          "bcrypt.dll",
+          "kernel32.dll",
+          "user32.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "swresample-5.dll",
+        "machine": "0x8664",
+        "imports": [
+          "avutil-59.dll",
+          "kernel32.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "avformat-61.dll",
+        "machine": "0x8664",
+        "imports": [
+          "avcodec-61.dll",
+          "avutil-59.dll",
+          "kernel32.dll",
+          "secur32.dll",
+          "ws2_32.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "ffmpegmediaplugin.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-core-debug-l1-1-0.dll",
+          "api-ms-win-core-errorhandling-l1-1-0.dll",
+          "api-ms-win-core-handle-l1-1-0.dll",
+          "api-ms-win-core-heap-l1-1-0.dll",
+          "api-ms-win-core-heap-l2-1-0.dll",
+          "api-ms-win-core-interlocked-l1-1-0.dll",
+          "api-ms-win-core-libraryloader-l1-2-0.dll",
+          "api-ms-win-core-libraryloader-l1-2-1.dll",
+          "api-ms-win-core-localization-l1-2-0.dll",
+          "api-ms-win-core-processthreads-l1-1-0.dll",
+          "api-ms-win-core-processthreads-l1-1-1.dll",
+          "api-ms-win-core-profile-l1-1-0.dll",
+          "api-ms-win-core-rtlsupport-l1-1-0.dll",
+          "api-ms-win-core-synch-l1-1-0.dll",
+          "api-ms-win-core-synch-l1-2-0.dll",
+          "api-ms-win-core-sysinfo-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "avcodec-61.dll",
+          "avformat-61.dll",
+          "avutil-59.dll",
+          "d3d11.dll",
+          "dwmapi.dll",
+          "dxgi.dll",
+          "dxva2.dll",
+          "gdi32.dll",
+          "mf.dll",
+          "mfplat.dll",
+          "mfreadwrite.dll",
+          "msvcp140.dll",
+          "ole32.dll",
+          "oleaut32.dll",
+          "qt6core.dll",
+          "qt6gui.dll",
+          "qt6multimedia.dll",
+          "swresample-5.dll",
+          "swscale-8.dll",
+          "user32.dll",
+          "vcruntime140.dll",
+          "vcruntime140_1.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "windowsmediaplugin.dll",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "d3d9.dll",
+          "dxva2.dll",
+          "evr.dll",
+          "kernel32.dll",
+          "mf.dll",
+          "mfplat.dll",
+          "mfreadwrite.dll",
+          "msvcp140.dll",
+          "ole32.dll",
+          "propsys.dll",
+          "qt6core.dll",
+          "qt6gui.dll",
+          "qt6multimedia.dll",
+          "shell32.dll",
+          "user32.dll",
+          "vcruntime140.dll",
+          "vcruntime140_1.dll",
+          "winmm.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "QtMultimedia.pyd",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "pyside6.abi3.dll",
+          "python3.dll",
+          "qt6core.dll",
+          "qt6gui.dll",
+          "qt6multimedia.dll",
+          "shiboken6.abi3.dll",
+          "vcruntime140.dll",
+          "vcruntime140_1.dll"
+        ],
+        "unresolved": []
+      },
+      {
+        "file": "QtMultimediaWidgets.pyd",
+        "machine": "0x8664",
+        "imports": [
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "kernel32.dll",
+          "msvcp140.dll",
+          "pyside6.abi3.dll",
+          "python3.dll",
+          "qt6core.dll",
+          "qt6gui.dll",
+          "qt6multimediawidgets.dll",
+          "qt6widgets.dll",
+          "shiboken6.abi3.dll",
+          "vcruntime140.dll",
+          "vcruntime140_1.dll"
+        ],
+        "unresolved": []
+      }
+    ],
+    "unresolved_imports": [],
+    "native_windows_execution_tested": false,
+    "windows_system_dlls_expected": [
+      "wldap32.dll"
+    ],
+    "all_added_files_x64": true
+  },
+  "media": [
+    {
+      "profile_id": "voice_158c33fe9e364ec4",
+      "mode": "3d",
+      "view_id": null,
+      "path": "/workspace/scratch/ee0183463077/full_rezz_product/FULL_REZZ_Replit/product_exports/Studio_Unit_Six_Shot_60fps.webm",
+      "sha256": "7c592479d87b09669f48cee8058c90b312c201ad8448a09fb23c72ec23df78a3",
+      "fps": 60,
+      "frames": 720,
+      "duration_seconds": 12.0,
+      "resolution": [
+        640,
+        640
+      ],
+      "turn_id": null,
+      "speech_source_sha256": null,
+      "encoded_audio_seconds": null,
+      "mouth_alignment": "actual WAV energy; not phonemes",
+      "original_WAV_retained": true,
+      "movie_audio_is_lossless": false,
+      "shots": [
+        {
+          "shot_id": "wide_front",
+          "start_frame": 0,
+          "end_frame": 120,
+          "azimuth_deg": 0,
+          "elevation_deg": 5,
+          "radius": 3.2,
+          "target_y": 0.95
+        },
+        {
+          "shot_id": "medium_reaction",
+          "start_frame": 120,
+          "end_frame": 240,
+          "azimuth_deg": 0,
+          "elevation_deg": 8,
+          "radius": 2.35,
+          "target_y": 1.13
+        },
+        {
+          "shot_id": "three_quarter",
+          "start_frame": 240,
+          "end_frame": 360,
+          "azimuth_deg": 45,
+          "elevation_deg": 5,
+          "radius": 2.8,
+          "target_y": 1.0
+        },
+        {
+          "shot_id": "profile",
+          "start_frame": 360,
+          "end_frame": 480,
+          "azimuth_deg": 90,
+          "elevation_deg": 5,
+          "radius": 2.9,
+          "target_y": 1.0
+        },
+        {
+          "shot_id": "rear_three_quarter",
+          "start_frame": 480,
+          "end_frame": 600,
+          "azimuth_deg": 145,
+          "elevation_deg": 9,
+          "radius": 2.9,
+          "target_y": 1.08
+        },
+        {
+          "shot_id": "low_angle",
+          "start_frame": 600,
+          "end_frame": 720,
+          "azimuth_deg": -35,
+          "elevation_deg": -15,
+          "radius": 2.9,
+          "target_y": 0.98
+        }
+      ],
+      "elapsed_seconds": 68.41036445600002,
+      "all_video_frames_decoded_and_timestamps_checked": true,
+      "render_backend": "independent CPU depth renderer",
+      "new_speech_generated_by_export": false,
+      "missing_views_or_geometry_generated": false,
+      "live_frame_rate_benchmark": false,
+      "artistic_acceptance": false
+    },
+    {
+      "profile_id": "voice_57373fea79f3473e",
+      "mode": "2d",
+      "view_id": "supplied_view",
+      "path": "/workspace/scratch/ee0183463077/full_rezz_product/FULL_REZZ_Replit/product_exports/Rebecca_New_Reply_60fps.webm",
+      "sha256": "dc386cb602e609d553a5541151263232f5fabced32904f4fec9c05391c73c043",
+      "fps": 60,
+      "frames": 720,
+      "duration_seconds": 12.0,
+      "resolution": [
+        640,
+        640
+      ],
+      "turn_id": "turn_a0aeb59846c2405da4a002f85ae7761c",
+      "speech_source_sha256": "d69f517af8f659cf976033a6b3370343c30ce3fabb310829cfc7d05cc5bcb1a3",
+      "encoded_audio_seconds": 1.44,
+      "mouth_alignment": "actual WAV energy; not phonemes",
+      "original_WAV_retained": true,
+      "movie_audio_is_lossless": false,
+      "shots": [
+        {
+          "shot_id": "selected_authored_2d_view",
+          "view_id": "supplied_view",
+          "start_frame": 0,
+          "end_frame": 720
+        }
+      ],
+      "elapsed_seconds": 8.067584071000056,
+      "all_video_frames_decoded_and_timestamps_checked": true,
+      "render_backend": "shared Qt cel painter",
+      "new_speech_generated_by_export": false,
+      "missing_views_or_geometry_generated": false,
+      "live_frame_rate_benchmark": false,
+      "artistic_acceptance": false
+    }
+  ],
+  "pdf_guide_visual_review": {
+    "pages": 4,
+    "rendered_and_reviewed": true,
+    "layout_defects_observed": false,
+    "native_windows_execution_tested": false
+  },
+  "native_ui_validation": {
+    "locale_checks": [
+      {
+        "locale": "en",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "es",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "fr",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "de",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "pt",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "it",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "ru",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "ja",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "ko",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "zh-Hans",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "ar",
+        "tabs": 9,
+        "separate_rtl": true,
+        "same_profile": true,
+        "same_history": true
+      },
+      {
+        "locale": "hi",
+        "tabs": 9,
+        "separate_rtl": false,
+        "same_profile": true,
+        "same_history": true
+      }
+    ],
+    "all_profile_history_bindings_preserved": true,
+    "scope": "Actual Linux offscreen Qt startup and localization; no native Windows/device execution",
+    "native_windows_execution_tested": false
+  },
+  "speech_checks_passed_for_actual_turns": 3,
+  "installer_transaction_checks": 8,
+  "high_rate_actual_exports": [
+    {
+      "profile_id": "voice_57373fea79f3473e",
+      "mode": "2d",
+      "view_id": "supplied_view",
+      "path": "/workspace/scratch/ee0183463077/full_rezz_product/High_Rate_Test_120.webm",
+      "sha256": "06f6d40f24554cf8d35c123159118a4b227d8a336a77cc03a159da97df9a3367",
+      "fps": 120,
+      "frames": 1440,
+      "duration_seconds": 12.0,
+      "resolution": [
+        320,
+        320
+      ],
+      "turn_id": "turn_a0aeb59846c2405da4a002f85ae7761c",
+      "speech_source_sha256": "d69f517af8f659cf976033a6b3370343c30ce3fabb310829cfc7d05cc5bcb1a3",
+      "encoded_audio_seconds": 1.44,
+      "mouth_alignment": "actual WAV energy; not phonemes",
+      "original_WAV_retained": true,
+      "movie_audio_is_lossless": false,
+      "shots": [
+        {
+          "shot_id": "selected_authored_2d_view",
+          "view_id": "supplied_view",
+          "start_frame": 0,
+          "end_frame": 1440
+        }
+      ],
+      "elapsed_seconds": 7.168328046999704,
+      "all_video_frames_decoded_and_timestamps_checked": true,
+      "render_backend": "shared Qt cel painter",
+      "new_speech_generated_by_export": false,
+      "missing_views_or_geometry_generated": false,
+      "live_frame_rate_benchmark": false,
+      "artistic_acceptance": false
+    },
+    {
+      "profile_id": "voice_57373fea79f3473e",
+      "mode": "2d",
+      "view_id": "supplied_view",
+      "path": "/workspace/scratch/ee0183463077/full_rezz_product/High_Rate_Test_240.webm",
+      "sha256": "23359c337a67ac6828602d42cfc6f82292ffd37823ce29db30792d56f5360b4e",
+      "fps": 240,
+      "frames": 2880,
+      "duration_seconds": 12.0,
+      "resolution": [
+        320,
+        320
+      ],
+      "turn_id": "turn_a0aeb59846c2405da4a002f85ae7761c",
+      "speech_source_sha256": "d69f517af8f659cf976033a6b3370343c30ce3fabb310829cfc7d05cc5bcb1a3",
+      "encoded_audio_seconds": 1.44,
+      "mouth_alignment": "actual WAV energy; not phonemes",
+      "original_WAV_retained": true,
+      "movie_audio_is_lossless": false,
+      "shots": [
+        {
+          "shot_id": "selected_authored_2d_view",
+          "view_id": "supplied_view",
+          "start_frame": 0,
+          "end_frame": 2880
+        }
+      ],
+      "elapsed_seconds": 14.64657554400037,
+      "all_video_frames_decoded_and_timestamps_checked": true,
+      "render_backend": "shared Qt cel painter",
+      "new_speech_generated_by_export": false,
+      "missing_views_or_geometry_generated": false,
+      "live_frame_rate_benchmark": false,
+      "artistic_acceptance": false
+    }
+  ],
+  "installer_verification": {
+    "program": "FULL_REZZ",
+    "version": "3.0.0",
+    "installer": "FULL_REZZ_3.0_Offline_Windows_x64_Setup.exe",
+    "bytes": 2728530950,
+    "sha256": "b83c91044d63a0fd4e195741b48e492dea34881237f59cfa0549385d5a6ac11a",
+    "payload_files_verified": 23901,
+    "payload_bytes_verified": 3777750538,
+    "manifest_sha256": "54ae4a3061e545095ebe666c01712fa922b7c4f4cb83071427dfdcce67807fe7",
+    "all_payload_crc_sizes_and_hashes_verified": true,
+    "all_model_assets": 20,
+    "external_node_python_or_model_service_required": false,
+    "native_windows_execution_tested": false,
+    "unsigned": true,
+    "format": "NSIS wizard and internally appended ZIP64 payload"
+  },
+  "full_installer_transaction_validation": {
+    "complete_payload_install_transaction_performed": true,
+    "files_verified": 23901,
+    "installed_model_assets": 20,
+    "final_source_matches_installed_companion_and_desktop": true,
+    "guide_bytes_match": true,
+    "execution": "Linux Python using the actual embedded installer script and actual final EXE; not Windows wizard/loader execution",
+    "native_windows_execution_tested": false
+  }
+}

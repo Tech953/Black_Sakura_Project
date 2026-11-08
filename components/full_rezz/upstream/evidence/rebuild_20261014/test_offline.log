@@ -1,0 +1,13 @@
+test_all_revisions_and_reviews (test_offline.OfflineTests.test_all_revisions_and_reviews) ... ok
+test_archive_contract (test_offline.OfflineTests.test_archive_contract) ... ok
+test_band_calibration (test_offline.OfflineTests.test_band_calibration) ... ok
+test_export_generation_policy (test_offline.OfflineTests.test_export_generation_policy) ... ok
+test_network_denied (test_offline.OfflineTests.test_network_denied) ... ok
+test_silence_and_limits (test_offline.OfflineTests.test_silence_and_limits) ... ok
+test_telemetry_engine_blocked (test_offline.OfflineTests.test_telemetry_engine_blocked) ... ok
+test_word_check_preserves_slang (test_offline.OfflineTests.test_word_check_preserves_slang) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.179s
+
+OK

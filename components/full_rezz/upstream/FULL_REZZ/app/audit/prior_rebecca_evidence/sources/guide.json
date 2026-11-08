@@ -1,0 +1,20 @@
+{
+  "key": "guide",
+  "title": "CD PROJEKT RED — Rebecca Cosplay Guide",
+  "url": "https://cdn-s-cyberpunk.cdprojektred.com/cosplay-guides/REBECCA_COSPLAY_GUIDE_EN.pdf",
+  "authority": "official_primary",
+  "evidence_section": "PDF page 2, CHARACTER; 2024 guide",
+  "summary": "The official guide describes changing moods, strong loyalty to her crew, readiness to help, and an affinity for shotguns. It provides no numerical age or acoustic voice measurements.",
+  "character": {
+    "kind": "fictional",
+    "biography": "Rebecca is a Night City mercenary whose volatile energy is balanced by fierce loyalty to her crew.",
+    "persona": {
+      "traits": [
+        "Volatile",
+        "Fiercely loyal",
+        "Ready to help her crew"
+      ]
+    }
+  },
+  "research_checked_at_utc": "2026-10-06"
+}

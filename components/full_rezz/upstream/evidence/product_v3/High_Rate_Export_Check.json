@@ -1,0 +1,72 @@
+[
+  {
+    "profile_id": "voice_57373fea79f3473e",
+    "mode": "2d",
+    "view_id": "supplied_view",
+    "path": "/workspace/scratch/ee0183463077/full_rezz_product/High_Rate_Test_120.webm",
+    "sha256": "06f6d40f24554cf8d35c123159118a4b227d8a336a77cc03a159da97df9a3367",
+    "fps": 120,
+    "frames": 1440,
+    "duration_seconds": 12.0,
+    "resolution": [
+      320,
+      320
+    ],
+    "turn_id": "turn_a0aeb59846c2405da4a002f85ae7761c",
+    "speech_source_sha256": "d69f517af8f659cf976033a6b3370343c30ce3fabb310829cfc7d05cc5bcb1a3",
+    "encoded_audio_seconds": 1.44,
+    "mouth_alignment": "actual WAV energy; not phonemes",
+    "original_WAV_retained": true,
+    "movie_audio_is_lossless": false,
+    "shots": [
+      {
+        "shot_id": "selected_authored_2d_view",
+        "view_id": "supplied_view",
+        "start_frame": 0,
+        "end_frame": 1440
+      }
+    ],
+    "elapsed_seconds": 7.168328046999704,
+    "all_video_frames_decoded_and_timestamps_checked": true,
+    "render_backend": "shared Qt cel painter",
+    "new_speech_generated_by_export": false,
+    "missing_views_or_geometry_generated": false,
+    "live_frame_rate_benchmark": false,
+    "artistic_acceptance": false
+  },
+  {
+    "profile_id": "voice_57373fea79f3473e",
+    "mode": "2d",
+    "view_id": "supplied_view",
+    "path": "/workspace/scratch/ee0183463077/full_rezz_product/High_Rate_Test_240.webm",
+    "sha256": "23359c337a67ac6828602d42cfc6f82292ffd37823ce29db30792d56f5360b4e",
+    "fps": 240,
+    "frames": 2880,
+    "duration_seconds": 12.0,
+    "resolution": [
+      320,
+      320
+    ],
+    "turn_id": "turn_a0aeb59846c2405da4a002f85ae7761c",
+    "speech_source_sha256": "d69f517af8f659cf976033a6b3370343c30ce3fabb310829cfc7d05cc5bcb1a3",
+    "encoded_audio_seconds": 1.44,
+    "mouth_alignment": "actual WAV energy; not phonemes",
+    "original_WAV_retained": true,
+    "movie_audio_is_lossless": false,
+    "shots": [
+      {
+        "shot_id": "selected_authored_2d_view",
+        "view_id": "supplied_view",
+        "start_frame": 0,
+        "end_frame": 2880
+      }
+    ],
+    "elapsed_seconds": 14.64657554400037,
+    "all_video_frames_decoded_and_timestamps_checked": true,
+    "render_backend": "shared Qt cel painter",
+    "new_speech_generated_by_export": false,
+    "missing_views_or_geometry_generated": false,
+    "live_frame_rate_benchmark": false,
+    "artistic_acceptance": false
+  }
+]

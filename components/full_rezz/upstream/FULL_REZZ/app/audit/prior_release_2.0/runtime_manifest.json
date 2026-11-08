@@ -1,0 +1,9 @@
+{
+  "embedded_python": "python-3.11.9-embed-amd64.zip",
+  "sha256": "009d6bf7e3b2ddca3d784fa09f90fe54336d5b60f0e0f305c37f400bf83cfd3b",
+  "onnxruntime_included": false,
+  "runtime_model_downloads": false,
+  "node_runtime": false,
+  "browser_server": false,
+  "F5_patch": "Unused training Trainer import omitted; inference weights unchanged."
+}

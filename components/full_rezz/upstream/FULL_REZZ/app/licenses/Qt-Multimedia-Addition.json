@@ -1,0 +1,68 @@
+{
+  "wheel": "PySide6_Addons-6.8.3-cp39-abi3-win_amd64.whl",
+  "wheel_sha256": "67548f6db11f4e1b7e4b6efd9c3fc2e8d275188a7b2feac388961128572a6955",
+  "bundled_additions": [
+    {
+      "path": "PySide6/Qt6Multimedia.dll",
+      "bytes": 976520,
+      "sha256": "78a38beff7f15ea07d75d7cc67c9ee996a28da423711c2ae2da32070f6c2e1d6"
+    },
+    {
+      "path": "PySide6/Qt6MultimediaWidgets.dll",
+      "bytes": 61576,
+      "sha256": "c30d054e9e80a9cab212cd167579668f39bd86a62b6819aaaec448529d90863a"
+    },
+    {
+      "path": "PySide6/QtMultimedia.pyd",
+      "bytes": 588936,
+      "sha256": "030c542379d7bf44018b15de7481ff39047f15c24470a127825e977607bf3e8a"
+    },
+    {
+      "path": "PySide6/QtMultimediaWidgets.pyd",
+      "bytes": 142472,
+      "sha256": "05ea4aba88a6e9037d251c92776f5d5b37a1f5eb47c59fd21ed14e8d2e965590"
+    },
+    {
+      "path": "PySide6/avcodec-61.dll",
+      "bytes": 13599880,
+      "sha256": "78a7db0abb0eb735abc702eaca9f672979c669d7fce1956cd50bbaeb7ff7013c"
+    },
+    {
+      "path": "PySide6/avformat-61.dll",
+      "bytes": 2582664,
+      "sha256": "0d571c5750bbda5b99a21631ae8ddb5a38a61fd63de11d8313a02feeea007fc4"
+    },
+    {
+      "path": "PySide6/avutil-59.dll",
+      "bytes": 1162376,
+      "sha256": "b19d35eceadac9f4ca6cf980e471905f22d0e08e250c4db794e58e29d25a52a3"
+    },
+    {
+      "path": "PySide6/swresample-5.dll",
+      "bytes": 243848,
+      "sha256": "c22d301f330fd920f228d44661e2c39246a997034b229155f14a34c95c9f208b"
+    },
+    {
+      "path": "PySide6/swscale-8.dll",
+      "bytes": 750216,
+      "sha256": "44f8395445e872dc5b2fa2ca3cb837350dadde12e6764fe1e0fcf0001b7342aa"
+    },
+    {
+      "path": "PySide6/plugins/multimedia/ffmpegmediaplugin.dll",
+      "bytes": 540808,
+      "sha256": "2fe822d25b06c69a9a920893e04bb0a33cd71ec1bc9c08d7b7ec4c09612dc749"
+    },
+    {
+      "path": "PySide6/plugins/multimedia/windowsmediaplugin.dll",
+      "bytes": 298120,
+      "sha256": "51efc8ac6e7b5fc4952203aec515f3d1c0356b0fccf266be57001371525c2e6f"
+    }
+  ],
+  "corresponding_source": {
+    "path": "qtmultimedia-everywhere-src-6.8.3.tar.xz",
+    "url": "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtmultimedia-everywhere-src-6.8.3.tar.xz",
+    "bytes": 9705340,
+    "sha256": "32e82307d783172a3b984cc3c47c5e4e8b819cee3cbfc702c7012c47f15f6b01"
+  },
+  "native_windows_module_import_tested": false
+}

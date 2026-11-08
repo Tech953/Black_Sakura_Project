@@ -1,0 +1,2 @@
+# Install with Python 3.11 or 3.12. Uses the pyannote.audio 4.x API.
+pyannote.audio>=4.0,<5

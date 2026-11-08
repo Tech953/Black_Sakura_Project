@@ -1,0 +1,15 @@
+{
+  "passed_transaction_checks": [
+    "complete installation hashes",
+    "recognized upgrade retains previous program",
+    "workspace untouched",
+    "corrupt file leaves existing installation intact",
+    "failed stage removed",
+    "traversal rejected",
+    "nonempty unrecognized directory retained",
+    "manifest pin checked"
+  ],
+  "checks": 8,
+  "execution": "actual Python transaction with small fixture payloads",
+  "native_windows_execution_tested": false
+}

@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0.0",
+  "release_version": "3.0.0",
+  "installer_name": "Voice_Profile_Studio_3.0.0_Offline_Windows_x64_Setup.exe",
+  "installer_bytes": 2142868921,
+  "installer_sha256": "ded1b71d8205a992c7e272407a5f286407480e73c4388ad9901605966852a383",
+  "actual_windows_execution_verified": false,
+  "publisher_signed": false,
+  "program_tests_passed": 108,
+  "integration_tests_passed": 17,
+  "worker_bridge_tests_passed": 5,
+  "interface_languages": 12,
+  "generic_languages_signal_valid": 12,
+  "generic_languages_text_check_passed": 0,
+  "onnx_runtime_included": false,
+  "compressor": "per-file zlib/Deflate; no solid datablock",
+  "limits": "Archive/payload verification does not prove Windows loader, playback or uninstall execution.",
+  "PE_machine": "0x14c",
+  "archive_test_passed": true,
+  "extraction_passed": true,
+  "initial_extraction_write_errors": [
+    {
+      "path": "app/models/separator/masknet.ckpt",
+      "reason": "size/hash mismatch"
+    },
+    {
+      "path": "app/models/tts/model_1250000.safetensors",
+      "reason": "size/hash mismatch"
+    }
+  ],
+  "stream_verified_recoveries": [
+    {
+      "path": "app/models/separator/masknet.ckpt",
+      "bytes": 113108458,
+      "sha256": "57dd5f49bf21c5a2101bb4e46648d05d34d517a59e26f0b06646d0bebe8214c7",
+      "return_code": 0,
+      "stderr": "",
+      "passed": true
+    },
+    {
+      "path": "app/models/tts/model_1250000.safetensors",
+      "bytes": 1348435761,
+      "sha256": "670900fd14e6c458b95da6e9ed317cdb20dbaf7a1c02ac06a05475a9d32b6a38",
+      "return_code": 0,
+      "stderr": "",
+      "passed": true
+    }
+  ],
+  "independent_model_manifest_checks_passed": true,
+  "model_errors": [],
+  "payload_files_checked": 20807,
+  "payload_bytes_checked": 3150129709,
+  "manifest_matches": true,
+  "payload_errors": [],
+  "payload_hashes_passed": true,
+  "model_assets": 19,
+  "resource_counts": {
+    "fonts": 6,
+    "vendor/espeak-ng": 443
+  },
+  "resource_errors": [],
+  "resource_checks_passed": true,
+  "passed": true
+}

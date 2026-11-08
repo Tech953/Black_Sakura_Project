@@ -1,0 +1,9 @@
+{
+  "toml_parsed": true,
+  "console_run_command": [
+    "python3",
+    "main.py"
+  ],
+  "automatic_dependency_guessing": false,
+  "signed_in_replit_execution_tested": false
+}

@@ -1,0 +1,63 @@
+{
+  "passed": 14,
+  "failed": 0,
+  "environment": "DOM and media event harness simulated; MP4 bytes checked exactly. Live Windows/browser decoding and controls untested.",
+  "results": [
+    {
+      "name": "Embedded movie bytes equal the validated MP4",
+      "status": "passed"
+    },
+    {
+      "name": "No autoplay; initial state is a ready full-body sequence",
+      "status": "passed"
+    },
+    {
+      "name": "Play and media time drive the displayed statement cue",
+      "status": "passed"
+    },
+    {
+      "name": "Pause preserves media time and makes replay available",
+      "status": "passed"
+    },
+    {
+      "name": "Seeking updates the cue and readout",
+      "status": "passed"
+    },
+    {
+      "name": "Restart returns to the intro without autoplay",
+      "status": "passed"
+    },
+    {
+      "name": "End of sequence exposes completion and supports replay",
+      "status": "passed"
+    },
+    {
+      "name": "Frame controls pause and step exactly one 60fps frame with boundary clamping",
+      "status": "passed"
+    },
+    {
+      "name": "Character fields and full profile survive embedding exactly",
+      "status": "passed"
+    },
+    {
+      "name": "Player requires no remote image, video, script, stylesheet or API",
+      "status": "passed"
+    },
+    {
+      "name": "Previous and refined movies switch at the same paused frame with the correct action cues",
+      "status": "passed"
+    },
+    {
+      "name": "Review flag control pauses and seeks to the next flagged frame, then wraps",
+      "status": "passed"
+    },
+    {
+      "name": "Technical results keep artistic approval pending and retain all flags",
+      "status": "passed"
+    },
+    {
+      "name": "Decoder failure is visibly reported",
+      "status": "passed"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "7zip": {
+    "Version": "23.01+dfsg-11",
+    "Filename": "pool/universe/7/7zip/7zip_23.01+dfsg-11_amd64.deb",
+    "Size": "1846156",
+    "SHA256": "0f79450d81e64326a862a8645ae1613890e486115101e51e41ca07d929388d87"
+  },
+  "binutils-mingw-w64-x86-64": {
+    "Version": "2.41.90.20240122-1ubuntu1+11.4",
+    "Filename": "pool/universe/b/binutils-mingw-w64/binutils-mingw-w64-x86-64_2.41.90.20240122-1ubuntu1+11.4_amd64.deb",
+    "Size": "6053282",
+    "SHA256": "28bfabbf64a68813a56360bca056072af9ff71ef4090a4b8a8a085afcda3e4dd"
+  },
+  "gcc-mingw-w64-base": {
+    "Version": "13.2.0-6ubuntu1+26.1",
+    "Filename": "pool/universe/g/gcc-mingw-w64/gcc-mingw-w64-base_13.2.0-6ubuntu1+26.1_amd64.deb",
+    "Size": "188046",
+    "SHA256": "a30c07e807e9874ea93909448c5d6d37f9569ebe60ad32de8e490aad198538a3"
+  },
+  "gcc-mingw-w64-x86-64-posix": {
+    "Version": "13.2.0-6ubuntu1+26.1",
+    "Filename": "pool/universe/g/gcc-mingw-w64/gcc-mingw-w64-x86-64-posix_13.2.0-6ubuntu1+26.1_amd64.deb",
+    "Size": "35401298",
+    "SHA256": "0855fa1d4a618550faac3a3e4352aa3226833b28184ad3c3b496a68a22c4eda2"
+  },
+  "gcc-mingw-w64-x86-64-posix-runtime": {
+    "Version": "13.2.0-6ubuntu1+26.1",
+    "Filename": "pool/universe/g/gcc-mingw-w64/gcc-mingw-w64-x86-64-posix-runtime_13.2.0-6ubuntu1+26.1_amd64.deb",
+    "Size": "14036962",
+    "SHA256": "aca6b438e0b55b11cedcf1170a1ee26e7979e34192e34f6e6389e560908a5bfc"
+  },
+  "mingw-w64-common": {
+    "Version": "11.0.1-3build1",
+    "Filename": "pool/universe/m/mingw-w64/mingw-w64-common_11.0.1-3build1_all.deb",
+    "Size": "5580230",
+    "SHA256": "4a42fd30fbc3838c58c929d8a4882682fc12408bb7a0e6cafa913c0f0a57c187"
+  },
+  "mingw-w64-x86-64-dev": {
+    "Version": "11.0.1-3build1",
+    "Filename": "pool/universe/m/mingw-w64/mingw-w64-x86-64-dev_11.0.1-3build1_all.deb",
+    "Size": "3786378",
+    "SHA256": "018480a62907fcca19c6bf2975ae01f5c92c23dee8c3cf7a8355c10bf7d42c6f"
+  },
+  "nsis": {
+    "Version": "3.09-4ubuntu1",
+    "Filename": "pool/universe/n/nsis/nsis_3.09-4ubuntu1_amd64.deb",
+    "Size": "319510",
+    "SHA256": "9e061bef1a8b611aeb2ea76d9a3bd7722b960ca1a9dff8e38d2ab51e5a8f5e5b"
+  },
+  "nsis-common": {
+    "Version": "3.09-4ubuntu1",
+    "Filename": "pool/universe/n/nsis/nsis-common_3.09-4ubuntu1_all.deb",
+    "Size": "968106",
+    "SHA256": "49471b9debdee4751ebb4caf6b705cc4c678eebfaecefbe56362258893f85859"
+  }
+}

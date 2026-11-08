@@ -1,0 +1,2293 @@
+{
+  "all_checkpoint_bytes_verified": true,
+  "files": [
+    {
+      "path": "requirements-render.txt",
+      "sha256": "0eab3ec58c1c0526a92ec7bcb1577f4e877af3783bf62c04ae05926c40aa9032"
+    },
+    {
+      "path": "README.md",
+      "sha256": "e2fe3b152c5f42943b8f8685a86a8cbf355c23487aacc598a1aa8d07da4d2075"
+    },
+    {
+      "path": ".replit",
+      "sha256": "0adacf16508f65d4e8325dce054058d9a30cd74bc9a7feec90d9f6b61503a11f"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "2fb5d2d64e8a987d61248ad40ef78836d1d30e1e93252516d763ce2b1051860f"
+    },
+    {
+      "path": "requirements-companion.txt",
+      "sha256": "3b1899b7a2dbe0cca6551afcd76c0bd9122c6c9c4abdec3aea5488479ce7e93b"
+    },
+    {
+      "path": "TASK_QUERY.md",
+      "sha256": "e16b7cec1d51f5c7f4bfbc81f200282bc52321adf29d7c89428adf3ce75b94fa"
+    },
+    {
+      "path": "replit.md",
+      "sha256": "f7f9b302e188bbb0d8c22894b001293bc4a6532503dca42a32b6a7d3635ac01c"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "a74d4fa480450e3ce9c619685f2a844354df78abbf67e7c86f7da1c8950a405f"
+    },
+    {
+      "path": "main.py",
+      "sha256": "ed4120ed944bdf38c8ad9cb2abc2933ded41955a220f8126896a8f5b28a909d2"
+    },
+    {
+      "path": "product_exports/Studio_Unit_Six_Shot_60fps.audit.json",
+      "sha256": "d010574c7c4ec15194b41a2647c21a72b48da9c4f4f76b16e32c63277b2f103b"
+    },
+    {
+      "path": "product_exports/Rebecca_New_Reply.wav",
+      "sha256": "d69f517af8f659cf976033a6b3370343c30ce3fabb310829cfc7d05cc5bcb1a3"
+    },
+    {
+      "path": "product_exports/Rebecca_New_Reply_60fps.webm",
+      "sha256": "dc386cb602e609d553a5541151263232f5fabced32904f4fec9c05391c73c043"
+    },
+    {
+      "path": "product_exports/Rebecca_New_Reply_60fps.audit.json",
+      "sha256": "6b6e074def9c684c3ac334af1ff892ec9abd18b94cef50c5c7a5eae6dace845c"
+    },
+    {
+      "path": "product_exports/Studio_Unit_Six_Shot_60fps.webm",
+      "sha256": "7c592479d87b09669f48cee8058c90b312c201ad8448a09fb23c72ec23df78a3"
+    },
+    {
+      "path": "full_rezz_render/pipeline.py",
+      "sha256": "c1a44f913ab5dfa303e6ece58a71964b0d523e9324abca07b0af65ed5b819306"
+    },
+    {
+      "path": "full_rezz_render/render.py",
+      "sha256": "1bd4a1d973c9582b98a7d463d77d1463574ceac55b3b78688a7841066652e4bb"
+    },
+    {
+      "path": "full_rezz_render/layout.py",
+      "sha256": "59e8bdb4eee476b8c49281b131054d57664f20f45561e723a1489fae25b610b6"
+    },
+    {
+      "path": "full_rezz_render/project.py",
+      "sha256": "fabd1a85421688fea764b22d29a5b4be4451ce5fd1ee0e91a3f1cd3f417a254e"
+    },
+    {
+      "path": "full_rezz_render/timing.py",
+      "sha256": "a4513bae25ba2ca36174cb80f0e739799c81e26e3132cd21c2eb92ec2dbc44dc"
+    },
+    {
+      "path": "full_rezz_render/__init__.py",
+      "sha256": "6a9e6e9c573f058867fd437e7fd37ed490aeeea91d1ad4a163d7821bb41bc9ad"
+    },
+    {
+      "path": "full_rezz_render/geometry.py",
+      "sha256": "7cd5cc5d97ad7fe0817743f23d21bb4bd1f87dbe9a23ea4b9925723cf2055296"
+    },
+    {
+      "path": "full_rezz_render/scene.py",
+      "sha256": "81c95f5bf9264c5d2f8b4134b3b7e08de9fba443017b945e85caeb6eba7170ba"
+    },
+    {
+      "path": "full_rezz_render/rig.py",
+      "sha256": "ccb883c6b96e633fdeb71ea8576e1ec140a4cf48372ad0f6a51ea91d19bde94e"
+    },
+    {
+      "path": "full_rezz_render/audit.py",
+      "sha256": "b3f26b146a5ae100870615622614ff75ff0ca8928bf025ac81ff370e62819a73"
+    },
+    {
+      "path": "full_rezz_render/__main__.py",
+      "sha256": "ac94c0072d607d58832452b4becb45840ed3684bfab09f07b6c307465444b258"
+    },
+    {
+      "path": "schemas/authored-action.schema.json",
+      "sha256": "f0e3a9fbdc2d2e96e2def889a64e9d0a0564070c06d4d4526b5c6b212fc6bd64"
+    },
+    {
+      "path": "schemas/render-request.schema.json",
+      "sha256": "fa261328ce8bfb099adbe0c59e640ffe6e8a5942f07754dc60c5de1e507754a7"
+    },
+    {
+      "path": "schemas/verified-render.schema.json",
+      "sha256": "49b59e773086ceea3e66d63741d922d627e0c24fb8731e068c82966909c41e8f"
+    },
+    {
+      "path": "schemas/engram-context.schema.json",
+      "sha256": "ac8b8c4f8900029e209394127e7ecb16795a7054a4f1bc9d9d6d457d2dd92851"
+    },
+    {
+      "path": "schemas/full-rezz-character-model-draft.schema.json",
+      "sha256": "a58abe6c438f1130e59b972fde0aeb653cfd83390b4f81862767d825c36b0ed2"
+    },
+    {
+      "path": "schemas/full-rezz-character.schema.json",
+      "sha256": "cfea28ee6dc0d7b8d7a008afab38816d37143266be1044876e8dfbba43da4360"
+    },
+    {
+      "path": "schemas/full-rezz-scene-layout.schema.json",
+      "sha256": "cb36fb209fa94e4d8602728ad2e43cf5b5eacbb2f36ecb0d7c189158c2814916"
+    },
+    {
+      "path": "tools/capture_full_raster.py",
+      "sha256": "1e42ab9df992190e7da9b3ce8f624c285740cbb35771a480ec0f982a3c991b1d"
+    },
+    {
+      "path": "tools/package_fileset.py",
+      "sha256": "0a96321532f67e8278bf8b61de48564e897c00f19e7315f056039df67316c8c1"
+    },
+    {
+      "path": "tools/windows_launcher.c",
+      "sha256": "25463d4a3b28e41c879646a411d3cf285d7e79f1b84708c23f810ea801b22efa"
+    },
+    {
+      "path": "tools/make_product_guide.py",
+      "sha256": "f0f9334850b6580526817ad6cb664f4ba869a9e7b4bbfe03ef1e894ef0f5d429"
+    },
+    {
+      "path": "tools/package_animation_source.py",
+      "sha256": "9171a129212e4d866977be19f208c8787ed64dacfb9e6dbce8a1b5f67994eb3b"
+    },
+    {
+      "path": "tools/installer_payload.py",
+      "sha256": "c72a310538b2536513689a8349cc4158d76f462861dd27d6a307c7cbb92a5076"
+    },
+    {
+      "path": "tools/installer_bootstrap.nsi",
+      "sha256": "cd627324590b7d52d276eba1a15ad644ad17db30ff35ce259a645de13519564f"
+    },
+    {
+      "path": "tools/build_windows_release.py",
+      "sha256": "88bbbd3e4fdfcadd043211d722f8a281e1c33b9ebed3f4d4571f714a2d4ca673"
+    },
+    {
+      "path": "tools/test_installer_payload.py",
+      "sha256": "76d24c78fb8a2120bb06335f037b6d2cd1de62ff2cc3d5229c9e018b580089ae"
+    },
+    {
+      "path": "tools/playtest_companion_gpu.py",
+      "sha256": "2391bc9007e08dd22e707c9f731a24b59df6ed59949fd48cf838d342fbcba39a"
+    },
+    {
+      "path": "tools/build_companion_assets.py",
+      "sha256": "fd78dddb6aaf8add5598905eacd7c8f058a32db3d395bb3b101940fe99b1dbfb"
+    },
+    {
+      "path": "tools/assembler_template.ps1",
+      "sha256": "e88fb5af71386e857867ddaeba4069068c4305541937808de79dbeeb4f1f5b1e"
+    },
+    {
+      "path": "tools/build_render_player.py",
+      "sha256": "1a733b9fae225d6937af37de5444f71527a5e7d30bf4120169768342ef08f57c"
+    },
+    {
+      "path": "tools/create_bridge_schemas.py",
+      "sha256": "bc477f528575587ff7b4d0c47b234c0cbb673d62cea2cf0096e5f4736938772b"
+    },
+    {
+      "path": "tools/assemble_examples.py",
+      "sha256": "c855ee8107c2c3d4e956bbd6c85ad9dafff807d7d7e5395e199526616a46b7b0"
+    },
+    {
+      "path": "examples/actual_render_receipt_evidence.json",
+      "sha256": "1bfe2da19e4a3b1d474790cd69aa959de326687fed8397b78ed4bc0c29a7b0cd"
+    },
+    {
+      "path": "examples/engram_context.json",
+      "sha256": "af757e2ceafd562b573690e355590a7b6d217987b25681b27c7388aec637b114"
+    },
+    {
+      "path": "examples/character_model_draft.json",
+      "sha256": "0ef92e1a8ae2655cec095d07f70ed4be578209b2ca184b1db7fc1b042d8d6e1d"
+    },
+    {
+      "path": "examples/rebecca_timeline.json",
+      "sha256": "f00bf81b70586c69239928d462f58d0423a9c75d7ed1141ec551e978e35d55be"
+    },
+    {
+      "path": "examples/render_request.json",
+      "sha256": "1948c5ad94f5d89f1ec64c5f0be86e61c85fa8291aea650fad9b2062fd644af6"
+    },
+    {
+      "path": "examples/rebecca_action.json",
+      "sha256": "8c49b62ce22e1e54a375844d32e67e387ad4a163f0a8532e8cc60b95cffd7995"
+    },
+    {
+      "path": "examples/perspective_wireframe_fixture.json",
+      "sha256": "51baf7b862a85ac10ff3e02c44f6e6e6c498a69f9562561039ec1ed4cd6e0cc5"
+    },
+    {
+      "path": "tests/test_render_strength.py",
+      "sha256": "dbdc4ec5ea3b2fb09d88901d96eef528bdf4307200341b79b2a709ed21037e90"
+    },
+    {
+      "path": "tests/test_bridge.py",
+      "sha256": "46a4634909066736438deb9e5184cf49436f3b257ae4b34e3f75d6d7e350185f"
+    },
+    {
+      "path": "tests/test_scene_layout.py",
+      "sha256": "6f684cefd0dcd7c4dcf74ede0f811c818c20f2ab908519aac420f195b7bf6b8c"
+    },
+    {
+      "path": "tests/test_companion.py",
+      "sha256": "60ad74f0a57898013d030bc937af0f788815cdc962fd1d6e034d2d5262def090"
+    },
+    {
+      "path": "evidence/bridge-tests.txt",
+      "sha256": "5c5aed5c4e25ab6ae6054e48efaed567ab2accdf8f8cd81b8ea4734dab1d83ce"
+    },
+    {
+      "path": "evidence/scene-layout-validation.json",
+      "sha256": "b9453abada524d769ef2a94b8287ce1e12f9d74810286507cd4018f59e9d97b0"
+    },
+    {
+      "path": "evidence/render-strength-tests.txt",
+      "sha256": "7491c86c71c283096863e869d0a6deebcbdae751d21541e87f24d5958ef12a92"
+    },
+    {
+      "path": "evidence/render-strength-summary.json",
+      "sha256": "d7d401f6c19511917909e4c24af02fd0c05c6a90795e3a9b8dcc7373a5b48233"
+    },
+    {
+      "path": "evidence/FULL_REZZ_Delivery_Manifest.json",
+      "sha256": "789ad223289e49546580beeb8fb99e81a72543a62c71777ce649f4c74ba89cca"
+    },
+    {
+      "path": "evidence/production-player-validation.json",
+      "sha256": "5f30aa3562260c7fb40ed7c99451d1a35228e6306b25dd870e81867274c9c486"
+    },
+    {
+      "path": "evidence/schema-verification.json",
+      "sha256": "cdce159f95aeb749532c804d24c2ba8d6a20e149e68dbe5694cd8ece1ef36822"
+    },
+    {
+      "path": "evidence/voice-chat-audit-materials-validation.json",
+      "sha256": "1c3040b1e7f1f484e19bab3ea8cf84c0fc2a5ceb3df86337ee597c0ed3176a3e"
+    },
+    {
+      "path": "evidence/voice-chat-arm-influence.json",
+      "sha256": "3944edd3f8ee2923a0b2110e904253b66a39ef01ed5594c2b226fb0f7df01b33"
+    },
+    {
+      "path": "evidence/replit-configuration-verification.json",
+      "sha256": "1e0e2f6e7671c4295a418c686b904ad06454721c509c244034d68d259bdaba06"
+    },
+    {
+      "path": "evidence/bridge-demo.json",
+      "sha256": "70e604f6c5d2700cc71f9c265f7d71d0421ac379271a28de6dd49e73497e3e70"
+    },
+    {
+      "path": "evidence/combined-tests.txt",
+      "sha256": "59e49c5483bf1893fb530b0d51bfcda333d44bc4576ffaf22d522c147d1cbb3e"
+    },
+    {
+      "path": "evidence/FULL_REZZ_Installer_Verification.json",
+      "sha256": "63b98fa7b1a0d47f2196f7b4bd58242e8b14604b1094ba28c594f1e14e4a63ed"
+    },
+    {
+      "path": "evidence/stdlib-demo.json",
+      "sha256": "70e604f6c5d2700cc71f9c265f7d71d0421ac379271a28de6dd49e73497e3e70"
+    },
+    {
+      "path": "evidence/bridge-verification.json",
+      "sha256": "e567ced21517da12b6e049ee99ee9b59c89b135c933061c3b28af34e5a2efbca"
+    },
+    {
+      "path": "evidence/voice-chat-frame-comparison.json",
+      "sha256": "77d7f88596effdc4bf555bf288955abd3e8d396cc55edb5b56655fe5f93d45f5"
+    },
+    {
+      "path": "full_rezz_build/compiled_payload_manifest.json",
+      "sha256": "f07f5033283c54bdee2ec7823153e6ab268d019758fd6b7dddc2c59a63e67318"
+    },
+    {
+      "path": "full_rezz_build/runtime_manifest.json",
+      "sha256": "7d16761faab55ea31eedb59ba3b7ac8ffe699707cb58fe8812861c796a128150"
+    },
+    {
+      "path": "full_rezz_build/prepare_dependencies.py",
+      "sha256": "a21714621321b2c3cb6acb669d4e8e8fac82040a5affa353fd3369559b744986"
+    },
+    {
+      "path": "full_rezz_build/integrate.py",
+      "sha256": "cd069beb98bf089dd39d7b0c642f233f1539b515d2e25ea71d3066b524ff7868"
+    },
+    {
+      "path": "full_rezz_build/refine_animation.py",
+      "sha256": "ac3230c11279b97356c30a278f64c89a52fe26b388570e9763e91196fcc24bdc"
+    },
+    {
+      "path": "full_rezz_build/prune_runtime.py",
+      "sha256": "5ee20abd5a4361add923c4e33f27678bb67a33c961d0a430ef0efd560eacc841"
+    },
+    {
+      "path": "full_rezz_build/fetch_toolchain.py",
+      "sha256": "d64b8525b44689193d555a380b0c720540210b2db103bf60070b86b6a28d69b4"
+    },
+    {
+      "path": "full_rezz_build/toolchain_manifest.json",
+      "sha256": "02bd04e747f3253cea53d79740eddc71ddb9ca2c9fd09c923a458bc9aa8a586d"
+    },
+    {
+      "path": "full_rezz_build/animation_audit.py",
+      "sha256": "4a401bfed28e862d49bd665a07abeb2b4464376fbd24a2c53b1f5a94e89278eb"
+    },
+    {
+      "path": "full_rezz_build/launcher.c",
+      "sha256": "51aa44d0f02db0a7e8f4264a6d93775000584af2747c32f75f4ade5122cb8226"
+    },
+    {
+      "path": "full_rezz_build/fetch_assets.py",
+      "sha256": "a56fea4fe43cb65ce4ed36bdfcfbb618fedd05d0f06c27ff9d3239f142abbe94"
+    },
+    {
+      "path": "full_rezz_build/Assemble_Installer.cmd",
+      "sha256": "51533f97bcb1843d4b88a93c05ae990e9ed8caa81dcf462c0b3461e8a165a5c2"
+    },
+    {
+      "path": "full_rezz_build/integrate_ui.py",
+      "sha256": "d52a74164ba6c77f322cf241a6ce86d4840425aba21ca994b00ee8f47345c92e"
+    },
+    {
+      "path": "full_rezz_build/uninstall_files.nsh",
+      "sha256": "fdfa48c1020a3d8335122269f86c553f4542671b964ed4049a471b058712566c"
+    },
+    {
+      "path": "full_rezz_build/payload_files.nsh",
+      "sha256": "557fe6602df8b978ae8ba0eab502857cc49f7150aa1247660f901ae5a614cbd9"
+    },
+    {
+      "path": "full_rezz_build/check_pe_dependencies.py",
+      "sha256": "e242c515b33fc5e4f9d57ce0bc27c6e7131172e2261f72f8dfd4d878ec713f58"
+    },
+    {
+      "path": "full_rezz_build/pe_dependencies.json",
+      "sha256": "6d377b2b358e48a310087815e4678fbdd5f64d119bb9b1786f2c2bf6acef3180"
+    },
+    {
+      "path": "full_rezz_build/compile_installer.py",
+      "sha256": "eb5437c0c15ebff27adc32cbdded4dfee9d9d6a2440cfd18a1666e5e6b716388"
+    },
+    {
+      "path": "full_rezz_build/requirements-windows-lock.txt",
+      "sha256": "2d58558794c2616ac89f95f61c570d3efbe09958a17ee390d6b6e77b3fe75170"
+    },
+    {
+      "path": "full_rezz_build/installer.nsi",
+      "sha256": "ebc72424de22b5b9188bb1ecd6dcec56d1f5283ba9ba80c885f3a2c722589329"
+    },
+    {
+      "path": "full_rezz_build/package_source.py",
+      "sha256": "f55aa904c733f501ab2036ea136953690a68167db80e145dc9e6aee2e634247d"
+    },
+    {
+      "path": "full_rezz_build/create_guides.py",
+      "sha256": "db35c9e664e73ba422fde4ba5d164dbc4d803b6a578040bd677a4d7fd327f4a1"
+    },
+    {
+      "path": "full_rezz_build/verify_installer.py",
+      "sha256": "b785a96f8d9894a40cdeeabcd54859a96f6f80a6967c7a15d8e9a37f31c76749"
+    },
+    {
+      "path": "full_rezz_build/runtime_pruning.json",
+      "sha256": "4c3f172e0705f68bd69509d6544c1342165dfedd0e36c32d504b21f5d8b23113"
+    },
+    {
+      "path": "full_rezz_build/verify_models_http.py",
+      "sha256": "d67ea3dd7194b348343d33ee838c1cb3b55b97986057576c5ec94ccc02ed1a22"
+    },
+    {
+      "path": "full_rezz_build/stage_windows.py",
+      "sha256": "ac39e0114c3f119843d85c615758e4735e0358fa426c65abe27ec3bbb78dc106"
+    },
+    {
+      "path": "full_rezz_build/write_audit.py",
+      "sha256": "d46b468f427785eb66ba1c9ab6c6e915004408ead1cc8d6f23c99ec3aa3654ef"
+    },
+    {
+      "path": "full_rezz_build/make_delivery.py",
+      "sha256": "ad06bbafcc4019beb488d38f9582c6c3a4bc232760f6280863be1e5cfc6d3476"
+    },
+    {
+      "path": "docs/COMPANION_INTEGRATION.md",
+      "sha256": "deeeca760f191e259606014de4ed01a55245c110b335fc98124fccf1d6d8b6e7"
+    },
+    {
+      "path": "docs/FULL_REZZ_Current_Frame_Review_Queue.csv",
+      "sha256": "836914e508cbab842b76ca1204d895e9f024a424dc21464e9dd45f1f56cd1b63"
+    },
+    {
+      "path": "docs/FULL_REZZ_Voice_Chat_Transcript.json",
+      "sha256": "eaebd861dc609774669e77228495c3178244c53a8294cf6aa4bbde700d226d6b"
+    },
+    {
+      "path": "docs/RENDER_AUDIT_GUIDE.md",
+      "sha256": "b8afaede1c3fe7b45519676ac0aabca644ec3e1a5e22a87a53aec5cbf2cdf1bd"
+    },
+    {
+      "path": "docs/FULL_REZZ_Audit_Findings.csv",
+      "sha256": "5f7b6faf2897593610fb4c2290e928a7e74467887d37b0f375bf9b3e5727c8d6"
+    },
+    {
+      "path": "docs/RELEASE_STATUS.md",
+      "sha256": "812ff39df6fd80a612af3de56a762ff72fda493c778f8448da8cd3b855841d15"
+    },
+    {
+      "path": "docs/INTEGRATION.md",
+      "sha256": "f6cf5b53550af0c2120f1d63c4a6b5bcd78e7fd5616b1842d288b163edcc19e7"
+    },
+    {
+      "path": "docs/FULL_REZZ_3.0_Product_Audit.md",
+      "sha256": "08efee12c9d24dfe83c5bd75035ee8937a68b5dde8bcdf759cd1aa4c4fb3e586"
+    },
+    {
+      "path": "docs/FULL_REZZ_Frame_Review_Queue.csv",
+      "sha256": "6df73cac170490d890478e4ea0b5634e0fc738f8335b808d24f1e3250bbfe8d5"
+    },
+    {
+      "path": "docs/REFERENCE_CLAIMS.json",
+      "sha256": "00c63a26e2097a6df2cda51023c0c5d5fc7b0716901b5c157b58599deb128980"
+    },
+    {
+      "path": "docs/API_CONTRACT.md",
+      "sha256": "e7e20ade6952153dd8c00b06eef9613868f5d867ab359e34e70ba0e59ab24662"
+    },
+    {
+      "path": "docs/FULL_REZZ_Voice_Chat_Audit.md",
+      "sha256": "1c5aeb501e613350d0d3e21ef97080008f178390ff63063a96087349659c3479"
+    },
+    {
+      "path": "docs/FULL_REZZ_3.0_Product_Audit.json",
+      "sha256": "6bdeed18fe08968f4c57358fd6ab64412c24164b6180274b57d299dae48a893a"
+    },
+    {
+      "path": "docs/FULL_REZZ_Voice_Chat_Requirements.json",
+      "sha256": "d326b66b8656c95f32642a056ae5205a237b3307a96da0bc6eaaa5711b3fc991"
+    },
+    {
+      "path": "docs/FULL_REZZ_Next_Build_Spec.json",
+      "sha256": "dd0ee9b04822612131088fd602119c3287ccb5ecd5f7fd61a3675b503f4ee046"
+    },
+    {
+      "path": "full_rezz_bridge/pack.py",
+      "sha256": "2423c39a86253e8377dfe46a5f8b2351cc410ffe30e10e0eef7d10413a449ff2"
+    },
+    {
+      "path": "full_rezz_bridge/contracts.py",
+      "sha256": "d543a54ed91f1e4ead39ad9f05268b0eb243fd8e1d5b3f8ef34b6971028ffff1"
+    },
+    {
+      "path": "full_rezz_bridge/render.py",
+      "sha256": "a8a30b2cab4a6c745d1235776c6614bfac3651721a7b2e2923e5d299200bfc88"
+    },
+    {
+      "path": "full_rezz_bridge/local.py",
+      "sha256": "96eee0eddf82b47080ed87eb27b91e07071cac47fa87a3cc14b3f47dafda3173"
+    },
+    {
+      "path": "full_rezz_bridge/__init__.py",
+      "sha256": "dc947762b1d28b002fbae53c39f9ba4872dffc09b56a9fdd0f8b9f9b3e284907"
+    },
+    {
+      "path": "full_rezz_bridge/action.py",
+      "sha256": "e95d89ef2b594393bfbb223ae85af0109a90578edb94cbc975e3718f551193c4"
+    },
+    {
+      "path": "full_rezz_bridge/cli.py",
+      "sha256": "bc2e5cb06f6e4927756c0ca5221da0b3cf3e72512fa740263ddd2e9dbc0ef58c"
+    },
+    {
+      "path": "full_rezz_bridge/__main__.py",
+      "sha256": "79ee6f134c5c5193377cf9b189cbdcc3e2095e49ba9cec310114441c15a917c4"
+    },
+    {
+      "path": "animation/Rebecca_Animation_Audit.md",
+      "sha256": "9e248afc9b20fed53aaa52963a490a780b51b3524217bde7b84b2dcf38079549"
+    },
+    {
+      "path": "types/full-rezz.d.ts",
+      "sha256": "b60e08b197e068c2cc6f5ae90d36894542ec6102e28fc0a5fa7e6503336cadc1"
+    },
+    {
+      "path": "FULL_REZZ/FULL_REZZ_Audit.md",
+      "sha256": "9eb5718053ede89649c2b7984440c8dc146760764bff56bab65d2479b1c5316f"
+    },
+    {
+      "path": "FULL_REZZ/README.md",
+      "sha256": "e2fe3b152c5f42943b8f8685a86a8cbf355c23487aacc598a1aa8d07da4d2075"
+    },
+    {
+      "path": "FULL_REZZ/FULL_REZZ_Delivery_Manifest.json",
+      "sha256": "789ad223289e49546580beeb8fb99e81a72543a62c71777ce649f4c74ba89cca"
+    },
+    {
+      "path": "FULL_REZZ/FULL_REZZ_Installer_Verification.json",
+      "sha256": "63b98fa7b1a0d47f2196f7b4bd58242e8b14604b1094ba28c594f1e14e4a63ed"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/quality_report.json",
+      "sha256": "e62eef439d999d4f6ebe43b6ba1a5ff1a95c5fce662b7a64a0fed75fa92c0dc4"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/manifest.json",
+      "sha256": "b7af87e08c0becf7c81ecff42eb63b023e81c140ec047ddd1d1e21aebf108794"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/segments.csv",
+      "sha256": "42ed58f2209a6f0b35968b9020f640a074adb2f6e205c46e5bb1fbbf5d7d873b"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/README.txt",
+      "sha256": "685cb53d8737c23941e64ba51f14d121858e156ee7d3f9d0e57f6cf349db0c72"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/characters/voice_57373fea79f3473e/prompt.txt",
+      "sha256": "c70ae8a67a8f8a0d792baa11dcca0a97ce785b5952f094a5dbcbff1537614f78"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/characters/voice_57373fea79f3473e/character.json",
+      "sha256": "a32cb84fe6fd95e038ab4c6fa49d3f844a186981043c8a0f8977b710329c0955"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_35e5ab09afcf423c/text.txt",
+      "sha256": "2c6e507e1a602fb28a8cde5284e27e93e8cac7bf342bdd290db9ec86d4e5e696"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_35e5ab09afcf423c/source.json",
+      "sha256": "b13132d1a583cc441bca9a1cffa500b69b171bf6da42a7af67f09127de47d989"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_35e5ab09afcf423c/original.json",
+      "sha256": "2c6e507e1a602fb28a8cde5284e27e93e8cac7bf342bdd290db9ec86d4e5e696"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_9fc512358da94418/text.txt",
+      "sha256": "9c31bdd41a56cdd02a9bbfd6fd553560cb2fbff5fa4a2de1780e92098c72d56c"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_9fc512358da94418/source.json",
+      "sha256": "f303d0981d6e092d495d1c17ab94f4f5e8d47dd97249066f6438ff56de385c14"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_9fc512358da94418/original.json",
+      "sha256": "9c31bdd41a56cdd02a9bbfd6fd553560cb2fbff5fa4a2de1780e92098c72d56c"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_e253d14047564add/text.txt",
+      "sha256": "82bcc4d804a5ec5e153b8903bd79581faea13ad8251166266396bc58ab0d518c"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_e253d14047564add/source.json",
+      "sha256": "a9ccc9188a4f7bc0715c9df1cac00bc6001fa0a3143aed0e6d5cea746bc0b409"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_e253d14047564add/original.json",
+      "sha256": "82bcc4d804a5ec5e153b8903bd79581faea13ad8251166266396bc58ab0d518c"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_8c7e42a600a4479f/text.txt",
+      "sha256": "d7d3154a3452e3b2e95837a70fc3f7abfad8a0fd211dda8d01d5dae736502a91"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_8c7e42a600a4479f/source.json",
+      "sha256": "984a254be26eccb8d48acec988fe0fce01cece781843523c2f5b8ea9a2636a5b"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_8c7e42a600a4479f/original.json",
+      "sha256": "d7d3154a3452e3b2e95837a70fc3f7abfad8a0fd211dda8d01d5dae736502a91"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_ab3005b7b68341fd/text.txt",
+      "sha256": "8c2240c148bd6994ec51cd559972d44f2f9adbe5f9ba37517f9c8b7bbf9e2734"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_ab3005b7b68341fd/source.json",
+      "sha256": "6861889d3bea7a86b35d43860d3d7b201637792ff24b5ebbaa43d520f7901ed6"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_ab3005b7b68341fd/original.json",
+      "sha256": "8c2240c148bd6994ec51cd559972d44f2f9adbe5f9ba37517f9c8b7bbf9e2734"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_4f7d040084c443b1/text.txt",
+      "sha256": "496ab4a90e75fab2beba4f861adc1bb8a8dae1685ef12b1dec638eeeb7b3e6c2"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_4f7d040084c443b1/source.json",
+      "sha256": "2eb8aa63ac8a1e8194d7ca810d85c7b8f9ac90ebf47dd2cb36265b985cf97ed2"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_4f7d040084c443b1/original.json",
+      "sha256": "496ab4a90e75fab2beba4f861adc1bb8a8dae1685ef12b1dec638eeeb7b3e6c2"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_95d84e6c0ab94204/text.txt",
+      "sha256": "3961aa3a536af774d7a85e346e77862a7fce772e366635654dbac0493c636b49"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_95d84e6c0ab94204/source.json",
+      "sha256": "f1f790d7169f80c070e837cef7cfd943ea21decea6fc689b211eddef83a98ad4"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_95d84e6c0ab94204/original.json",
+      "sha256": "3961aa3a536af774d7a85e346e77862a7fce772e366635654dbac0493c636b49"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_89ed91801296489a/text.txt",
+      "sha256": "f3ed0aca068a2ac843add9d57a8b2566cf5fa9211f371ea8ff43ba91cc5ec105"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_89ed91801296489a/source.json",
+      "sha256": "65aac23f7b41f8f11538c06055b838bda2a609413cdad2635fe4f25575a66b48"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_89ed91801296489a/original.json",
+      "sha256": "f3ed0aca068a2ac843add9d57a8b2566cf5fa9211f371ea8ff43ba91cc5ec105"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_094b57b2f0044610/text.txt",
+      "sha256": "07b9b2adcc77637c5d2cb402ba84ea474eec5cab0ca0a0c936d79996b1a031d6"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_094b57b2f0044610/source.json",
+      "sha256": "ae40aa1bee5523c435f19575e301cb7ea336d369b286ad247afcdcf064796679"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_094b57b2f0044610/original.json",
+      "sha256": "07b9b2adcc77637c5d2cb402ba84ea474eec5cab0ca0a0c936d79996b1a031d6"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_26e6cc1aa39a4171/text.txt",
+      "sha256": "941743ba7e511b24bbda5e1799a3c1269af220abf64aa2338b56d7e59dab53e0"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_26e6cc1aa39a4171/source.json",
+      "sha256": "afb0eabcb9e471d555e400919159c591ea0ed4e5f04166ec538e0535a4087900"
+    },
+    {
+      "path": "examples/rebecca_reference_pack/sources/src_26e6cc1aa39a4171/original.json",
+      "sha256": "941743ba7e511b24bbda5e1799a3c1269af220abf64aa2338b56d7e59dab53e0"
+    },
+    {
+      "path": "evidence/product_v3/Initial_Restored_Voice_Regression_Results.json",
+      "sha256": "86c84047978e71aa81151698395839ac5940258b230122f79ffabe6599019369"
+    },
+    {
+      "path": "evidence/product_v3/Original_Payload_Validation.json",
+      "sha256": "df9c6dcb4e10e30b2789eacc2dadfcf4ee25e3ea52ec44693752b43043c5fab0"
+    },
+    {
+      "path": "evidence/product_v3/Actual_Neural_Conversation.json",
+      "sha256": "3090e88baed690fa272d5e9d0a8f3d412e1fc3ba22c2632e23d4c672f875e192"
+    },
+    {
+      "path": "evidence/product_v3/Added_Windows_PE_Check.json",
+      "sha256": "e16f5ef335b5dd62ef6e1ec38ce1b9ae68a001d696784d7bdfc5e8e984ae7735"
+    },
+    {
+      "path": "evidence/product_v3/GPU_Validation.json",
+      "sha256": "4cc4961e6c906cdcdb77cd651d6a157ae8538fadf2108280bbf4be5bcda65c50"
+    },
+    {
+      "path": "evidence/product_v3/Additional_Neural_Turn_1.json",
+      "sha256": "3c16284387f9edb4f477afa855633f234ac0f20a6e5fed006021739005ebd002"
+    },
+    {
+      "path": "evidence/product_v3/Native_Companion_UI.png",
+      "sha256": "dfe579c71dabcb032cd19d22cf8ad3bc8909bd6181585c757d872b92927dcbbd"
+    },
+    {
+      "path": "evidence/product_v3/Core_Regression_Tests.txt",
+      "sha256": "93dfe34b60a5ebd2b10ecad8b7232681080c45dee8b410fffcf9b77b27f6fc74"
+    },
+    {
+      "path": "evidence/product_v3/Additional_Neural_Turn_Summary.json",
+      "sha256": "e49418063c440c2a59dc876c2496d778d66f05f1406ec2a6aefa0bb961bb7948"
+    },
+    {
+      "path": "evidence/product_v3/Body_Preservation_Audit.json",
+      "sha256": "7f05923f0eda13a6dadb929f9c2568ad33afe8234adf058c14e30d183a5a5305"
+    },
+    {
+      "path": "evidence/product_v3/High_Rate_Export_Check.json",
+      "sha256": "6e92054431edcbbfcce13cfbd66bd0157f28028f8684977d4de7f8ce9a353714"
+    },
+    {
+      "path": "evidence/product_v3/Voice_Regression_Results.json",
+      "sha256": "013d4854e38f0d2bc1d26c09b50545480d64fed14fce3932300763982b60eaa2"
+    },
+    {
+      "path": "evidence/product_v3/Native_UI_Check.json",
+      "sha256": "b58eee9f42d5bb3e737803283d34e3b4da729e06d6d24023bfbf195189939b99"
+    },
+    {
+      "path": "evidence/product_v3/Full_Installer_Transaction_Check.json",
+      "sha256": "cdc1f62ced7056ebe00a355f9c3d2d68d06afad87b674d2ac4b8d6103db3216a"
+    },
+    {
+      "path": "evidence/product_v3/Actual_Dialogue_Test.json",
+      "sha256": "84c48615e919cbc1895da5fbca3d06fe31f475c8d2770253ba94bf7404e81b34"
+    },
+    {
+      "path": "evidence/product_v3/Additional_Neural_Turn_2.json",
+      "sha256": "954c74246b20cc95198fed8a4905495055ece67866e2b31f72299e9238e5a01b"
+    },
+    {
+      "path": "evidence/product_v3/Body_Preservation_Render_Receipt.json",
+      "sha256": "f00ef6f9f1c8816475151270c3b7a91091488b4d940064ba002bf36ca30155a5"
+    },
+    {
+      "path": "evidence/product_v3/Installer_Transaction_Check.json",
+      "sha256": "186bc20e339560d315f641cc1eacea257554bd154dbd1083ae518f24d1a86dfd"
+    },
+    {
+      "path": "evidence/product_v3/First_Restored_Neural_Attempt.json",
+      "sha256": "dd3dd501d87be3ad07df7c85b1636aa565727d453b1f813f92499184dee23ee8"
+    },
+    {
+      "path": "evidence/product_v3/Final_Installer_Verification.json",
+      "sha256": "f16b0eb426c267e2da961e4daedfa9089e766548a2407eec77a048c700d5e271"
+    },
+    {
+      "path": "evidence/product_v3/gpu_views/profile.png",
+      "sha256": "85547ea2c4da5f89070f4dfb8a461484b1fa9a33cf87d6e35c6bc6129e4d0f0b"
+    },
+    {
+      "path": "evidence/product_v3/gpu_views/wide_front.png",
+      "sha256": "7a658070c4471ca2730edf4c62ff06fcd31046cd3d377174c71cb0386ab59c62"
+    },
+    {
+      "path": "evidence/product_v3/gpu_views/three_quarter.png",
+      "sha256": "1c3b79b20852f4030ca66dde64d9344a088f7acd9fa55bde7eaf5660b476942d"
+    },
+    {
+      "path": "evidence/product_v3/gpu_views/medium_reaction.png",
+      "sha256": "9a0d851b8996b5683a67666b2533acbe0c0085c616bf3460446cede459c17d13"
+    },
+    {
+      "path": "evidence/product_v3/gpu_views/rear_three_quarter.png",
+      "sha256": "939142db90d11824e7dcad30a736c19b3996a082f0a81df78fbca6c189c39a63"
+    },
+    {
+      "path": "evidence/product_v3/gpu_views/low_angle.png",
+      "sha256": "659ee99db210c492d9974fc41db8b7af4c67a7b85f69fec00878fbfebc6f8f0f"
+    },
+    {
+      "path": "docs/prior_voice3_documents/Join_Voice_Profile_Installer.ps1",
+      "sha256": "152899519fa179085e31a83ef7cefafec160b06ac9d826547bfed83c12b73aec"
+    },
+    {
+      "path": "docs/prior_voice3_documents/Installer_Delivery_Manifest.json",
+      "sha256": "a7c13579e694a0d33245303da20d0b4b768505c2956b3e60574f0bffaaeef416"
+    },
+    {
+      "path": "animation/render_evidence/audit_report.json",
+      "sha256": "8b19c5d6b996ca3dee027b25727c047094ff70a6432108dd4dced796a6f36c0f"
+    },
+    {
+      "path": "animation/render_evidence/action_timeline.json",
+      "sha256": "f00bf81b70586c69239928d462f58d0423a9c75d7ed1141ec551e978e35d55be"
+    },
+    {
+      "path": "animation/render_evidence/render_receipt.json",
+      "sha256": "60a5f8731c3bcb457410cc6b8f6790a06022b4ea88f58f2f070ec44eed4d4f95"
+    },
+    {
+      "path": "animation/layout_review/scene_continuity_report.json",
+      "sha256": "0662db71a062f1d140d1825c96db44a53d34dc67f46fdc162b8dd1ed132bdfd8"
+    },
+    {
+      "path": "animation/project/voice_profile.integration.json",
+      "sha256": "dbde8660824d63e8d3e7c14d8be57d98ebc654f6351a81b426235820326bd2d4"
+    },
+    {
+      "path": "animation/project/scene_layout.json",
+      "sha256": "e69d631aded9c104b5e29b506c30cf667b8f88d38b9faaaa8d9c9ec54ecb9e90"
+    },
+    {
+      "path": "animation/project/engram.integration.json",
+      "sha256": "ef7bfb3bf760cbb11c81d2bba527382ba7a123fa9298f2cb2a84cb7142e172e9"
+    },
+    {
+      "path": "animation/project/action_timeline.json",
+      "sha256": "5576f30d9b111f44f739bfa61e8557024539daaaeecdb2dc88b47016c974bd07"
+    },
+    {
+      "path": "animation/project/Image_Prompts.json",
+      "sha256": "ba1d6cf7df678e7e5c2beecfa5ee59b69eff987cbee2d7e822dfcd146627a81a"
+    },
+    {
+      "path": "animation/project/audio_envelope.json",
+      "sha256": "bc33e2f0a07052716a6b24e161ae2ebeed7d25233ec7364d1061076ee00c3918"
+    },
+    {
+      "path": "animation/project/render_config.json",
+      "sha256": "8f55ac3768d7782ad8c1867e35064688ab8db08ff29c2185bf160fefc8614f1a"
+    },
+    {
+      "path": "animation/project/base_provenance.json",
+      "sha256": "4d82de299fff7842288e5a35f91222f99bb2d4c701238ec338e0a5af19711ab3"
+    },
+    {
+      "path": "animation/project/render_validation.json",
+      "sha256": "349588a939fad4d42dcb9d7dedc4f65fa3986b02fb64863552c18053726e65ac"
+    },
+    {
+      "path": "animation/project/pose_model.json",
+      "sha256": "7fb98aef5bcf7a9e5a574776c8b8c1e8e688e5bc6956df6367415e50e454de7c"
+    },
+    {
+      "path": "animation/project/integrations/character.original.json",
+      "sha256": "297c8bb3d849fc7d117453e5b6255cc476340c136e66401500a8d678786231e9"
+    },
+    {
+      "path": "animation/project/integrations/synthetic_render.original.json",
+      "sha256": "08fd148bd82e7d9f6a8d6d0218d481cbfea4819e7eb6d7eb9033f1c90b143b9f"
+    },
+    {
+      "path": "animation/project/integrations/reference_pack/manifest.json",
+      "sha256": "b7af87e08c0becf7c81ecff42eb63b023e81c140ec047ddd1d1e21aebf108794"
+    },
+    {
+      "path": "FULL_REZZ/app/FULL_REZZ_Audit.md",
+      "sha256": "f340e15dd0dab8ff514bec96666927aeaa61abb5af4d7b9e68dc0abbb638b36e"
+    },
+    {
+      "path": "FULL_REZZ/app/README.md",
+      "sha256": "6f49de7d2540f29abb6eddeb5dfb3b1ac4a27fdc724999a01702439233488f05"
+    },
+    {
+      "path": "FULL_REZZ/app/requirements-audit.txt",
+      "sha256": "6c5c4d3794e7c5a65e7ad32cb73a93db5ff352a024c33a8f0874ec46c5c8b9e5"
+    },
+    {
+      "path": "FULL_REZZ/app/requirements-transcription.txt",
+      "sha256": "608de26771062491ba3692dbead469c1b9916ce45d5ae3871627fba8654693cc"
+    },
+    {
+      "path": "FULL_REZZ/app/START_HERE.txt",
+      "sha256": "cf6c5703ae74209d0bbb08bd06832dff6d7ed2d9b1abcf0533a90a69324fd068"
+    },
+    {
+      "path": "FULL_REZZ/app/requirements-separation.txt",
+      "sha256": "82be016f07d47653da6c9bda03c60e7b2f4ad273e3b07b28a2c01f6da89da72a"
+    },
+    {
+      "path": "FULL_REZZ/app/pyproject.toml",
+      "sha256": "24be0e6bfe801a508a77b08a6864c4f3100679f9ed3adb3d0ea46412ef6468ab"
+    },
+    {
+      "path": "FULL_REZZ/app/LICENSE.txt",
+      "sha256": "d1f40122a5c60ae932e596226ac664398608af4813c148b463edca274a16cddd"
+    },
+    {
+      "path": "FULL_REZZ/app/THIRD_PARTY_NOTICES.md",
+      "sha256": "fb1d86c37f59e3d0439cbb397b2fc1e8d9b834ed05eb07e26180188d31a2c850"
+    },
+    {
+      "path": "FULL_REZZ/app/requirements-diarization.txt",
+      "sha256": "c435077949654f62c096244f8039be05ead2f294c0d9d46cbd74d9914ccd0d46"
+    },
+    {
+      "path": "FULL_REZZ/app/requirements.txt",
+      "sha256": "06ce46371118cd5d77d4adabf5933e41aaea067fbd34e5f3316e1546896cd558"
+    },
+    {
+      "path": "FULL_REZZ/app/model_asset_manifest.json",
+      "sha256": "d9910eacaface4b7247c1eb6c03df2a2e8d185a634f0945040c489e7a09f90f7"
+    },
+    {
+      "path": "FULL_REZZ/app/launch.py",
+      "sha256": "33fb9a267e7a4d94f857b487dea50debe08f3328bfaf9cde2c944ba879496197"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-ui-results.txt",
+      "sha256": "fa1d4501454287e7b35f5cd3ab2c477180f3aa84a08e35e8235f3146e7d893b6"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-python-results.txt",
+      "sha256": "0883abe5c6f47c49488f100b262bad6f2408ee5c0519dcaca2f42a2901040600"
+    },
+    {
+      "path": "FULL_REZZ/app/schemas/voice-reference.schema.json",
+      "sha256": "5a3d53b9bf74d49b64039820a07bc2e51a48e0252f72918d09068c987d52f9c3"
+    },
+    {
+      "path": "FULL_REZZ/app/schemas/character.schema.json",
+      "sha256": "651b3b8783cde8d9c3595abfa30e9fcf8b7e52adedd491942feb6fee6c980331"
+    },
+    {
+      "path": "FULL_REZZ/app/schemas/expression-request.schema.json",
+      "sha256": "8b1a4d080d45309b30f7b31269cad73245def363866eba0384c4ee099f1f7cb3"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/loss.py",
+      "sha256": "cef1f840e2e8410466fbce869c0394c0fece9a5a797e7475f305d78a9e2f93b9"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/pretrained.py",
+      "sha256": "0f240cc87c45767c95ab1693a239c00c9390d1af837cfd08e80835755c9c84fc"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/helpers.py",
+      "sha256": "8d038968751dfe4c5d77121c7807214fa0db7acd3d399e06b740b5876a4d98b2"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/heads.py",
+      "sha256": "1ae5389805e63a77eaaf36502396591e34e0d92ccc4ae94e69e3f495f551a38d"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/spectral_ops.py",
+      "sha256": "5577771daae83a9ffc6df3f1a3ce7f3f9c2543562c8ca3f5aff740ee2b515682"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/feature_extractors.py",
+      "sha256": "aa57dbf36cf4bf8f171cf8a52bf7ce445ee7bd55921a6140d5264af4a4af2310"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/modules.py",
+      "sha256": "1132b0081333cc4abe1c36b2bd709185ceaa243519ea8903bec7ab08e67d5d64"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/__init__.py",
+      "sha256": "89adaa6f53c75f96f53ee8fc79720e701f109b242d6f7a78fa51fa9a35e07ec6"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/experiment.py",
+      "sha256": "4d3ea37f7194ca578b21a139c6ec5defef72130842031a5392167a343e77f607"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/models.py",
+      "sha256": "7031a1e223678cfeb522046f7e179e3ff9efd70aa32f969a4234880b59be1b71"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/discriminators.py",
+      "sha256": "d61bd7fbbb87c6d576c10fd76c9c75c20bfe126bfd1749a3d63e0ed002f2cdf9"
+    },
+    {
+      "path": "FULL_REZZ/app/vocos/dataset.py",
+      "sha256": "e718ef9e88c948024296613c32c55a24fffee14a808f18f8a2cfab53d53983f7"
+    },
+    {
+      "path": "FULL_REZZ/app/examples/create_sample.py",
+      "sha256": "30065adba440e6a50177c4050f5d2cc14abeb85e253786e223f1535da9b925a2"
+    },
+    {
+      "path": "FULL_REZZ/app/examples/cleanup.json",
+      "sha256": "486b3179b91173610d4558aa4c446e5c3eef32e0b128cd234e1375311d674f78"
+    },
+    {
+      "path": "FULL_REZZ/app/examples/character.json",
+      "sha256": "da378f89ed2c730dad54c2660218ef8a3de5b86cc98c0b568c86ae1d2e3070ee"
+    },
+    {
+      "path": "FULL_REZZ/app/examples/expression_request.json",
+      "sha256": "477cd2615d6659f0aa4e45bf04592f75abbf9df718f2ee2c7681794a350882f9"
+    },
+    {
+      "path": "FULL_REZZ/app/companion_examples/Studio_Unit_Six_Shot_60fps.audit.json",
+      "sha256": "d010574c7c4ec15194b41a2647c21a72b48da9c4f4f76b16e32c63277b2f103b"
+    },
+    {
+      "path": "FULL_REZZ/app/companion_examples/Rebecca_New_Reply_60fps.audit.json",
+      "sha256": "6b6e074def9c684c3ac334af1ff892ec9abd18b94cef50c5c7a5eae6dace845c"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/exporter.py",
+      "sha256": "3ee361d719bdbdf14ff0fb0e0ac069f78d06d9b92533b587415d338a65efc33b"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/worker_lifetime.py",
+      "sha256": "ca90c105c711fefdf00dd372cbfea482c48f359bfb4c524160729dccf3fd5a8f"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/qt.py",
+      "sha256": "7fc365cb56e247d4804abf93b78b48a55d25339b7ee7ad78228f8f3f76275c08"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/dialogue.py",
+      "sha256": "3426f52e63603ada6e67f5f23955e30d6e3976835e9719ca51137705eb7988b5"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/gltf.py",
+      "sha256": "aaa8806e68523679cb31b54ea16f20c39555d59cf64edd8f823830af239f528e"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/__init__.py",
+      "sha256": "ea8dd120d01684e46410574a452f464d5077014153cbcf3ffbb5a64ddfcdeeb7"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/performance.py",
+      "sha256": "225e0218cf581afcabe506cfb08ca5c2ae213548f49a4bea426c95a8daf02269"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/history.py",
+      "sha256": "ac739d40ad98026424732b771c6e332bfabd57339878b225809c2573d996bcbd"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/characters.py",
+      "sha256": "09b02d4793499d814cffcd91aa2e8d85a152882e71ed2a8ca2b0280ad01d5e28"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/video_review.py",
+      "sha256": "8c9d30f9144c841acde12d435a592d03220c534e5ce862f30b15d5d518a2ef14"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/raster.py",
+      "sha256": "d7a2e01eed3f92e52507aa0b51105ddd0fbfac5813e84a692b84ef76ee4e2488"
+    },
+    {
+      "path": "FULL_REZZ/app/full_rezz_companion/session.py",
+      "sha256": "4124798471bd4402f26676199b91313fa9e9f80186772e7365c4d60a64a31338"
+    },
+    {
+      "path": "FULL_REZZ/app/fonts/OFL-Devanagari.txt",
+      "sha256": "a216f6f8d85c7228093e0ee5e258d9d377e6671f68acb4db1930b29583d0f331"
+    },
+    {
+      "path": "FULL_REZZ/app/fonts/manifest.json",
+      "sha256": "2fabc0e362316cea0d33011a82482a055d00d3fa79cdfeae35bdb1f9330ea28d"
+    },
+    {
+      "path": "FULL_REZZ/app/fonts/OFL-Arabic.txt",
+      "sha256": "07fc70bfeb985cc1a87a8587d0a0c80bab11c86c9dc3fd95b6f0cb332f983e96"
+    },
+    {
+      "path": "FULL_REZZ/app/fonts/OFL-CJK.txt",
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/profiles.json",
+      "sha256": "b305717443f18582777fbb655d6311ca810d146a7c6829114484411bec0230b2"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/test_audit.py",
+      "sha256": "b21019c6ff647cbf757a85648c85b2b2f875c417b2ecd63a3d1ecbdfaf40038d"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/test_offline_features.py",
+      "sha256": "eba88525fc9799b063a3429242887692a4ac05f2af42ae4a396e24586e52f5c5"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/test_models.py",
+      "sha256": "03ecfcc766347f29a9ffe0267a2eeaa9546acca9e382f5aada8b2486cb99f5a5"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/playtest_browser.py",
+      "sha256": "b918f9d97c6aed3977345f73ef9259aad25494a15862c649457571e984aa85ae"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/test_adapters.py",
+      "sha256": "7353c25f7e466e50aa5d9d84eec6f740effafb0cfb22f0b4fb0a480af48bd0de"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/test_core.py",
+      "sha256": "bf2f796e98106059e0a3358088ea50813dcd755fcb36d5e53e37ff1117625445"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/test_audio_quality.py",
+      "sha256": "de7a1e1c69b715d9cc038f283ea4213fd8ba2c40ab394370368796fe8185cd75"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/test_server.py",
+      "sha256": "d9f81005c43d4dd97b7c5eee36bb6d3506acd179362ae80851d41759ef6f09aa"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/test_offline.py",
+      "sha256": "83b267e95428a70c45daef6d8e5351291183267dc93e64d8b0e4878cf2390d2d"
+    },
+    {
+      "path": "FULL_REZZ/app/tests/test_languages.py",
+      "sha256": "b300a4c812cd81d7b56ea85b0900475f579f502e52fa0930fcd1b3dc10fed694"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/Rebecca_Final_Audited_Voice_Profile.json",
+      "sha256": "8578d43205553dc022c8784edaef52cbf6f527d6111aeb52e93feff518c20a29"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/runtime_manifest_v3.json",
+      "sha256": "1e9c667734819ac41cf789286a4f862b87f1171632bcf1f3b244d9193ccb9cb1"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/espeak_asset_manifest.json",
+      "sha256": "8fc6cde9af8e7091c81cad80b88e8ae239a2bae7f01ae5ab3992e26e10a356d2"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/initial_installer_v3_status_initial.json",
+      "sha256": "316340de369bf85b079535b87c7dfc53f787c43b12a1eb21de50e3abfb617a2f"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/acquisition_recovery_v3.json",
+      "sha256": "95c48aded835e34de8508fa6dbbd69ca6ab2173adc97b55bb15733565dcb6356"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/localization_ui.json",
+      "sha256": "4e4089a62c1930577310b4a680a2e4478850ecb19b31f3d6c05904a182a761ef"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/baseline_recovery.json",
+      "sha256": "bd2eaf542a87daaede21a21f81a02a07fdfb9a28a0549540deede862637c06da"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/native_binary_identity_initial_failure_v3.json",
+      "sha256": "64ecdab0add087642a2965998c77e8d308e23ba33a7908a5c07d1dcb6cbf7999"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/native_binary_identity.json",
+      "sha256": "8616283c1bcd08079635e4b3d9ef16919d5c4a882eba505e031b2173b9ea0824"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/integration-v3-smoke.json",
+      "sha256": "beecb0949a3a6b0ab444e02e1209475314887789cb6d7056789ffe97a1837040"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/bridge-v3-tests.txt",
+      "sha256": "3abb81809f54ce17ace8def8f989953f857baa225d7ed74f59a782c653ba5434"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/installed_payload_manifest.json",
+      "sha256": "57cdf5f4e1d6d8836704310c312cf77d5e0a09c764c97a981560ef1fdf6a848b"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/regression_initial_wrong_import_path_v3.txt",
+      "sha256": "409302f49f8e0c0e5c45e7d5214f158104994118dbd965a47c84219a399f595c"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/local_models.json",
+      "sha256": "fd5b6c62db66bfd2814fc22ee646e2942cd71d306e3af0ab6722084c950923f3"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/RELEASE_STATUS.json",
+      "sha256": "629d84d523da3d87eaf229a31a438cdc322bed8a38f9d771242556d48aaaf7b4"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/opencc_runtime_addition.json",
+      "sha256": "ae7c871e88559171a5fa967e75fa390e25e531965bbf58a2d8b25c0ed947674d"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/current-regression.txt",
+      "sha256": "ccdcfa33cc34858df78b4171d8ab5acd3e21d7c2e675c80d74167aba425b561d"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/final_payload_manifest.json",
+      "sha256": "a3a0617745443a5fc2bf04fdf9d0f2044006b6ac037a7322df0887a5364aa520"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/installer_compilation_v3.txt",
+      "sha256": "4a68b1ab2867645ff21ca6bf4d2e100ed3bfbec338058cd844fee6a5631cf56b"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/model_manifest.json",
+      "sha256": "44d524264220b359c07acd2a2363be143397841773d996d239331613dad7a029"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/multilingual_audio.json",
+      "sha256": "b2b58b0f709049edb4c9265cfd75552a4c19b43d5eafe79881dfe19657c6706e"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/Packaging_Checks.json",
+      "sha256": "f68e281b8944c284747d6168a7ed63f4e56fd836d7acfc80e1e5c24df0b4e762"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/windows_pe.json",
+      "sha256": "4c64f75623c7262ff387a4a8d140fe18bf2cddea62e0a702e166dd440c72479e"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/installer_extraction.txt",
+      "sha256": "671201836eb51ee377249f9d7d26f5bcc2bef2a970c0a29b82f474a73c66976f"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/v3_regression_after_windows_child_fix.txt",
+      "sha256": "3ae0c0895f73da1ff960229993bd89578b812b964b44998b125f1cec0782d98c"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/model_integrity.json",
+      "sha256": "5c67212136461ce077c3850d602ff21e46d4f7ad3537e796681bcf68fccf57d3"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/native_generation_v3.json",
+      "sha256": "eabda7bf96009d48adeedf6e1b43a146ee209e638804d509db9c04a655bc0e07"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/document_visual_review.json",
+      "sha256": "60285312add2e5f8b5515d4b9fa51c87c3abe4c64132db0d49ed719a9b931687"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/recovered-integration-tests.txt",
+      "sha256": "c0647bc54e0410610f49a77a12b53fa206d765b0fd0c7d7b5b5275209d4f7fc4"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/initial_installer_v3_superseded.json",
+      "sha256": "7a3a9a901607e31075c50c604c996d2948b84dd032a71c645594611c9f7bdacc"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/generic_child_import_initial_check_v3.json",
+      "sha256": "741f627c2f6f4d135607da1893d90994998cc313612e181cf3d0bf0066804afb"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/native_ui.json",
+      "sha256": "3ab8fec6923173b47a866f2bbb54e517e0f54a0bd69104cbd6766c8b9ce505cb"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/native_generation.json",
+      "sha256": "b09e32129adcc2e87c59310f615d705154e669e71ceae22cf090d2cd3cc88c7d"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/baseline_payload_manifest.json",
+      "sha256": "57cdf5f4e1d6d8836704310c312cf77d5e0a09c764c97a981560ef1fdf6a848b"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/initial_installer_v3_packaging.json",
+      "sha256": "ad9eff692abaf00bcd06417a9bf986e1226d332f5bef7f5f22c18985aea6e778"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/recovered-integration-smoke.json",
+      "sha256": "beecb0949a3a6b0ab444e02e1209475314887789cb6d7056789ffe97a1837040"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/installer_archive_test.txt",
+      "sha256": "fb97194259c10ff7acf36c4425eadcd2b59469730337003a1271063e63ea6649"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/Rebecca_Prior_Audit_Report.md",
+      "sha256": "98a379cad96c7fcf20a8450eb0ff4bfeac172c84d32b30ae1b870192cc52b6ef"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/v3_regression.txt",
+      "sha256": "7f2159e2bac33336d311e6eb8b17c7fc2cbc22cef2900fc7d33d57a6729e63b5"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/installer_compilation_final_v3.txt",
+      "sha256": "c158ec1313517905d36974770e70b53c975c9fb6035b7611b38aad93b780b2d8"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/recovered-regression.txt",
+      "sha256": "e256b295aec4ed4124a5c9f696d42b710858b79564b53af0ac0eae8f4b220a8c"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/integration-v3-tests.txt",
+      "sha256": "caa66f154cba0508a960bbb3f4d85d7d3f32c1e8183422b586bd5fdfce55490a"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/User_Guide.md",
+      "sha256": "8818dbe8d6e10cd23c5be4b7d9fab6bd5153250081fb3f56867bbd7b8b1eb9c6"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/Download_and_Install.md",
+      "sha256": "71aac582ba40140aee2e999e807f61c335167dbae5e3582e22982a00700ba123"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/Release_Audit.md",
+      "sha256": "08efee12c9d24dfe83c5bd75035ee8937a68b5dde8bcdf759cd1aa4c4fb3e586"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/Localization_and_Languages.md",
+      "sha256": "f9679dc7e50a7626def4062a3d1af81ae19fb1a880c562cdf31b0478c716ad8f"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/BUILD_GUIDE.md",
+      "sha256": "2ea4ef233090fd15c64347d12728e3d98e6e6a35a41fa832ae90c4bcd9e92a95"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/User_Guide.pdf",
+      "sha256": "ba51efd8daaeedafeddd9837a7a9c5f5f2974e92d1d679624a8aa687a4063bce"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/Quick_Start.md",
+      "sha256": "005b58c43c7cb05d5ba5e84deb4ee63330bfe1de66121bc2c6543690a390d724"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/animation_player_validation.json",
+      "sha256": "57d2a4be171f4081f2bcfc500d845a83ec257a227b6575a7a6bbf84392caf476"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/runtime_manifest.json",
+      "sha256": "7d16761faab55ea31eedb59ba3b7ac8ffe699707cb58fe8812861c796a128150"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/webm-playback.json",
+      "sha256": "925067885748d5dc0cfd1bee10b07b9af26c3e06ae7ec06bdfcebbf9cbce3116"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/animation_quality_audit.json",
+      "sha256": "b4834850830071b9dd82e6701839ca150d6753d1448cd6dc028786885b17be0d"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/toolchain_manifest.json",
+      "sha256": "02bd04e747f3253cea53d79740eddc71ddb9ca2c9fd09c923a458bc9aa8a586d"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/animation_render_validation.json",
+      "sha256": "349588a939fad4d42dcb9d7dedc4f65fa3986b02fb64863552c18053726e65ac"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/offline-integration.json",
+      "sha256": "488c06cf586f54dcf6aaecaadcc611edf41cda44058046fd4b4dbe82296fe582"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/runtime_pruning.json",
+      "sha256": "4c3f172e0705f68bd69509d6544c1342165dfedd0e36c32d504b21f5d8b23113"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/animation_export_validation.json",
+      "sha256": "3e49a7aa3b95001fafc9569c5b56bba793f2374860820c06d6f0bb19f954fdd2"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/audio.py",
+      "sha256": "00ff361047dc63b30a59e8e23929c9d616d5feaf388f8276e3be7ff260d4d3a5"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/desktop.py",
+      "sha256": "df6a980bd7f6471436506523bdb567c736f44f5cd9beb5504e8fa5f16f27c057"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/render_store.py",
+      "sha256": "32d1b32c6d1160c8baa2d67e4da4e67cd6679b9efa3a15864e7ebf8e81612c30"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/generic_speech.py",
+      "sha256": "18534b4a8e085aafe7a12036dbef2a6ee4c1d488b95a6a56c3211dabe02ae0e2"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/languages.py",
+      "sha256": "7d77d525a0d364c89765802630d959693fbcfec0f4c752fc89c2ba668b965c67"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/research.py",
+      "sha256": "68c78fab5314482dca6cad4cba45dd82bc4b21ec83de9e3464ea080f3469fb4c"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/worker.py",
+      "sha256": "24aed20daa0ccd25f0d0eda2f9af4e2a55da367f7b9a46446ac16ddf5296603b"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/engine.py",
+      "sha256": "b6a3bd78c5babac1ce0472100af5ed3837843069f6fba923300ebe6bb25c9ce7"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/quality.py",
+      "sha256": "b6690916226540378dc586d86ab3f49f114373e9afcae42f7189cb7616ee6045"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/synthesis.py",
+      "sha256": "f5edde6075cd62a26f2ab2e8195b43855458030ebbe28b0148e10ef931c65870"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/qt_locale.py",
+      "sha256": "aef69a1d7d4d9f82126127ff146da3da499bcefbe054179d19ed45ab5d708db8"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/spectrum.py",
+      "sha256": "bb8b7abf9703f10e74cc7b10e5460753dd5e76fd2a5b6780ec5915b87b4cb1e7"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/__init__.py",
+      "sha256": "4deb4e19ce308f6daf7a6369efa75b3f8c4c2b5f8be1dc9fe49569c950992212"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/project_lock.py",
+      "sha256": "2817d3bb2b0c9ef84b5e03e1adee766b8e504d291ed406da1291437ded8e765a"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/sdk.py",
+      "sha256": "91635ae8584571a82c25f53f2fbf395391d8f8d1c064e777225221895568e5df"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/server.py",
+      "sha256": "431aea95b5ad77f1967d4ec86c2e15adf18b3e457fd6ac398d89e1671691bb38"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/local_speakers.py",
+      "sha256": "b866207cec704f81f75d6343599e4880ed3381b3a1b24eeac336add172e7d891"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/portable_import.py",
+      "sha256": "3e3ed65122fc6d28120be8763846779b8d74dc59b830d1f31548e74242404bc7"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/runtime.py",
+      "sha256": "de8d8e03f9d430e6371d6cb1687d9eb0d5f417a86788bd0a63efe4e85cc29de8"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/__main__.py",
+      "sha256": "7b922538849d5fe964d2b3439607ebab5e769613bc890e21a0e1e45908ac92ab"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/models.py",
+      "sha256": "8696ac2dc2b11f7ef7c15fe034076c687fa5329043cfe01a22dc270fbd721ca8"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/offline.py",
+      "sha256": "857d8c353de2951c8ac11e0518d8c269de8416ca2d2ea33b3164ac10975fd57b"
+    },
+    {
+      "path": "FULL_REZZ/app/build/prepare_espeak.py",
+      "sha256": "a6ae2deeba21b58f325262edc909842d45a6a341b5ced975eaf2e50c4400825c"
+    },
+    {
+      "path": "FULL_REZZ/app/build/make_pdfs.py",
+      "sha256": "0382d28f546fa7ba5c299fa2391adeeff85a8a9dae57e9b31ec89d5a751cd9f1"
+    },
+    {
+      "path": "FULL_REZZ/app/build/pe_audit.py",
+      "sha256": "458d020998280e0d8e43c9cf6ca102cda07fa89aa64a017af2c624d2721f5d07"
+    },
+    {
+      "path": "FULL_REZZ/app/build/validate_multilingual_audio.py",
+      "sha256": "87b69e0e3b4b04a588dd099607f75b2975695803ab1e56deb8a8e217f13ec1e4"
+    },
+    {
+      "path": "FULL_REZZ/app/build/licenses.py",
+      "sha256": "bb4658292a72375b342bf2017eb5f5fd6ff9eb15c3f03d12649404bc6444b8b4"
+    },
+    {
+      "path": "FULL_REZZ/app/build/check_installer.py",
+      "sha256": "2d1081e68ea6f56b20c578b83d4991874ff792b3acba2da3bf5a6e8e078e0b64"
+    },
+    {
+      "path": "FULL_REZZ/app/build/update_bundle.py",
+      "sha256": "e023d002453adfbc2aa85e6e8bb9e3eec456888fba67e11d71770e1fbde18bc9"
+    },
+    {
+      "path": "FULL_REZZ/app/build/prepare_fonts.py",
+      "sha256": "a7e5dde1e4f1dde6b074916a6755b459d206e635fac5dee63fe61353d2bf94af"
+    },
+    {
+      "path": "FULL_REZZ/app/build/check_native_bytes.py",
+      "sha256": "33b5bc2a046d57b5553df07fe62fc5e61cd1310a12a82119ca732b0f6f8e8399"
+    },
+    {
+      "path": "FULL_REZZ/app/build/validate_locales.py",
+      "sha256": "daab7a4142a0b198cb483515c84ab21690124e38e8ab8eae5b6f577e5612e669"
+    },
+    {
+      "path": "FULL_REZZ/app/build/download_models.py",
+      "sha256": "6d792b0e83132c9a10ab2f2377f48d6b4f977e657e1eba8c80f0ed9fbd66fcfe"
+    },
+    {
+      "path": "FULL_REZZ/app/build/validate_native_v3.py",
+      "sha256": "1fa29658a7bd47f4728f81b791c3c51570a330e7277afbd10ea13240936a355f"
+    },
+    {
+      "path": "FULL_REZZ/app/build/freeze_payload.py",
+      "sha256": "ff96a924c777366fa249dfac57b7b17322e07e2696448344da3cbc07c5c10b16"
+    },
+    {
+      "path": "FULL_REZZ/app/build/assemble.py",
+      "sha256": "bd30f7c50d9384fd6313b9f05f26c3f3dc6f60809ad2e006569ea35646f96659"
+    },
+    {
+      "path": "FULL_REZZ/app/build/verify_models.py",
+      "sha256": "c8e2fdec979532f1b4e5fb03e0f00f369e22d68b58c6846c35abf0783e224798"
+    },
+    {
+      "path": "FULL_REZZ/app/build/launcher.c",
+      "sha256": "fe0389036bed36d3d258f5315301a82d3b0bc397d8fafd06a3b1cdb9cbb42112"
+    },
+    {
+      "path": "FULL_REZZ/app/build/package_release.py",
+      "sha256": "ea8dd3e56c31b44a9e686874426e28b6eaa51ae0a0eeca3c3dc6ef2056c62e1e"
+    },
+    {
+      "path": "FULL_REZZ/app/build/update_engine.py",
+      "sha256": "bb6917ee40329e521d482a1933ebd4b9f17a8c57b2ecbba14d5c27c0fc74e451"
+    },
+    {
+      "path": "FULL_REZZ/app/build/validate_native.py",
+      "sha256": "260708f3882ef557472a88f6f538151983eff3147695be963cb381d3a4ecac92"
+    },
+    {
+      "path": "FULL_REZZ/app/build/installer.nsi",
+      "sha256": "556130d17b787658204d4c9df522bcbc9a01c8fe3bf12257e2df8bbf9a7665e7"
+    },
+    {
+      "path": "FULL_REZZ/app/build/requirements-runtime.txt",
+      "sha256": "8894ad2008df225029446c0941f28c7078fad3263c913f7a072dfd49c9275987"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/sepformer_model_card.md",
+      "sha256": "839e9b410929ccea560c75640438e8c8145ef812ebfe1ecd2ffbcf461edd8829"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/F5-Weights-CC-BY-NC-4.0.txt",
+      "sha256": "cc97a2c4ff7723a1f25179dc7c18f676fa84191bbb36ea7d0061acaf3c102559"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/Qt-GPL-3.0.txt",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/Silero-MIT.txt",
+      "sha256": "2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/Qt-Multimedia-Addition.json",
+      "sha256": "03ed3612636d4ba543e36daf4721c1635e5cfda73210d37904ad1f3e9dfea167"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/eSpeak-NG-GPL-3.0.txt",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/vocos_model_card.md",
+      "sha256": "5858497d76d58914b29958a0f448e7b4fd3bb54940100baaa7520d4a56d8b3df"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/source_manifest.json",
+      "sha256": "dd066c4971de0affe17d0fe387524e4fda4c62c1e895e4c0262091bec97a0931"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/SpeechBrain-Apache.txt",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/FFmpeg-LICENSE.txt",
+      "sha256": "cb48bf09a11f5fb576cddb0431c8f5ed0a60157a9ec942adffc13907cbe083f2"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/f5_model_card.md",
+      "sha256": "cf3354feaf4020527b3642b12a5a382de13d0af6bc99e8d37bee84425c1ca224"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/ecapa_model_card.md",
+      "sha256": "00f58c3cbd7a7510de9374080da0e82a4c4e8f4df567f7338fe6efe108be705a"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/whisper_model_card.md",
+      "sha256": "1b7816626bf0548e4b71a467f4112b4592924bc818e3117f19aefcc50ce4b6aa"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/Qt-LGPL-3.0.txt",
+      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/Vocos-MIT.txt",
+      "sha256": "8f36ba0c214d4f487ffd7ee0b8528da9b67b459bef2d115de9cd001316589f46"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/F5-TTS-MIT.txt",
+      "sha256": "c70811d1402134de900e811d3eaa349eb60f4d38a8f635b27b1e378c630facd2"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/Whisper-MIT.txt",
+      "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/FFmpeg-7.1-Source.json",
+      "sha256": "986c96305ab2a9784c8f3535b50dc1fa1d19e265ced733e9c8451ade99aa7eb2"
+    },
+    {
+      "path": "FULL_REZZ/app/animation_review/Body_Preservation_Review.webm",
+      "sha256": "736c935b7f394272b4b0fcf7fba720bf8804a41ad5552d30a901cdd33fa69d0a"
+    },
+    {
+      "path": "FULL_REZZ/app/animation_review/Previous_Render.webm",
+      "sha256": "dc980a0c28b2dfddce3043e34415be4521aafdff410d932917e0a9ea9848f349"
+    },
+    {
+      "path": "FULL_REZZ/app/animation_review/Body_Preservation_Audit.json",
+      "sha256": "7f05923f0eda13a6dadb929f9c2568ad33afe8234adf058c14e30d183a5a5305"
+    },
+    {
+      "path": "FULL_REZZ/app/f5_tts/model/cfm.py",
+      "sha256": "88cea5f87b78a39dce292910ccac4b9e59d62171f245e2bf6a17c09426a35208"
+    },
+    {
+      "path": "FULL_REZZ/app/f5_tts/model/modules.py",
+      "sha256": "a171f654299c7f9d49d06254721c10928c328177478d60b4bbb23a091c23fd34"
+    },
+    {
+      "path": "FULL_REZZ/app/f5_tts/model/__init__.py",
+      "sha256": "5f0a106d7161d1467122867cba76e2c40ece29ef989c54764e4f89d4b2f93c29"
+    },
+    {
+      "path": "FULL_REZZ/app/f5_tts/model/dataset.py",
+      "sha256": "59da5c37743c7faa5dfbc2126255eea69f105dbb5d99fe9cdc1d7392ddf04e1b"
+    },
+    {
+      "path": "FULL_REZZ/app/f5_tts/model/utils.py",
+      "sha256": "a48c71bcc6a9f1cdc558eb1b71a226d433ac0229787ee25dc35afc0ae30e4ce3"
+    },
+    {
+      "path": "FULL_REZZ/app/f5_tts/model/backbones/README.md",
+      "sha256": "b0f2aed6adaa3fdc6338cdfdd0abab852859c4b7a018ef7e823497f76d758a44"
+    },
+    {
+      "path": "FULL_REZZ/app/f5_tts/model/backbones/dit.py",
+      "sha256": "838484daeea0ffcb5af9048e994721b02016229ed536afaecd6fe0d6d40ecd21"
+    },
+    {
+      "path": "FULL_REZZ/app/f5_tts/model/backbones/mmdit.py",
+      "sha256": "fdffb0406a34fb5056dc44311da087af9e010ea4ca9557c49cb159263b79ac56"
+    },
+    {
+      "path": "FULL_REZZ/app/f5_tts/model/backbones/unett.py",
+      "sha256": "fcb129294a64edffa59668b14bb5fd6af599df53046dc0ecfbaffaaec0001012"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_de65fe6360ed4bc9/record.json",
+      "sha256": "682893ff03e06c49590da663100a4bf2bc7ef5e427e05448fdfb34183c8adb76"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_de2e999d240b41cc/record.json",
+      "sha256": "9822ce420fa93c1b6a7cb0ea730787304be0bd5acdc6f89524b1aad75a3d64bd"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_0cb951970b18433e/record.json",
+      "sha256": "98116752dc42bf1c5826f7419b10d0d4b821761b45f8e50e00e60d6c0641be02"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_09a57c7cc15a4961/record.json",
+      "sha256": "9dc23f15b3622a440b23d38f3198c19fa98797fb80d0b00df5156c3226b9cefb"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_35e5ab09afcf423c/text.txt",
+      "sha256": "2c6e507e1a602fb28a8cde5284e27e93e8cac7bf342bdd290db9ec86d4e5e696"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_35e5ab09afcf423c/source.json",
+      "sha256": "b13132d1a583cc441bca9a1cffa500b69b171bf6da42a7af67f09127de47d989"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_35e5ab09afcf423c/original.json",
+      "sha256": "2c6e507e1a602fb28a8cde5284e27e93e8cac7bf342bdd290db9ec86d4e5e696"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_9fc512358da94418/text.txt",
+      "sha256": "9c31bdd41a56cdd02a9bbfd6fd553560cb2fbff5fa4a2de1780e92098c72d56c"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_9fc512358da94418/source.json",
+      "sha256": "f303d0981d6e092d495d1c17ab94f4f5e8d47dd97249066f6438ff56de385c14"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_9fc512358da94418/original.json",
+      "sha256": "9c31bdd41a56cdd02a9bbfd6fd553560cb2fbff5fa4a2de1780e92098c72d56c"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_e253d14047564add/text.txt",
+      "sha256": "82bcc4d804a5ec5e153b8903bd79581faea13ad8251166266396bc58ab0d518c"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_e253d14047564add/source.json",
+      "sha256": "a9ccc9188a4f7bc0715c9df1cac00bc6001fa0a3143aed0e6d5cea746bc0b409"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_e253d14047564add/original.json",
+      "sha256": "82bcc4d804a5ec5e153b8903bd79581faea13ad8251166266396bc58ab0d518c"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_8c7e42a600a4479f/text.txt",
+      "sha256": "d7d3154a3452e3b2e95837a70fc3f7abfad8a0fd211dda8d01d5dae736502a91"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_8c7e42a600a4479f/source.json",
+      "sha256": "984a254be26eccb8d48acec988fe0fce01cece781843523c2f5b8ea9a2636a5b"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_8c7e42a600a4479f/original.json",
+      "sha256": "d7d3154a3452e3b2e95837a70fc3f7abfad8a0fd211dda8d01d5dae736502a91"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_ab3005b7b68341fd/text.txt",
+      "sha256": "8c2240c148bd6994ec51cd559972d44f2f9adbe5f9ba37517f9c8b7bbf9e2734"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_ab3005b7b68341fd/source.json",
+      "sha256": "6861889d3bea7a86b35d43860d3d7b201637792ff24b5ebbaa43d520f7901ed6"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_ab3005b7b68341fd/original.json",
+      "sha256": "8c2240c148bd6994ec51cd559972d44f2f9adbe5f9ba37517f9c8b7bbf9e2734"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_4f7d040084c443b1/text.txt",
+      "sha256": "496ab4a90e75fab2beba4f861adc1bb8a8dae1685ef12b1dec638eeeb7b3e6c2"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_4f7d040084c443b1/source.json",
+      "sha256": "2eb8aa63ac8a1e8194d7ca810d85c7b8f9ac90ebf47dd2cb36265b985cf97ed2"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_4f7d040084c443b1/original.json",
+      "sha256": "496ab4a90e75fab2beba4f861adc1bb8a8dae1685ef12b1dec638eeeb7b3e6c2"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_3ac6dc58309f4309/text.txt",
+      "sha256": "64d675f2dd8e6aaca73d43136a8bc22bb604ea59eb351426e55e251eba51e024"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_3ac6dc58309f4309/source.json",
+      "sha256": "207c042c3e03bb07f7bce25de013479d2909d2b4d545455b0258233a25f98c44"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_3ac6dc58309f4309/original.json",
+      "sha256": "64d675f2dd8e6aaca73d43136a8bc22bb604ea59eb351426e55e251eba51e024"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_95d84e6c0ab94204/text.txt",
+      "sha256": "3961aa3a536af774d7a85e346e77862a7fce772e366635654dbac0493c636b49"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_95d84e6c0ab94204/source.json",
+      "sha256": "f1f790d7169f80c070e837cef7cfd943ea21decea6fc689b211eddef83a98ad4"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_95d84e6c0ab94204/original.json",
+      "sha256": "3961aa3a536af774d7a85e346e77862a7fce772e366635654dbac0493c636b49"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_89ed91801296489a/text.txt",
+      "sha256": "f3ed0aca068a2ac843add9d57a8b2566cf5fa9211f371ea8ff43ba91cc5ec105"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_89ed91801296489a/source.json",
+      "sha256": "65aac23f7b41f8f11538c06055b838bda2a609413cdad2635fe4f25575a66b48"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_89ed91801296489a/original.json",
+      "sha256": "f3ed0aca068a2ac843add9d57a8b2566cf5fa9211f371ea8ff43ba91cc5ec105"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_094b57b2f0044610/text.txt",
+      "sha256": "07b9b2adcc77637c5d2cb402ba84ea474eec5cab0ca0a0c936d79996b1a031d6"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_094b57b2f0044610/source.json",
+      "sha256": "ae40aa1bee5523c435f19575e301cb7ea336d369b286ad247afcdcf064796679"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_094b57b2f0044610/original.json",
+      "sha256": "07b9b2adcc77637c5d2cb402ba84ea474eec5cab0ca0a0c936d79996b1a031d6"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_26e6cc1aa39a4171/text.txt",
+      "sha256": "941743ba7e511b24bbda5e1799a3c1269af220abf64aa2338b56d7e59dab53e0"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_26e6cc1aa39a4171/source.json",
+      "sha256": "afb0eabcb9e471d555e400919159c591ea0ed4e5f04166ec538e0535a4087900"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/sources/src_26e6cc1aa39a4171/original.json",
+      "sha256": "941743ba7e511b24bbda5e1799a3c1269af220abf64aa2338b56d7e59dab53e0"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_f4a8967a175c4afb/audit.json",
+      "sha256": "4551852cfe431b44571717f0c37da24a4de015b6111fe2950cf2d3173d34155a"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_3d4cbba5a9da404b/audit.json",
+      "sha256": "f20c8c1c9295b7a1ec5aed33b4f0f5b012e553ebef8b2aa7b73ae1dde8a8c610"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_fe16878124d84c72/audit.json",
+      "sha256": "d3382d2b505056dbb59271b9a2656677222aac79afa100cab70d5cde9de99376"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_2026100700000001/audit.json",
+      "sha256": "c87a739f429f212c6d7b412112b243e9627daa9ffa0de0c4a4e17e1c0410ab5e"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_34dd6aada38045ea/audit.json",
+      "sha256": "df2ff95adf652bf339839592387cf82ffebc8ef5de11f77a4cdcf2a294cc8248"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_91e073e38c234767/audit.json",
+      "sha256": "cdd7f73ce16fe0ac5933e94c1a51d3ef32f09b8dca87dddd2b37c7d495559763"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_ede3ad75fbdf471a/audit.json",
+      "sha256": "4d7306d28038fa4ba78b37d54d6a51e0b4a2805f2bfeeada386234ded5742313"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_0f9eaa690113489f/audit.json",
+      "sha256": "a7b1f5b65367554a094c02ecd9a74178ed7c70004ae8c5da68ca48d1e8a5c18a"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_b9a95197bdbd43ab/audit.json",
+      "sha256": "57e5308f5495eab197619c1b0c295724e1ad2584971d17d237730261a7f3c18c"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_e194cc5dc6d54f39/audit.json",
+      "sha256": "c230ce4396a3d549ad88f9f1bde1aec75e8149e81d8a38b1b0cde3b0a734060f"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_03692f6b2d734816/audit.json",
+      "sha256": "6dc25e6b9b15824dda10cf161cb213030a315efac858e9d6010a315754094fdc"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_cf5df7e64f31427f/audit.json",
+      "sha256": "61a56982b83306b616b0e25dbb220e4d92f1db665c79091c7e6c97a7085ec31d"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c92ead39b5234a2c/audit.json",
+      "sha256": "5829c1ba10be3c93d5ac773235703c802a2b56a83cee6cf09deb7fcfc33d2b54"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_ae312747280d427a/audit.json",
+      "sha256": "46603b53674154139803f658b7b86ff734f700177ca8e38cebd32d5e2c6a43ab"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c4d943fe0f05494e/audit.json",
+      "sha256": "911436e2f58a3833d900428449001e9ebc34ee29bd6bea2a60c95745512cfe9e"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_a2def2ab47c543f9/audit.json",
+      "sha256": "a86db2a1cb7bde2e305573b068d89456cd563f5f66d37706e69420db3c890352"
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_f5206bf1a55c4665/audit.json",
+      "sha256": "585a3b91c24ca5b666a7deed9909f74c715b87ce9ecbc5541ced6a22069ae45b"
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/manifest.json",
+      "sha256": "8fc6cde9af8e7091c81cad80b88e8ae239a2bae7f01ae5ab3992e26e10a356d2"
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/manifest.json",
+      "sha256": "c0ac4f64aed917cd36501af9461d92acc028e527fa13a6a1c797d702cac239d2"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/conflict_preservation.json",
+      "sha256": "2a19c26d68b319c7465c5b2758f103accd6677b76fe17550fbe433321853e1a9"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/server_job.json",
+      "sha256": "29979b4ad664984c2f53b3d5faf10219510ad8c0e6fa7e02cbeaeae1f4f33902"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/source_draft.json",
+      "sha256": "84921d22304cae2edc624fc86e24cb08fd1016e21f358a173d6ee72e6c31a29d"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/upload_inventory.json",
+      "sha256": "932ce30c8eb5fd1b59604f5bb88d534dd5e4eb3ee000b80deacaf737d699930a"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/profile_checks.json",
+      "sha256": "d08639915eb5a831250e535134378ab242d371e71f5c0420a2370a4af0f0485b"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/spectral_balance.json",
+      "sha256": "8ab5ac44f760070eab34cf8a9b846d88fcde91475fef1099df60550b9a59e807"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/reference_word_check.json",
+      "sha256": "3c4797fe4e3f3fed12f87d7e6b31ee859e010b1de068905bd7766c73c9288d0c"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/reference_acoustics.json",
+      "sha256": "70c6c4caf6320c1c84fe6a4349324f78404f28b2ddec3c27a3baa242c8b0cfd8"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/crop_audit.json",
+      "sha256": "e99016e51ebdfdb40a451fad05e42d7442ecd5d689eec1e05f79400782451ff7"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/spectrum_revision_checks.json",
+      "sha256": "0bd4330448bdc428334c885aecdc39c7269108b64078164110e794bc3609fa97"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/complete_audit.json",
+      "sha256": "7b05d53fc62d7946985193c5b5ee14617bea1c42da1656f95e7736e0acce87e1"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/legacy_test_sources/test_offline_features.py",
+      "sha256": "eba88525fc9799b063a3429242887692a4ac05f2af42ae4a396e24586e52f5c5"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/legacy_test_sources/test_models.py",
+      "sha256": "0df80f21de57f24a93c3a729982bbfa8f4572de638c85302ce9984f83a381033"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/legacy_test_sources/playtest_browser.py",
+      "sha256": "b918f9d97c6aed3977345f73ef9259aad25494a15862c649457571e984aa85ae"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/legacy_test_sources/test_adapters.py",
+      "sha256": "375bad91c4e5ac2e3e91136d2922c9c3e47b5f7a21b4c56e510ab65f9144f35f"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/legacy_test_sources/test_server.py",
+      "sha256": "d9f81005c43d4dd97b7c5eee36bb6d3506acd179362ae80851d41759ef6f09aa"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_release_2.0/runtime_manifest.json",
+      "sha256": "24bb6bf80c07cdccb031e0c96c311eec9442df81bce07ecd4f7a7f1466f57b6b"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_release_2.0/payload_manifest.json",
+      "sha256": "57cdf5f4e1d6d8836704310c312cf77d5e0a09c764c97a981560ef1fdf6a848b"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_release_2.0/Release_Audit.md",
+      "sha256": "a17c8124e48dbc2625d9c81965e05a3010a88d9972e3c657ecf45bd71e11ef10"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_release_2.0/wheel_manifest.json",
+      "sha256": "16e3fe1a2e057e9955449b74c28ed0ecda98760ade6c3d88ff6a70842f218fe9"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_release_2.0/Packaging_Checks.json",
+      "sha256": "095766c3cd29e31dd3f1b36601364f84310d973e6d9b98782c3f39d2b1c958e6"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_release_2.0/validate_native.py",
+      "sha256": "91860d10b7eb3f91a6683a9faac2968cf60771701acf7e5a347b948039cf76de"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Initial_Restored_Voice_Regression_Results.json",
+      "sha256": "86c84047978e71aa81151698395839ac5940258b230122f79ffabe6599019369"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Original_Payload_Validation.json",
+      "sha256": "df9c6dcb4e10e30b2789eacc2dadfcf4ee25e3ea52ec44693752b43043c5fab0"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Actual_Neural_Conversation.json",
+      "sha256": "3090e88baed690fa272d5e9d0a8f3d412e1fc3ba22c2632e23d4c672f875e192"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Added_Windows_PE_Check.json",
+      "sha256": "e16f5ef335b5dd62ef6e1ec38ce1b9ae68a001d696784d7bdfc5e8e984ae7735"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/GPU_Validation.json",
+      "sha256": "4cc4961e6c906cdcdb77cd651d6a157ae8538fadf2108280bbf4be5bcda65c50"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Additional_Neural_Turn_1.json",
+      "sha256": "3c16284387f9edb4f477afa855633f234ac0f20a6e5fed006021739005ebd002"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Core_Regression_Tests.txt",
+      "sha256": "93dfe34b60a5ebd2b10ecad8b7232681080c45dee8b410fffcf9b77b27f6fc74"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Additional_Neural_Turn_Summary.json",
+      "sha256": "e49418063c440c2a59dc876c2496d778d66f05f1406ec2a6aefa0bb961bb7948"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Body_Preservation_Audit.json",
+      "sha256": "7f05923f0eda13a6dadb929f9c2568ad33afe8234adf058c14e30d183a5a5305"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/High_Rate_Export_Check.json",
+      "sha256": "6e92054431edcbbfcce13cfbd66bd0157f28028f8684977d4de7f8ce9a353714"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Voice_Regression_Results.json",
+      "sha256": "013d4854e38f0d2bc1d26c09b50545480d64fed14fce3932300763982b60eaa2"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Native_UI_Check.json",
+      "sha256": "b58eee9f42d5bb3e737803283d34e3b4da729e06d6d24023bfbf195189939b99"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Actual_Dialogue_Test.json",
+      "sha256": "84c48615e919cbc1895da5fbca3d06fe31f475c8d2770253ba94bf7404e81b34"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Additional_Neural_Turn_2.json",
+      "sha256": "954c74246b20cc95198fed8a4905495055ece67866e2b31f72299e9238e5a01b"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Body_Preservation_Render_Receipt.json",
+      "sha256": "f00ef6f9f1c8816475151270c3b7a91091488b4d940064ba002bf36ca30155a5"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Installer_Transaction_Check.json",
+      "sha256": "186bc20e339560d315f641cc1eacea257554bd154dbd1083ae518f24d1a86dfd"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/First_Restored_Neural_Attempt.json",
+      "sha256": "dd3dd501d87be3ad07df7c85b1636aa565727d453b1f813f92499184dee23ee8"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/product_v3/Current_Frame_Review_Queue.csv",
+      "sha256": "836914e508cbab842b76ca1204d895e9f024a424dc21464e9dd45f1f56cd1b63"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/authored.json",
+      "sha256": "1a01bb6e6ad7af61b9275d4569a15c1c2f908ec7d4b4c8c5830fcdab8a7fb6f2"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/uploaded_crossover.json",
+      "sha256": "db9d1e846db64f0ee47ffe317a521d7e068dcdb5577d32c80b0e3aadb1932947"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/plot.json",
+      "sha256": "dafe1581d287a72d82c259ff44ce7d3068638ec8067e2a5bc2543ee43069bb79"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/finale.json",
+      "sha256": "9f82fc3915ba06d59bc85c3a340887a763bc345dd29811ee56cf4249ad639fe5"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/performer.json",
+      "sha256": "6c9d249cb4a0c8fc91adfb065e30ddb3879ca4fe5ce6daf41df5fab7a47f57d1"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/series.json",
+      "sha256": "752f36f2a4b8ad5842d87cf76d775b5a60dd95d7164b76b773977c48a6393fae"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/context_spectrum_refinement.json",
+      "sha256": "dcc42d617e6c7432277c0bd4956eb4c28a526c77501e97df88ed934cf4329d76"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/uploaded_anime.json",
+      "sha256": "01aaca2f72c9ac8ee5532e846a209c71c23b6e762c0d33dea5d4cb3f85d36eee"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/episodes.json",
+      "sha256": "db317d8a31807fc6f7c9e5c1e582b050a6eb3d268dc715e622bfa0fde7c93d03"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/public_audio.json",
+      "sha256": "679077f28fffd92794bde3408ab40149b54f41d12a33a052dfcae98ee0c01d71"
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/sources/guide.json",
+      "sha256": "ae8bc02a265d28671719192e258fde51212bb26ba813651a1f4f75f7997b55ff"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/es.md",
+      "sha256": "b834a4d721110614edb64686327ebb1a4ab26a4c46e5c3b99c4634d52a3c70d6"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/pt.md",
+      "sha256": "13b7d562b4fa025600f9ad7198a00bd69618f21b4b8ff4005294acb67486a053"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/hi.md",
+      "sha256": "45b8b0668883b3dda096cad0b83d08de17f2eea5a210fb64147770aca1c48ea8"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/zh-Hans.md",
+      "sha256": "285b3661cc8b4bca4bdfdf78d4160dd8f82bf9aefc13aea32eb0f8adb98a34bb"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/en.md",
+      "sha256": "991d82e6efec81a3f034a765dd09812d7dbc8a8894a9bdf70e6bc11b8466e22e"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/de.md",
+      "sha256": "7b77fc26a36ccb292dee969755381c7b3205095368103942b93125daee26bbc9"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/ko.md",
+      "sha256": "e2b820a508bb3445e41460dbdf6b0fa18343ab432f1b68067f1db5a3732abcef"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/ar.md",
+      "sha256": "c3212878b14ab6e525c303e88f06ce988443c861b78109ad4b0dab45cbea8be4"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/it.md",
+      "sha256": "1dc87cdfa621a479185537422b0f2c4e11ffd8ed98bba845cb121b3c80c238f7"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/fr.md",
+      "sha256": "53ebd8f2a04cd05be91f1f4ba8bf32329b30f2c609cd746a48ebc1ec2242c377"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/ja.md",
+      "sha256": "91a8b7fd512ab76ffa23e26d5072da2c951a6c9d31253299be81d1ae00015426"
+    },
+    {
+      "path": "FULL_REZZ/app/docs/locales/ru.md",
+      "sha256": "a5dd3184ef3502b0c5b9d991b08090f7cc43919394bbb03195e70ea556f21f41"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/legacy_Start_Windows.cmd",
+      "sha256": "63925dec01c05349c1069e67ad64fb2f9d3a8caec5d45abd20f5abd43d74e867"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/VALIDATION.md",
+      "sha256": "a965609d8b7eeb24eb7898d6c68c1f580836c7369de8d5e5f3bbd47ed2bc2e43"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/README.md",
+      "sha256": "aac5c3e55fb3b658dcd20489e9d80711199837ae420f6a97669231872e5516e7"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/legacy_Setup_AI.cmd",
+      "sha256": "0f6d63cc560fda4fc2a3a651a874a585f4f62a7906ab2716557aabd329f6e4f8"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/legacy_START_HERE.txt",
+      "sha256": "cf6c5703ae74209d0bbb08bd06832dff6d7ed2d9b1abcf0533a90a69324fd068"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/original_audit-test-results.txt",
+      "sha256": "9ec28a3e97e2fb2c46ad02553577751530b555a9a9dc8d62fd4626270a4713e0"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/original_audit-wheel-results.txt",
+      "sha256": "7e8ab8222d900337c06b05d06efc3a761354d199e7b89dd6ef1a259e758b72c9"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/original_audit-static-results.json",
+      "sha256": "d6a32b0bdac875a00e2e574c7570f5ef19b9e14dc0863b3addf72777ae9e23dc"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/original_VALIDATION.md",
+      "sha256": "a965609d8b7eeb24eb7898d6c68c1f580836c7369de8d5e5f3bbd47ed2bc2e43"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/AUDIT.md",
+      "sha256": "d238882d1603915a399b1c59e7799114ee95f157533ce0a28c1a5f1f6b5f54fb"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/original_audit-installed-package-results.json",
+      "sha256": "6eeacd3d9f08ee8dd661277859be2d7c21963c21817bda575101a901c3baee6d"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/legacy_Setup_Windows.cmd",
+      "sha256": "69439243bde2608b66c9757f1be050f2b0b535e34d11ef186b7a9187e972dae1"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/baseline-v1.2/original_AUDIT.md",
+      "sha256": "d238882d1603915a399b1c59e7799114ee95f157533ce0a28c1a5f1f6b5f54fb"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/VALIDATION.md",
+      "sha256": "f5b089e24a372364b43df12998c48e939c260efc9778d7056bc09ba7aa279fcc"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/installed-package.json",
+      "sha256": "f112dd8626a12d6ed2ac1a432b3785ef6f37bc9c15d47e4bcdd13cb0f5b43a35"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/assignment-timing.json",
+      "sha256": "9091cb4c289ea9479ec37d0503189d175c68c721dc6ec1fb41eeb2db35ee1907"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/unit-tests.txt",
+      "sha256": "0b5c01e0591f59165777adf15a7dba9da5cac8c41fe620afeaa54e97f8cd7a0b"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/browser-playtest.json",
+      "sha256": "342cc3c5e7cf443801f285df9f3761f98f2775dbf7b4c8889537a6039d0c31fe"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/browser-expression-request.json",
+      "sha256": "cbd2fa55a3cabb04c0d7a178f984345037a61f55fcf6a156dcc6d1a3bb458564"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/AUDIT.md",
+      "sha256": "bb9b15f3f7bc761901d2c4b556bef0fc8193f1aa06e1900e925fc6669502f2a3"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/live-integrations.json",
+      "sha256": "4cfe340e06618856154c8e47f3d9c04e9c6816a69c06d34496448b660612db95"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/environment.json",
+      "sha256": "7c267d196a7baacba494575883337077b20814ccf5c8ce54004d2eec1d5b3665"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/static-checks.json",
+      "sha256": "1bd2caa05fc0f9d7f0ec78423efcb0c39269b23d7ce4af6acbaac71eb02e89fb"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/audio-benchmarks.json",
+      "sha256": "6a0c2df7ba3af9b657dcce1e378f67912b1f264f866a889dda47231ccf9a1a2f"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/prior-v1.1/browser-tests.txt",
+      "sha256": "e4e59f61bf3ca31c621eda961f1e658c26886d5ac108370102b05c6817d8d0ab"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/current-v1.2/audit-test-results.txt",
+      "sha256": "9ec28a3e97e2fb2c46ad02553577751530b555a9a9dc8d62fd4626270a4713e0"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/current-v1.2/audit-static-results.json",
+      "sha256": "d6a32b0bdac875a00e2e574c7570f5ef19b9e14dc0863b3addf72777ae9e23dc"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/current-v1.2/audit-wheel-results.txt",
+      "sha256": "7e8ab8222d900337c06b05d06efc3a761354d199e7b89dd6ef1a259e758b72c9"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/current-v1.2/audit-installed-package-results.json",
+      "sha256": "6eeacd3d9f08ee8dd661277859be2d7c21963c21817bda575101a901c3baee6d"
+    },
+    {
+      "path": "FULL_REZZ/app/audit-artifacts/current-v1.2/audit-ui-results.txt",
+      "sha256": "fa1d4501454287e7b35f5cd3ab2c477180f3aa84a08e35e8235f3146e7d893b6"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/locales/catalog.tsv",
+      "sha256": "14d8ce4d9c459383d3e90557f52a99c22f31721b41cbcf1f705d6e1994391414"
+    },
+    {
+      "path": "FULL_REZZ/app/voice_studio/locales/help.tsv",
+      "sha256": "852162bc194fe9efa1621396f2c60b6e7679ddf87c64e9185166366fe2e7ef98"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/runtime/scipy-1.16.3.dist-info_LICENSE.txt",
+      "sha256": "564d63dbef2ef3eb1dec94908966d3edf5f11c487ee2cf2baf8bf3faef01bdd9"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/runtime/numpy-2.2.6.dist-info_LICENSE.txt",
+      "sha256": "14256cc3a2c9d32ac284da96b937feb44f72dd90bee2317ac3020166846ad99d"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/llama-cpp/upstream_manifest.json",
+      "sha256": "92cd641fb14e2d5c9ef9650f36afd66218f3a7fdebc7c8abcd168081c41609be"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/llama-cpp/LICENSE.txt",
+      "sha256": "e562a2ddfaf8280537795ac5ecd34e3012b6582a147ef69ba6a6a5c08c84757d"
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/llama-cpp/Qwen_LICENSE.txt",
+      "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/studio_unit/profile.png",
+      "sha256": "995fdaf02699c3cd61ac8fe60eac2701d7e8faa804953ab3689b39d55c003585"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/studio_unit/character.json",
+      "sha256": "54bdd14d6c7ee1f3b61988e51f4211db3605f6292acc82d58875d256e0c220eb"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/studio_unit/rear.png",
+      "sha256": "6949790dceab142e8be2060c5206985af39140fb9b22a3829096b5dbf2e48a32"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/studio_unit/front.png",
+      "sha256": "a644af97b33f426cd23735c37ec89410ad2dc5d003fb303b55115b523f93dcd8"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/studio_unit/front_three_quarter.png",
+      "sha256": "f0a59a059e1e88f41c93295dd697ad83a3dc557a0ae052123d39582a7d384e00"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/studio_unit/rear_three_quarter.png",
+      "sha256": "33b8f68104724b28b09c601d2aaa7130ab0e577c598c136f8215b3cac98027be"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/studio_unit/low_angle.png",
+      "sha256": "f2f95442b9846478ba6a18b5085020b416b80472787eb752eb3503080dce48e0"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/studio_unit/studio_unit.gltf",
+      "sha256": "b5db4991fcadecb08fd6f61f2178f25b6f1ca63eacb9560baad9f5dbfaa56f2c"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/rebecca/legacy_front.png",
+      "sha256": "bd72268f3015dfe14811c0cf15a38e0f12e2b1f40b1294b3596699e8715b54b9"
+    },
+    {
+      "path": "FULL_REZZ/app/character_assets/rebecca/character.json",
+      "sha256": "78df328e1dad12fd332e071b12d28db1f81ceb4aab9e39c1e44e7b1b420614ea"
+    }
+  ]
+}

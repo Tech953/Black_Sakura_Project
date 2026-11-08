@@ -1,0 +1,77 @@
+{
+  "quality_policy": "high_fidelity",
+  "encoding": "FLOAT32",
+  "included_count": 1,
+  "excluded_count": 0,
+  "clips": [
+    {
+      "recording_id": "rec_0cb951970b18433e",
+      "segment_id": "seg_c9d06619373b4d9f",
+      "profile_id": "voice_57373fea79f3473e",
+      "source_start_seconds": 0.0,
+      "source_end_seconds": 4.35,
+      "channel": null,
+      "included": true,
+      "exclusion_reasons": [],
+      "enabled": false,
+      "steps": [],
+      "gain_db": 0.0,
+      "settings": {
+        "enabled": false,
+        "remove_dc": true,
+        "highpass_hz": 30.0,
+        "peak_dbfs": -3.0,
+        "fade_ms": 5.0,
+        "denoise_db": 0.0,
+        "noise_start": null,
+        "noise_end": null
+      },
+      "sample_rate_changed": false,
+      "sample_count_changed": false,
+      "source_quality": {
+        "sample_rate_hz": 44100,
+        "duration_seconds": 4.35,
+        "peak_dbfs": -5.1663,
+        "rms_dbfs": -24.2681,
+        "dc_offset": 0.00173361,
+        "near_full_scale_fraction": 0.0,
+        "over_range_fraction": 0.0,
+        "quiet_frame_noise_dbfs": -45.7822,
+        "estimated_snr_db": 26.0192,
+        "noise_estimate_available": true,
+        "status": "signal_checks_passed",
+        "issues": [],
+        "listening_review_required": true,
+        "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+        "limitations": [
+          "Energy contrast is not a calibrated speech/noise SNR measurement.",
+          "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+          "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+        ]
+      },
+      "output_quality": {
+        "sample_rate_hz": 44100,
+        "duration_seconds": 4.35,
+        "peak_dbfs": -5.1663,
+        "rms_dbfs": -24.2681,
+        "dc_offset": 0.00173361,
+        "near_full_scale_fraction": 0.0,
+        "over_range_fraction": 0.0,
+        "quiet_frame_noise_dbfs": -45.7822,
+        "estimated_snr_db": 26.0192,
+        "noise_estimate_available": true,
+        "status": "signal_checks_passed",
+        "issues": [],
+        "listening_review_required": true,
+        "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+        "limitations": [
+          "Energy contrast is not a calibrated speech/noise SNR measurement.",
+          "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+          "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+        ]
+      },
+      "path": "clips/rec_0cb951970b18433e_seg_c9d06619373b4d9f_0_0.wav"
+    }
+  ],
+  "note": "Signal checks do not guarantee perceptual quality or speaker purity. Listen to the exported references."
+}

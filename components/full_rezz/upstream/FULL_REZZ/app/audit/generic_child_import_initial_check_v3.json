@@ -1,0 +1,48 @@
+{
+  "pe_files_checked": 556,
+  "unresolved_import_names": [],
+  "passed": false,
+  "limits": "Import-name coverage only; no Windows execution, ABI/export-symbol/loader compatibility or playback verified.",
+  "generic_child_search_paths": [
+    "app/vendor/espeak-ng",
+    "python"
+  ],
+  "generic_private_import_checks": [
+    {
+      "file": "app/vendor/espeak-ng/espeak-ng.exe",
+      "machine": "0x8664",
+      "resolved_private_imports": [
+        {
+          "dependency": "libespeak-ng.dll",
+          "path": "app/vendor/espeak-ng/libespeak-ng.dll",
+          "machine": "0x8664",
+          "named_import_symbols_checked": 27,
+          "missing_symbols": []
+        }
+      ]
+    },
+    {
+      "file": "app/vendor/espeak-ng/libespeak-ng.dll",
+      "machine": "0x8664",
+      "resolved_private_imports": []
+    }
+  ],
+  "generic_private_import_errors": [
+    {
+      "file": "app/vendor/espeak-ng/espeak-ng.exe",
+      "unresolved": "VCRUNTIME140.dll"
+    },
+    {
+      "file": "app/vendor/espeak-ng/libespeak-ng.dll",
+      "unresolved": "MSVCP140.dll"
+    },
+    {
+      "file": "app/vendor/espeak-ng/libespeak-ng.dll",
+      "unresolved": "VCRUNTIME140.dll"
+    },
+    {
+      "file": "app/vendor/espeak-ng/libespeak-ng.dll",
+      "unresolved": "VCRUNTIME140_1.dll"
+    }
+  ]
+}

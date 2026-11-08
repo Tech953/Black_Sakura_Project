@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "character_context_adapter",
+  "profile_id": "voice_57373fea79f3473e",
+  "canonical_status": "deceased",
+  "character_path": "integrations/character.original.json",
+  "portable_character_path": "integrations/reference_pack/characters/voice_57373fea79f3473e/character.json",
+  "prompt_path": "integrations/reference_pack/characters/voice_57373fea79f3473e/prompt.txt",
+  "voice_logs_path": "integrations/reference_pack/characters/voice_57373fea79f3473e/voice_logs.jsonl",
+  "source_context_base_directory": "integrations/reference_pack",
+  "source_context_metadata": {
+    "path": "characters/voice_57373fea79f3473e/character.json",
+    "prompt_path": "characters/voice_57373fea79f3473e/prompt.txt",
+    "voice_logs_path": "characters/voice_57373fea79f3473e/voice_logs.jsonl",
+    "completeness": {
+      "biography_present": true,
+      "demographic_field_count": 14,
+      "statistic_field_count": 0,
+      "source_count": 10,
+      "voice_log_count": 4,
+      "audio_reference_count": 1
+    },
+    "provenance": "Authored canon and field_sources are separate from unreviewed retrieved claims."
+  },
+  "reasoning_engine_executed": false,
+  "engram_embedding_generated": false,
+  "behavior": "Retain character biography and prompts as data; display alongside movie playback"
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": "0.1.0-draft",
+  "implementation_status": "design_only",
+  "kind": "full_rezz_character_model_proposal",
+  "character_id": "character_rebecca_demo_proposal",
+  "identity_binding": {
+    "legacy_profile_id": "voice_57373fea79f3473e",
+    "engram_key": "full_rezz:pack_27e39b3817c8490d:voice_57373fea79f3473e",
+    "authored_lore_refs": []
+  },
+  "representations": {
+    "two_d": {
+      "asset_state": "legacy_single_view",
+      "legacy_project_ref": "animation/project/render_config.json",
+      "views": [
+        {
+          "view_id": "legacy_view_bank",
+          "calibration_status": "unmeasured",
+          "azimuth_deg": null,
+          "elevation_deg": null,
+          "pose_library_ref": "animation/project/pose_model.json",
+          "part_rig_ref": null
+        }
+      ]
+    },
+    "three_d": {
+      "asset_state": "not_provided",
+      "rigged_asset_ref": null,
+      "joint_mapping_ref": null,
+      "animation_clips": []
+    }
+  },
+  "presentation": {
+    "requested_mode": "2d",
+    "default_view_id": "legacy_view_bank",
+    "unsupported_view_policy": "show_unavailable"
+  },
+  "dialogue": {
+    "history_import_status": "not_imported",
+    "chat_history_refs": [],
+    "text_provider_binding": null,
+    "voice_profile_binding": "voice_57373fea79f3473e"
+  },
+  "extensions": {
+    "note": "Proposed legacy binding only; no new assets, viewpoints, history imports or runtime consumers are claimed."
+  }
+}

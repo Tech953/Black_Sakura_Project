@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:full-rezz:character:1.0.0",
+  "title": "FULL_REZZ character asset format 1.0.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "name"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "name": {
+      "type": "string"
+    },
+    "profile_id": {
+      "type": "string"
+    },
+    "two_d": {
+      "type": "object",
+      "properties": {
+        "views": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": [
+              "view_id",
+              "image",
+              "calibration_status"
+            ],
+            "properties": {
+              "view_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,80}$"
+              },
+              "image": {
+                "type": "string"
+              },
+              "calibration_status": {
+                "enum": [
+                  "calibrated",
+                  "unmeasured"
+                ]
+              },
+              "azimuth_deg": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "elevation_deg": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "base_excludes_animated_parts": {
+                "type": "boolean"
+              },
+              "parts": {
+                "type": "array",
+                "maxItems": 256,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "part_id",
+                    "image",
+                    "pivot",
+                    "position"
+                  ],
+                  "properties": {
+                    "part_id": {
+                      "type": "string"
+                    },
+                    "image": {
+                      "type": "string"
+                    },
+                    "pivot": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    },
+                    "position": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    },
+                    "parent": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "three_d": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "asset": {
+          "type": "string"
+        },
+        "joint_mapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "anyOf": [
+    {
+      "required": [
+        "two_d"
+      ],
+      "properties": {
+        "two_d": {
+          "required": [
+            "views"
+          ],
+          "properties": {
+            "views": {
+              "minItems": 1
+            }
+          }
+        }
+      }
+    },
+    {
+      "required": [
+        "three_d"
+      ],
+      "properties": {
+        "three_d": {
+          "type": "object",
+          "required": [
+            "asset"
+          ]
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

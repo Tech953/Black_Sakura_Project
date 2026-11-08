@@ -1,0 +1,83 @@
+{
+  "offline": true,
+  "full_sha256": true,
+  "passed": true,
+  "assets": [
+    {
+      "path": "tts/model_1250000.safetensors",
+      "passed": true
+    },
+    {
+      "path": "tts/vocab.txt",
+      "passed": true
+    },
+    {
+      "path": "vocos/config.yaml",
+      "passed": true
+    },
+    {
+      "path": "vocos/pytorch_model.bin",
+      "passed": true
+    },
+    {
+      "path": "asr/config.json",
+      "passed": true
+    },
+    {
+      "path": "asr/model.bin",
+      "passed": true
+    },
+    {
+      "path": "asr/tokenizer.json",
+      "passed": true
+    },
+    {
+      "path": "asr/vocabulary.txt",
+      "passed": true
+    },
+    {
+      "path": "speaker/hyperparams.yaml",
+      "passed": true
+    },
+    {
+      "path": "speaker/embedding_model.ckpt",
+      "passed": true
+    },
+    {
+      "path": "speaker/mean_var_norm_emb.ckpt",
+      "passed": true
+    },
+    {
+      "path": "speaker/classifier.ckpt",
+      "passed": true
+    },
+    {
+      "path": "speaker/label_encoder.txt",
+      "passed": true
+    },
+    {
+      "path": "separator/hyperparams.yaml",
+      "passed": true
+    },
+    {
+      "path": "separator/encoder.ckpt",
+      "passed": true
+    },
+    {
+      "path": "separator/decoder.ckpt",
+      "passed": true
+    },
+    {
+      "path": "separator/masknet.ckpt",
+      "passed": true
+    },
+    {
+      "path": "speaker/custom.py",
+      "passed": true
+    },
+    {
+      "path": "separator/custom.py",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "Voicemod Tuna — community Rebecca greeting listing",
+  "url": "https://tuna.voicemod.net/sound/ace0436f-963b-488b-b127-3c99c937ea74",
+  "authority": "community_audio_archive_secondary",
+  "evidence_section": "Short attributed English greeting",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_e253d14047564add",
+  "retrieved_at": "2026-10-07T08:25:19.305243+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "82bcc4d804a5ec5e153b8903bd79581faea13ad8251166266396bc58ab0d518c",
+  "text_characters": 637,
+  "text_path": "sources/src_e253d14047564add/text.txt",
+  "original_path": "sources/src_e253d14047564add/original.json",
+  "original_sha256": "82bcc4d804a5ec5e153b8903bd79581faea13ad8251166266396bc58ab0d518c"
+}

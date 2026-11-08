@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+.pythonlibs/
+workspace-output/
+FULL_REZZ/app/bundled_models/
+full_rezz_build/windows_bundle/
+full_rezz_build/installer_extracted/
+*.exe

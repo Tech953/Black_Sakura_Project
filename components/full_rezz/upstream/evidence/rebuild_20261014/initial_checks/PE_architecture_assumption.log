@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/tools/inspect_windows_payload.py", line 39, in <module>
+    if __name__=='__main__':main()
+                            ^^^^^^
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/tools/inspect_windows_payload.py", line 36, in main
+    assert out and all(x['x64'] for x in out),'The installed payload contains a non-x64 PE'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: The installed payload contains a non-x64 PE

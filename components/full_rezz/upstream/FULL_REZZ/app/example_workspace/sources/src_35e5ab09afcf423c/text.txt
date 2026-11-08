@@ -1,0 +1,17 @@
+{
+  "key": "plot",
+  "title": "Wikipedia — Rebecca (Cyberpunk: Edgerunners)",
+  "url": "https://en.wikipedia.org/wiki/Rebecca_(Cyberpunk:_Edgerunners)",
+  "authority": "secondary_encyclopedia",
+  "evidence_section": "Appearances and language-specific voice credits",
+  "summary": "The checked secondary account describes an augmented woman, Pilar's sister, and a mercenary crewmate; she has unreturned feelings for David, helps rescue Lucy, and is killed by Adam Smasher. Tomoyo Kurosawa is credited for Japanese. These details are attributed, not a new viewing. Crossovers and speculative Mox affiliation are excluded.",
+  "character": {
+    "demographics": {
+      "entity_type": "Cybernetically augmented human woman",
+      "canonical_status": "deceased",
+      "canonical_death_mechanism": "Killed by Adam Smasher in the original anime finale",
+      "credited_japanese_performer": "Tomoyo Kurosawa"
+    }
+  },
+  "research_checked_at_utc": "2026-10-06"
+}

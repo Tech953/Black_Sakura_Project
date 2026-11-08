@@ -1,0 +1,51 @@
+{
+  "program": "FULL_REZZ",
+  "version": "3.0.0",
+  "delivery_revision": "2026-10-14.2",
+  "installer": {
+    "name": "FULL_REZZ_3.0_Offline_Windows_x64_Setup.exe",
+    "bytes": 2727838324,
+    "sha256": "4e4308f87520247075823bb598f8666733ca90beaee0a547544e81a6c00d6c90"
+  },
+  "parts": [
+    {
+      "name": "FULL_REZZ_3.0_Setup.part01",
+      "bytes": 419430400,
+      "sha256": "a4021532e032a6b048a7f4a9a5ba6b533051a433194833ba2f15f9b1dd5c33f2"
+    },
+    {
+      "name": "FULL_REZZ_3.0_Setup.part02",
+      "bytes": 419430400,
+      "sha256": "2b5ff078ce228cb1d6b2a4309945aade9c252ac76306da9eb1def80e4756139c"
+    },
+    {
+      "name": "FULL_REZZ_3.0_Setup.part03",
+      "bytes": 419430400,
+      "sha256": "0c7881c10f81daefb71a4e7ab391cbaf66b4f6e1f025cf80bbd567cd512641d2"
+    },
+    {
+      "name": "FULL_REZZ_3.0_Setup.part04",
+      "bytes": 419430400,
+      "sha256": "f2a1b7924ad0b90b4c7961cd5022f36cab5e1e848b9f4d0442a57499a1af265a"
+    },
+    {
+      "name": "FULL_REZZ_3.0_Setup.part05",
+      "bytes": 419430400,
+      "sha256": "3c72b4a7cc7881674a054ff28a9ea0c5839291d045b85a621144154cc0dc797b"
+    },
+    {
+      "name": "FULL_REZZ_3.0_Setup.part06",
+      "bytes": 419430400,
+      "sha256": "d12f4aa47cc75d9d3ce4b2d46e335f8541c82a22612b6b7f1de983b9f615ae8e"
+    },
+    {
+      "name": "FULL_REZZ_3.0_Setup.part07",
+      "bytes": 211255924,
+      "sha256": "7c1c6bb2b5f994b43bcb974263720ecf134700238edd344868a1b19b24f9430e"
+    }
+  ],
+  "all_part_and_rejoined_hashes_verified": true,
+  "parts_are_transport_only": true,
+  "external_runtime_required_after_install": false,
+  "native_windows_execution_tested": false
+}

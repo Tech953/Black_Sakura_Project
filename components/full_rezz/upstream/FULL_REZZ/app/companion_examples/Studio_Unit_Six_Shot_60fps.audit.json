@@ -1,0 +1,83 @@
+{
+  "profile_id": "voice_158c33fe9e364ec4",
+  "mode": "3d",
+  "view_id": null,
+  "path": "/workspace/scratch/ee0183463077/full_rezz_product/FULL_REZZ_Replit/product_exports/Studio_Unit_Six_Shot_60fps.webm",
+  "sha256": "7c592479d87b09669f48cee8058c90b312c201ad8448a09fb23c72ec23df78a3",
+  "fps": 60,
+  "frames": 720,
+  "duration_seconds": 12.0,
+  "resolution": [
+    640,
+    640
+  ],
+  "turn_id": null,
+  "speech_source_sha256": null,
+  "encoded_audio_seconds": null,
+  "mouth_alignment": "actual WAV energy; not phonemes",
+  "original_WAV_retained": true,
+  "movie_audio_is_lossless": false,
+  "shots": [
+    {
+      "shot_id": "wide_front",
+      "start_frame": 0,
+      "end_frame": 120,
+      "azimuth_deg": 0,
+      "elevation_deg": 5,
+      "radius": 3.2,
+      "target_y": 0.95
+    },
+    {
+      "shot_id": "medium_reaction",
+      "start_frame": 120,
+      "end_frame": 240,
+      "azimuth_deg": 0,
+      "elevation_deg": 8,
+      "radius": 2.35,
+      "target_y": 1.13
+    },
+    {
+      "shot_id": "three_quarter",
+      "start_frame": 240,
+      "end_frame": 360,
+      "azimuth_deg": 45,
+      "elevation_deg": 5,
+      "radius": 2.8,
+      "target_y": 1.0
+    },
+    {
+      "shot_id": "profile",
+      "start_frame": 360,
+      "end_frame": 480,
+      "azimuth_deg": 90,
+      "elevation_deg": 5,
+      "radius": 2.9,
+      "target_y": 1.0
+    },
+    {
+      "shot_id": "rear_three_quarter",
+      "start_frame": 480,
+      "end_frame": 600,
+      "azimuth_deg": 145,
+      "elevation_deg": 9,
+      "radius": 2.9,
+      "target_y": 1.08
+    },
+    {
+      "shot_id": "low_angle",
+      "start_frame": 600,
+      "end_frame": 720,
+      "azimuth_deg": -35,
+      "elevation_deg": -15,
+      "radius": 2.9,
+      "target_y": 0.98
+    }
+  ],
+  "elapsed_seconds": 68.41036445600002,
+  "all_video_frames_decoded_and_timestamps_checked": true,
+  "render_backend": "independent CPU depth renderer",
+  "new_speech_generated_by_export": false,
+  "missing_views_or_geometry_generated": false,
+  "live_frame_rate_benchmark": false,
+  "artistic_acceptance": false
+}

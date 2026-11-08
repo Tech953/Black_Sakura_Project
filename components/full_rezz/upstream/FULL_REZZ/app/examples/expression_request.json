@@ -1,0 +1,299 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "voice_expression_request",
+  "profile_id": "voice_3afa75183dc44398",
+  "text": "The route is clear. We can continue.",
+  "requested_style": "gentle",
+  "reference_style": "gentle",
+  "style_match": true,
+  "reference": {
+    "id": "ref_01bca38d129043a5",
+    "path": "clips/rec_c47fc3ceeaa34981_seg_72138afce0a44469_0_0.wav",
+    "recording_id": "rec_c47fc3ceeaa34981",
+    "sha256": "bafed65b2e6179accb779a3eac4a895d3ea4b414e47e2b6ebd248e07055dcee2",
+    "segment_id": "seg_72138afce0a44469",
+    "source_start_seconds": 0.44,
+    "source_end_seconds": 2.56,
+    "channel": 0,
+    "duration_seconds": 2.12,
+    "sample_rate_hz": 24000,
+    "encoding": "FLOAT_32",
+    "style": "gentle",
+    "review_status": "reviewed_single_voice",
+    "text": "Synthetic test tone; this is not a spoken utterance.",
+    "text_alignment": "whole_manual_region",
+    "measurements": {
+      "duration_seconds": 2.12,
+      "sample_rate_hz": 24000,
+      "analysis_sample_rate_hz": 16000,
+      "peak_dbfs": -13.7836,
+      "rms_dbfs": -17.9308,
+      "clipping_fraction": 0.0,
+      "pitch_hz": {
+        "count": 101,
+        "median": 179.9991,
+        "p10": 179.9984,
+        "p90": 180.0014,
+        "mean": 180.0075,
+        "std": 0.0639
+      },
+      "voicing_periodicity": {
+        "count": 101,
+        "median": 1.0,
+        "p10": 1.0,
+        "p90": 1.0,
+        "mean": 0.9991,
+        "std": 0.005
+      },
+      "frame_energy_dbfs": {
+        "count": 105,
+        "median": -17.501,
+        "p10": -17.7023,
+        "p90": -17.4847,
+        "mean": -23.9747,
+        "std": 30.4217
+      },
+      "spectral_centroid_hz": {
+        "count": 101,
+        "median": 217.9978,
+        "p10": 217.5891,
+        "p90": 222.5813,
+        "mean": 218.8497,
+        "std": 1.9306
+      },
+      "estimated_voiced_frame_fraction": 0.9619,
+      "method": "40ms normalized-autocorrelation frames; 65-500Hz search; periodicity >=0.65",
+      "limitations": [
+        "Pitch estimates can be wrong with music, noise, or overlapping voices.",
+        "No gender, age, accent, emotion, clinical voice quality, or identity is inferred.",
+        "Energy gating detects acoustic activity, not necessarily speech."
+      ]
+    },
+    "quality": {
+      "sample_rate_hz": 24000,
+      "duration_seconds": 2.12,
+      "peak_dbfs": -13.7836,
+      "rms_dbfs": -17.9308,
+      "dc_offset": -0.0,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": null,
+      "estimated_snr_db": null,
+      "noise_estimate_available": false,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "processing": {
+      "enabled": false,
+      "steps": [],
+      "gain_db": 0.0,
+      "settings": {
+        "enabled": false,
+        "remove_dc": true,
+        "highpass_hz": 30.0,
+        "peak_dbfs": -3.0,
+        "fade_ms": 5.0,
+        "denoise_db": 0.0,
+        "noise_start": null,
+        "noise_end": null
+      },
+      "sample_rate_changed": false,
+      "sample_count_changed": false,
+      "source_quality": {
+        "sample_rate_hz": 24000,
+        "duration_seconds": 2.12,
+        "peak_dbfs": -13.7836,
+        "rms_dbfs": -17.9308,
+        "dc_offset": -0.0,
+        "near_full_scale_fraction": 0.0,
+        "over_range_fraction": 0.0,
+        "quiet_frame_noise_dbfs": null,
+        "estimated_snr_db": null,
+        "noise_estimate_available": false,
+        "status": "signal_checks_passed",
+        "issues": [],
+        "listening_review_required": true,
+        "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+        "limitations": [
+          "Energy contrast is not a calibrated speech/noise SNR measurement.",
+          "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+          "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+        ]
+      },
+      "output_quality": {
+        "sample_rate_hz": 24000,
+        "duration_seconds": 2.12,
+        "peak_dbfs": -13.7836,
+        "rms_dbfs": -17.9308,
+        "dc_offset": -0.0,
+        "near_full_scale_fraction": 0.0,
+        "over_range_fraction": 0.0,
+        "quiet_frame_noise_dbfs": null,
+        "estimated_snr_db": null,
+        "noise_estimate_available": false,
+        "status": "signal_checks_passed",
+        "issues": [],
+        "listening_review_required": true,
+        "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+        "limitations": [
+          "Energy contrast is not a calibrated speech/noise SNR measurement.",
+          "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+          "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+        ]
+      }
+    },
+    "source_sample_start": 10560,
+    "source_sample_end": 61440
+  },
+  "prosody": {
+    "rate_multiplier": 1.0,
+    "pitch_semitones": 0.0,
+    "volume_db": 0.0
+  },
+  "character": {
+    "kind": "original",
+    "incarnation": "Illustrative original character; not existing user lore",
+    "biography": "Aster is a navigator who maps remote routes and helps travellers understand unfamiliar terrain.",
+    "demographics": {
+      "age": 42,
+      "pronouns": "she/her",
+      "species": "human",
+      "region": "authored fictional setting"
+    },
+    "statistics": {
+      "navigation": {
+        "value": 9,
+        "unit": "points",
+        "system": "illustrative 0–10 scale",
+        "edition": "example v1"
+      }
+    },
+    "persona": {
+      "traits": [
+        "curious",
+        "patient"
+      ],
+      "motivations": [
+        "Help travellers choose their own routes"
+      ],
+      "goals": [
+        "Complete a dependable route atlas"
+      ],
+      "speech_style": "precise, warm, measured",
+      "mannerisms": "Uses short orientation metaphors",
+      "boundaries": "States uncertainty and preserves the other person's choices"
+    },
+    "prompts": {
+      "system": "Portray Aster using the authored biography and persona. Keep unknown facts unknown.",
+      "dialogue": "Use concise, warm speech. Offer options when navigating uncertainty.",
+      "scenario": "A traveller asks for a route through unfamiliar territory."
+    },
+    "field_sources": {
+      "kind": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "biography": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "incarnation": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "canon_notes": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "demographics.age": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "demographics.pronouns": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "demographics.species": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "demographics.region": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "statistics.navigation": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "persona.traits": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "persona.motivations": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "persona.goals": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "persona.speech_style": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "persona.mannerisms": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "persona.boundaries": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "prompts.system": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "prompts.dialogue": [
+        "src_e5117d19a06a4aa9"
+      ],
+      "prompts.scenario": [
+        "src_e5117d19a06a4aa9"
+      ]
+    },
+    "canon_notes": "All facts in this file are invented examples. Replace them with your own canon.",
+    "review_status": "source_draft",
+    "voice_observations": {
+      "style_labels": [
+        "neutral"
+      ],
+      "voice_log_count": 2,
+      "provenance": "User-authored recording annotations. Labels describe samples, not inferred psychological traits."
+    }
+  },
+  "character_context": {
+    "path": "characters/voice_3afa75183dc44398/character.json",
+    "prompt_path": "characters/voice_3afa75183dc44398/prompt.txt",
+    "voice_logs_path": "characters/voice_3afa75183dc44398/voice_logs.jsonl",
+    "completeness": {
+      "biography_present": true,
+      "demographic_field_count": 4,
+      "statistic_field_count": 1,
+      "source_count": 1,
+      "voice_log_count": 2,
+      "audio_reference_count": 2
+    },
+    "provenance": "Authored canon and field_sources are separate from unreviewed retrieved claims."
+  },
+  "sources": [
+    {
+      "title": "character.json",
+      "kind": "imported_document",
+      "warnings": [],
+      "claims": [],
+      "sha256": "da378f89ed2c730dad54c2660218ef8a3de5b86cc98c0b568c86ae1d2e3070ee",
+      "id": "src_e5117d19a06a4aa9",
+      "retrieved_at": "2026-10-05T17:34:26.909142+00:00",
+      "review_status": "unreviewed",
+      "text_sha256": "da378f89ed2c730dad54c2660218ef8a3de5b86cc98c0b568c86ae1d2e3070ee",
+      "text_characters": 1214,
+      "text_path": "sources/src_e5117d19a06a4aa9/text.txt",
+      "original_path": "sources/src_e5117d19a06a4aa9/original.json",
+      "original_sha256": "da378f89ed2c730dad54c2660218ef8a3de5b86cc98c0b568c86ae1d2e3070ee"
+    }
+  ],
+  "ssml": "<speak><prosody rate=\"100%\" pitch=\"+0st\" volume=\"+0dB\">The route is clear. We can continue.</prosody></speak>",
+  "renderer": null,
+  "generated_audio": null,
+  "renderer_contract": "Pass reference audio and text to a compatible synthesis adapter; SSML support and speaker conditioning depend on that adapter."
+}

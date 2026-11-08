@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "User-provided Wuthering Waves crossover audio",
+  "url": "",
+  "authority": "user_provided_crossover_media_provenance_unverified",
+  "evidence_section": "Five supplied crossover files",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_9fc512358da94418",
+  "retrieved_at": "2026-10-07T08:25:19.307781+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "9c31bdd41a56cdd02a9bbfd6fd553560cb2fbff5fa4a2de1780e92098c72d56c",
+  "text_characters": 588,
+  "text_path": "sources/src_9fc512358da94418/text.txt",
+  "original_path": "sources/src_9fc512358da94418/original.json",
+  "original_sha256": "9c31bdd41a56cdd02a9bbfd6fd553560cb2fbff5fa4a2de1780e92098c72d56c"
+}

@@ -1,0 +1,52 @@
+{
+  "scope": "Actual surface draw code in Linux headless EGL; not Qt desktop/Windows presentation",
+  "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+  "gl_version": "4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.2",
+  "model_vertices": 1152,
+  "model_triangles": 384,
+  "views": [
+    {
+      "shot_id": "wide_front",
+      "image": "wide_front.png",
+      "rgba_sha256": "1d4623e30d93d7e9b3f9133bbd017a6af0c7d6508918f2659ae0cc0bb520feb7"
+    },
+    {
+      "shot_id": "medium_reaction",
+      "image": "medium_reaction.png",
+      "rgba_sha256": "4a1f342fc600716e2204e37bee1b0e05e6ce9e672df5ba16d52988f851f9a5f3"
+    },
+    {
+      "shot_id": "three_quarter",
+      "image": "three_quarter.png",
+      "rgba_sha256": "72bb4df7f7c2ad525e7c8b422d67cfbe66e569a845384da3d8d6333c1bcd048b"
+    },
+    {
+      "shot_id": "profile",
+      "image": "profile.png",
+      "rgba_sha256": "a92a4513f9ebec077e19c52331d027395b9907782513b6b734b0b7253eb4ae2f"
+    },
+    {
+      "shot_id": "rear_three_quarter",
+      "image": "rear_three_quarter.png",
+      "rgba_sha256": "773e211281c85b71414a232741ea618d5d0dd18be9529c7a6e0cae22b86beebd"
+    },
+    {
+      "shot_id": "low_angle",
+      "image": "low_angle.png",
+      "rgba_sha256": "1a33c868e5305640aeb9b163c14bcad42384a5dd0d8905df3e236ac9d82c47f8"
+    }
+  ],
+  "distinct_camera_views": 6,
+  "rendered_test_frames": 180,
+  "resolution": [
+    640,
+    640
+  ],
+  "completed_frame_p95_ms": 14.692421150016342,
+  "observed_completed_frames_per_second": 111.60562800174561,
+  "gl_finish_included": true,
+  "native_windows_execution_tested": false,
+  "qt_desktop_frame_pacing_tested": false,
+  "user_hardware_benchmarked": false,
+  "artistic_acceptance": false
+}

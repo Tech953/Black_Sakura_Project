@@ -1,0 +1,237 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "voice_expression_render_result",
+  "profile_id": "voice_57373fea79f3473e",
+  "profile_name": "Rebecca — Posthumous English Archive",
+  "source_profile_snapshot": "Rebecca_Audited_Voice_Profile.zip",
+  "canonical_status": "deceased",
+  "emulation_mode": "posthumous_archive",
+  "dialogue_status": "newly_authored_noncanon",
+  "spoken_label": "Non-canon archive simulation.",
+  "text": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+  "original_expression_text": "Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+  "expression_request_sha256": "103655900771fb5dda2aee864396f3a1d52cdc3101a9dc6b52a6c2f1a1d037b9",
+  "generation_performed": true,
+  "renderer": {
+    "engine": "F5-TTS",
+    "model": "F5TTS_v1_Base",
+    "vocoder": "Vocos mel 24 kHz",
+    "device": "cpu",
+    "seed": 20261007,
+    "sampling_steps": 32,
+    "speed": 1.0,
+    "cfg_strength": 2.0,
+    "sway_sampling_coef": -1.0,
+    "training_performed": false,
+    "remote_inference_performed": false,
+    "versions": {
+      "f5-tts": "1.1.22",
+      "torch": "2.8.0+cpu",
+      "torchaudio": "2.8.0+cpu",
+      "vocos": "0.1.0",
+      "transformers": "4.57.6",
+      "soundfile": "0.14.0",
+      "numpy": "2.3.5",
+      "x-transformers": "2.31.7"
+    },
+    "model_sources": [
+      {
+        "name": "model_1250000.safetensors",
+        "url": "https://huggingface.co/SWivid/F5-TTS/resolve/main/F5TTS_v1_Base/model_1250000.safetensors",
+        "bytes": 1348435761,
+        "sha256": "670900fd14e6c458b95da6e9ed317cdb20dbaf7a1c02ac06a05475a9d32b6a38"
+      },
+      {
+        "name": "vocab.txt",
+        "url": "https://huggingface.co/SWivid/F5-TTS/resolve/main/F5TTS_v1_Base/vocab.txt",
+        "bytes": 13800,
+        "sha256": "2a05f992e00af9b0bd3800a8d23e78d520dbd705284ed2eedb5f4bd29398fa3c"
+      },
+      {
+        "name": "vocos/config.yaml",
+        "url": "https://huggingface.co/charactr/vocos-mel-24khz/resolve/main/config.yaml",
+        "bytes": 461,
+        "sha256": "da9033922f969a47f0c160010226919e59f27761fd5066f3828d46de6650b0fc"
+      },
+      {
+        "name": "vocos/pytorch_model.bin",
+        "url": "https://huggingface.co/charactr/vocos-mel-24khz/resolve/main/pytorch_model.bin",
+        "bytes": 54365991,
+        "sha256": "97ec976ad1fd67a33ab2682d29c0ac7df85234fae875aefcc5fb215681a91b2a"
+      }
+    ]
+  },
+  "reference": {
+    "id": "ref_15a63c366ddf4d04",
+    "source_path_in_pack": "clips/rec_0cb951970b18433e_seg_c9d06619373b4d9f_0_0.wav",
+    "source_sha256": "2f2524c4fef5ef2de914dceaba3fae240e148f51b3603d7f8994ea8b1d2bdf82",
+    "conditioning_sha256": "d7f69e194af52dfa849bd1dd2e2b8726b105281b378a5289aa03a357b919e245",
+    "parent_filename": "Cyberpunk_ Edgerunners but it's just Rebecca.mp3",
+    "parent_sha256": "dd0ccf104580cfbd3f2f07a0706d60ebccdb912510a4655d7e323a0d8cdf9c21",
+    "parent_start_seconds": 35.3,
+    "parent_end_seconds": 39.65,
+    "source_rate_hz": 44100,
+    "model_rate_hz": 24000,
+    "preparation": "Native-rate PCM16 copy plus 0.7 seconds of silence; F5 preprocesses and resamples to 24 kHz.",
+    "transcript": "Oh David, my man, what's going on? Everything good?",
+    "transcript_basis": "Current offline Whisper tiny.en output, 2026-10-07; not manually verified. Earlier output had different initial words; neither is canonical evidence.",
+    "transcript_manually_verified": false,
+    "speaker_purity_manually_verified": false,
+    "style": "concern",
+    "requested_style": "concern",
+    "style_match": true,
+    "identity_basis": "User-provided filename, dialogue context, and checked English performer credit; no listening or biometric verification"
+  },
+  "processing": {
+    "gain_db": -0.6092,
+    "peak_target_dbfs": -3.0,
+    "fade_ms": 5,
+    "pitch_shift_semitones": 0,
+    "radio_effect": false
+  },
+  "duration_seconds": 8.309333,
+  "sample_rate_hz": 24000,
+  "channels": 1,
+  "wav_encoding": "PCM16",
+  "files": [
+    {
+      "name": "Rebecca_Synthetic_Noncanon_Test.wav",
+      "sha256": "6f0473608ab369773cd2b0da304403c3e02918e8a00e4d50e2f75e326284b90c",
+      "bytes": 398892
+    },
+    {
+      "name": "Rebecca_Synthetic_Noncanon_Test.mp3",
+      "sha256": "36448971ed1f80857acdbf97766fb76f060038b181009d86863ac1ad8dbe30af",
+      "bytes": 101066
+    }
+  ],
+  "quality": {
+    "raw": {
+      "sample_rate_hz": 24000,
+      "duration_seconds": 8.309333,
+      "peak_dbfs": -2.3908,
+      "rms_dbfs": -22.9154,
+      "dc_offset": 7.99e-06,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -84.2922,
+      "estimated_snr_db": 66.1406,
+      "noise_estimate_available": true,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "wav": {
+      "sample_rate_hz": 24000,
+      "duration_seconds": 8.309333,
+      "peak_dbfs": -2.9996,
+      "rms_dbfs": -23.5245,
+      "dc_offset": 7.07e-06,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -84.7558,
+      "estimated_snr_db": 65.995,
+      "noise_estimate_available": true,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "mp3": {
+      "sample_rate_hz": 24000,
+      "duration_seconds": 8.309333,
+      "peak_dbfs": -3.3831,
+      "rms_dbfs": -23.9681,
+      "dc_offset": 8.6e-06,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -85.2485,
+      "estimated_snr_db": 66.055,
+      "noise_estimate_available": true,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    }
+  },
+  "elapsed_seconds": 165.082,
+  "limits": [
+    "AI-generated approximation; not an official Cyberpunk recording or a performance by either credited actor.",
+    "A 4.35-second attributed excerpt does not establish broad voice, emotion, or accent fidelity.",
+    "The initial words of the automatic conditioning transcript are uncertain.",
+    "F5-TTS does not execute the character system prompt or SSML; delivery targets are not audited vocal facts.",
+    "Automated signal and word checks do not establish naturalness, speaker purity, emotion, or identity."
+  ],
+  "attribution": {
+    "renderer_code": "https://github.com/SWivid/F5-TTS",
+    "model_license": "CC-BY-NC-4.0",
+    "pretrained_model": "https://huggingface.co/SWivid/F5-TTS",
+    "vocoder": "https://huggingface.co/charactr/vocos-mel-24khz",
+    "reference_source": "User-provided original-anime compilation; exact parent hash and crop in this result."
+  },
+  "automatic_word_check": {
+    "method": "Offline Whisper transcription and normalized token edit distance",
+    "model": "openai/whisper-base.en",
+    "expected_text": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+    "transcribed_text": "Non-canon archive simulation. Easy chume. Big attitude, tiny patience. Now let's hear what you've got.",
+    "audio_sha256": "6f0473608ab369773cd2b0da304403c3e02918e8a00e4d50e2f75e326284b90c",
+    "expected_word_count": 15,
+    "word_errors": 1,
+    "word_error_rate": 0.066667,
+    "exact_normalized_match": false,
+    "normalization": "Case, punctuation, and non-canon spacing only; slang is not remapped",
+    "criterion": "At most 15% word error rate for this short test; subjective likeness remains untested",
+    "passed": true,
+    "perceptual_listening_review_performed": false,
+    "limits": "ASR can err. Word matching does not measure identity, emotion, accent, or naturalness."
+  },
+  "automatic_word_checks": [
+    {
+      "method": "Offline Whisper tiny.en transcription and normalized token edit distance",
+      "model": "openai/whisper-tiny.en",
+      "expected_text": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+      "transcribed_text": "No, in Canada, archive simulation. Easy, Chume. Big attitude, tiny patience. Now let's hear what you've got.",
+      "expected_word_count": 15,
+      "word_errors": 4,
+      "word_error_rate": 0.266667,
+      "exact_normalized_match": false,
+      "normalization": "Case, punctuation, and non-canon spacing only; slang is not remapped",
+      "criterion": "At most 15% word error rate for this short test; subjective likeness remains untested",
+      "passed": false,
+      "perceptual_listening_review_performed": false,
+      "limits": "ASR can err. Word matching does not measure identity, emotion, accent, or naturalness."
+    },
+    {
+      "method": "Offline Whisper transcription and normalized token edit distance",
+      "model": "openai/whisper-base.en",
+      "expected_text": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+      "transcribed_text": "Non-canon archive simulation. Easy chume. Big attitude, tiny patience. Now let's hear what you've got.",
+      "audio_sha256": "6f0473608ab369773cd2b0da304403c3e02918e8a00e4d50e2f75e326284b90c",
+      "expected_word_count": 15,
+      "word_errors": 1,
+      "word_error_rate": 0.066667,
+      "exact_normalized_match": false,
+      "normalization": "Case, punctuation, and non-canon spacing only; slang is not remapped",
+      "criterion": "At most 15% word error rate for this short test; subjective likeness remains untested",
+      "passed": true,
+      "perceptual_listening_review_performed": false,
+      "limits": "ASR can err. Word matching does not measure identity, emotion, accent, or naturalness."
+    }
+  ]
+}

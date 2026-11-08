@@ -1,0 +1,22 @@
+MakeNSIS v3.09-4 - Copyright 1999-2023 Contributors
+See the file COPYING for license details.
+Credits can be found in the Users Manual.
+
+Processing script file: "installer.nsi" (UTF8)
+
+Processed 1 file, writing output (x86-unicode):
+
+Output: "Voice_Profile_Studio_3.0.0_Offline_Windows_x64_Setup.exe"
+Install: 5 pages (320 bytes), 1 section (4120 bytes), 24762 instructions (693336 bytes), 16454 strings (824602 bytes), 12 language tables (3864 bytes).
+Uninstall: 2 pages (192 bytes), 1 section (4120 bytes), 24185 instructions (677180 bytes), 24685 strings (3175994 bytes), 12 language tables (3048 bytes).
+Datablock optimizer saved 13478 KiB (~0.6%).
+
+Using zlib compression.
+
+EXE header size:              121344 / 100352 bytes
+Install code:                 248971 / 1524658 bytes
+Install data:             2142239333 / 3154435617 bytes
+Uninstall code+data:          255124 / 265277 bytes
+CRC (0xB92D8C0F):                  4 / 4 bytes
+
+Total size:               2142864776 / 3156325908 bytes (67.8%)

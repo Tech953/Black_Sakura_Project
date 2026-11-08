@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0.0",
+  "audit_engine": "full_rezz_render.layout",
+  "passed": 4,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "Layout review binds the original project, movie, receipt and witness bytes",
+      "status": "passed"
+    },
+    {
+      "name": "Independent projection anchors agree with every expected shot-camera transform",
+      "status": "passed"
+    },
+    {
+      "name": "Every projected planted contact has actual opaque matte support",
+      "status": "passed"
+    },
+    {
+      "name": "All declared background regions follow the shot transform without unexplained plate drift",
+      "status": "passed"
+    }
+  ],
+  "metrics": {
+    "maximum_projected_contact_error_design_pixels": 1.6077746776921858e-13,
+    "frames_checked": 720,
+    "projected_boot_support_observations": 1440,
+    "background_regions": {
+      "upper_right_plate": {
+        "maximum_mean_absolute_error_rgb": 0.5907646357707788,
+        "mean_absolute_error_rgb": 0.5155935068900332,
+        "minimum_clear_samples": 63,
+        "frames": 720
+      },
+      "left_plate": {
+        "maximum_mean_absolute_error_rgb": 0.5700776834437331,
+        "mean_absolute_error_rgb": 0.5038265886117155,
+        "minimum_clear_samples": 63,
+        "frames": 720
+      },
+      "right_plate": {
+        "maximum_mean_absolute_error_rgb": 0.5751664974079148,
+        "mean_absolute_error_rgb": 0.5013410792975408,
+        "minimum_clear_samples": 63,
+        "frames": 720
+      }
+    }
+  },
+  "layout_sha256": "e69d631aded9c104b5e29b506c30cf667b8f88d38b9faaaa8d9c9ec54ecb9e90",
+  "render_receipt_sha256": "60a5f8731c3bcb457410cc6b8f6790a06022b4ea88f58f2f070ec44eed4d4f95",
+  "movie_sha256": "b74f599a5eebeaf5a07a069d706a440d4614e12fc654458b063bf838b9ced97e",
+  "thresholds": {
+    "projection_error_design_pixels": 0.05,
+    "background_mean_absolute_error_rgb": 8,
+    "minimum_region_samples": 48
+  },
+  "provenance": {
+    "kind": "authored_guide",
+    "metric_geometry_verified": false,
+    "notes": "Flat image-plane floor registration authored from existing 2D coordinates. The Google-summary screenshots supply direction, not CAD or measured camera calibration."
+  },
+  "human_quality_review": "pending",
+  "studio_equivalence_validated": false,
+  "measurement_limits": [
+    "Background prediction uses full-resolution frame-zero area averages against 128 \u00d7 72 RGB thumbnails: ten-design-pixel sampling, not full-resolution optical tracking.",
+    "Boot support uses 320 \u00d7 180 mattes: four-design-pixel sampling. Exact declared projection coordinates are separate from raster support.",
+    "This is an authored flat image-plane guide, not recovered metric scenery or game CAD. Perspective wireframes are guides, not generated animation.",
+    "This review binds the movie but does not repeat its full-resolution codec/audio audit, which remains separate.",
+    "Prop perspective, anatomy, acting, actual 3D occlusion and studio quality still need reference assets and human review."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "CD PROJEKT RED — Rebecca Cosplay Guide",
+  "url": "https://cdn-s-cyberpunk.cdprojektred.com/cosplay-guides/REBECCA_COSPLAY_GUIDE_EN.pdf",
+  "authority": "official_primary",
+  "evidence_section": "PDF page 2, CHARACTER; 2024 guide",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_89ed91801296489a",
+  "retrieved_at": "2026-10-07T08:25:19.293947+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "f3ed0aca068a2ac843add9d57a8b2566cf5fa9211f371ea8ff43ba91cc5ec105",
+  "text_characters": 800,
+  "text_path": "sources/src_89ed91801296489a/text.txt",
+  "original_path": "sources/src_89ed91801296489a/original.json",
+  "original_sha256": "f3ed0aca068a2ac843add9d57a8b2566cf5fa9211f371ea8ff43ba91cc5ec105"
+}

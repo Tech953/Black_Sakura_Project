@@ -1,0 +1,9 @@
+{
+  "complete_payload_install_transaction_performed": true,
+  "files_verified": 23901,
+  "installed_model_assets": 20,
+  "final_source_matches_installed_companion_and_desktop": true,
+  "guide_bytes_match": true,
+  "execution": "Linux Python using the actual embedded installer script and actual final EXE; not Windows wizard/loader execution",
+  "native_windows_execution_tested": false
+}

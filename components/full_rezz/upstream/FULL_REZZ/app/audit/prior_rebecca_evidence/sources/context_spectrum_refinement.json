@@ -1,0 +1,114 @@
+{
+  "authority": "user_instruction_and_authored_measurement",
+  "date_utc": "2026-10-07",
+  "user_clarification": "Tone and inflection are circumstance dependent, but spectrum of base vs. treble is noted.",
+  "adopted_interpretation": "Tone and inflection are context-dependent delivery. Bass/treble balance is measured separately from fundamental frequency and is recording-specific.",
+  "measurement_path": "evidence/spectral_balance.json",
+  "bands": [
+    {
+      "name": "bass",
+      "low_hz": 20,
+      "high_hz": 250
+    },
+    {
+      "name": "mid",
+      "low_hz": 250,
+      "high_hz": 2000
+    },
+    {
+      "name": "treble",
+      "low_hz": 2000,
+      "high_hz": 8000
+    },
+    {
+      "name": "upper",
+      "low_hz": 8000,
+      "high_hz": 12000
+    }
+  ],
+  "method": "Mean Hann-window Welch PSD; 40 ms windows, 20 ms hop, 4096-point FFT, per-window constant detrend; integrate 20–12000 Hz and normalize band power",
+  "recordings": {
+    "reference": {
+      "path": "Rebecca_Archived_Reference.wav",
+      "sha256": "2f2524c4fef5ef2de914dceaba3fae240e148f51b3603d7f8994ea8b1d2bdf82",
+      "source_rate_hz": 44100,
+      "analysis_rate_hz": 24000,
+      "band_energy_percent": {
+        "bass": 21.1699,
+        "mid": 61.2021,
+        "treble": 12.6161,
+        "upper": 5.0119
+      },
+      "treble_to_bass_power_db": -2.2479,
+      "energy_qualified_frame_count": 203,
+      "frame_band_percentiles": {
+        "bass": {
+          "p10": 0.1454,
+          "median": 9.4068,
+          "p90": 79.4215
+        },
+        "mid": {
+          "p10": 15.9648,
+          "median": 60.2969,
+          "p90": 98.0672
+        },
+        "treble": {
+          "p10": 0.4696,
+          "median": 7.2474,
+          "p90": 36.4462
+        },
+        "upper": {
+          "p10": 0.0048,
+          "median": 0.1596,
+          "p90": 2.5591
+        }
+      },
+      "pitch_or_emotion_inferred": false
+    },
+    "generated": {
+      "path": "synthetic_test/Rebecca_Synthetic_Noncanon_Test.wav",
+      "sha256": "6f0473608ab369773cd2b0da304403c3e02918e8a00e4d50e2f75e326284b90c",
+      "source_rate_hz": 24000,
+      "analysis_rate_hz": 24000,
+      "band_energy_percent": {
+        "bass": 0.3613,
+        "mid": 66.2896,
+        "treble": 32.973,
+        "upper": 0.376
+      },
+      "treble_to_bass_power_db": 19.6024,
+      "energy_qualified_frame_count": 301,
+      "frame_band_percentiles": {
+        "bass": {
+          "p10": 0.003,
+          "median": 0.0661,
+          "p90": 17.2807
+        },
+        "mid": {
+          "p10": 0.0765,
+          "median": 47.3738,
+          "p90": 97.279
+        },
+        "treble": {
+          "p10": 0.542,
+          "median": 28.3118,
+          "p90": 88.4596
+        },
+        "upper": {
+          "p10": 0.0035,
+          "median": 0.0478,
+          "p90": 7.2905
+        }
+      },
+      "pitch_or_emotion_inferred": false
+    }
+  },
+  "limits": [
+    "These short recordings do not establish a canonical bass/treble spectrum or stable identity signature.",
+    "Band power includes any residual music, effects, other speakers, microphone response, mixing, and compression.",
+    "Different words and delivery prevent a controlled voice-fidelity or EQ-match comparison.",
+    "Levels are relative band power, not perceived loudness or a listening-quality score.",
+    "Frame percentiles describe overlapping energy-qualified frames and are not a confidence interval."
+  ],
+  "character": {}
+}

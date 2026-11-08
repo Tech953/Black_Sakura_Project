@@ -1,0 +1,781 @@
+{
+  "scope": "Fresh mathematical field probes, not semantic torso labels, observed frame displacements or an artistic score.",
+  "source": "full_rezz_render/rig.py:arm_weights",
+  "source_sha256": "ba224c30c6aee98fede7f14ddc0ef2bd39e9cd9767302e6bfebd399b3860220d",
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.3.5"
+  },
+  "semantic_torso_mask_present_in_arm_weights": false,
+  "20px_delta_is_illustrative": true,
+  "probes": [
+    {
+      "pose_id": "a1",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            238.65,
+            268
+          ],
+          "normalized_hand_field_weight": 0.2525447403647392,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 5.0508948072947835
+        },
+        {
+          "coordinate_source_pixels": [
+            273.65,
+            268
+          ],
+          "normalized_hand_field_weight": 0.4363735944699443,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 8.727471889398885
+        },
+        {
+          "coordinate_source_pixels": [
+            273.65,
+            303
+          ],
+          "normalized_hand_field_weight": 0.5145633562518576,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 10.291267125037152
+        }
+      ]
+    },
+    {
+      "pose_id": "a2",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            259.3,
+            188
+          ],
+          "normalized_hand_field_weight": 0.7839630512705189,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 15.679261025410378
+        },
+        {
+          "coordinate_source_pixels": [
+            294.3,
+            188
+          ],
+          "normalized_hand_field_weight": 0.8137579221371873,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 16.275158442743745
+        },
+        {
+          "coordinate_source_pixels": [
+            294.3,
+            223
+          ],
+          "normalized_hand_field_weight": 0.9595677027618347,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 19.191354055236694
+        }
+      ]
+    },
+    {
+      "pose_id": "a3",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            273.25,
+            199
+          ],
+          "normalized_hand_field_weight": 0.8167927740634562,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 16.335855481269125
+        },
+        {
+          "coordinate_source_pixels": [
+            308.25,
+            199
+          ],
+          "normalized_hand_field_weight": 0.7271424818662036,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 14.542849637324071
+        },
+        {
+          "coordinate_source_pixels": [
+            308.25,
+            234
+          ],
+          "normalized_hand_field_weight": 0.8574324401935138,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 17.148648803870277
+        }
+      ]
+    },
+    {
+      "pose_id": "a4",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            235.75,
+            135
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            270.75,
+            135
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            270.75,
+            170
+          ],
+          "normalized_hand_field_weight": 0.43267830036674265,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 8.653566007334852
+        }
+      ]
+    },
+    {
+      "pose_id": "a5",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            231.85,
+            138.5
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            266.85,
+            138.5
+          ],
+          "normalized_hand_field_weight": 0.010223012355227618,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.20446024710455235
+        },
+        {
+          "coordinate_source_pixels": [
+            266.85,
+            173.5
+          ],
+          "normalized_hand_field_weight": 0.20505818601260853,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 4.1011637202521705
+        }
+      ]
+    },
+    {
+      "pose_id": "a6",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            254.85000000000002,
+            61
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            289.85,
+            61
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            289.85,
+            96
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        }
+      ]
+    },
+    {
+      "pose_id": "a7",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            240.2,
+            54.5
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            275.2,
+            54.5
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            275.2,
+            89.5
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        }
+      ]
+    },
+    {
+      "pose_id": "a8",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            235.2,
+            104
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            270.2,
+            104
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            270.2,
+            139
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        }
+      ]
+    },
+    {
+      "pose_id": "b1",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            242.0,
+            102
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            277.0,
+            102
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            277.0,
+            137
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        }
+      ]
+    },
+    {
+      "pose_id": "b2",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            242.2,
+            134
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            277.2,
+            134
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            277.2,
+            169
+          ],
+          "normalized_hand_field_weight": 0.26736368122706927,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 5.347273624541385
+        }
+      ]
+    },
+    {
+      "pose_id": "b3",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            269.85,
+            232.5
+          ],
+          "normalized_hand_field_weight": 0.7222890359384779,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 14.445780718769559
+        },
+        {
+          "coordinate_source_pixels": [
+            304.85,
+            232.5
+          ],
+          "normalized_hand_field_weight": 0.8158734813702418,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 16.317469627404837
+        },
+        {
+          "coordinate_source_pixels": [
+            304.85,
+            267.5
+          ],
+          "normalized_hand_field_weight": 0.9620623295520565,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 19.24124659104113
+        }
+      ]
+    },
+    {
+      "pose_id": "b4",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            263.15,
+            210
+          ],
+          "normalized_hand_field_weight": 0.7437968497389837,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 14.875936994779675
+        },
+        {
+          "coordinate_source_pixels": [
+            298.15,
+            210
+          ],
+          "normalized_hand_field_weight": 0.8188714531487196,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 16.377429062974393
+        },
+        {
+          "coordinate_source_pixels": [
+            298.15,
+            245
+          ],
+          "normalized_hand_field_weight": 0.9655974802573958,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 19.311949605147916
+        }
+      ]
+    },
+    {
+      "pose_id": "b5",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            258.25,
+            194
+          ],
+          "normalized_hand_field_weight": 0.6902298744782939,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 13.804597489565877
+        },
+        {
+          "coordinate_source_pixels": [
+            293.25,
+            194
+          ],
+          "normalized_hand_field_weight": 0.8069430269711017,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 16.138860539422033
+        },
+        {
+          "coordinate_source_pixels": [
+            293.25,
+            229
+          ],
+          "normalized_hand_field_weight": 0.9515317093525059,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 19.03063418705012
+        }
+      ]
+    },
+    {
+      "pose_id": "b6",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            249.65,
+            187.5
+          ],
+          "normalized_hand_field_weight": 0.274949894810721,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 5.49899789621442
+        },
+        {
+          "coordinate_source_pixels": [
+            284.65,
+            187.5
+          ],
+          "normalized_hand_field_weight": 0.4641727089090546,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 9.283454178181092
+        },
+        {
+          "coordinate_source_pixels": [
+            284.65,
+            222.5
+          ],
+          "normalized_hand_field_weight": 0.5473435377474711,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 10.946870754949423
+        }
+      ]
+    },
+    {
+      "pose_id": "b7",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            239.05,
+            174
+          ],
+          "normalized_hand_field_weight": 0.27029226803933004,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 5.405845360786601
+        },
+        {
+          "coordinate_source_pixels": [
+            274.05,
+            174
+          ],
+          "normalized_hand_field_weight": 0.48857402052888427,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 9.771480410577686
+        },
+        {
+          "coordinate_source_pixels": [
+            274.05,
+            209
+          ],
+          "normalized_hand_field_weight": 0.5896793379661516,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 11.79358675932303
+        }
+      ]
+    },
+    {
+      "pose_id": "b8",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            227.3,
+            232
+          ],
+          "normalized_hand_field_weight": 0.1457350273206468,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 2.914700546412936
+        },
+        {
+          "coordinate_source_pixels": [
+            262.3,
+            232
+          ],
+          "normalized_hand_field_weight": 0.2877726372292151,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 5.755452744584302
+        },
+        {
+          "coordinate_source_pixels": [
+            262.3,
+            267
+          ],
+          "normalized_hand_field_weight": 0.33933596332743304,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 6.786719266548661
+        }
+      ]
+    },
+    {
+      "pose_id": "c1",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            236.3833333333333,
+            242.38163969480485
+          ],
+          "normalized_hand_field_weight": 0.3103422940984004,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 6.206845881968008
+        },
+        {
+          "coordinate_source_pixels": [
+            271.3833333333333,
+            242.38163969480485
+          ],
+          "normalized_hand_field_weight": 0.5060370447766191,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 10.120740895532382
+        },
+        {
+          "coordinate_source_pixels": [
+            271.3833333333333,
+            277.38163969480485
+          ],
+          "normalized_hand_field_weight": 0.5967091580422453,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 11.934183160844906
+        }
+      ]
+    },
+    {
+      "pose_id": "c2",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            234.11666666666665,
+            172.71666666666664
+          ],
+          "normalized_hand_field_weight": 0.194014033690337,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 3.88028067380674
+        },
+        {
+          "coordinate_source_pixels": [
+            269.1166666666667,
+            172.71666666666664
+          ],
+          "normalized_hand_field_weight": 0.3643517241480603,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 7.2870344829612055
+        },
+        {
+          "coordinate_source_pixels": [
+            269.1166666666667,
+            207.71666666666664
+          ],
+          "normalized_hand_field_weight": 0.42963655090429603,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 8.59273101808592
+        }
+      ]
+    },
+    {
+      "pose_id": "c3",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            243.35000000000002,
+            89.14999999999998
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            278.35,
+            89.14999999999998
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            278.35,
+            124.14999999999998
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        }
+      ]
+    },
+    {
+      "pose_id": "c4",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            237.7,
+            71.57499999999999
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            272.7,
+            71.57499999999999
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            272.7,
+            106.57499999999999
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        }
+      ]
+    },
+    {
+      "pose_id": "c5",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            238.7,
+            110.025
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            273.7,
+            110.025
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        },
+        {
+          "coordinate_source_pixels": [
+            273.7,
+            145.025
+          ],
+          "normalized_hand_field_weight": 0.0,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.0
+        }
+      ]
+    },
+    {
+      "pose_id": "c6",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            256.025,
+            187.625
+          ],
+          "normalized_hand_field_weight": 0.7870516807335648,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 15.741033614671295
+        },
+        {
+          "coordinate_source_pixels": [
+            291.025,
+            187.625
+          ],
+          "normalized_hand_field_weight": 0.8049770710719948,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 16.099541421439895
+        },
+        {
+          "coordinate_source_pixels": [
+            291.025,
+            222.625
+          ],
+          "normalized_hand_field_weight": 0.9492134919385572,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 18.984269838771144
+        }
+      ]
+    },
+    {
+      "pose_id": "c7",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            253.95,
+            158.375
+          ],
+          "normalized_hand_field_weight": 0.0315733533081683,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 0.631467066163366
+        },
+        {
+          "coordinate_source_pixels": [
+            288.95,
+            158.375
+          ],
+          "normalized_hand_field_weight": 0.13817780808311955,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 2.763556161662391
+        },
+        {
+          "coordinate_source_pixels": [
+            288.95,
+            193.375
+          ],
+          "normalized_hand_field_weight": 0.5155685352306907,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 10.311370704613815
+        }
+      ]
+    },
+    {
+      "pose_id": "c8",
+      "probes": [
+        {
+          "coordinate_source_pixels": [
+            233.175,
+            214.75
+          ],
+          "normalized_hand_field_weight": 0.21223938919651453,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 4.24478778393029
+        },
+        {
+          "coordinate_source_pixels": [
+            268.175,
+            214.75
+          ],
+          "normalized_hand_field_weight": 0.38363330071206414,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 7.672666014241283
+        },
+        {
+          "coordinate_source_pixels": [
+            268.175,
+            249.75
+          ],
+          "normalized_hand_field_weight": 0.45237301542995684,
+          "inside_opaque_cel": true,
+          "illustrative_displacement_for_20px_hand_delta": 9.047460308599137
+        }
+      ]
+    }
+  ]
+}

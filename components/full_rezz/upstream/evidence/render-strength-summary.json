@@ -1,0 +1,17 @@
+{
+  "renderer_version": "2.2.0",
+  "python_tests_passed": 84,
+  "player_tests_passed": 14,
+  "technical_audit_passed": 12,
+  "technical_audit_failed": 0,
+  "audit_coverage": "exhaustive",
+  "review_flags": 32,
+  "native_windows_execution_tested": false,
+  "frozen_installer_modified": false,
+  "host_engram_repository_modified": false,
+  "original_reference_pack_preserved": true,
+  "delivered_movie_renderer_version": "2.1.0",
+  "scene_continuity_checks_passed": 4,
+  "scene_continuity_frames": 720,
+  "production_media_modified_in_geometry_update": false
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0.0",
+  "name": "Rebecca",
+  "visual_role": "Supplied authored 2D cel. No calibrated side/rear bank or 3D rig was supplied.",
+  "two_d": {
+    "views": [
+      {
+        "view_id": "supplied_view",
+        "image": "rebecca/legacy_front.png",
+        "calibration_status": "unmeasured",
+        "azimuth_deg": null,
+        "elevation_deg": null,
+        "mouth": [
+          239.5,
+          108.2,
+          12,
+          8
+        ],
+        "supported_actions": [
+          "idle",
+          "talk"
+        ]
+      }
+    ]
+  },
+  "three_d": null,
+  "presentation": {
+    "mode": "2d",
+    "view_id": "supplied_view"
+  },
+  "extensions": {
+    "legacy_profile_ids_preserved": true,
+    "hidden_view_generation": false
+  }
+}

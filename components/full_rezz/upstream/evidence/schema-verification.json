@@ -1,0 +1,8 @@
+{
+  "draft": "2020-12",
+  "validator": "jsonschema 4.25.1",
+  "schemas_checked": 4,
+  "supplied_pack_context_request_and_action_examples_validated": 3,
+  "render_transport_fixture_validated": true,
+  "render_fixture_is_sine_tone_not_neural_voice": true
+}

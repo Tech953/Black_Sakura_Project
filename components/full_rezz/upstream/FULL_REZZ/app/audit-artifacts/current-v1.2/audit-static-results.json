@@ -1,0 +1,8 @@
+{
+  "producer_version": "1.2.0",
+  "schemas_and_examples": "passed",
+  "example_hashes": "passed",
+  "ui_control_ids": "passed",
+  "launcher_CRLF": "passed",
+  "python": "3.12.14"
+}

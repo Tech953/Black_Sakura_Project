@@ -1,0 +1,478 @@
+{
+  "producer_version": "1.2.1",
+  "profile_id": "voice_57373fea79f3473e",
+  "audit_date_utc": "2026-10-07",
+  "passed": 90,
+  "total": 90,
+  "checks": [
+    {
+      "name": "Source draft adopts deceased status",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Draft has no unexplained conflicts or ignored fields",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Uploaded original checksum: Cyberpunk_ Edgerunners but it's just Rebecca.mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Entire upload decoded for signal audit: Cyberpunk_ Edgerunners but it's just Rebecca.mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Uploaded original checksum: First Rebecca Swearing Cutscene _ Wuthering Waves x Cyberpunk_ Edgerunners.mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Entire upload decoded for signal audit: First Rebecca Swearing Cutscene _ Wuthering Waves x Cyberpunk_ Edgerunners.mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Uploaded original checksum: Rebecca Compilation _ Wuthering Waves 3.4 x Cyberpunk_ Edgerunners.mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Entire upload decoded for signal audit: Rebecca Compilation _ Wuthering Waves 3.4 x Cyberpunk_ Edgerunners.mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Uploaded original checksum: Lucy tells Rebecca that she's already dead - Wuwa x Cyberpunk (Wuthering Waves 3.4).mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Entire upload decoded for signal audit: Lucy tells Rebecca that she's already dead - Wuwa x Cyberpunk (Wuthering Waves 3.4).mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Uploaded original checksum: Rebecca SWEARING for 3 minutes straight (Compilation) _ Wuthering Waves x Cyberpunk_ Edgerunners.mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Entire upload decoded for signal audit: Rebecca SWEARING for 3 minutes straight (Compilation) _ Wuthering Waves x Cyberpunk_ Edgerunners.mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Uploaded original checksum: Rebecca CRASHES OUT in front of Rover and Lucy - Wuwa x Cyberpunk (Wuthering Waves 3.4).mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Entire upload decoded for signal audit: Rebecca CRASHES OUT in front of Rover and Lucy - Wuwa x Cyberpunk (Wuthering Waves 3.4).mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Uploaded original checksum: Rebecca's Death - Cyberpunk_ Edgerunners [Eng Dub] (ONA - 2022).mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Entire upload decoded for signal audit: Rebecca's Death - Cyberpunk_ Edgerunners [Eng Dub] (ONA - 2022).mp3",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Crop checksum: concern",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Crop matches its exact native-rate parent samples: concern",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Crop checksum: intro_candidate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Crop matches its exact native-rate parent samples: intro_candidate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Crop checksum: quip_candidate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Crop matches its exact native-rate parent samples: quip_candidate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Crop checksum: warm_candidate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Crop matches its exact native-rate parent samples: warm_candidate",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exactly one source-attributed reference is eligible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Unreviewed candidates are excluded from conditioning references",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Selected reference retains native 44.1 kHz",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Selected reference signal screening passes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Listening review remains explicitly required",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Purity is declared, not mislabeled as human reviewed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Reference is FLOAT32 with processing disabled",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported reference preserves decoded crop samples exactly",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Reference portable checksum matches",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "All reference origins preserve unverified identity and listening",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "No fabricated canonical numerical statistics",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "English and Japanese performer credits remain distinct",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Archive cannot claim canonical survival",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Character JSON schema validates",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Manifest JSON schema validates",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Expression schema and deceased endpoint: archive_test",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Expression is distinguished from generated audio: archive_test",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Missing style coverage exposes fallback: archive_test",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Expression schema and deceased endpoint: protective",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Expression is distinguished from generated audio: protective",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Missing style coverage exposes fallback: protective",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Expression schema and deceased endpoint: urgent",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Expression is distinguished from generated audio: urgent",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Missing style coverage exposes fallback: urgent",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Expression schema and deceased endpoint: boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Expression is distinguished from generated audio: boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Missing style coverage exposes fallback: boundary",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "SSML escapes punctuation without altering spoken text",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Invalid prosody rejected: nan",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Invalid prosody rejected: True",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Invalid prosody rejected: 3.0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Contradictory source cannot overwrite deceased status",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Contradictory source cannot overwrite the English dub",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Status, dub, incarnation, and prompt conflicts are reported",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Overlap is removed from clean conditioning regions",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Unreviewed regions cannot become references",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Actual app page serves",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "App rejects mutation without token",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "App accepts expression job",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "App expression job completes",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "App expression retains deceased endpoint",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "App downloads a valid reference ZIP",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Exported prompt retains key boundaries",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_89ed91801296489a",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_89ed91801296489a",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_ab3005b7b68341fd",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_ab3005b7b68341fd",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_094b57b2f0044610",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_094b57b2f0044610",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_8c7e42a600a4479f",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_8c7e42a600a4479f",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_4f7d040084c443b1",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_4f7d040084c443b1",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_35e5ab09afcf423c",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_35e5ab09afcf423c",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_e253d14047564add",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_e253d14047564add",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_95d84e6c0ab94204",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_95d84e6c0ab94204",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_9fc512358da94418",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_9fc512358da94418",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note text hash: src_26e6cc1aa39a4171",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Source note original hash: src_26e6cc1aa39a4171",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Every cited field source resolves",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Reference ZIP integrity",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "Portable contained reference ZIP paths",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "source_count": 10,
+  "upload_count": 7,
+  "selected_reference_count": 1,
+  "unreviewed_candidate_count": 3,
+  "reference_seconds": 4.35,
+  "source_native_rate_hz": 44100,
+  "schema_validation": "jsonschema.Draft202012Validator",
+  "source_extraction_method": "explicit-source extraction, not an LLM",
+  "synthesis_performed_in_profile_build": false,
+  "synthesis_evidence": "synthetic_test/Rebecca_Render_Details.json",
+  "llm_response_test_performed": false,
+  "perceptual_review_performed": false,
+  "biometric_identity_test_performed": false,
+  "limits": [
+    "The 4.35-second conditioning excerpt offers narrow coverage.",
+    "Filename and context attribution are not speaker verification.",
+    "ASR transcripts include uncertain words and are not canon evidence.",
+    "Source conflict tests are not LLM behavior guarantees."
+  ]
+}

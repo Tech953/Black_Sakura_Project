@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "AEU Talent — Alex Cazares professional credits",
+  "url": "https://aeutalent.com/alex-cazares/",
+  "authority": "professional_representative_primary",
+  "evidence_section": "Rebecca credit and Netflix work",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_8c7e42a600a4479f",
+  "retrieved_at": "2026-10-07T08:25:19.301404+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "d7d3154a3452e3b2e95837a70fc3f7abfad8a0fd211dda8d01d5dae736502a91",
+  "text_characters": 741,
+  "text_path": "sources/src_8c7e42a600a4479f/text.txt",
+  "original_path": "sources/src_8c7e42a600a4479f/original.json",
+  "original_sha256": "d7d3154a3452e3b2e95837a70fc3f7abfad8a0fd211dda8d01d5dae736502a91"
+}

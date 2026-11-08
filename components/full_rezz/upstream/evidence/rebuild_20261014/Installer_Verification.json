@@ -1,0 +1,17 @@
+{
+  "program": "FULL_REZZ",
+  "version": "3.0.0",
+  "installer": "FULL_REZZ_3.0_Offline_Windows_x64_Setup.exe",
+  "bytes": 2727838324,
+  "sha256": "4e4308f87520247075823bb598f8666733ca90beaee0a547544e81a6c00d6c90",
+  "payload_files_verified": 23923,
+  "payload_bytes_verified": 3777084061,
+  "manifest_sha256": "8d6f9fb0fdc31ddb5469ea072389110d7958f9d8a0bf9bb99a0d55d86e74dbf2",
+  "all_payload_crc_sizes_and_hashes_verified": true,
+  "all_model_assets": 20,
+  "external_node_python_or_model_service_required": false,
+  "native_windows_execution_tested": false,
+  "unsigned": true,
+  "format": "NSIS wizard and internally appended ZIP64 payload",
+  "delivery_revision": "2026-10-14.2"
+}

@@ -1,0 +1,91 @@
+{
+  "locale_checks": [
+    {
+      "locale": "en",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "es",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "fr",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "de",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "pt",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "it",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "ru",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "ja",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "ko",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "zh-Hans",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "ar",
+      "tabs": 9,
+      "separate_rtl": true,
+      "same_profile": true,
+      "same_history": true
+    },
+    {
+      "locale": "hi",
+      "tabs": 9,
+      "separate_rtl": false,
+      "same_profile": true,
+      "same_history": true
+    }
+  ],
+  "all_profile_history_bindings_preserved": true,
+  "scope": "Actual Linux offscreen Qt startup and localization; no native Windows/device execution",
+  "native_windows_execution_tested": false
+}

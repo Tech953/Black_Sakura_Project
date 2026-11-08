@@ -1,0 +1,28 @@
+{
+  "status": "passed",
+  "browser": "134.0.6998.35",
+  "checks": [
+    "Fresh startup renders the empty workspace without JavaScript errors",
+    "Synthetic demo and FLOAT32 region playback advance in the real browser",
+    "Unsaved region edits block stale exports and save persists text and style",
+    "Profile creation and speaker assignment work through the interface",
+    "Multiple source imports, Unicode, source reading/search, draft conflicts, and character citations persist",
+    "Invalid character JSON reports an actionable error and does not corrupt saved data",
+    "Failed URL research reports its actual failure",
+    "Saved cleanup, original/cleaned audio playback, and source/output measurements work",
+    "24-bit ZIP download includes the actual audio, source documents, character, logs, and quality reports",
+    "Expression request downloads escaped SSML and links its matching reference audio package",
+    "Actual faster-whisper tiny.en CPU inference completes through the browser on synthetic speech",
+    "Unavailable automatic diarization reports setup requirements without fabricated results",
+    "Actual two-speaker separation imports anonymous 8 kHz source estimates through the browser",
+    "Narrow viewport keeps navigation and recording controls accessible",
+    "No uncaught JavaScript errors or unexpected console failures during the workflow"
+  ],
+  "uncaught_errors": [],
+  "console_errors": [],
+  "http_error_responses": [],
+  "limitations": [
+    "Linux Chromium playback does not validate a Windows audio device or subjective listening quality.",
+    "Generated test speech is not a real-world diarization or cloning accuracy benchmark."
+  ]
+}

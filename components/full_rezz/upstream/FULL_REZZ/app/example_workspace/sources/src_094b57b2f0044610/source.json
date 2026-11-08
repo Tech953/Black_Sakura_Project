@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "Netflix — Cyberpunk: Edgerunners title and episode list",
+  "url": "https://www.netflix.com/title/81054853",
+  "authority": "official_primary",
+  "evidence_section": "Original season episodes 8–10 and separate audio tracks",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_094b57b2f0044610",
+  "retrieved_at": "2026-10-07T08:25:19.299962+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "07b9b2adcc77637c5d2cb402ba84ea474eec5cab0ca0a0c936d79996b1a031d6",
+  "text_characters": 775,
+  "text_path": "sources/src_094b57b2f0044610/text.txt",
+  "original_path": "sources/src_094b57b2f0044610/original.json",
+  "original_sha256": "07b9b2adcc77637c5d2cb402ba84ea474eec5cab0ca0a0c936d79996b1a031d6"
+}

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:full-rezz:bridge:verified-render:1.0.0",
+  "title": "FULL_REZZ checked render transport envelope",
+  "type": "object",
+  "properties": {
+    "bridge_schema_version": {
+      "const": "1.0.0"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^voice_[a-f0-9]{16}$"
+    },
+    "kind": {
+      "const": "full_rezz_verified_render"
+    },
+    "receipt": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "2.0.0"
+        },
+        "kind": {
+          "const": "local_voice_render"
+        },
+        "profile_id": {
+          "type": "string",
+          "pattern": "^voice_[a-f0-9]{16}$"
+        },
+        "audio_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "sample_rate_hz": {
+          "const": 24000
+        },
+        "review_status": {
+          "enum": [
+            "approved",
+            "needs_revision",
+            "unreviewed"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "profile_id",
+        "audio_sha256",
+        "sample_rate_hz",
+        "review_status"
+      ],
+      "additionalProperties": true
+    },
+    "assets": {
+      "type": "array"
+    },
+    "integrity_checked": {
+      "const": true
+    },
+    "audio_decoded_here": {
+      "const": false
+    },
+    "human_listening_performed_by_adapter": {
+      "const": false
+    }
+  },
+  "required": [
+    "bridge_schema_version",
+    "kind",
+    "profile_id",
+    "receipt",
+    "assets",
+    "integrity_checked",
+    "audio_decoded_here",
+    "human_listening_performed_by_adapter"
+  ],
+  "additionalProperties": true
+}

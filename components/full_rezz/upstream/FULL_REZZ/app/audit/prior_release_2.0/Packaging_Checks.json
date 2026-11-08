@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0.0",
+  "installer_name": "Voice_Profile_Studio_2.0.0_Offline_Windows_x64_Setup.exe",
+  "installer_bytes": 2101401753,
+  "installer_sha256": "fb746d498ac929acf6890a33a60182c026f5c8c36b5505f37027edc9d6585b03",
+  "actual_windows_execution_verified": false,
+  "publisher_signed": false,
+  "program_tests_passed": 87,
+  "integration_tests_passed": 12,
+  "onnx_runtime_included": false,
+  "compressor": "per-file zlib/Deflate; no solid datablock",
+  "limits": "Archive/payload verification does not prove Windows loader, playback or uninstall execution.",
+  "PE_machine": "0x14c",
+  "archive_test_passed": true,
+  "extraction_passed": true,
+  "initial_extraction_write_errors": [
+    {
+      "path": "app/models/tts/model_1250000.safetensors",
+      "reason": "size/hash mismatch"
+    }
+  ],
+  "stream_verified_recoveries": [
+    {
+      "path": "app/models/tts/model_1250000.safetensors",
+      "bytes": 1348435761,
+      "sha256": "670900fd14e6c458b95da6e9ed317cdb20dbaf7a1c02ac06a05475a9d32b6a38",
+      "return_code": 0,
+      "stderr": "",
+      "passed": true
+    }
+  ],
+  "independent_model_manifest_checks_passed": true,
+  "model_errors": [],
+  "payload_files_checked": 20196,
+  "payload_bytes_checked": 3074720059,
+  "manifest_matches": true,
+  "payload_errors": [],
+  "payload_hashes_passed": true,
+  "model_assets": 19,
+  "passed": true
+}

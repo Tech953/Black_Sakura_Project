@@ -1,0 +1,23 @@
+
+7-Zip 23.01 (x64) : Copyright (c) 1999-2023 Igor Pavlov : 2023-06-20
+ 64-bit locale=C.UTF-8 Threads:9 OPEN_MAX:16384
+
+Scanning the drive for archives:
+1 file, 2142868921 bytes (2044 MiB)
+
+Testing archive: /workspace/scratch/1122d4842f78/work/program/build/Voice_Profile_Studio_3.0.0_Offline_Windows_x64_Setup.exe
+--
+Path = /workspace/scratch/1122d4842f78/work/program/build/Voice_Profile_Studio_3.0.0_Offline_Windows_x64_Setup.exe
+Type = Nsis
+Physical Size = 2142868921
+Method = Deflate
+Solid = -
+Headers Size = 1525260
+Embedded Stub Size = 121344
+SubType = NSIS-3 Unicode
+
+Everything is Ok
+
+Files: 20813
+Size:       8805433
+Compressed: 2142868921

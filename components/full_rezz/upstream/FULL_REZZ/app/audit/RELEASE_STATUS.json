@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0.0",
+  "program_version": "3.0.0",
+  "stage": "Compiled installer, full archive/payload/resource verification and delivery reconstruction passed; Windows and human review pending",
+  "windows_installer_built": true,
+  "actual_windows_execution_verified": false,
+  "professional_translation_review": "pending",
+  "human_voice_review": "pending",
+  "engram_app_modified": false,
+  "earlier_unsaved_v3_checks_not_counted_as_current": true,
+  "program_tests_passed": 108,
+  "integration_tests_passed": 17,
+  "worker_bridge_tests_passed": 5,
+  "interface_languages": 12,
+  "generic_languages_signal_valid": 12,
+  "generic_languages_text_check_passed": 0,
+  "reference_conditioned_text_checks_passed": [
+    "en",
+    "zh-Hans"
+  ],
+  "offline_runtime_assets_bundled": true,
+  "immutable_payload_record_precedes_compilation": true,
+  "windows_archive_and_payload_verified": true,
+  "installer_delivery_parts_verified": true,
+  "publisher_signed": false,
+  "installer": {
+    "name": "Voice_Profile_Studio_3.0.0_Offline_Windows_x64_Setup.exe",
+    "bytes": 2142868921,
+    "sha256": "ded1b71d8205a992c7e272407a5f286407480e73c4388ad9901605966852a383"
+  },
+  "standalone_has_external_node_requirement": false
+}

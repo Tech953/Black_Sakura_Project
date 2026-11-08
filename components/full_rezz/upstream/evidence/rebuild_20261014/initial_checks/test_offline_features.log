@@ -1,0 +1,143 @@
+test_active_pack_over_export_history (test_offline_features.OfflineTests.test_active_pack_over_export_history) ... ok
+test_bass_band (test_offline_features.OfflineTests.test_bass_band) ... ERROR
+test_case_collisions (test_offline_features.OfflineTests.test_case_collisions) ... ok
+test_fullscale_plateau_rejected (test_offline_features.OfflineTests.test_fullscale_plateau_rejected) ... ok
+test_local_speaker_grouping_does_not_claim_overlap_detection (test_offline_features.OfflineTests.test_local_speaker_grouping_does_not_claim_overlap_detection) ... ok
+test_low_rate_unavailable (test_offline_features.OfflineTests.test_low_rate_unavailable) ... ERROR
+test_offline_guard_in_fresh_process (test_offline_features.OfflineTests.test_offline_guard_in_fresh_process) ... ok
+test_opposite_phase_not_cancelled (test_offline_features.OfflineTests.test_opposite_phase_not_cancelled) ... ERROR
+test_overrange_not_pcm_clipping (test_offline_features.OfflineTests.test_overrange_not_pcm_clipping) ... ok
+test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) ... 
+  test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=True) ... ERROR
+  test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=nan) ... ERROR
+  test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=inf) ... ERROR
+  test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=0.1) ... ERROR
+  test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=3) ... ERROR
+test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) ... ERROR
+test_restore_and_reexport_original (test_offline_features.OfflineTests.test_restore_and_reexport_original) ... ERROR
+test_review_hash_and_history (test_offline_features.OfflineTests.test_review_hash_and_history) ... ok
+test_silence_unknown (test_offline_features.OfflineTests.test_silence_unknown) ... ERROR
+test_tampered_pack_rolls_back (test_offline_features.OfflineTests.test_tampered_pack_rolls_back) ... ok
+test_treble_band (test_offline_features.OfflineTests.test_treble_band) ... ERROR
+test_unsafe_zip_names (test_offline_features.OfflineTests.test_unsafe_zip_names) ... ok
+
+======================================================================
+ERROR: test_bass_band (test_offline_features.OfflineTests.test_bass_band)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 12, in test_bass_band
+    def test_bass_band(self):self.assertGreater(spectrum.measure(self.tone(80),24000)['bands']['bass']['energy_fraction'],.95)
+                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+KeyError: 'bands'
+
+======================================================================
+ERROR: test_low_rate_unavailable (test_offline_features.OfflineTests.test_low_rate_unavailable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 16, in test_low_rate_unavailable
+    def test_low_rate_unavailable(self):self.assertIsNone(spectrum.measure(self.tone(1000,8000),8000)['bands']['upper']['energy_fraction'])
+                                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+KeyError: 'bands'
+
+======================================================================
+ERROR: test_opposite_phase_not_cancelled (test_offline_features.OfflineTests.test_opposite_phase_not_cancelled)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 18, in test_opposite_phase_not_cancelled
+    x=self.tone(80);self.assertGreater(spectrum.measure(np.column_stack([x,-x]),24000)['bands']['bass']['energy_fraction'],.95)
+                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+KeyError: 'bands'
+
+======================================================================
+ERROR: test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=True)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 24, in test_render_params_rejected
+    with self.subTest(value=value),self.assertRaises(ValueError):synthesis.validate('Test',value,0,0,32,0,'')
+                                                                 ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'voice_studio.synthesis' has no attribute 'validate'
+
+======================================================================
+ERROR: test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=nan)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 24, in test_render_params_rejected
+    with self.subTest(value=value),self.assertRaises(ValueError):synthesis.validate('Test',value,0,0,32,0,'')
+                                                                 ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'voice_studio.synthesis' has no attribute 'validate'
+
+======================================================================
+ERROR: test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=inf)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 24, in test_render_params_rejected
+    with self.subTest(value=value),self.assertRaises(ValueError):synthesis.validate('Test',value,0,0,32,0,'')
+                                                                 ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'voice_studio.synthesis' has no attribute 'validate'
+
+======================================================================
+ERROR: test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=0.1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 24, in test_render_params_rejected
+    with self.subTest(value=value),self.assertRaises(ValueError):synthesis.validate('Test',value,0,0,32,0,'')
+                                                                 ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'voice_studio.synthesis' has no attribute 'validate'
+
+======================================================================
+ERROR: test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected) (value=3)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 24, in test_render_params_rejected
+    with self.subTest(value=value),self.assertRaises(ValueError):synthesis.validate('Test',value,0,0,32,0,'')
+                                                                 ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'voice_studio.synthesis' has no attribute 'validate'
+
+======================================================================
+ERROR: test_render_params_rejected (test_offline_features.OfflineTests.test_render_params_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 26, in test_render_params_rejected
+    with self.assertRaises(ValueError):synthesis.validate('Test',1,0,0,32,seed,'')
+                                       ^^^^^^^^^^^^^^^^^^
+AttributeError: module 'voice_studio.synthesis' has no attribute 'validate'
+
+======================================================================
+ERROR: test_restore_and_reexport_original (test_offline_features.OfflineTests.test_restore_and_reexport_original)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 39, in test_restore_and_reexport_original
+    with zipfile.ZipFile(dst.export(result['profile_ids'])) as out:self.assertEqual(out.read('original_imports/'+result['import_id']+'/original.zip'),z.read_bytes())
+                                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/zipfile/__init__.py", line 1585, in read
+    with self.open(name, "r", pwd) as fp:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/zipfile/__init__.py", line 1622, in open
+    zinfo = self.getinfo(name)
+            ^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/zipfile/__init__.py", line 1550, in getinfo
+    raise KeyError(
+KeyError: "There is no item named 'original_imports/import_f47dac86a88b40c3/original.zip' in the archive"
+
+======================================================================
+ERROR: test_silence_unknown (test_offline_features.OfflineTests.test_silence_unknown)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 15, in test_silence_unknown
+    r=spectrum.measure(np.zeros(24000),24000);self.assertIsNone(r['context']['inferred_emotion']);self.assertTrue(all(x['energy_fraction'] is None for x in r['bands'].values()))
+                                                                ~^^^^^^^^^^^
+KeyError: 'context'
+
+======================================================================
+ERROR: test_treble_band (test_offline_features.OfflineTests.test_treble_band)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/scratch/ee0183463077/full_rezz_rebuild/project/FULL_REZZ_Replit/FULL_REZZ/app/tests/test_offline_features.py", line 13, in test_treble_band
+    def test_treble_band(self):self.assertGreater(spectrum.measure(self.tone(4000),24000)['bands']['treble']['energy_fraction'],.95)
+                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+KeyError: 'bands'
+
+----------------------------------------------------------------------
+Ran 16 tests in 1.235s
+
+FAILED (errors=12)

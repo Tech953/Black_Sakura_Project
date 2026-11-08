@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "Original archive and performance directions",
+  "url": "",
+  "authority": "authored_noncanon",
+  "evidence_section": "Profile design, prompts, delivery presets and test dialogue",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_26e6cc1aa39a4171",
+  "retrieved_at": "2026-10-07T08:25:19.309385+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "941743ba7e511b24bbda5e1799a3c1269af220abf64aa2338b56d7e59dab53e0",
+  "text_characters": 3546,
+  "text_path": "sources/src_26e6cc1aa39a4171/text.txt",
+  "original_path": "sources/src_26e6cc1aa39a4171/original.json",
+  "original_sha256": "941743ba7e511b24bbda5e1799a3c1269af220abf64aa2338b56d7e59dab53e0"
+}

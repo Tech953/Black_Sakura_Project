@@ -1,0 +1,33 @@
+{
+  "test_processes": [
+    {
+      "test_file": "test_audio_quality.py",
+      "tests": 24,
+      "exit_code": 0
+    },
+    {
+      "test_file": "test_audit.py",
+      "tests": 26,
+      "exit_code": 0
+    },
+    {
+      "test_file": "test_core.py",
+      "tests": 29,
+      "exit_code": 0
+    },
+    {
+      "test_file": "test_languages.py",
+      "tests": 21,
+      "exit_code": 1
+    },
+    {
+      "test_file": "test_offline.py",
+      "tests": 8,
+      "exit_code": 0
+    }
+  ],
+  "tests": 108,
+  "all_passed": false,
+  "execution": "one isolated process per native suite to keep offline-policy state independent",
+  "native_windows_execution_tested": false
+}

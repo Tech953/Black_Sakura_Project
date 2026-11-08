@@ -1,0 +1,19 @@
+{
+  "key": "series",
+  "title": "CD PROJEKT RED — Cyberpunk: Edgerunners official site",
+  "url": "https://www.cyberpunk.net/en/edgerunners",
+  "authority": "official_primary",
+  "evidence_section": "Original show, Rebecca card, MADNESS paragraph",
+  "summary": "The original anime is a ten-episode Night City story. Rebecca is short, fiery, and helpful with firearms. The site identifies Pilar as her sibling and places MADNESS before the anime crew period. Later promotional material is excluded from the selected incarnation.",
+  "character": {
+    "demographics": {
+      "franchise": "Cyberpunk",
+      "series": "Cyberpunk: Edgerunners",
+      "setting": "Night City",
+      "occupation": "Edgerunner mercenary",
+      "sibling": "Pilar",
+      "stature_description": "Short; no numerical height asserted"
+    }
+  },
+  "research_checked_at_utc": "2026-10-06"
+}

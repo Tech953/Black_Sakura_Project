@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "Wikipedia — Rebecca (Cyberpunk: Edgerunners)",
+  "url": "https://en.wikipedia.org/wiki/Rebecca_(Cyberpunk:_Edgerunners)",
+  "authority": "secondary_encyclopedia",
+  "evidence_section": "Appearances and language-specific voice credits",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_35e5ab09afcf423c",
+  "retrieved_at": "2026-10-07T08:25:19.304611+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "2c6e507e1a602fb28a8cde5284e27e93e8cac7bf342bdd290db9ec86d4e5e696",
+  "text_characters": 959,
+  "text_path": "sources/src_35e5ab09afcf423c/text.txt",
+  "original_path": "sources/src_35e5ab09afcf423c/original.json",
+  "original_sha256": "2c6e507e1a602fb28a8cde5284e27e93e8cac7bf342bdd290db9ec86d4e5e696"
+}

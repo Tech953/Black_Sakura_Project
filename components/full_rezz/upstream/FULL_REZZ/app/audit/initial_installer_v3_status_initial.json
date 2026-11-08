@@ -1,0 +1,7 @@
+{
+  "installer_bytes": 2142864776,
+  "installer_sha256": "4bb5615057f4da92b943135cbf836a9440095178339d7bc5a400d3df30f9531a",
+  "superseded_before_release": true,
+  "final_verification_interrupted": true,
+  "reason": "Explicit Windows child-process DLL search required for bundled eSpeak runtime dependencies; correction and rebuild follows."
+}

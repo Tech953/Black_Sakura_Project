@@ -281,3 +281,10 @@ Manual. Regenerate them after editing the sources in `scripts/gen/content/` with
 
 Add your chosen license here. Until a license is specified, treat this code as
 proprietary to the project owner.
+
+## FULL_REZZ release source and guides
+
+The [FULL_REZZ component](components/full_rezz/README.md) contains the complete
+compact-source fileset, refreshed quick start, user, audit and Replit guides,
+and Windows recovery tools. Its manifest identifies the larger installer and
+full-source archives that remain external downloads.

@@ -1,0 +1,30 @@
+{
+  "program": "FULL_REZZ engram integration demo",
+  "bridge_version": "1.0.0",
+  "profile_id": "voice_57373fea79f3473e",
+  "character": "Rebecca \u2014 Posthumous English Archive",
+  "engram_key": "full_rezz:pack_27e39b3817c8490d:voice_57373fea79f3473e",
+  "canonical_status": "deceased",
+  "source_count": 10,
+  "checked_asset_count": 24,
+  "fps": 60,
+  "frame_count": 720,
+  "voice_start_frame": 75,
+  "distinct_scheduled_poses": 23,
+  "render_request": {
+    "profile_id": "voice_57373fea79f3473e",
+    "text": "The offline archive is ready.",
+    "style": "concern",
+    "rate": 1.0,
+    "pitch": 0.0,
+    "volume": 0.0,
+    "steps": 32,
+    "seed": 42,
+    "reference_text": "",
+    "scene_notes": "",
+    "quality_policy": "high_fidelity"
+  },
+  "inference_performed_on_this_run": false,
+  "new_animation_generated": false,
+  "next_step": "Read TASK_QUERY.md and docs/INTEGRATION.md; run python3 -m unittest discover -s tests -v."
+}

@@ -1,0 +1,19 @@
+Verified 0 of 2
+{"installed": true, "version": "3.0.0", "files_verified": 2, "previous_installation_retained": null, "workspace_files_modified": false}
+Verified 0 of 2
+{"installed": true, "version": "3.0.0", "files_verified": 2, "previous_installation_retained": "/tmp/full-rezz-install-check-8w68t4ox/program.previous-e3132e0d457a", "workspace_files_modified": false}
+{
+  "passed_transaction_checks": [
+    "complete installation hashes",
+    "recognized upgrade retains previous program",
+    "workspace untouched",
+    "corrupt file leaves existing installation intact",
+    "failed stage removed",
+    "traversal rejected",
+    "nonempty unrecognized directory retained",
+    "manifest pin checked"
+  ],
+  "checks": 8,
+  "execution": "actual Python transaction with small fixture payloads",
+  "native_windows_execution_tested": false
+}

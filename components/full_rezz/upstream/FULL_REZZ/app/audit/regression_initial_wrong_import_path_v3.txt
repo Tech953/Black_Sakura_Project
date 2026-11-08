@@ -1,0 +1,80 @@
+EEEEE
+======================================================================
+ERROR: test_audio_quality (unittest.loader._FailedTest.test_audio_quality)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_audio_quality
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/1122d4842f78/work/program/tests/test_audio_quality.py", line 15, in <module>
+    from voice_studio import audio, quality
+ModuleNotFoundError: No module named 'voice_studio'
+
+
+======================================================================
+ERROR: test_audit (unittest.loader._FailedTest.test_audit)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_audit
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/1122d4842f78/work/program/tests/test_audit.py", line 14, in <module>
+    from voice_studio import audio, research
+ModuleNotFoundError: No module named 'voice_studio'
+
+
+======================================================================
+ERROR: test_core (unittest.loader._FailedTest.test_core)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_core
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/1122d4842f78/work/program/tests/test_core.py", line 18, in <module>
+    from voice_studio import audio, research
+ModuleNotFoundError: No module named 'voice_studio'
+
+
+======================================================================
+ERROR: test_languages (unittest.loader._FailedTest.test_languages)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_languages
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/1122d4842f78/work/program/tests/test_languages.py", line 4, in <module>
+    from voice_studio.languages import LanguageSettings,Localizer,LOCALES,canonical,catalogs,read_settings,save_settings,synthesis_capability
+ModuleNotFoundError: No module named 'voice_studio'
+
+
+======================================================================
+ERROR: test_offline (unittest.loader._FailedTest.test_offline)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_offline
+Traceback (most recent call last):
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "/workspace/scratch/1122d4842f78/work/program/tests/test_offline.py", line 4, in <module>
+    from voice_studio import spectrum
+ModuleNotFoundError: No module named 'voice_studio'
+
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+FAILED (errors=5)

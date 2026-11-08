@@ -1,0 +1,2 @@
+# The default bridge demo and bridge tests require Python 3.10+ standard library only.
+# FULL_REZZ/app/requirements*.txt describe optional developer neural/desktop installs.

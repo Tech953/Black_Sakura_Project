@@ -1,0 +1,2388 @@
+{
+  "schema_version": "3.0.0",
+  "engine": "Distinct cel drawings with rigid upper-body registration and lower-body contact correction",
+  "sprite_size": [
+    496,
+    544
+  ],
+  "atlas_size": [
+    1536,
+    1024
+  ],
+  "source_alpha_threshold": 4,
+  "canonical_contacts": [
+    [
+      150,
+      530
+    ],
+    [
+      326,
+      530
+    ]
+  ],
+  "poses": [
+    {
+      "id": "a1",
+      "base": "assets/registered/a1.png",
+      "face": "assets/registered/a1.face.png",
+      "source_atlas": "assets/poses_a.png",
+      "source_face_atlas": "assets/faces_a.png",
+      "source_origin": [
+        -56,
+        -16
+      ],
+      "source_bounds": [
+        77,
+        5,
+        351,
+        514
+      ],
+      "component_pixels": 79282,
+      "source_contacts": [
+        {
+          "x": 185,
+          "y": 528,
+          "sole_bbox": [
+            158,
+            520,
+            212,
+            528
+          ]
+        },
+        {
+          "x": 337,
+          "y": 528,
+          "sole_bbox": [
+            310,
+            520,
+            364,
+            528
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -23,
+          "ty": 2
+        },
+        "lower": {
+          "sx": 1.1578947368421053,
+          "shear": 0,
+          "tx": -64.21052631578948,
+          "ty": 2
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        369.047916452452,
+        328
+      ],
+      "mouth": [
+        239.5,
+        108.2,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          222.3,
+          88.7,
+          14,
+          9
+        ],
+        [
+          255,
+          88.3,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/a1.png",
+      "raw_face": "assets/sprites/a1.face.png",
+      "raw_registration": {
+        "sx": 1.1578947368421053,
+        "shear": 0,
+        "tx": -64.21052631578948,
+        "ty": 2
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "a2",
+      "base": "assets/registered/a2.png",
+      "face": "assets/registered/a2.face.png",
+      "source_atlas": "assets/poses_a.png",
+      "source_face_atlas": "assets/faces_a.png",
+      "source_origin": [
+        328,
+        -16
+      ],
+      "source_bounds": [
+        452,
+        0,
+        702,
+        514
+      ],
+      "component_pixels": 77429,
+      "source_contacts": [
+        {
+          "x": 175.5,
+          "y": 528,
+          "sole_bbox": [
+            148,
+            520,
+            203,
+            528
+          ]
+        },
+        {
+          "x": 331.5,
+          "y": 528,
+          "sole_bbox": [
+            304,
+            520,
+            359,
+            528
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -15.5,
+          "ty": 2
+        },
+        "lower": {
+          "sx": 1.1282051282051282,
+          "shear": 0,
+          "tx": -48,
+          "ty": 2
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        284.5,
+        248
+      ],
+      "mouth": [
+        260.1,
+        107.8,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          245.8,
+          87.3,
+          14,
+          9
+        ],
+        [
+          272.8,
+          85.2,
+          10,
+          10
+        ]
+      ],
+      "raw_base": "assets/sprites/a2.png",
+      "raw_face": "assets/sprites/a2.face.png",
+      "raw_registration": {
+        "sx": 1.1282051282051282,
+        "shear": 0,
+        "tx": -48,
+        "ty": 2
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "a3",
+      "base": "assets/registered/a3.png",
+      "face": "assets/registered/a3.face.png",
+      "source_atlas": "assets/poses_a.png",
+      "source_face_atlas": "assets/faces_a.png",
+      "source_origin": [
+        712,
+        -16
+      ],
+      "source_bounds": [
+        818,
+        0,
+        1069,
+        515
+      ],
+      "component_pixels": 79081,
+      "source_contacts": [
+        {
+          "x": 164.5,
+          "y": 529,
+          "sole_bbox": [
+            137,
+            521,
+            192,
+            529
+          ]
+        },
+        {
+          "x": 326,
+          "y": 529,
+          "sole_bbox": [
+            298,
+            521,
+            354,
+            529
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -7.25,
+          "ty": 1
+        },
+        "lower": {
+          "sx": 1.089783281733746,
+          "shear": 0,
+          "tx": -29.26934984520122,
+          "ty": 1
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        266.75,
+        259
+      ],
+      "mouth": [
+        275.15,
+        116.2,
+        11,
+        8
+      ],
+      "eyes": [
+        [
+          261.95,
+          100.7,
+          12,
+          10
+        ],
+        [
+          284.55,
+          94.1,
+          8,
+          10
+        ]
+      ],
+      "raw_base": "assets/sprites/a3.png",
+      "raw_face": "assets/sprites/a3.face.png",
+      "raw_registration": {
+        "sx": 1.089783281733746,
+        "shear": 0,
+        "tx": -29.26934984520122,
+        "ty": 1
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "a4",
+      "base": "assets/registered/a4.png",
+      "face": "assets/registered/a4.face.png",
+      "source_atlas": "assets/poses_a.png",
+      "source_face_atlas": "assets/faces_a.png",
+      "source_origin": [
+        1096,
+        -16
+      ],
+      "source_bounds": [
+        1203,
+        0,
+        1490,
+        515
+      ],
+      "component_pixels": 82388,
+      "source_contacts": [
+        {
+          "x": 155.5,
+          "y": 529,
+          "sole_bbox": [
+            128,
+            521,
+            183,
+            529
+          ]
+        },
+        {
+          "x": 315.5,
+          "y": 529,
+          "sole_bbox": [
+            288,
+            521,
+            343,
+            529
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": 2.5,
+          "ty": 1
+        },
+        "lower": {
+          "sx": 1.1,
+          "shear": 0,
+          "tx": -21.05000000000001,
+          "ty": 1
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        376.5,
+        195
+      ],
+      "mouth": [
+        239.3,
+        106.4,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          219.3,
+          88.8,
+          14,
+          9
+        ],
+        [
+          252.2,
+          84,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/a4.png",
+      "raw_face": "assets/sprites/a4.face.png",
+      "raw_registration": {
+        "sx": 1.1,
+        "shear": 0,
+        "tx": -21.05000000000001,
+        "ty": 1
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "a5",
+      "base": "assets/registered/a5.png",
+      "face": "assets/registered/a5.face.png",
+      "source_atlas": "assets/poses_a.png",
+      "source_face_atlas": "assets/faces_a.png",
+      "source_origin": [
+        -56,
+        496
+      ],
+      "source_bounds": [
+        67,
+        514,
+        413,
+        1022
+      ],
+      "component_pixels": 81948,
+      "source_contacts": [
+        {
+          "x": 173.5,
+          "y": 522,
+          "sole_bbox": [
+            146,
+            514,
+            201,
+            522
+          ]
+        },
+        {
+          "x": 345.5,
+          "y": 521,
+          "sole_bbox": [
+            317,
+            513,
+            374,
+            521
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -21.5,
+          "ty": 8.5
+        },
+        "lower": {
+          "sx": 1.0232558139534884,
+          "shear": 0.005813953488372093,
+          "tx": -27.534883720930253,
+          "ty": 6.991279069767442
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        416.5,
+        198.5
+      ],
+      "mouth": [
+        234.1,
+        104.7,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          215.2,
+          83.6,
+          14,
+          9
+        ],
+        [
+          248.5,
+          81.3,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/a5.png",
+      "raw_face": "assets/sprites/a5.face.png",
+      "raw_registration": {
+        "sx": 1.0232558139534884,
+        "shear": 0.005813953488372093,
+        "tx": -27.534883720930253,
+        "ty": 6.991279069767442
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "a6",
+      "base": "assets/registered/a6.png",
+      "face": "assets/registered/a6.face.png",
+      "source_atlas": "assets/poses_a.png",
+      "source_face_atlas": "assets/faces_a.png",
+      "source_origin": [
+        328,
+        496
+      ],
+      "source_bounds": [
+        431,
+        521,
+        785,
+        1019
+      ],
+      "component_pixels": 83296,
+      "source_contacts": [
+        {
+          "x": 168,
+          "y": 521,
+          "sole_bbox": [
+            141,
+            513,
+            195,
+            521
+          ]
+        },
+        {
+          "x": 342.5,
+          "y": 521,
+          "sole_bbox": [
+            315,
+            513,
+            370,
+            521
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -17.25,
+          "ty": 9
+        },
+        "lower": {
+          "sx": 1.008595988538682,
+          "shear": 0,
+          "tx": -19.44412607449857,
+          "ty": 9
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        407.75,
+        121
+      ],
+      "mouth": [
+        251.95,
+        117.8,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          240.35000000000002,
+          92.3,
+          14,
+          9
+        ],
+        [
+          269.35,
+          103,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/a6.png",
+      "raw_face": "assets/sprites/a6.face.png",
+      "raw_registration": {
+        "sx": 1.008595988538682,
+        "shear": 0,
+        "tx": -19.44412607449857,
+        "ty": 9
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "a7",
+      "base": "assets/registered/a7.png",
+      "face": "assets/registered/a7.face.png",
+      "source_atlas": "assets/poses_a.png",
+      "source_face_atlas": "assets/faces_a.png",
+      "source_origin": [
+        712,
+        496
+      ],
+      "source_bounds": [
+        807,
+        517,
+        1193,
+        1019
+      ],
+      "component_pixels": 89582,
+      "source_contacts": [
+        {
+          "x": 164.5,
+          "y": 520,
+          "sole_bbox": [
+            137,
+            512,
+            192,
+            520
+          ]
+        },
+        {
+          "x": 343.5,
+          "y": 521,
+          "sole_bbox": [
+            316,
+            513,
+            371,
+            521
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -16,
+          "ty": 9.5
+        },
+        "lower": {
+          "sx": 0.9832402234636871,
+          "shear": -0.00558659217877095,
+          "tx": -11.743016759776538,
+          "ty": 10.918994413407821
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        430,
+        114.5
+      ],
+      "mouth": [
+        238.9,
+        108.9,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          225,
+          82.2,
+          14,
+          9
+        ],
+        [
+          255.39999999999998,
+          94.2,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/a7.png",
+      "raw_face": "assets/sprites/a7.face.png",
+      "raw_registration": {
+        "sx": 0.9832402234636871,
+        "shear": -0.00558659217877095,
+        "tx": -11.743016759776538,
+        "ty": 10.918994413407821
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "a8",
+      "base": "assets/registered/a8.png",
+      "face": "assets/registered/a8.face.png",
+      "source_atlas": "assets/poses_a.png",
+      "source_face_atlas": "assets/faces_a.png",
+      "source_origin": [
+        1096,
+        496
+      ],
+      "source_bounds": [
+        1214,
+        517,
+        1519,
+        1019
+      ],
+      "component_pixels": 77080,
+      "source_contacts": [
+        {
+          "x": 161,
+          "y": 521,
+          "sole_bbox": [
+            134,
+            513,
+            188,
+            521
+          ]
+        },
+        {
+          "x": 332.5,
+          "y": 521,
+          "sole_bbox": [
+            305,
+            513,
+            360,
+            521
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -8.75,
+          "ty": 9
+        },
+        "lower": {
+          "sx": 1.0262390670553936,
+          "shear": 0,
+          "tx": -15.224489795918373,
+          "ty": 9
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        376.25,
+        164
+      ],
+      "mouth": [
+        237.45,
+        114.9,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          219.65,
+          100.6,
+          14,
+          9
+        ],
+        [
+          250.75,
+          90.9,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/a8.png",
+      "raw_face": "assets/sprites/a8.face.png",
+      "raw_registration": {
+        "sx": 1.0262390670553936,
+        "shear": 0,
+        "tx": -15.224489795918373,
+        "ty": 9
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "b1",
+      "base": "assets/registered/b1.png",
+      "face": "assets/registered/b1.face.png",
+      "source_atlas": "assets/poses_b.png",
+      "source_face_atlas": "assets/faces_b.png",
+      "source_origin": [
+        -56,
+        -16
+      ],
+      "source_bounds": [
+        57,
+        0,
+        402,
+        512
+      ],
+      "component_pixels": 84308,
+      "source_contacts": [
+        {
+          "x": 172.5,
+          "y": 526,
+          "sole_bbox": [
+            143,
+            518,
+            202,
+            526
+          ]
+        },
+        {
+          "x": 347,
+          "y": 526,
+          "sole_bbox": [
+            318,
+            518,
+            376,
+            526
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -21.75,
+          "ty": 4
+        },
+        "lower": {
+          "sx": 1.008595988538682,
+          "shear": 0,
+          "tx": -23.982808022922626,
+          "ty": 4
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        401.25,
+        162
+      ],
+      "mouth": [
+        243.75,
+        109.8,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          225.15,
+          92,
+          14,
+          9
+        ],
+        [
+          258.85,
+          90.2,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/b1.png",
+      "raw_face": "assets/sprites/b1.face.png",
+      "raw_registration": {
+        "sx": 1.008595988538682,
+        "shear": 0,
+        "tx": -23.982808022922626,
+        "ty": 4
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "b2",
+      "base": "assets/registered/b2.png",
+      "face": "assets/registered/b2.face.png",
+      "source_atlas": "assets/poses_b.png",
+      "source_face_atlas": "assets/faces_b.png",
+      "source_origin": [
+        328,
+        -16
+      ],
+      "source_bounds": [
+        429,
+        7,
+        699,
+        512
+      ],
+      "component_pixels": 80118,
+      "source_contacts": [
+        {
+          "x": 165,
+          "y": 527,
+          "sole_bbox": [
+            135,
+            519,
+            195,
+            527
+          ]
+        },
+        {
+          "x": 337.5,
+          "y": 527,
+          "sole_bbox": [
+            308,
+            519,
+            367,
+            527
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -13.25,
+          "ty": 3
+        },
+        "lower": {
+          "sx": 1.0202898550724637,
+          "shear": 0,
+          "tx": -18.347826086956502,
+          "ty": 3
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        275.75,
+        194
+      ],
+      "mouth": [
+        238.65,
+        122.4,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          225.75,
+          105.1,
+          14,
+          8
+        ],
+        [
+          258.65,
+          105.9,
+          14,
+          8
+        ]
+      ],
+      "raw_base": "assets/sprites/b2.png",
+      "raw_face": "assets/sprites/b2.face.png",
+      "raw_registration": {
+        "sx": 1.0202898550724637,
+        "shear": 0,
+        "tx": -18.347826086956502,
+        "ty": 3
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "b3",
+      "base": "assets/registered/b3.png",
+      "face": "assets/registered/b3.face.png",
+      "source_atlas": "assets/poses_b.png",
+      "source_face_atlas": "assets/faces_b.png",
+      "source_origin": [
+        712,
+        -16
+      ],
+      "source_bounds": [
+        788,
+        0,
+        1085,
+        513
+      ],
+      "component_pixels": 83956,
+      "source_contacts": [
+        {
+          "x": 136.5,
+          "y": 528,
+          "sole_bbox": [
+            107,
+            520,
+            166,
+            528
+          ]
+        },
+        {
+          "x": 324.5,
+          "y": 527,
+          "sole_bbox": [
+            295,
+            519,
+            354,
+            527
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": 7.5,
+          "ty": 2.5
+        },
+        "lower": {
+          "sx": 0.9361702127659575,
+          "shear": 0.005319148936170213,
+          "tx": 22.212765957446805,
+          "ty": 1.273936170212766
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        312.5,
+        292.5
+      ],
+      "mouth": [
+        269.5,
+        112,
+        11,
+        8
+      ],
+      "eyes": [
+        [
+          260,
+          92.4,
+          12,
+          10
+        ],
+        [
+          279.7,
+          92.1,
+          8,
+          10
+        ]
+      ],
+      "raw_base": "assets/sprites/b3.png",
+      "raw_face": "assets/sprites/b3.face.png",
+      "raw_registration": {
+        "sx": 0.9361702127659575,
+        "shear": 0.005319148936170213,
+        "tx": 22.212765957446805,
+        "ty": 1.273936170212766
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "b4",
+      "base": "assets/registered/b4.png",
+      "face": "assets/registered/b4.face.png",
+      "source_atlas": "assets/poses_b.png",
+      "source_face_atlas": "assets/faces_b.png",
+      "source_origin": [
+        1096,
+        -16
+      ],
+      "source_bounds": [
+        1202,
+        10,
+        1473,
+        514
+      ],
+      "component_pixels": 75403,
+      "source_contacts": [
+        {
+          "x": 159.5,
+          "y": 528,
+          "sole_bbox": [
+            130,
+            520,
+            189,
+            528
+          ]
+        },
+        {
+          "x": 345.5,
+          "y": 528,
+          "sole_bbox": [
+            315,
+            520,
+            376,
+            528
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -14.5,
+          "ty": 2
+        },
+        "lower": {
+          "sx": 0.946236559139785,
+          "shear": 0,
+          "tx": -0.9247311827957105,
+          "ty": 2
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        300.5,
+        270
+      ],
+      "mouth": [
+        261.2,
+        123.2,
+        11,
+        8
+      ],
+      "eyes": [
+        [
+          251,
+          102.4,
+          12,
+          10
+        ],
+        [
+          275.3,
+          101.6,
+          8,
+          10
+        ]
+      ],
+      "raw_base": "assets/sprites/b4.png",
+      "raw_face": "assets/sprites/b4.face.png",
+      "raw_registration": {
+        "sx": 0.946236559139785,
+        "shear": 0,
+        "tx": -0.9247311827957105,
+        "ty": 2
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "b5",
+      "base": "assets/registered/b5.png",
+      "face": "assets/registered/b5.face.png",
+      "source_atlas": "assets/poses_b.png",
+      "source_face_atlas": "assets/faces_b.png",
+      "source_origin": [
+        -56,
+        496
+      ],
+      "source_bounds": [
+        54,
+        511,
+        348,
+        1018
+      ],
+      "component_pixels": 82970,
+      "source_contacts": [
+        {
+          "x": 160.5,
+          "y": 519,
+          "sole_bbox": [
+            130,
+            511,
+            191,
+            519
+          ]
+        },
+        {
+          "x": 355.5,
+          "y": 519,
+          "sole_bbox": [
+            325,
+            511,
+            386,
+            519
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -20,
+          "ty": 11
+        },
+        "lower": {
+          "sx": 0.9025641025641026,
+          "shear": 0,
+          "tx": 5.1384615384615415,
+          "ty": 11
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        308,
+        254
+      ],
+      "mouth": [
+        257.1,
+        117.4,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          243.3,
+          97.7,
+          14,
+          8
+        ],
+        [
+          273.2,
+          100.9,
+          14,
+          8
+        ]
+      ],
+      "raw_base": "assets/sprites/b5.png",
+      "raw_face": "assets/sprites/b5.face.png",
+      "raw_registration": {
+        "sx": 0.9025641025641026,
+        "shear": 0,
+        "tx": 5.1384615384615415,
+        "ty": 11
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "b6",
+      "base": "assets/registered/b6.png",
+      "face": "assets/registered/b6.face.png",
+      "source_atlas": "assets/poses_b.png",
+      "source_face_atlas": "assets/faces_b.png",
+      "source_origin": [
+        328,
+        496
+      ],
+      "source_bounds": [
+        413,
+        502,
+        745,
+        1017
+      ],
+      "component_pixels": 84148,
+      "source_contacts": [
+        {
+          "x": 157.5,
+          "y": 520,
+          "sole_bbox": [
+            127,
+            512,
+            188,
+            520
+          ]
+        },
+        {
+          "x": 346,
+          "y": 519,
+          "sole_bbox": [
+            315,
+            511,
+            377,
+            519
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -13.75,
+          "ty": 10.5
+        },
+        "lower": {
+          "sx": 0.9336870026525199,
+          "shear": 0.005305039787798408,
+          "tx": 2.944297082228104,
+          "ty": 9.16445623342175
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        375.25,
+        247.5
+      ],
+      "mouth": [
+        256.65,
+        106.7,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          234.75,
+          93.7,
+          14,
+          9
+        ],
+        [
+          264.55,
+          83,
+          12,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/b6.png",
+      "raw_face": "assets/sprites/b6.face.png",
+      "raw_registration": {
+        "sx": 0.9336870026525199,
+        "shear": 0.005305039787798408,
+        "tx": 2.944297082228104,
+        "ty": 9.16445623342175
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "b7",
+      "base": "assets/registered/b7.png",
+      "face": "assets/registered/b7.face.png",
+      "source_atlas": "assets/poses_b.png",
+      "source_face_atlas": "assets/faces_b.png",
+      "source_origin": [
+        712,
+        496
+      ],
+      "source_bounds": [
+        795,
+        506,
+        1101,
+        1017
+      ],
+      "component_pixels": 85925,
+      "source_contacts": [
+        {
+          "x": 141.5,
+          "y": 520,
+          "sole_bbox": [
+            111,
+            512,
+            172,
+            520
+          ]
+        },
+        {
+          "x": 331.5,
+          "y": 520,
+          "sole_bbox": [
+            300,
+            512,
+            363,
+            520
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": 1.5,
+          "ty": 10
+        },
+        "lower": {
+          "sx": 0.9263157894736842,
+          "shear": 0,
+          "tx": 18.926315789473676,
+          "ty": 10
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        358.5,
+        234
+      ],
+      "mouth": [
+        245.1,
+        107.5,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          223,
+          93.5,
+          14,
+          9
+        ],
+        [
+          255.1,
+          86.5,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/b7.png",
+      "raw_face": "assets/sprites/b7.face.png",
+      "raw_registration": {
+        "sx": 0.9263157894736842,
+        "shear": 0,
+        "tx": 18.926315789473676,
+        "ty": 10
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "b8",
+      "base": "assets/registered/b8.png",
+      "face": "assets/registered/b8.face.png",
+      "source_atlas": "assets/poses_b.png",
+      "source_face_atlas": "assets/faces_b.png",
+      "source_origin": [
+        1096,
+        496
+      ],
+      "source_bounds": [
+        1188,
+        502,
+        1514,
+        1017
+      ],
+      "component_pixels": 86844,
+      "source_contacts": [
+        {
+          "x": 155,
+          "y": 520,
+          "sole_bbox": [
+            125,
+            512,
+            185,
+            520
+          ]
+        },
+        {
+          "x": 334.5,
+          "y": 520,
+          "sole_bbox": [
+            304,
+            512,
+            365,
+            520
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -6.75,
+          "ty": 10
+        },
+        "lower": {
+          "sx": 0.9805013927576601,
+          "shear": 0,
+          "tx": -1.9777158774373333,
+          "ty": 10
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        385.25,
+        292
+      ],
+      "mouth": [
+        232.75,
+        105.6,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          211.35,
+          93.4,
+          14,
+          9
+        ],
+        [
+          243.25,
+          83.2,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/b8.png",
+      "raw_face": "assets/sprites/b8.face.png",
+      "raw_registration": {
+        "sx": 0.9805013927576601,
+        "shear": 0,
+        "tx": -1.9777158774373333,
+        "ty": 10
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "c1",
+      "base": "assets/registered/c1.png",
+      "face": "assets/registered/c1.face.png",
+      "source_atlas": "assets/poses_c.initial.png",
+      "source_face_atlas": "assets/faces_c.png",
+      "source_origin": [
+        -56,
+        -16
+      ],
+      "source_bounds": [
+        82,
+        12,
+        335,
+        494
+      ],
+      "component_pixels": 74275,
+      "source_contacts": [
+        {
+          "x": 178,
+          "y": 509,
+          "sole_bbox": [
+            150,
+            501,
+            206,
+            509
+          ]
+        },
+        {
+          "x": 340,
+          "y": 509,
+          "sole_bbox": [
+            312,
+            501,
+            368,
+            509
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -25.216666666666697,
+          "ty": -2.6666666666666714
+        },
+        "lower": {
+          "sx": 1.0864197530864197,
+          "shear": 0,
+          "tx": -43.38271604938271,
+          "ty": 21
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        354.813283529435,
+        302.38163969480485
+      ],
+      "mouth": [
+        236.7833333333333,
+        104.33333333333333,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          220.58333333333331,
+          86.43333333333332,
+          14,
+          9
+        ],
+        [
+          252.18333333333328,
+          86.53333333333333,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/c1.png",
+      "raw_face": "assets/sprites/c1.face.png",
+      "raw_registration": {
+        "sx": 1.0864197530864197,
+        "shear": 0,
+        "tx": -43.38271604938271,
+        "ty": 21
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "c2",
+      "base": "assets/registered/c2.png",
+      "face": "assets/registered/c2.face.png",
+      "source_atlas": "assets/poses_c.png",
+      "source_face_atlas": "assets/faces_c.png",
+      "source_origin": [
+        328,
+        -16
+      ],
+      "source_bounds": [
+        447,
+        10,
+        759,
+        494
+      ],
+      "component_pixels": 74573,
+      "source_contacts": [
+        {
+          "x": 163,
+          "y": 509,
+          "sole_bbox": [
+            135,
+            501,
+            191,
+            509
+          ]
+        },
+        {
+          "x": 332,
+          "y": 509,
+          "sole_bbox": [
+            304,
+            501,
+            360,
+            509
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -16.683333333333366,
+          "ty": -4.283333333333346
+        },
+        "lower": {
+          "sx": 1.0414201183431953,
+          "shear": 0,
+          "tx": -19.751479289940818,
+          "ty": 21
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        377.3166666666666,
+        232.71666666666664
+      ],
+      "mouth": [
+        235.31666666666663,
+        102.71666666666665,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          218.11666666666665,
+          85.11666666666666,
+          14,
+          9
+        ],
+        [
+          250.11666666666665,
+          83.81666666666665,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/c2.png",
+      "raw_face": "assets/sprites/c2.face.png",
+      "raw_registration": {
+        "sx": 1.0414201183431953,
+        "shear": 0,
+        "tx": -19.751479289940818,
+        "ty": 21
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "c3",
+      "base": "assets/registered/c3.png",
+      "face": "assets/registered/c3.face.png",
+      "source_atlas": "assets/poses_c.png",
+      "source_face_atlas": "assets/faces_c.png",
+      "source_origin": [
+        712,
+        -16
+      ],
+      "source_bounds": [
+        832,
+        9,
+        1144,
+        494
+      ],
+      "component_pixels": 74427,
+      "source_contacts": [
+        {
+          "x": 163,
+          "y": 509,
+          "sole_bbox": [
+            135,
+            501,
+            191,
+            509
+          ]
+        },
+        {
+          "x": 332,
+          "y": 508,
+          "sole_bbox": [
+            303,
+            500,
+            361,
+            508
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -11.25,
+          "ty": 4.1499999999999915
+        },
+        "lower": {
+          "sx": 1.0414201183431953,
+          "shear": 0.005917159763313609,
+          "tx": -19.751479289940818,
+          "ty": 20.035502958579883
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        381.75,
+        149.14999999999998
+      ],
+      "mouth": [
+        249.75,
+        110.14999999999999,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          228.85,
+          93.05,
+          14,
+          9
+        ],
+        [
+          257.85,
+          87.05,
+          12,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/c3.png",
+      "raw_face": "assets/sprites/c3.face.png",
+      "raw_registration": {
+        "sx": 1.0414201183431953,
+        "shear": 0.005917159763313609,
+        "tx": -19.751479289940818,
+        "ty": 20.035502958579883
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "c4",
+      "base": "assets/registered/c4.png",
+      "face": "assets/registered/c4.face.png",
+      "source_atlas": "assets/poses_c.png",
+      "source_face_atlas": "assets/faces_c.png",
+      "source_origin": [
+        1096,
+        -16
+      ],
+      "source_bounds": [
+        1203,
+        15,
+        1524,
+        494
+      ],
+      "component_pixels": 75256,
+      "source_contacts": [
+        {
+          "x": 161.5,
+          "y": 509,
+          "sole_bbox": [
+            134,
+            501,
+            189,
+            509
+          ]
+        },
+        {
+          "x": 331,
+          "y": 509,
+          "sole_bbox": [
+            303,
+            501,
+            359,
+            509
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -16.150000000000034,
+          "ty": 1.5749999999999886
+        },
+        "lower": {
+          "sx": 1.0383480825958702,
+          "shear": 0,
+          "tx": -17.693215339233035,
+          "ty": 21
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        368.84999999999997,
+        131.575
+      ],
+      "mouth": [
+        235.84999999999997,
+        108.57499999999999,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          223.74999999999997,
+          88.27499999999999,
+          14,
+          9
+        ],
+        [
+          251.64999999999998,
+          95.67499999999998,
+          12,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/c4.png",
+      "raw_face": "assets/sprites/c4.face.png",
+      "raw_registration": {
+        "sx": 1.0383480825958702,
+        "shear": 0,
+        "tx": -17.693215339233035,
+        "ty": 21
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "c5",
+      "base": "assets/registered/c5.png",
+      "face": "assets/registered/c5.face.png",
+      "source_atlas": "assets/poses_c.png",
+      "source_face_atlas": "assets/faces_c.png",
+      "source_origin": [
+        -56,
+        496
+      ],
+      "source_bounds": [
+        66,
+        516,
+        352,
+        1003
+      ],
+      "component_pixels": 76062,
+      "source_contacts": [
+        {
+          "x": 168,
+          "y": 504,
+          "sole_bbox": [
+            138,
+            496,
+            198,
+            504
+          ]
+        },
+        {
+          "x": 344.5,
+          "y": 504,
+          "sole_bbox": [
+            315,
+            496,
+            374,
+            504
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -18.55000000000001,
+          "ty": 13.025000000000006
+        },
+        "lower": {
+          "sx": 0.9971671388101983,
+          "shear": 0,
+          "tx": -17.524079320113316,
+          "ty": 26
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        370.45,
+        170.025
+      ],
+      "mouth": [
+        240.45,
+        117.025,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          221.64999999999998,
+          100.525,
+          14,
+          9
+        ],
+        [
+          255.75,
+          100.72500000000001,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/c5.png",
+      "raw_face": "assets/sprites/c5.face.png",
+      "raw_registration": {
+        "sx": 0.9971671388101983,
+        "shear": 0,
+        "tx": -17.524079320113316,
+        "ty": 26
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "c6",
+      "base": "assets/registered/c6.png",
+      "face": "assets/registered/c6.face.png",
+      "source_atlas": "assets/poses_c.png",
+      "source_face_atlas": "assets/faces_c.png",
+      "source_origin": [
+        328,
+        496
+      ],
+      "source_bounds": [
+        439,
+        519,
+        709,
+        1004
+      ],
+      "component_pixels": 74495,
+      "source_contacts": [
+        {
+          "x": 157,
+          "y": 506,
+          "sole_bbox": [
+            129,
+            498,
+            185,
+            506
+          ]
+        },
+        {
+          "x": 335,
+          "y": 504,
+          "sole_bbox": [
+            305,
+            496,
+            365,
+            504
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -27.875,
+          "ty": 13.625
+        },
+        "lower": {
+          "sx": 0.9887640449438202,
+          "shear": 0.011235955056179775,
+          "tx": -5.235955056179762,
+          "ty": 22.235955056179776
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        275.125,
+        247.625
+      ],
+      "mouth": [
+        252.125,
+        118.625,
+        11,
+        8
+      ],
+      "eyes": [
+        [
+          243.925,
+          97.825,
+          12,
+          9
+        ],
+        [
+          268.125,
+          99.925,
+          9,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/c6.png",
+      "raw_face": "assets/sprites/c6.face.png",
+      "raw_registration": {
+        "sx": 0.9887640449438202,
+        "shear": 0.011235955056179775,
+        "tx": -5.235955056179762,
+        "ty": 22.235955056179776
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "c7",
+      "base": "assets/registered/c7.png",
+      "face": "assets/registered/c7.face.png",
+      "source_atlas": "assets/poses_c.png",
+      "source_face_atlas": "assets/faces_c.png",
+      "source_origin": [
+        712,
+        496
+      ],
+      "source_bounds": [
+        805,
+        516,
+        1128,
+        1002
+      ],
+      "component_pixels": 76857,
+      "source_contacts": [
+        {
+          "x": 157,
+          "y": 504,
+          "sole_bbox": [
+            128,
+            496,
+            186,
+            504
+          ]
+        },
+        {
+          "x": 335.5,
+          "y": 504,
+          "sole_bbox": [
+            306,
+            496,
+            365,
+            504
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": 0.19999999999998863,
+          "ty": 16.375000000000014
+        },
+        "lower": {
+          "sx": 0.9859943977591037,
+          "shear": 0,
+          "tx": -4.80112044817929,
+          "ty": 26
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        384.2,
+        218.375
+      ],
+      "mouth": [
+        259.2,
+        110.37500000000001,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          239.79999999999998,
+          96.17500000000001,
+          14,
+          9
+        ],
+        [
+          268.09999999999997,
+          91.47500000000001,
+          12,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/c7.png",
+      "raw_face": "assets/sprites/c7.face.png",
+      "raw_registration": {
+        "sx": 0.9859943977591037,
+        "shear": 0,
+        "tx": -4.80112044817929,
+        "ty": 26
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    },
+    {
+      "id": "c8",
+      "base": "assets/registered/c8.png",
+      "face": "assets/registered/c8.face.png",
+      "source_atlas": "assets/poses_c.png",
+      "source_face_atlas": "assets/faces_c.png",
+      "source_origin": [
+        1096,
+        496
+      ],
+      "source_bounds": [
+        1213,
+        514,
+        1501,
+        1001
+      ],
+      "component_pixels": 76488,
+      "source_contacts": [
+        {
+          "x": 159,
+          "y": 504,
+          "sole_bbox": [
+            130,
+            496,
+            188,
+            504
+          ]
+        },
+        {
+          "x": 334,
+          "y": 504,
+          "sole_bbox": [
+            305,
+            496,
+            363,
+            504
+          ]
+        }
+      ],
+      "registration": {
+        "upper": {
+          "tx": -7.124999999999972,
+          "ty": 2.75
+        },
+        "lower": {
+          "sx": 1.0057142857142858,
+          "shear": 0,
+          "tx": -9.908571428571435,
+          "ty": 26
+        },
+        "blend_y": [
+          300,
+          490
+        ]
+      },
+      "hand": [
+        372.875,
+        274.75
+      ],
+      "mouth": [
+        235.87500000000003,
+        104.75,
+        12,
+        8
+      ],
+      "eyes": [
+        [
+          216.57500000000002,
+          92.15,
+          14,
+          9
+        ],
+        [
+          249.775,
+          86.15,
+          14,
+          9
+        ]
+      ],
+      "raw_base": "assets/sprites/c8.png",
+      "raw_face": "assets/sprites/c8.face.png",
+      "raw_registration": {
+        "sx": 1.0057142857142858,
+        "shear": 0,
+        "tx": -9.908571428571435,
+        "ty": 26
+      },
+      "registered_contacts": [
+        [
+          150,
+          530
+        ],
+        [
+          326,
+          530
+        ]
+      ]
+    }
+  ],
+  "limits": [
+    "24 body drawings are available; 23 appear in the revised sequence.",
+    "Face and upper torso retain their source width; lower-body contact correction is a 2D mesh adjustment.",
+    "Bounded regional arm interpolation joins authored cels; no 3D turn, walking or motion capture is inferred.",
+    "Energy-driven closed, half and open mouth states are not phoneme alignment.",
+    "Declared sole landmarks are constrained; ground contact is not a physics simulation."
+  ],
+  "registration_blend_source_y": [
+    300,
+    490
+  ]
+}

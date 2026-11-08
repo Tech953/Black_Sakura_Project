@@ -1,0 +1,308 @@
+{
+  "spec_version": "0.1.0-draft",
+  "implementation_status": "design_and_audit_materials_only",
+  "review_started_local": "2026-10-12",
+  "finalized_local": "2026-10-13",
+  "runtime_source_unchanged": "2.2.0",
+  "current_movie_renderer": "2.1.0",
+  "source_transcript": "docs/FULL_REZZ_Voice_Chat_Transcript.json",
+  "requirements": [
+    {
+      "id": "REQ-01",
+      "messages": [
+        2,
+        6,
+        10
+      ],
+      "requirement": "Visible changes and comparison",
+      "issues": [
+        "FR-A01",
+        "FR-A13"
+      ]
+    },
+    {
+      "id": "REQ-02",
+      "messages": [
+        10,
+        12,
+        14
+      ],
+      "requirement": "Natural hand/body behavior and transition review",
+      "issues": [
+        "FR-A02",
+        "FR-A03"
+      ]
+    },
+    {
+      "id": "REQ-03",
+      "messages": [
+        4,
+        6,
+        12,
+        14
+      ],
+      "requirement": "Actual viewpoints and varied cinematography",
+      "issues": [
+        "FR-A04",
+        "FR-A05"
+      ]
+    },
+    {
+      "id": "REQ-04",
+      "messages": [
+        12,
+        14
+      ],
+      "requirement": "Selectable supported 2D/3D representations",
+      "issues": [
+        "FR-A05",
+        "FR-A06"
+      ]
+    },
+    {
+      "id": "REQ-05",
+      "messages": [
+        14
+      ],
+      "requirement": "Entire chat history bound to a stable character",
+      "issues": [
+        "FR-A07",
+        "FR-A08"
+      ]
+    },
+    {
+      "id": "REQ-06",
+      "messages": [
+        14
+      ],
+      "requirement": "Actual conversation linked to voice/live performance",
+      "issues": [
+        "FR-A08",
+        "FR-A09",
+        "FR-A12"
+      ]
+    },
+    {
+      "id": "REQ-07",
+      "messages": [
+        14
+      ],
+      "requirement": "Embedded panel and standalone application",
+      "issues": [
+        "FR-A10",
+        "FR-A11"
+      ]
+    },
+    {
+      "id": "REQ-08",
+      "messages": [
+        8,
+        10,
+        12
+      ],
+      "requirement": "Original benchmark after exact-scene comparison was skipped",
+      "issues": [
+        "FR-A13",
+        "FR-A14"
+      ]
+    }
+  ],
+  "target_product": {
+    "name": "FULL_REZZ character companion engine",
+    "deployments": [
+      "embedded_engram_window",
+      "standalone_windows_application"
+    ],
+    "modes": [
+      "authored_multiview_2d",
+      "rigged_3d_when_supported"
+    ],
+    "shared_identity": "Lore, history, voice and visual representations remain bound to one character/session."
+  },
+  "proposed_components": [
+    "CharacterRepository",
+    "TranscriptImporter",
+    "MemoryStore",
+    "DialogueAdapter",
+    "SpeechAdapter",
+    "PerformanceController",
+    "SceneAndCameraController",
+    "RendererAdapter",
+    "EmbeddedPresenter",
+    "StandalonePresenter"
+  ],
+  "reuse_existing": [
+    "profile/context integrity and voice SDK",
+    "rational exposure timing",
+    "codec/audio auditing"
+  ],
+  "new_implementation": [
+    "semantic part rigs and missing view banks",
+    "actual 3D loader/surface renderer",
+    "shot graph",
+    "history/memory ingestion",
+    "actual dialogue adapters",
+    "new speech-driven performance",
+    "shared companion window core"
+  ],
+  "character_format": {
+    "schema": "schemas/full-rezz-character-model-draft.schema.json",
+    "example": "examples/character_model_draft.json",
+    "two_d": "Authored calibrated views, semantic part domains, articulated limbs and corrective poses.",
+    "three_d": "Usable rigged glTF/GLB surfaces, textures, skin weights, joint mapping, clips and an implemented renderer.",
+    "unsupported_views": "Explicit unavailable state or user-selected labeled fallback.",
+    "coordinates": "Adapt explicitly: existing flat image-plane pixels are not measured world geometry.",
+    "chat_text_creates_geometry_or_voice_weights": false
+  },
+  "history_import": {
+    "inputs": [
+      "structured_json",
+      "csv_with_explicit_role_content_mapping",
+      "text_with_reviewed_speaker_mapping"
+    ],
+    "preserve": [
+      "source_hash",
+      "message_id",
+      "role",
+      "content",
+      "source_span",
+      "available_timestamp",
+      "character_binding",
+      "unknown_fields"
+    ],
+    "large_logs": "Store all accepted history; chunk/retrieve for model context without silently deleting it.",
+    "atomic_rollback": true,
+    "imported_text_is_executable_policy": false,
+    "this_project_transcript_is_character_lore": false
+  },
+  "dialogue_voice": {
+    "provider": "Reuse the host adapter; standalone configures an implemented API/local text provider.",
+    "provider_registration_proves_conversation": false,
+    "voice": "Keep checked profile binding; text imports do not clone a voice.",
+    "performance": "Actual new speech drives sample-clock-bound idle/talk/gesture performance; identify energy versus phoneme capability.",
+    "async_inference": true,
+    "retraining_from_this_audit": false
+  },
+  "benchmark_fps": 60,
+  "higher_delivery_fps": "Allowed when measured; exposures remain independent.",
+  "benchmark_shots": [
+    {
+      "shot_id": "S1",
+      "frames": [
+        0,
+        119
+      ],
+      "framing": "wide front establish",
+      "status": "proposed_not_rendered"
+    },
+    {
+      "shot_id": "S2",
+      "frames": [
+        120,
+        239
+      ],
+      "framing": "medium reaction (reframing)",
+      "status": "proposed_not_rendered"
+    },
+    {
+      "shot_id": "S3",
+      "frames": [
+        240,
+        359
+      ],
+      "framing": "front three-quarter",
+      "status": "proposed_not_rendered"
+    },
+    {
+      "shot_id": "S4",
+      "frames": [
+        360,
+        479
+      ],
+      "framing": "profile",
+      "status": "proposed_not_rendered"
+    },
+    {
+      "shot_id": "S5",
+      "frames": [
+        480,
+        599
+      ],
+      "framing": "rear three-quarter / over-shoulder",
+      "status": "proposed_not_rendered"
+    },
+    {
+      "shot_id": "S6",
+      "frames": [
+        600,
+        719
+      ],
+      "framing": "low/high-angle action or prop insert",
+      "status": "proposed_not_rendered"
+    }
+  ],
+  "acceptance": "Use the criteria and provenance in FULL_REZZ_Audit_Findings.csv; all camera views need real supported assets, and art approval is separate from technical checks.",
+  "implementation_order": [
+    {
+      "phase": "A",
+      "issues": [
+        "FR-A02",
+        "FR-A03"
+      ],
+      "deliverable": "Constrained rig/corrected poses with visible comparison"
+    },
+    {
+      "phase": "B",
+      "issues": [
+        "FR-A04",
+        "FR-A05",
+        "FR-A06"
+      ],
+      "deliverable": "Manifest, multiview 2D, real 3D backend and multishot benchmark"
+    },
+    {
+      "phase": "C",
+      "issues": [
+        "FR-A07",
+        "FR-A08",
+        "FR-A09",
+        "FR-A10"
+      ],
+      "deliverable": "History/dialogue/voice/performance in embedded and standalone windows"
+    },
+    {
+      "phase": "D",
+      "issues": [
+        "FR-A11",
+        "FR-A12",
+        "FR-A13"
+      ],
+      "deliverable": "Native offline Windows, live-performance and artistic acceptance"
+    }
+  ],
+  "migration": {
+    "keep_legacy_versions_and_profile_ids": true,
+    "keep_automatic_reanimation_false_in_legacy_actions": true,
+    "new_protocol": "Version and implement live performance separately; never advertise readiness by flipping a flag.",
+    "preserve_host_extension_fields": true
+  },
+  "remaining_inputs": [
+    "Actual host repository",
+    "Missing calibrated view/part assets and usable 3D rig, or an implemented reviewed asset pipeline",
+    "Configured provider and voice bindings",
+    "Native Windows acceptance environment"
+  ],
+  "not_claimed": [
+    "New 3D engine",
+    "New character viewpoints",
+    "New animation",
+    "Chat importer/window implemented",
+    "Rebuilt installer",
+    "Studio fidelity approval"
+  ],
+  "primary_format_reference": {
+    "url": "https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html",
+    "checked_on": "2026-10-12",
+    "scope": "Standard defines meshes, skins, cameras and animations; proposed transport only."
+  }
+}

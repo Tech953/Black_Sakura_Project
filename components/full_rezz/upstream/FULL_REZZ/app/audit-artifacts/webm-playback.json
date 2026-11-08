@@ -1,0 +1,9 @@
+{
+  "video_codec": "VP9",
+  "audio_codec": "Opus",
+  "refined_frames": 720,
+  "refined_fps": 60,
+  "baseline_frames": 288,
+  "baseline_fps": 24,
+  "native_qt_playback_tested": false
+}

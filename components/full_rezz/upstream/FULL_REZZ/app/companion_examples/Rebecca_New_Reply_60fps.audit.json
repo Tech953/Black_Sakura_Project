@@ -1,0 +1,35 @@
+{
+  "profile_id": "voice_57373fea79f3473e",
+  "mode": "2d",
+  "view_id": "supplied_view",
+  "path": "/workspace/scratch/ee0183463077/full_rezz_product/FULL_REZZ_Replit/product_exports/Rebecca_New_Reply_60fps.webm",
+  "sha256": "dc386cb602e609d553a5541151263232f5fabced32904f4fec9c05391c73c043",
+  "fps": 60,
+  "frames": 720,
+  "duration_seconds": 12.0,
+  "resolution": [
+    640,
+    640
+  ],
+  "turn_id": "turn_a0aeb59846c2405da4a002f85ae7761c",
+  "speech_source_sha256": "d69f517af8f659cf976033a6b3370343c30ce3fabb310829cfc7d05cc5bcb1a3",
+  "encoded_audio_seconds": 1.44,
+  "mouth_alignment": "actual WAV energy; not phonemes",
+  "original_WAV_retained": true,
+  "movie_audio_is_lossless": false,
+  "shots": [
+    {
+      "shot_id": "selected_authored_2d_view",
+      "view_id": "supplied_view",
+      "start_frame": 0,
+      "end_frame": 720
+    }
+  ],
+  "elapsed_seconds": 8.067584071000056,
+  "all_video_frames_decoded_and_timestamps_checked": true,
+  "render_backend": "shared Qt cel painter",
+  "new_speech_generated_by_export": false,
+  "missing_views_or_geometry_generated": false,
+  "live_frame_rate_benchmark": false,
+  "artistic_acceptance": false
+}

@@ -1,0 +1,23 @@
+{
+  "bridge_version": "1.0.0",
+  "renderer_version": "2.2.0",
+  "tests": {
+    "bridge": 36,
+    "additional_render": 30,
+    "combined": 84,
+    "all_passed": true,
+    "additional_geometry": 18
+  },
+  "production_fps": 60,
+  "production_dimensions": [
+    1920,
+    1080
+  ],
+  "exhaustive_frame_count": 720,
+  "technical_audit_passed": 12,
+  "review_flags": 32,
+  "native_windows_tested": false,
+  "host_repository_modified": false,
+  "scene_continuity_checks_passed": 4,
+  "production_media_modified_in_geometry_update": false
+}

@@ -1,0 +1,14 @@
+{
+  "text": "Ready for updates.\n\n> EOF by user",
+  "provider": "bundled_llama_cpp",
+  "model_architecture": "qwen2",
+  "elapsed_seconds": 0.6883202870001242,
+  "model_file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+  "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+  "seed": 42,
+  "context_tokens": 8192,
+  "maximum_output_tokens": 128,
+  "network_inference": false,
+  "generation_performed": true,
+  "scope": "Actual first-party Qwen text generation; not a fixture"
+}

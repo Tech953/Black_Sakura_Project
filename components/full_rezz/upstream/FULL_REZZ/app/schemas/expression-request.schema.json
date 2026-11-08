@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Voice Profile Studio Expression Request",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "profile_id",
+    "text",
+    "requested_style",
+    "reference",
+    "prosody",
+    "ssml",
+    "character",
+    "sources",
+    "renderer",
+    "generated_audio"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "1.0.0",
+        "1.1.0"
+      ]
+    },
+    "kind": {
+      "const": "voice_expression_request"
+    },
+    "profile_id": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "requested_style": {
+      "type": "string"
+    },
+    "reference": {
+      "type": "object",
+      "required": [
+        "id",
+        "path",
+        "recording_id",
+        "segment_id",
+        "source_start_seconds",
+        "source_end_seconds",
+        "channel",
+        "duration_seconds",
+        "sample_rate_hz",
+        "encoding",
+        "style",
+        "review_status",
+        "measurements"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ref_[a-f0-9]{16}$"
+        },
+        "path": {
+          "type": "string"
+        },
+        "recording_id": {
+          "type": "string"
+        },
+        "segment_id": {
+          "type": "string"
+        },
+        "source_start_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "source_end_seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "channel": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "duration_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sample_rate_hz": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "encoding": {
+          "enum": [
+            "FLOAT_32",
+            "PCM_24",
+            "PCM_16"
+          ]
+        },
+        "style": {
+          "type": "string"
+        },
+        "review_status": {
+          "enum": [
+            "user_declared_single_voice",
+            "reviewed_single_voice",
+            "model_nonoverlap"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "measurements": {
+          "type": "object",
+          "required": [
+            "pitch_hz",
+            "rms_dbfs",
+            "clipping_fraction",
+            "spectral_centroid_hz",
+            "method",
+            "limitations"
+          ]
+        },
+        "quality": {
+          "type": "object"
+        },
+        "processing": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "prosody": {
+      "type": "object",
+      "required": [
+        "rate_multiplier",
+        "pitch_semitones",
+        "volume_db"
+      ],
+      "properties": {
+        "rate_multiplier": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
+        },
+        "pitch_semitones": {
+          "type": "number",
+          "minimum": -12,
+          "maximum": 12
+        },
+        "volume_db": {
+          "type": "number",
+          "minimum": -20,
+          "maximum": 6
+        }
+      }
+    },
+    "ssml": {
+      "type": "string"
+    },
+    "character": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Voice Profile Studio Character Context",
+      "type": "object",
+      "required": [
+        "kind",
+        "biography",
+        "demographics",
+        "statistics",
+        "persona",
+        "prompts",
+        "field_sources"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "fictional",
+            "original",
+            "real_person",
+            "unspecified"
+          ]
+        },
+        "incarnation": {
+          "type": "string"
+        },
+        "biography": {
+          "type": "string"
+        },
+        "demographics": {
+          "type": "object",
+          "description": "Sourced/authored fields; no acoustic inference"
+        },
+        "statistics": {
+          "type": "object",
+          "description": "Preserve value, units, system, edition, and source context"
+        },
+        "persona": {
+          "type": "object",
+          "properties": {
+            "traits": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "motivations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "goals": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "speech_style": {
+              "type": "string"
+            },
+            "mannerisms": {
+              "type": "string"
+            },
+            "boundaries": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "prompts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "field_sources": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^src_[a-f0-9]{16}$"
+            }
+          }
+        },
+        "canon_notes": {
+          "type": "string"
+        },
+        "review_status": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "sources": {
+      "type": "array"
+    },
+    "renderer": {
+      "type": "null"
+    },
+    "generated_audio": {
+      "type": "null"
+    }
+  },
+  "additionalProperties": true
+}

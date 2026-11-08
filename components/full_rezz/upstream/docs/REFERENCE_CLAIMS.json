@@ -1,0 +1,46 @@
+{
+  "review_date": "2026-10-11",
+  "uploaded_references": [
+    {
+      "name": "10543.jpg",
+      "sha256": "e43bae2de205f5d29010819881e46764e7a60aa2f2d3bc784a69b301a28ab1f3",
+      "kind": "Google AI-summary screenshot",
+      "claim": "Game assets/CAD/wireframes help match prop and environment angles.",
+      "verification": "The consulted primary pages do not establish this specific workflow or absolute continuity."
+    },
+    {
+      "name": "10541.jpg",
+      "sha256": "e83e99d5bfa6937e2ea835682e2a41b34b224a76bb50da08dc66b9a9f4896bf4",
+      "kind": "Google AI-summary screenshot",
+      "claim": "Maya restricted to layouts, vehicle motion and perspective guides; direct-sharing text is cut off.",
+      "verification": "The strict software limitation is unestablished by the consulted primary pages. The cut-off sharing statement is incomplete."
+    }
+  ],
+  "primary_sources": [
+    {
+      "url": "https://www.cyberpunk.net/en/news/43880/cyberpunk-edgerunners-coming-to-netflix-this-september",
+      "supports": "CD PROJEKT RED/Trigger collaboration and an official development documentary with concept art and a scene breakdown.",
+      "does_not_establish": "Exact CAD/wireframe transfers, exclusive Maya roles or a studio audit standard."
+    },
+    {
+      "url": "https://www.st-trigger.co.jp/works/cyberpunk-edgerunners/",
+      "supports": "Official production, art/animation and compositing role credits.",
+      "does_not_establish": "Measured camera calibration, exclusive software restrictions or quality thresholds."
+    }
+  ],
+  "implemented": [
+    "Orthographic/perspective wireframe projection with depth and viewport clipping",
+    "Strict local scene-layout validation",
+    "Every-frame expected camera and projected contact agreement",
+    "Actual matte support at both projected boots",
+    "Full first-witness area prediction against three background thumbnail regions",
+    "Four-witness self-contained guide review"
+  ],
+  "not_supplied": [
+    "Game/CAD/OBJ/FBX geometry",
+    "Metric scene measurements",
+    "Anime camera calibration",
+    "New drawings or action exposures"
+  ],
+  "limits": "The current movie uses a flat authored guide, not recovered 3D scenery, automatic occlusion, new prop rendering or studio-equivalence verification."
+}

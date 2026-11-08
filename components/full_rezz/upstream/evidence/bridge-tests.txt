@@ -1,0 +1,41 @@
+test_actual_authored_60fps_plan (test_bridge.ActionTests.test_actual_authored_60fps_plan) ... ok
+test_automatic_animation_claim_rejected (test_bridge.ActionTests.test_automatic_animation_claim_rejected) ... ok
+test_duplicate_or_unordered_events_rejected (test_bridge.ActionTests.test_duplicate_or_unordered_events_rejected) ... ok
+test_no_24fps_or_inconsistent_count (test_bridge.ActionTests.test_no_24fps_or_inconsistent_count) ... ok
+test_off_grid_voice_onset_rejected (test_bridge.ActionTests.test_off_grid_voice_onset_rejected) ... ok
+test_speech_overrun_rejected (test_bridge.ActionTests.test_speech_overrun_rejected) ... ok
+test_wrong_character_rejected (test_bridge.ActionTests.test_wrong_character_rejected) ... ok
+test_cli_json_and_invalid_exit_status (test_bridge.CliTests.test_cli_json_and_invalid_exit_status) ... ok
+test_demo_runs_without_neural_runtime (test_bridge.CliTests.test_demo_runs_without_neural_runtime) ... ok
+test_worker_initialization_failure_releases_project_and_keeps_network_blocked (test_bridge.CliTests.test_worker_initialization_failure_releases_project_and_keeps_network_blocked) ... ok
+test_duplicate_and_nonfinite_json_rejected (test_bridge.InputTests.test_duplicate_and_nonfinite_json_rejected) ... ok
+test_parameter_limits_reject_bool_nan_and_fractional_steps (test_bridge.InputTests.test_parameter_limits_reject_bool_nan_and_fractional_steps) ... ok
+test_paths_reject_windows_and_traversal_forms (test_bridge.InputTests.test_paths_reject_windows_and_traversal_forms) ... ok
+test_speech_limits_distinguish_request_from_render (test_bridge.InputTests.test_speech_limits_distinguish_request_from_render) ... ok
+test_symlink_inside_root_is_rejected (test_bridge.InputTests.test_symlink_inside_root_is_rejected) ... ok
+test_actual_pack_preserves_canon_and_attribution (test_bridge.PackTests.test_actual_pack_preserves_canon_and_attribution) ... ok
+test_after_load_asset_change_rejected (test_bridge.PackTests.test_after_load_asset_change_rejected) ... ok
+test_character_copy_disagreement_rejected (test_bridge.PackTests.test_character_copy_disagreement_rejected) ... ok
+test_corrupt_reference_rejected (test_bridge.PackTests.test_corrupt_reference_rejected) ... ok
+test_corrupt_source_rejected (test_bridge.PackTests.test_corrupt_source_rejected) ... ok
+test_declared_voice_does_not_become_listening_reviewed (test_bridge.PackTests.test_declared_voice_does_not_become_listening_reviewed) ... ok
+test_duplicate_profile_rejected (test_bridge.PackTests.test_duplicate_profile_rejected) ... ok
+test_future_version_rejected (test_bridge.PackTests.test_future_version_rejected) ... ok
+test_malformed_attribution_is_contract_error (test_bridge.PackTests.test_malformed_attribution_is_contract_error) ... ok
+test_missing_audio_hash_rejected (test_bridge.PackTests.test_missing_audio_hash_rejected) ... ok
+test_rejected_reference_not_selected (test_bridge.PackTests.test_rejected_reference_not_selected) ... ok
+test_request_is_descriptor_not_generated_speech (test_bridge.PackTests.test_request_is_descriptor_not_generated_speech) ... ok
+test_sample_rate_and_quality_types_rejected (test_bridge.PackTests.test_sample_rate_and_quality_types_rejected) ... ok
+test_unknown_fields_survive_and_return_is_independent (test_bridge.PackTests.test_unknown_fields_survive_and_return_is_independent) ... ok
+test_unknown_recording_rejected (test_bridge.PackTests.test_unknown_recording_rejected) ... ok
+test_unresolved_attribution_rejected (test_bridge.PackTests.test_unresolved_attribution_rejected) ... ok
+test_changed_speech_or_reference_rejected (test_bridge.RenderTests.test_changed_speech_or_reference_rejected) ... ok
+test_hashes_and_review_preserved (test_bridge.RenderTests.test_hashes_and_review_preserved) ... ok
+test_inconsistent_review_rejected (test_bridge.RenderTests.test_inconsistent_review_rejected) ... ok
+test_unknown_receipt_version_rejected (test_bridge.RenderTests.test_unknown_receipt_version_rejected) ... ok
+test_wrong_profile_rejected (test_bridge.RenderTests.test_wrong_profile_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 0.342s
+
+OK

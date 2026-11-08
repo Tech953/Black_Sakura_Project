@@ -1,0 +1,8 @@
+{
+  "verified_files": 20196,
+  "initial_write_errors": [
+    "app/models/separator/masknet.ckpt",
+    "app/models/tts/model_1250000.safetensors"
+  ],
+  "all_recovered_hashes_verified": true
+}

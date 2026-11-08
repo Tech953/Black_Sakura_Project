@@ -1,0 +1,31 @@
+{
+  "source_movie_sha256": "b74f599a5eebeaf5a07a069d706a440d4614e12fc654458b063bf838b9ced97e",
+  "frame_selection": "Decoded frame index select(n), CFR 60 fps",
+  "selected_frames": [
+    39,
+    40,
+    234,
+    235,
+    329,
+    330,
+    349,
+    350,
+    434,
+    435,
+    509,
+    510
+  ],
+  "crop_delivery_pixels": [
+    760,
+    280,
+    1280,
+    850
+  ],
+  "source_dimensions": [
+    1920,
+    1080
+  ],
+  "crop_resize": false,
+  "image_sha256": "26c90403097c26a4f11e171e71577a8138d58e0cc216ee01652715cdf6017658",
+  "artistic_quality_score": false
+}

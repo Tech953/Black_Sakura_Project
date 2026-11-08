@@ -1,0 +1,10 @@
+Using custom `forced_decoder_ids` from the (generation) config. This is deprecated in favor of the `task` and `language` flags/config options.
+{
+  "model": "openai/whisper-tiny.en",
+  "method": "Local automatic transcription; no manual correction",
+  "reference_sha256": "2f2524c4fef5ef2de914dceaba3fae240e148f51b3603d7f8994ea8b1d2bdf82",
+  "recorded_conditioning_transcript": "I'm David, man, what's going on? Everything good?",
+  "current_transcript": "Oh David, my man, what's going on? Everything good?",
+  "manually_verified": false,
+  "limit": "Initial words are uncertain. Agreement between runs of one model is not independent verification."
+}

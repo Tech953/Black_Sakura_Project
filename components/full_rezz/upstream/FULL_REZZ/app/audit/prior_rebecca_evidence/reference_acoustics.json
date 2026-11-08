@@ -1,0 +1,47 @@
+{
+  "duration_seconds": 4.35,
+  "sample_rate_hz": 44100,
+  "analysis_sample_rate_hz": 16000,
+  "peak_dbfs": -5.1663,
+  "rms_dbfs": -24.2681,
+  "clipping_fraction": 0.0,
+  "pitch_hz": {
+    "count": 98,
+    "median": 311.8531,
+    "p10": 231.3703,
+    "p90": 433.6951,
+    "mean": 311.703,
+    "std": 89.6775
+  },
+  "voicing_periodicity": {
+    "count": 98,
+    "median": 0.8738,
+    "p10": 0.7258,
+    "p90": 0.9735,
+    "mean": 0.8599,
+    "std": 0.0901
+  },
+  "frame_energy_dbfs": {
+    "count": 216,
+    "median": -26.851,
+    "p10": -45.8216,
+    "p90": -19.9708,
+    "mean": -29.9568,
+    "std": 9.9965
+  },
+  "spectral_centroid_hz": {
+    "count": 206,
+    "median": 1819.125,
+    "p10": 1028.6395,
+    "p90": 2771.9295,
+    "mean": 1903.0673,
+    "std": 679.2208
+  },
+  "estimated_voiced_frame_fraction": 0.4537,
+  "method": "40ms normalized-autocorrelation frames; 65-500Hz search; periodicity >=0.65",
+  "limitations": [
+    "Pitch estimates can be wrong with music, noise, or overlapping voices.",
+    "No gender, age, accent, emotion, clinical voice quality, or identity is inferred.",
+    "Energy gating detects acoustic activity, not necessarily speech."
+  ]
+}

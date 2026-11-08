@@ -1,0 +1,5 @@
+﻿recording_id,profile_id,id,start,end,speaker,channel,purity,style,text,eligible_reference_seconds
+rec_0cb951970b18433e,voice_57373fea79f3473e,seg_c9d06619373b4d9f,0.0,4.35,REBECCA_ENGLISH_ARCHIVE,,user_declared_single_voice,concern,"Oh David, my man, what's going on? Everything good?",4.35
+rec_09a57c7cc15a4961,voice_57373fea79f3473e,seg_7e9864d9a17b4167,0.0,4.7,REBECCA_ENGLISH_ARCHIVE,,unreviewed,casual,I'm Rebecca. I hear you're joining up with Maine's crew. Cheers!,0
+rec_de2e999d240b41cc,voice_57373fea79f3473e,seg_8222691b75c84673,0.0,7.9,REBECCA_ENGLISH_ARCHIVE,,unreviewed,playful,"That's a tip! Dang, but you're fucking adorable! See you soon, Denn Falls!",0
+rec_de65fe6360ed4bc9,voice_57373fea79f3473e,seg_3b7ac1d7859740bd,0.0,5.7,REBECCA_ENGLISH_ARCHIVE,,unreviewed,warm,"Glad you're back safe. For David's sake, I mean.",0

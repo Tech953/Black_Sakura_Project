@@ -1,0 +1,35 @@
+{
+  "ok": true,
+  "result": {
+    "turn_id": "turn_0d263e6f8cf14980b18e3b72ef7f2b75",
+    "profile_id": "voice_57373fea79f3473e",
+    "presentation_source": null,
+    "job_id": null,
+    "history_stored_before_turn": 0,
+    "context_message_ids": [],
+    "context_excerpts": [],
+    "authored_context_excerpt_truncated": true,
+    "imported_history_is_executable_policy": false,
+    "visual_binding": "voice_57373fea79f3473e",
+    "voice_binding": "voice_57373fea79f3473e",
+    "full_history_retained": true,
+    "user_message_id": "message_9a61178747254570be36cc2d94dc2948",
+    "reply_text": "Ready for updates.\n\n> EOF by user",
+    "dialogue": {
+      "text": "Ready for updates.\n\n> EOF by user",
+      "provider": "bundled_llama_cpp",
+      "model_architecture": "qwen2",
+      "elapsed_seconds": 6.2676062589998764,
+      "model_file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "seed": 42,
+      "context_tokens": 8192,
+      "maximum_output_tokens": 128,
+      "network_inference": false,
+      "generation_performed": true
+    },
+    "assistant_message_id": "message_1e57e05d547e451da81d942e8863eb2f",
+    "audio_status": "failed",
+    "speech_error": "Could not import module 'pipeline'. Are this object's requirements defined correctly? Set the logging verbosity to DEBUG for the original import error."
+  }
+}

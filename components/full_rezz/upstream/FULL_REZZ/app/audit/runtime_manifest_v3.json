@@ -1,0 +1,23 @@
+{
+  "embedded_python": "python-3.11.9-embed-amd64.zip",
+  "sha256": "009d6bf7e3b2ddca3d784fa09f90fe54336d5b60f0e0f305c37f400bf83cfd3b",
+  "onnxruntime_included": false,
+  "runtime_model_downloads": false,
+  "node_runtime": false,
+  "browser_server": false,
+  "F5_patch": "Unused training Trainer import omitted; inference weights unchanged.",
+  "program_version": "3.0.0",
+  "recovered_baseline_installer_sha256": "fb746d498ac929acf6890a33a60182c026f5c8c36b5505f37027edc9d6585b03",
+  "pure_python_additions": [
+    {
+      "name": "opencc-python-reimplemented",
+      "version": "0.1.7",
+      "files": 36,
+      "audit": "audit/opencc_runtime_addition.json"
+    }
+  ],
+  "resource_manifests": [
+    "fonts/manifest.json",
+    "vendor/espeak-ng/manifest.json"
+  ]
+}

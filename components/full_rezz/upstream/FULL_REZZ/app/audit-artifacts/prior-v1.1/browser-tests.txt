@@ -1,0 +1,17 @@
+PASS Fresh startup renders the empty workspace without JavaScript errors
+PASS Synthetic demo and FLOAT32 region playback advance in the real browser
+PASS Unsaved region edits block stale exports and save persists text and style
+PASS Profile creation and speaker assignment work through the interface
+PASS Multiple source imports, Unicode, source reading/search, draft conflicts, and character citations persist
+PASS Invalid character JSON reports an actionable error and does not corrupt saved data
+PASS Failed URL research reports its actual failure
+PASS Saved cleanup, original/cleaned audio playback, and source/output measurements work
+PASS 24-bit ZIP download includes the actual audio, source documents, character, logs, and quality reports
+PASS Expression request downloads escaped SSML and links its matching reference audio package
+PASS Actual faster-whisper tiny.en CPU inference completes through the browser on synthetic speech
+PASS Unavailable automatic diarization reports setup requirements without fabricated results
+/root/.local/lib/python3.12/site-packages/speechbrain/utils/torch_audio_backend.py:64: UserWarning: torchaudio._backend.list_audio_backends has been deprecated. This deprecation is part of a large refactoring effort to transition TorchAudio into a maintenance phase. The decoding and encoding capabilities of PyTorch for both audio and video are being consolidated into TorchCodec. Please see https://github.com/pytorch/audio/issues/3902 for more information. It will be removed from the 2.9 release. 
+  available_backends = torchaudio.list_audio_backends()
+PASS Actual two-speaker separation imports anonymous 8 kHz source estimates through the browser
+PASS Narrow viewport keeps navigation and recording controls accessible
+PASS No uncaught JavaScript errors or unexpected console failures during the workflow

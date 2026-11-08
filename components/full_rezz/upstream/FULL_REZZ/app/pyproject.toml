@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "full-rezz"
+version = "2.0.0"
+description = "Local voice isolation, source-backed character dossiers, and portable audio references"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26,<3", "scipy>=1.11,<2", "av>=13,<18", "pypdf>=5,<7"]
+
+[project.scripts]
+voice-profile-studio = "voice_studio.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["voice_studio*"]
+
+[tool.setuptools.package-data]
+voice_studio = ["web/*.html", "web/*.css", "web/*.js"]

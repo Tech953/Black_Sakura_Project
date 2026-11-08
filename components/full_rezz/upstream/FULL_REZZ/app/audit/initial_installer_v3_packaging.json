@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0.0",
+  "release_version": "3.0.0",
+  "installer_name": "Voice_Profile_Studio_3.0.0_Offline_Windows_x64_Setup.exe",
+  "installer_bytes": 2142864776,
+  "installer_sha256": "4bb5615057f4da92b943135cbf836a9440095178339d7bc5a400d3df30f9531a",
+  "actual_windows_execution_verified": false,
+  "publisher_signed": false,
+  "program_tests_passed": 108,
+  "integration_tests_passed": 17,
+  "worker_bridge_tests_passed": 5,
+  "interface_languages": 12,
+  "generic_languages_signal_valid": 12,
+  "generic_languages_text_check_passed": 0,
+  "onnx_runtime_included": false,
+  "compressor": "per-file zlib/Deflate; no solid datablock",
+  "limits": "Archive/payload verification does not prove Windows loader, playback or uninstall execution.",
+  "PE_machine": "0x14c",
+  "archive_test_passed": true,
+  "extraction_passed": true,
+  "initial_extraction_write_errors": [
+    {
+      "path": "app/models/tts/model_1250000.safetensors",
+      "reason": "size/hash mismatch"
+    }
+  ],
+  "stream_verified_recoveries": [
+    {
+      "path": "app/models/tts/model_1250000.safetensors",
+      "bytes": 1348435761,
+      "sha256": "670900fd14e6c458b95da6e9ed317cdb20dbaf7a1c02ac06a05475a9d32b6a38",
+      "return_code": 0,
+      "stderr": "",
+      "passed": true
+    }
+  ],
+  "independent_model_manifest_checks_passed": true,
+  "model_errors": [],
+  "payload_files_checked": 20801,
+  "payload_bytes_checked": 3150117552,
+  "manifest_matches": true,
+  "payload_errors": [],
+  "payload_hashes_passed": true,
+  "model_assets": 19,
+  "resource_counts": {
+    "fonts": 6,
+    "vendor/espeak-ng": 443
+  },
+  "resource_errors": [],
+  "resource_checks_passed": true,
+  "passed": true
+}

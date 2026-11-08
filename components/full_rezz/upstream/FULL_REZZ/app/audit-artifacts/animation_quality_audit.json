@@ -1,0 +1,53 @@
+{
+  "program": "FULL_REZZ",
+  "schema_version": "4.0.0",
+  "scope": "60 fps sampling and continuity of the existing authored 23-drawing sequence",
+  "before": {
+    "fps": 24,
+    "frames": 288,
+    "scheduled_body_drawings": 23,
+    "per_frame_geometry": {
+      "maximum_hand_step_pixels": 34.756681200813745,
+      "mean_hand_step_pixels": 4.327333113335842,
+      "path_pixels": 1241.9446035273868
+    }
+  },
+  "after": {
+    "fps": 60,
+    "frames": 720,
+    "scheduled_body_drawings": 23,
+    "distinct_rendered_frames": 720,
+    "per_frame_geometry": {
+      "maximum_hand_step_pixels": 32.665963387894955,
+      "mean_hand_step_pixels": 1.7497805596773917,
+      "path_pixels": 1258.0922224080446
+    },
+    "minimum_triangle_area_ratio": 0.40642776752207094,
+    "limited_arm_frames": 15,
+    "mouth": "60 Hz continuous aperture with 45/70 ms attack/release and discrete closed/half/open content",
+    "blinks": "75 ms close, 75 ms hold, 100 ms open; eased coverage"
+  },
+  "same_time_grid_12hz": {
+    "samples": 144,
+    "before": {
+      "maximum_hand_step_pixels": 46.95781510629368,
+      "mean_hand_step_pixels": 8.592704002633074,
+      "path_pixels": 1228.7566723765294
+    },
+    "after": {
+      "maximum_hand_step_pixels": 51.04023619446615,
+      "mean_hand_step_pixels": 8.641994673482222,
+      "path_pixels": 1235.8052383079576
+    }
+  },
+  "measurement_limits": [
+    "Per-frame steps at different frame rates are not a percentage quality improvement.",
+    "Hand landmarks are authored geometry, not optical motion tracking.",
+    "More sampled frames do not add unseen body poses or prove anime fidelity."
+  ],
+  "actual_anime_motion_reference_available": false,
+  "studio_equivalence_validated": false,
+  "human_listening_review_performed": false,
+  "phoneme_alignment_performed": false,
+  "native_windows_tested": false
+}

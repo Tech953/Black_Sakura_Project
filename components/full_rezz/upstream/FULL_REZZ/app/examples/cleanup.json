@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "remove_dc": true,
+  "highpass_hz": 30,
+  "peak_dbfs": -3,
+  "fade_ms": 5,
+  "denoise_db": 0
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "CD PROJEKT RED — Cyberpunk: Edgerunners official site",
+  "url": "https://www.cyberpunk.net/en/edgerunners",
+  "authority": "official_primary",
+  "evidence_section": "Original show, Rebecca card, MADNESS paragraph",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_ab3005b7b68341fd",
+  "retrieved_at": "2026-10-07T08:25:19.297138+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "8c2240c148bd6994ec51cd559972d44f2f9adbe5f9ba37517f9c8b7bbf9e2734",
+  "text_characters": 866,
+  "text_path": "sources/src_ab3005b7b68341fd/text.txt",
+  "original_path": "sources/src_ab3005b7b68341fd/original.json",
+  "original_sha256": "8c2240c148bd6994ec51cd559972d44f2f9adbe5f9ba37517f9c8b7bbf9e2734"
+}

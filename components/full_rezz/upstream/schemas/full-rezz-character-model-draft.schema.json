@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:full-rezz:character-model:0.1.0-draft",
+  "title": "Proposed shared 2D/3D character manifest",
+  "description": "DESIGN ONLY: existing renderer/bridge do not consume this payload. Shape validation does not implement assets, conversation or a backend.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "implementation_status",
+    "kind",
+    "character_id",
+    "identity_binding",
+    "representations",
+    "presentation",
+    "dialogue",
+    "extensions"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0-draft"
+    },
+    "implementation_status": {
+      "const": "design_only"
+    },
+    "kind": {
+      "const": "full_rezz_character_model_proposal"
+    },
+    "character_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "identity_binding": {
+      "type": "object",
+      "required": [
+        "legacy_profile_id",
+        "engram_key",
+        "authored_lore_refs"
+      ],
+      "properties": {
+        "legacy_profile_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+        },
+        "engram_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+        },
+        "authored_lore_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "representations": {
+      "type": "object",
+      "required": [
+        "two_d",
+        "three_d"
+      ],
+      "properties": {
+        "two_d": {
+          "type": "object",
+          "required": [
+            "asset_state",
+            "legacy_project_ref",
+            "views"
+          ],
+          "properties": {
+            "asset_state": {
+              "enum": [
+                "not_provided",
+                "legacy_single_view",
+                "authored_multiview_ready"
+              ]
+            },
+            "legacy_project_ref": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+            },
+            "views": {
+              "type": "array",
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "required": [
+                  "view_id",
+                  "calibration_status",
+                  "azimuth_deg",
+                  "elevation_deg",
+                  "pose_library_ref",
+                  "part_rig_ref"
+                ],
+                "properties": {
+                  "view_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "calibration_status": {
+                    "enum": [
+                      "unmeasured",
+                      "authored_calibrated"
+                    ]
+                  },
+                  "azimuth_deg": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "elevation_deg": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "pose_library_ref": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+                  },
+                  "part_rig_ref": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "three_d": {
+          "type": "object",
+          "required": [
+            "asset_state",
+            "rigged_asset_ref",
+            "joint_mapping_ref",
+            "animation_clips"
+          ],
+          "properties": {
+            "asset_state": {
+              "enum": [
+                "not_provided",
+                "rigged_asset_ready"
+              ]
+            },
+            "rigged_asset_ref": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+            },
+            "joint_mapping_ref": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+            },
+            "animation_clips": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "presentation": {
+      "type": "object",
+      "required": [
+        "requested_mode",
+        "default_view_id",
+        "unsupported_view_policy"
+      ],
+      "properties": {
+        "requested_mode": {
+          "enum": [
+            "2d",
+            "3d"
+          ]
+        },
+        "default_view_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+        },
+        "unsupported_view_policy": {
+          "enum": [
+            "show_unavailable",
+            "explicit_labeled_fallback"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "dialogue": {
+      "type": "object",
+      "required": [
+        "history_import_status",
+        "chat_history_refs",
+        "text_provider_binding",
+        "voice_profile_binding"
+      ],
+      "properties": {
+        "history_import_status": {
+          "enum": [
+            "not_imported",
+            "proposed_import_complete"
+          ]
+        },
+        "chat_history_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "text_provider_binding": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+        },
+        "voice_profile_binding": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Contained normalized local reference; loader must validate actual assets and hashes. Null means unavailable."
+        }
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

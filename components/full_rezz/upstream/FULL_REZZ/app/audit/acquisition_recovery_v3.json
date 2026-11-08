@@ -1,0 +1,14 @@
+{
+  "saved_baseline_installer_bytes": 2101401753,
+  "saved_baseline_installer_sha256": "fb746d498ac929acf6890a33a60182c026f5c8c36b5505f37027edc9d6585b03",
+  "espeak_source_initial_incomplete_bytes": 16777216,
+  "espeak_source_recovered_bytes": 17739803,
+  "espeak_source_sha256": "bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23",
+  "earlier_unsaved_v3_tests_counted": false,
+  "source_checkpoint_saved_before_rebuild": true,
+  "removed_unlisted_installer_extraction_files": [
+    "Uninstall.exe",
+    "$PLUGINSDIR/System.dll",
+    "$PLUGINSDIR/nsDialogs.dll"
+  ]
+}

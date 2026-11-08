@@ -1,0 +1,28 @@
+test_auto_reply_user_language_contract (test_integration.IntegrationTests.test_auto_reply_user_language_contract) ... ok
+test_context_preserves_custom_fields (test_integration.IntegrationTests.test_context_preserves_custom_fields) ... ok
+test_export_real_manifest (test_integration.IntegrationTests.test_export_real_manifest) ... ok
+test_failed_run_has_no_audio_available (test_integration.IntegrationTests.test_failed_run_has_no_audio_available) ... ok
+test_invalid_generation_id (test_integration.IntegrationTests.test_invalid_generation_id) ... ok
+test_language_schema_independent_and_unknown_refused (test_integration.IntegrationTests.test_language_schema_independent_and_unknown_refused) ... ok
+test_manifest_escape_rejected (test_integration.IntegrationTests.test_manifest_escape_rejected) ... ok
+test_present_asset_is_not_verified_inference (test_integration.IntegrationTests.test_present_asset_is_not_verified_inference) ... ok
+test_render_schema_accepts_explicit_locale (test_integration.IntegrationTests.test_render_schema_accepts_explicit_locale) ... ok
+test_render_task_does_not_generate (test_integration.IntegrationTests.test_render_task_does_not_generate) ... ok
+test_render_task_language_and_engine (test_integration.IntegrationTests.test_render_task_language_and_engine) ... ok
+test_result_never_automatically_approved (test_integration.IntegrationTests.test_result_never_automatically_approved) ... /workspace/scratch/1122d4842f78/work/integration/engram_adapter.py:36: ResourceWarning: unclosed file <_io.BufferedReader name='/tmp/tmpep7wcgq7/generations/gen_0000000000000001/generated.wav'>
+  if ready and expected and hashlib.file_digest(file.open('rb'),'sha256').hexdigest()!=expected:raise ValueError('Delivered audio hash changed.')
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_review_appends_and_preserves_word_failure (test_integration.IntegrationTests.test_review_appends_and_preserves_word_failure) ... ok
+test_tampered_audio_rejected (test_integration.IntegrationTests.test_tampered_audio_rejected) ... /workspace/scratch/1122d4842f78/work/integration/engram_adapter.py:36: ResourceWarning: unclosed file <_io.BufferedReader name='/tmp/tmp8tvxhip5/generations/gen_0000000000000001/generated.wav'>
+  if ready and expected and hashlib.file_digest(file.open('rb'),'sha256').hexdigest()!=expected:raise ValueError('Delivered audio hash changed.')
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_unconfigured_model_never_claims_render (test_integration.IntegrationTests.test_unconfigured_model_never_claims_render) ... ok
+test_unknown_profile_explicit (test_integration.IntegrationTests.test_unknown_profile_explicit) ... ok
+test_unsupported_f5_never_falls_back (test_integration.IntegrationTests.test_unsupported_f5_never_falls_back) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 0.088s
+
+OK

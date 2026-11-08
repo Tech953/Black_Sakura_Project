@@ -1,0 +1,55 @@
+{
+  "passed": 10,
+  "failed": 0,
+  "environment": "Independent raw-frame SHA-256 reading, Pillow witness decoding, FFmpeg/ffprobe media decoding, original PCM and ZIP byte comparison",
+  "aac_source_correlation": 0.9999179775590437,
+  "aac_signal_to_error_db": 37.78267763670748,
+  "source_samples": 199424,
+  "source_offset_samples": 30000,
+  "timeline_samples": 288000,
+  "portable_reference_files_byte_verified": 47,
+  "subjective_listening_review_performed": false,
+  "live_windows_playtest_performed": false,
+  "results": [
+    {
+      "name": "Every one of the 720 raw RGBA frames matches its independently read pixel hash",
+      "status": "passed"
+    },
+    {
+      "name": "All exported witness PNGs decode to the corresponding rendered pixels",
+      "status": "passed"
+    },
+    {
+      "name": "MP4 contains 12 seconds of 720p60 video and aligned mono audio at zero start",
+      "status": "passed"
+    },
+    {
+      "name": "Every original speech sample is preserved exactly at 1.25 s with silent lead and tail",
+      "status": "passed"
+    },
+    {
+      "name": "AAC speech covers the entire selected recording and aligns with the 1.25-second start",
+      "status": "passed"
+    },
+    {
+      "name": "Closing hold remains silent and no decoded audio samples clip",
+      "status": "passed"
+    },
+    {
+      "name": "Every frame of the encoded movie decodes without video errors",
+      "status": "passed"
+    },
+    {
+      "name": "Every extracted body drawing preserves opaque garments and boot soles with transparent exterior",
+      "status": "passed"
+    },
+    {
+      "name": "Original reference profile and empty embedding state remain intact",
+      "status": "passed"
+    },
+    {
+      "name": "All portable reference-pack files match the uploaded audited ZIP byte-for-byte",
+      "status": "passed"
+    }
+  ]
+}

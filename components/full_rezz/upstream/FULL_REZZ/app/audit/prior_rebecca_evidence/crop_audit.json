@@ -1,0 +1,377 @@
+[
+  {
+    "key": "concern",
+    "parent_index": 0,
+    "start": 35.3,
+    "end": 39.65,
+    "style": "concern",
+    "eligible": true,
+    "transcript": "Oh David, my man, what's going on? Everything good?",
+    "transcript_basis": "Current offline Whisper tiny.en output, 2026-10-07; not manually verified. Earlier output had different initial words; neither is canonical evidence.",
+    "file": "concern.wav",
+    "sha256": "2f2524c4fef5ef2de914dceaba3fae240e148f51b3603d7f8994ea8b1d2bdf82",
+    "parent_filename": "Cyberpunk_ Edgerunners but it's just Rebecca.mp3",
+    "parent_sha256": "dd0ccf104580cfbd3f2f07a0706d60ebccdb912510a4655d7e323a0d8cdf9c21",
+    "native_rate_hz": 44100,
+    "native_channels": 1,
+    "sample_start": 1556730,
+    "sample_end": 1748565,
+    "quality": {
+      "sample_rate_hz": 44100,
+      "duration_seconds": 4.35,
+      "peak_dbfs": -5.1663,
+      "rms_dbfs": -24.2681,
+      "dc_offset": 0.00173361,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -45.7822,
+      "estimated_snr_db": 26.0192,
+      "noise_estimate_available": true,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "measurements": {
+      "duration_seconds": 4.35,
+      "sample_rate_hz": 44100,
+      "analysis_sample_rate_hz": 16000,
+      "peak_dbfs": -5.1663,
+      "rms_dbfs": -24.2681,
+      "clipping_fraction": 0.0,
+      "pitch_hz": {
+        "count": 98,
+        "median": 311.8531,
+        "p10": 231.3703,
+        "p90": 433.6951,
+        "mean": 311.703,
+        "std": 89.6775
+      },
+      "voicing_periodicity": {
+        "count": 98,
+        "median": 0.8738,
+        "p10": 0.7258,
+        "p90": 0.9735,
+        "mean": 0.8599,
+        "std": 0.0901
+      },
+      "frame_energy_dbfs": {
+        "count": 216,
+        "median": -26.851,
+        "p10": -45.8216,
+        "p90": -19.9708,
+        "mean": -29.9568,
+        "std": 9.9965
+      },
+      "spectral_centroid_hz": {
+        "count": 206,
+        "median": 1819.125,
+        "p10": 1028.6395,
+        "p90": 2771.9295,
+        "mean": 1903.0673,
+        "std": 679.2208
+      },
+      "estimated_voiced_frame_fraction": 0.4537,
+      "method": "40ms normalized-autocorrelation frames; 65-500Hz search; periodicity >=0.65",
+      "limitations": [
+        "Pitch estimates can be wrong with music, noise, or overlapping voices.",
+        "No gender, age, accent, emotion, clinical voice quality, or identity is inferred.",
+        "Energy gating detects acoustic activity, not necessarily speech."
+      ]
+    },
+    "identity_verified": false,
+    "listening_review_completed": false
+  },
+  {
+    "key": "intro_candidate",
+    "parent_index": 0,
+    "start": 27.0,
+    "end": 31.7,
+    "style": "casual",
+    "eligible": false,
+    "transcript": "I'm Rebecca. I hear you're joining up with Maine's crew. Cheers!",
+    "transcript_basis": "Prior automatic crop transcript; not manually verified.",
+    "file": "intro_candidate.wav",
+    "sha256": "2534fd22c7101c9c536cbc88ceafbd9300ed109f946fd0e42112ea559f1620b6",
+    "parent_filename": "Cyberpunk_ Edgerunners but it's just Rebecca.mp3",
+    "parent_sha256": "dd0ccf104580cfbd3f2f07a0706d60ebccdb912510a4655d7e323a0d8cdf9c21",
+    "native_rate_hz": 44100,
+    "native_channels": 1,
+    "sample_start": 1190700,
+    "sample_end": 1397970,
+    "quality": {
+      "sample_rate_hz": 44100,
+      "duration_seconds": 4.7,
+      "peak_dbfs": -12.5836,
+      "rms_dbfs": -29.261,
+      "dc_offset": 3.534e-05,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -42.1358,
+      "estimated_snr_db": 16.5921,
+      "noise_estimate_available": true,
+      "status": "review",
+      "issues": [
+        {
+          "code": "background_noise",
+          "severity": "warning",
+          "message": "Quiet-frame contrast is low. Listen for noise and select a noise-only interval if needed."
+        },
+        {
+          "code": "abrupt_boundary",
+          "severity": "warning",
+          "message": "A nonzero clip boundary can click. Short boundary fades are available."
+        }
+      ],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "measurements": {
+      "duration_seconds": 4.7,
+      "sample_rate_hz": 44100,
+      "analysis_sample_rate_hz": 16000,
+      "peak_dbfs": -12.5836,
+      "rms_dbfs": -29.261,
+      "clipping_fraction": 0.0,
+      "pitch_hz": {
+        "count": 98,
+        "median": 190.1476,
+        "p10": 86.708,
+        "p90": 346.1588,
+        "mean": 195.8234,
+        "std": 102.547
+      },
+      "voicing_periodicity": {
+        "count": 98,
+        "median": 0.8165,
+        "p10": 0.68,
+        "p90": 0.9301,
+        "mean": 0.8086,
+        "std": 0.0917
+      },
+      "frame_energy_dbfs": {
+        "count": 234,
+        "median": -31.6678,
+        "p10": -41.6314,
+        "p90": -25.8484,
+        "mean": -32.7401,
+        "std": 6.3714
+      },
+      "spectral_centroid_hz": {
+        "count": 234,
+        "median": 1532.4528,
+        "p10": 1010.6252,
+        "p90": 2392.5913,
+        "mean": 1675.1741,
+        "std": 721.5161
+      },
+      "estimated_voiced_frame_fraction": 0.4188,
+      "method": "40ms normalized-autocorrelation frames; 65-500Hz search; periodicity >=0.65",
+      "limitations": [
+        "Pitch estimates can be wrong with music, noise, or overlapping voices.",
+        "No gender, age, accent, emotion, clinical voice quality, or identity is inferred.",
+        "Energy gating detects acoustic activity, not necessarily speech."
+      ]
+    },
+    "identity_verified": false,
+    "listening_review_completed": false
+  },
+  {
+    "key": "quip_candidate",
+    "parent_index": 0,
+    "start": 65.9,
+    "end": 73.8,
+    "style": "playful",
+    "eligible": false,
+    "transcript": "That's a tip! Dang, but you're fucking adorable! See you soon, Denn Falls!",
+    "transcript_basis": "Prior automatic crop transcript with evident proper-name errors; not used for rendering.",
+    "file": "quip_candidate.wav",
+    "sha256": "9e42f5b2b8c0d36d0f50344ebadb7143378b7930e0b9105b4dbc027ca7bb0cb9",
+    "parent_filename": "Cyberpunk_ Edgerunners but it's just Rebecca.mp3",
+    "parent_sha256": "dd0ccf104580cfbd3f2f07a0706d60ebccdb912510a4655d7e323a0d8cdf9c21",
+    "native_rate_hz": 44100,
+    "native_channels": 1,
+    "sample_start": 2906190,
+    "sample_end": 3254580,
+    "quality": {
+      "sample_rate_hz": 44100,
+      "duration_seconds": 7.9,
+      "peak_dbfs": -11.6926,
+      "rms_dbfs": -28.66,
+      "dc_offset": -0.00013168,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -44.2162,
+      "estimated_snr_db": 19.9361,
+      "noise_estimate_available": true,
+      "status": "review",
+      "issues": [
+        {
+          "code": "background_noise",
+          "severity": "warning",
+          "message": "Quiet-frame contrast is low. Listen for noise and select a noise-only interval if needed."
+        }
+      ],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "measurements": {
+      "duration_seconds": 7.9,
+      "sample_rate_hz": 44100,
+      "analysis_sample_rate_hz": 16000,
+      "peak_dbfs": -11.6926,
+      "rms_dbfs": -28.66,
+      "clipping_fraction": 0.0,
+      "pitch_hz": {
+        "count": 175,
+        "median": 251.2823,
+        "p10": 139.1563,
+        "p90": 415.3342,
+        "mean": 265.1241,
+        "std": 102.4506
+      },
+      "voicing_periodicity": {
+        "count": 175,
+        "median": 0.797,
+        "p10": 0.676,
+        "p90": 0.9224,
+        "mean": 0.8024,
+        "std": 0.0915
+      },
+      "frame_energy_dbfs": {
+        "count": 394,
+        "median": -31.1743,
+        "p10": -44.7059,
+        "p90": -24.5224,
+        "mean": -32.6778,
+        "std": 7.4485
+      },
+      "spectral_centroid_hz": {
+        "count": 388,
+        "median": 1793.6654,
+        "p10": 1006.6186,
+        "p90": 2928.0838,
+        "mean": 1907.9939,
+        "std": 872.3439
+      },
+      "estimated_voiced_frame_fraction": 0.4442,
+      "method": "40ms normalized-autocorrelation frames; 65-500Hz search; periodicity >=0.65",
+      "limitations": [
+        "Pitch estimates can be wrong with music, noise, or overlapping voices.",
+        "No gender, age, accent, emotion, clinical voice quality, or identity is inferred.",
+        "Energy gating detects acoustic activity, not necessarily speech."
+      ]
+    },
+    "identity_verified": false,
+    "listening_review_completed": false
+  },
+  {
+    "key": "warm_candidate",
+    "parent_index": 6,
+    "start": 34.8,
+    "end": 40.5,
+    "style": "warm",
+    "eligible": false,
+    "transcript": "Glad you're back safe. For David's sake, I mean.",
+    "transcript_basis": "Prior automatic crop transcript; not manually verified.",
+    "file": "warm_candidate.wav",
+    "sha256": "76845b9fc17e89ec5862c29f0b9dd6946e17630800e178c4d09d3d77169df9dc",
+    "parent_filename": "Rebecca's Death - Cyberpunk_ Edgerunners [Eng Dub] (ONA - 2022).mp3",
+    "parent_sha256": "e86757f127400ab1ce323710a48cb3cee1626924ae4461ce93ce008248162ad0",
+    "native_rate_hz": 44100,
+    "native_channels": 1,
+    "sample_start": 1534680,
+    "sample_end": 1786050,
+    "quality": {
+      "sample_rate_hz": 44100,
+      "duration_seconds": 5.7,
+      "peak_dbfs": -17.1818,
+      "rms_dbfs": -33.5125,
+      "dc_offset": -7.75e-06,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -42.4466,
+      "estimated_snr_db": 12.1662,
+      "noise_estimate_available": true,
+      "status": "review",
+      "issues": [
+        {
+          "code": "background_noise",
+          "severity": "warning",
+          "message": "Quiet-frame contrast is low. Listen for noise and select a noise-only interval if needed."
+        }
+      ],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "measurements": {
+      "duration_seconds": 5.7,
+      "sample_rate_hz": 44100,
+      "analysis_sample_rate_hz": 16000,
+      "peak_dbfs": -17.1818,
+      "rms_dbfs": -33.5125,
+      "clipping_fraction": 0.0,
+      "pitch_hz": {
+        "count": 99,
+        "median": 233.5325,
+        "p10": 78.705,
+        "p90": 452.8946,
+        "mean": 263.8644,
+        "std": 134.2697
+      },
+      "voicing_periodicity": {
+        "count": 99,
+        "median": 0.7402,
+        "p10": 0.6686,
+        "p90": 0.835,
+        "mean": 0.7467,
+        "std": 0.0603
+      },
+      "frame_energy_dbfs": {
+        "count": 284,
+        "median": -34.8513,
+        "p10": -42.6784,
+        "p90": -30.4499,
+        "mean": -35.3821,
+        "std": 4.3065
+      },
+      "spectral_centroid_hz": {
+        "count": 284,
+        "median": 1629.5701,
+        "p10": 1330.4127,
+        "p90": 2115.4307,
+        "mean": 1739.8093,
+        "std": 514.4204
+      },
+      "estimated_voiced_frame_fraction": 0.3486,
+      "method": "40ms normalized-autocorrelation frames; 65-500Hz search; periodicity >=0.65",
+      "limitations": [
+        "Pitch estimates can be wrong with music, noise, or overlapping voices.",
+        "No gender, age, accent, emotion, clinical voice quality, or identity is inferred.",
+        "Energy gating detects acoustic activity, not necessarily speech."
+      ]
+    },
+    "identity_verified": false,
+    "listening_review_completed": false
+  }
+]

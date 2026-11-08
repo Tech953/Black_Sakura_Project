@@ -1,0 +1,17 @@
+{
+  "kind": "authored_analysis_json",
+  "title": "User refinement — circumstance-dependent delivery and recording spectral balance",
+  "url": "",
+  "authority": "user_instruction_and_authored_measurement",
+  "evidence_section": "User clarification and actual recording PSD analysis",
+  "content_type": "application/json",
+  "note": "Profile direction and measured recording evidence; not a new canon claim or perceptual review.",
+  "id": "src_3ac6dc58309f4309",
+  "retrieved_at": "2026-10-07T13:25:56.464029+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "64d675f2dd8e6aaca73d43136a8bc22bb604ea59eb351426e55e251eba51e024",
+  "text_characters": 3452,
+  "text_path": "sources/src_3ac6dc58309f4309/text.txt",
+  "original_path": "sources/src_3ac6dc58309f4309/original.json",
+  "original_sha256": "64d675f2dd8e6aaca73d43136a8bc22bb604ea59eb351426e55e251eba51e024"
+}

@@ -1,0 +1,2326 @@
+{
+  "delivery_revision": "2026-10-14.3-download-repair",
+  "original_complete_source_sha256": "95759e8b5acc3c3040826b2d9bffc0ca5e0eaa4c53326640607efda419168762",
+  "omitted": [
+    {
+      "path": "FULL_REZZ/SOURCE_CHECKSUMS.sha256",
+      "bytes": 21641
+    },
+    {
+      "path": "FULL_REZZ/app/animation_review/Body_Preservation_Review.webm",
+      "bytes": 4221857
+    },
+    {
+      "path": "FULL_REZZ/app/animation_review/Previous_Render.webm",
+      "bytes": 4498247
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/audio/concern.wav",
+      "bytes": 767398
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/audio/intro_candidate.wav",
+      "bytes": 829138
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/audio/quip_candidate.wav",
+      "bytes": 1393618
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/audio/warm_candidate.wav",
+      "bytes": 1005538
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/original_uploads/Cyberpunk_ Edgerunners but it's just Rebecca.mp3",
+      "bytes": 8327022
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/original_uploads/First Rebecca Swearing Cutscene _ Wuthering Waves x Cyberpunk_ Edgerunners.mp3",
+      "bytes": 5220472
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/original_uploads/Lucy tells Rebecca that she's already dead - Wuwa x Cyberpunk (Wuthering Waves 3.4).mp3",
+      "bytes": 7816690
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/original_uploads/Rebecca CRASHES OUT in front of Rover and Lucy - Wuwa x Cyberpunk (Wuthering Waves 3.4).mp3",
+      "bytes": 1533632
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/original_uploads/Rebecca Compilation _ Wuthering Waves 3.4 x Cyberpunk_ Edgerunners.mp3",
+      "bytes": 34177386
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/original_uploads/Rebecca SWEARING for 3 minutes straight (Compilation) _ Wuthering Waves x Cyberpunk_ Edgerunners.mp3",
+      "bytes": 4992316
+    },
+    {
+      "path": "FULL_REZZ/app/audit/prior_rebecca_evidence/original_uploads/Rebecca's Death - Cyberpunk_ Edgerunners [Eng Dub] (ONA - 2022).mp3",
+      "bytes": 1751281
+    },
+    {
+      "path": "FULL_REZZ/app/build/python-3.11.9-embed-amd64.zip",
+      "bytes": 11249023
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_03692f6b2d734816/generated.wav",
+      "bytes": 263048
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_03692f6b2d734816/generic_original.wav",
+      "bytes": 263048
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_03692f6b2d734816/raw_float32.wav",
+      "bytes": 526066
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_0f9eaa690113489f/generated.wav",
+      "bytes": 775308
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_0f9eaa690113489f/generic_original.wav",
+      "bytes": 775308
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_0f9eaa690113489f/raw_float32.wav",
+      "bytes": 1550586
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_2026100700000001/conditioning_reference.wav",
+      "bytes": 445454
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_2026100700000001/generated.wav",
+      "bytes": 398892
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_2026100700000001/raw_float32.wav",
+      "bytes": 797754
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_2026100700000001/reference_native.wav",
+      "bytes": 767398
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_34dd6aada38045ea/generated.wav",
+      "bytes": 222454
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_34dd6aada38045ea/generic_original.wav",
+      "bytes": 222454
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_34dd6aada38045ea/raw_float32.wav",
+      "bytes": 444878
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_3d4cbba5a9da404b/generated.wav",
+      "bytes": 318374
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_3d4cbba5a9da404b/generic_original.wav",
+      "bytes": 318374
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_3d4cbba5a9da404b/raw_float32.wav",
+      "bytes": 636718
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_91e073e38c234767/conditioning_reference.wav",
+      "bytes": 445454
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_91e073e38c234767/reference_native.wav",
+      "bytes": 383714
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_a2def2ab47c543f9/generated.wav",
+      "bytes": 192180
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_a2def2ab47c543f9/generic_original.wav",
+      "bytes": 192180
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_a2def2ab47c543f9/raw_float32.wav",
+      "bytes": 384330
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_ae312747280d427a/generated.wav",
+      "bytes": 224222
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_ae312747280d427a/generic_original.wav",
+      "bytes": 224222
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_ae312747280d427a/raw_float32.wav",
+      "bytes": 448414
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_b9a95197bdbd43ab/generated.wav",
+      "bytes": 215780
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_b9a95197bdbd43ab/generic_original.wav",
+      "bytes": 215780
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_b9a95197bdbd43ab/raw_float32.wav",
+      "bytes": 431530
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c4d943fe0f05494e/conditioning_reference.wav",
+      "bytes": 445454
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c4d943fe0f05494e/generated.wav",
+      "bytes": 398892
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c4d943fe0f05494e/raw_float32.wav",
+      "bytes": 797754
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c4d943fe0f05494e/reference_native.wav",
+      "bytes": 383714
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c92ead39b5234a2c/conditioning_reference.wav",
+      "bytes": 445454
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c92ead39b5234a2c/generated.wav",
+      "bytes": 398892
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c92ead39b5234a2c/raw_float32.wav",
+      "bytes": 797754
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_c92ead39b5234a2c/reference_native.wav",
+      "bytes": 383714
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_cf5df7e64f31427f/generated.wav",
+      "bytes": 233074
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_cf5df7e64f31427f/generic_original.wav",
+      "bytes": 233074
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_cf5df7e64f31427f/raw_float32.wav",
+      "bytes": 466118
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_e194cc5dc6d54f39/generated.wav",
+      "bytes": 186288
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_e194cc5dc6d54f39/generic_original.wav",
+      "bytes": 186288
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_e194cc5dc6d54f39/raw_float32.wav",
+      "bytes": 372546
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_ede3ad75fbdf471a/generated.wav",
+      "bytes": 188790
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_ede3ad75fbdf471a/generic_original.wav",
+      "bytes": 188790
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_ede3ad75fbdf471a/raw_float32.wav",
+      "bytes": 377550
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_f4a8967a175c4afb/generated.wav",
+      "bytes": 222450
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_f4a8967a175c4afb/generic_original.wav",
+      "bytes": 222450
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_f4a8967a175c4afb/raw_float32.wav",
+      "bytes": 444870
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_f5206bf1a55c4665/conditioning_reference.wav",
+      "bytes": 445454
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_f5206bf1a55c4665/generated.wav",
+      "bytes": 282156
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_f5206bf1a55c4665/raw_float32.wav",
+      "bytes": 564282
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_f5206bf1a55c4665/reference_native.wav",
+      "bytes": 383714
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_fe16878124d84c72/generated.wav",
+      "bytes": 203774
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_fe16878124d84c72/generic_original.wav",
+      "bytes": 203774
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/generations/gen_fe16878124d84c72/raw_float32.wav",
+      "bytes": 407518
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_09a57c7cc15a4961/decoded.npy",
+      "bytes": 829208
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_09a57c7cc15a4961/original.wav",
+      "bytes": 829138
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_09a57c7cc15a4961/playback.wav",
+      "bytes": 829138
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_0cb951970b18433e/decoded.npy",
+      "bytes": 767468
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_0cb951970b18433e/original.wav",
+      "bytes": 767398
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_0cb951970b18433e/playback.wav",
+      "bytes": 767398
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_de2e999d240b41cc/decoded.npy",
+      "bytes": 1393688
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_de2e999d240b41cc/original.wav",
+      "bytes": 1393618
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_de2e999d240b41cc/playback.wav",
+      "bytes": 1393618
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_de65fe6360ed4bc9/decoded.npy",
+      "bytes": 1005608
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_de65fe6360ed4bc9/original.wav",
+      "bytes": 1005538
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/recordings/rec_de65fe6360ed4bc9/playback.wav",
+      "bytes": 1005538
+    },
+    {
+      "path": "FULL_REZZ/app/example_workspace/session.lock",
+      "bytes": 1
+    },
+    {
+      "path": "FULL_REZZ/app/examples/Rebecca_60fps_Player.html",
+      "bytes": 8098264
+    },
+    {
+      "path": "FULL_REZZ/app/examples/Rebecca_Reference.zip",
+      "bytes": 89782774
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/espeak-ng-1.52.0-source.tar.gz",
+      "bytes": 17739803
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/ffmpeg-7.1.tar.xz",
+      "bytes": 11011364
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/pyside-setup-everywhere-src-6.8.3.tar.xz",
+      "bytes": 16611768
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/qtbase-everywhere-src-6.8.3.tar.xz",
+      "bytes": 48426536
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/qtdeclarative-everywhere-src-6.8.3.tar.xz",
+      "bytes": 36503988
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/qtimageformats-everywhere-src-6.8.3.tar.xz",
+      "bytes": 2035140
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/qtlanguageserver-everywhere-src-6.8.3.tar.xz",
+      "bytes": 152144
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/qtmultimedia-everywhere-src-6.8.3.tar.xz",
+      "bytes": 9705340
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/qtshadertools-everywhere-src-6.8.3.tar.xz",
+      "bytes": 1140608
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/qtsvg-everywhere-src-6.8.3.tar.xz",
+      "bytes": 2009072
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/qttools-everywhere-src-6.8.3.tar.xz",
+      "bytes": 10301984
+    },
+    {
+      "path": "FULL_REZZ/app/licenses/corresponding_source/qttranslations-everywhere-src-6.8.3.tar.xz",
+      "bytes": 1577680
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/af_dict",
+      "bytes": 121473
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/am_dict",
+      "bytes": 63878
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/an_dict",
+      "bytes": 6691
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ar_dict",
+      "bytes": 478165
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/as_dict",
+      "bytes": 5005
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/az_dict",
+      "bytes": 43773
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ba_dict",
+      "bytes": 2098
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/be_dict",
+      "bytes": 2652
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/bg_dict",
+      "bytes": 87051
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/bn_dict",
+      "bytes": 89979
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/bpy_dict",
+      "bytes": 5226
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/bs_dict",
+      "bytes": 47068
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ca_dict",
+      "bytes": 310331
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/chr_dict",
+      "bytes": 2859
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/cmn_dict",
+      "bytes": 1566347
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/cs_dict",
+      "bytes": 50455
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/cv_dict",
+      "bytes": 1344
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/cy_dict",
+      "bytes": 43130
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/da_dict",
+      "bytes": 245287
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/de_dict",
+      "bytes": 69277
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/el_dict",
+      "bytes": 72841
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/en_dict",
+      "bytes": 168204
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/eo_dict",
+      "bytes": 4666
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/es_dict",
+      "bytes": 49285
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/et_dict",
+      "bytes": 44263
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/eu_dict",
+      "bytes": 48841
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/fa_dict",
+      "bytes": 293719
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/fi_dict",
+      "bytes": 43928
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/fo_dict",
+      "bytes": 5669268
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/fr_dict",
+      "bytes": 63727
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ga_dict",
+      "bytes": 52673
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/gd_dict",
+      "bytes": 49121
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/gn_dict",
+      "bytes": 3248
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/grc_dict",
+      "bytes": 3433
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/gu_dict",
+      "bytes": 82480
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/hak_dict",
+      "bytes": 3335
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/haw_dict",
+      "bytes": 2443
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/he_dict",
+      "bytes": 10665
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/hi_dict",
+      "bytes": 92143
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/hr_dict",
+      "bytes": 49388
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ht_dict",
+      "bytes": 1803
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/hu_dict",
+      "bytes": 177886
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/hy_dict",
+      "bytes": 62263
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ia_dict",
+      "bytes": 331275
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/id_dict",
+      "bytes": 43458
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/intonations",
+      "bytes": 2312
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/io_dict",
+      "bytes": 2165
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/is_dict",
+      "bytes": 44354
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/it_dict",
+      "bytes": 154408
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ja_dict",
+      "bytes": 47652
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/jbo_dict",
+      "bytes": 2243
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ka_dict",
+      "bytes": 87775
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/kk_dict",
+      "bytes": 1859
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/kl_dict",
+      "bytes": 2838
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/kn_dict",
+      "bytes": 87828
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ko_dict",
+      "bytes": 47523
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/kok_dict",
+      "bytes": 6394
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ku_dict",
+      "bytes": 2265
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ky_dict",
+      "bytes": 64977
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/la_dict",
+      "bytes": 3806
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/aav/vi",
+      "bytes": 119
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/aav/vi-VN-x-central",
+      "bytes": 152
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/aav/vi-VN-x-south",
+      "bytes": 151
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/eo",
+      "bytes": 45
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/ia",
+      "bytes": 31
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/io",
+      "bytes": 55
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/jbo",
+      "bytes": 73
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/lfn",
+      "bytes": 135
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/piqd",
+      "bytes": 61
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/py",
+      "bytes": 147
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/qdb",
+      "bytes": 63
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/qya",
+      "bytes": 177
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/art/sjn",
+      "bytes": 179
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/azc/nci",
+      "bytes": 120
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/bat/lt",
+      "bytes": 30
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/bat/ltg",
+      "bytes": 324
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/bat/lv",
+      "bytes": 238
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/bnt/sw",
+      "bytes": 45
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/bnt/tn",
+      "bytes": 46
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/ccs/ka",
+      "bytes": 127
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/cel/cy",
+      "bytes": 41
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/cel/ga",
+      "bytes": 70
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/cel/gd",
+      "bytes": 55
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/cus/om",
+      "bytes": 43
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/dra/kn",
+      "bytes": 60
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/dra/ml",
+      "bytes": 62
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/dra/ta",
+      "bytes": 56
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/dra/te",
+      "bytes": 77
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/esx/kl",
+      "bytes": 33
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/eu",
+      "bytes": 59
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmq/da",
+      "bytes": 47
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmq/fo",
+      "bytes": 108
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmq/is",
+      "bytes": 29
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmq/nb",
+      "bytes": 94
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmq/sv",
+      "bytes": 27
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/af",
+      "bytes": 131
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/de",
+      "bytes": 45
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/en",
+      "bytes": 148
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/en-029",
+      "bytes": 355
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/en-GB-scotland",
+      "bytes": 312
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/en-GB-x-gbclan",
+      "bytes": 252
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/en-GB-x-gbcwmd",
+      "bytes": 200
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/en-GB-x-rp",
+      "bytes": 264
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/en-US",
+      "bytes": 272
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/en-US-nyc",
+      "bytes": 285
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/lb",
+      "bytes": 33
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/gmw/nl",
+      "bytes": 25
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/grk/el",
+      "bytes": 25
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/grk/grc",
+      "bytes": 105
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/as",
+      "bytes": 46
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/bn",
+      "bytes": 27
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/bpy",
+      "bytes": 41
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/gu",
+      "bytes": 46
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/hi",
+      "bytes": 25
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/kok",
+      "bytes": 28
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/mr",
+      "bytes": 45
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/ne",
+      "bytes": 41
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/or",
+      "bytes": 43
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/pa",
+      "bytes": 27
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/sd",
+      "bytes": 69
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/si",
+      "bytes": 61
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/inc/ur",
+      "bytes": 101
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/ine/hy",
+      "bytes": 64
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/ine/hyw",
+      "bytes": 389
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/ine/sq",
+      "bytes": 108
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/ira/fa",
+      "bytes": 94
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/ira/fa-Latn",
+      "bytes": 277
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/ira/ku",
+      "bytes": 45
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/iro/chr",
+      "bytes": 596
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/itc/la",
+      "bytes": 309
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/jpx/ja",
+      "bytes": 57
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/ko",
+      "bytes": 56
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/map/haw",
+      "bytes": 45
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/myn/quc",
+      "bytes": 216
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/poz/id",
+      "bytes": 141
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/poz/mi",
+      "bytes": 388
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/poz/ms",
+      "bytes": 444
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/qu",
+      "bytes": 93
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/an",
+      "bytes": 29
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/ca",
+      "bytes": 42
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/es",
+      "bytes": 67
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/es-419",
+      "bytes": 178
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/fr",
+      "bytes": 85
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/fr-BE",
+      "bytes": 92
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/fr-CH",
+      "bytes": 92
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/ht",
+      "bytes": 148
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/it",
+      "bytes": 116
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/pap",
+      "bytes": 69
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/pt",
+      "bytes": 102
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/pt-BR",
+      "bytes": 116
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/roa/ro",
+      "bytes": 28
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sai/gn",
+      "bytes": 51
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sem/am",
+      "bytes": 45
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sem/ar",
+      "bytes": 55
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sem/he",
+      "bytes": 44
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sem/mt",
+      "bytes": 45
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sit/cmn",
+      "bytes": 722
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sit/cmn-Latn-pinyin",
+      "bytes": 172
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sit/hak",
+      "bytes": 134
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sit/my",
+      "bytes": 59
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sit/yue",
+      "bytes": 207
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/sit/yue-Latn-jyutping",
+      "bytes": 226
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/tai/shn",
+      "bytes": 96
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/tai/th",
+      "bytes": 40
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/az",
+      "bytes": 49
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/ba",
+      "bytes": 27
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/cv",
+      "bytes": 43
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/kk",
+      "bytes": 44
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/ky",
+      "bytes": 47
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/nog",
+      "bytes": 42
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/tk",
+      "bytes": 27
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/tr",
+      "bytes": 27
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/tt",
+      "bytes": 25
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/ug",
+      "bytes": 26
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/trk/uz",
+      "bytes": 43
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/urj/et",
+      "bytes": 247
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/urj/fi",
+      "bytes": 248
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/urj/hu",
+      "bytes": 80
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/urj/smj",
+      "bytes": 49
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zle/be",
+      "bytes": 56
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zle/ru",
+      "bytes": 61
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zle/ru-LV",
+      "bytes": 296
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zle/uk",
+      "bytes": 103
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zls/bg",
+      "bytes": 116
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zls/bs",
+      "bytes": 244
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zls/hr",
+      "bytes": 277
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zls/mk",
+      "bytes": 30
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zls/sl",
+      "bytes": 47
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zls/sr",
+      "bytes": 263
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zlw/cs",
+      "bytes": 25
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zlw/pl",
+      "bytes": 42
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lang/zlw/sk",
+      "bytes": 26
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lb_dict",
+      "bytes": 687931
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lfn_dict",
+      "bytes": 2793
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lt_dict",
+      "bytes": 49890
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/lv_dict",
+      "bytes": 66337
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/mi_dict",
+      "bytes": 1346
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/mk_dict",
+      "bytes": 63859
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ml_dict",
+      "bytes": 92345
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/mr_dict",
+      "bytes": 87391
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ms_dict",
+      "bytes": 53541
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/mt_dict",
+      "bytes": 4384
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/my_dict",
+      "bytes": 95948
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/nci_dict",
+      "bytes": 1534
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ne_dict",
+      "bytes": 95377
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/nl_dict",
+      "bytes": 65396
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/no_dict",
+      "bytes": 4178
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/nog_dict",
+      "bytes": 3294
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/om_dict",
+      "bytes": 2302
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/or_dict",
+      "bytes": 89246
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/pa_dict",
+      "bytes": 79953
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/pap_dict",
+      "bytes": 2128
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/phondata",
+      "bytes": 554740
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/phondata-manifest",
+      "bytes": 22855
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/phonindex",
+      "bytes": 43316
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/phontab",
+      "bytes": 58652
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/piqd_dict",
+      "bytes": 1710
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/pl_dict",
+      "bytes": 76620
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/pt_dict",
+      "bytes": 76389
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/py_dict",
+      "bytes": 2409
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/qdb_dict",
+      "bytes": 3028
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/qu_dict",
+      "bytes": 1919
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/quc_dict",
+      "bytes": 1450
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/qya_dict",
+      "bytes": 1939
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ro_dict",
+      "bytes": 68538
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ru_dict",
+      "bytes": 8538195
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/sd_dict",
+      "bytes": 59928
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/shn_dict",
+      "bytes": 88172
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/si_dict",
+      "bytes": 85384
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/sjn_dict",
+      "bytes": 1783
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/sk_dict",
+      "bytes": 50002
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/sl_dict",
+      "bytes": 45047
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/smj_dict",
+      "bytes": 35095
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/sq_dict",
+      "bytes": 45003
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/sr_dict",
+      "bytes": 46832
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/sv_dict",
+      "bytes": 47836
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/sw_dict",
+      "bytes": 47804
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ta_dict",
+      "bytes": 209553
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/te_dict",
+      "bytes": 94837
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/th_dict",
+      "bytes": 2301
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/tk_dict",
+      "bytes": 20868
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/tn_dict",
+      "bytes": 3072
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/tr_dict",
+      "bytes": 46793
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/tt_dict",
+      "bytes": 2121
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ug_dict",
+      "bytes": 2070
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/uk_dict",
+      "bytes": 3492
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/ur_dict",
+      "bytes": 133556
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/uz_dict",
+      "bytes": 2540
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/vi_dict",
+      "bytes": 52608
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Alex",
+      "bytes": 138
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Alicia",
+      "bytes": 474
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Andrea",
+      "bytes": 376
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Andy",
+      "bytes": 320
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Annie",
+      "bytes": 315
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/AnxiousAndy",
+      "bytes": 361
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Demonic",
+      "bytes": 3858
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Denis",
+      "bytes": 305
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Diogo",
+      "bytes": 401
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Gene",
+      "bytes": 281
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Gene2",
+      "bytes": 283
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Henrique",
+      "bytes": 403
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Hugo",
+      "bytes": 400
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Jacky",
+      "bytes": 267
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Lee",
+      "bytes": 338
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Marco",
+      "bytes": 467
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Mario",
+      "bytes": 270
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Michael",
+      "bytes": 270
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Mike",
+      "bytes": 119
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Mr serious",
+      "bytes": 3193
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Nguyen",
+      "bytes": 296
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/RicishayMax",
+      "bytes": 249
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/RicishayMax2",
+      "bytes": 460
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/RicishayMax3",
+      "bytes": 460
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Storm",
+      "bytes": 420
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/Tweaky",
+      "bytes": 3189
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/UniRobot",
+      "bytes": 417
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/adam",
+      "bytes": 81
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/anika",
+      "bytes": 518
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/anikaRobot",
+      "bytes": 538
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/announcer",
+      "bytes": 317
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/antonio",
+      "bytes": 402
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/aunty",
+      "bytes": 358
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/belinda",
+      "bytes": 360
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/benjamin",
+      "bytes": 212
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/boris",
+      "bytes": 224
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/caleb",
+      "bytes": 62
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/croak",
+      "bytes": 104
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/david",
+      "bytes": 120
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/ed",
+      "bytes": 303
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/edward",
+      "bytes": 161
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/edward2",
+      "bytes": 162
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/f1",
+      "bytes": 342
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/f2",
+      "bytes": 378
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/f3",
+      "bytes": 397
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/f4",
+      "bytes": 368
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/f5",
+      "bytes": 455
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/fast",
+      "bytes": 156
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/grandma",
+      "bytes": 279
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/grandpa",
+      "bytes": 270
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/gustave",
+      "bytes": 270
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/iven",
+      "bytes": 274
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/iven2",
+      "bytes": 293
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/iven3",
+      "bytes": 275
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/iven4",
+      "bytes": 274
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/john",
+      "bytes": 3186
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/kaukovalta",
+      "bytes": 361
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/klatt",
+      "bytes": 42
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/klatt2",
+      "bytes": 42
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/klatt3",
+      "bytes": 43
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/klatt4",
+      "bytes": 43
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/klatt5",
+      "bytes": 43
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/klatt6",
+      "bytes": 43
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/linda",
+      "bytes": 370
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/m1",
+      "bytes": 355
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/m2",
+      "bytes": 279
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/m3",
+      "bytes": 317
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/m4",
+      "bytes": 307
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/m5",
+      "bytes": 277
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/m6",
+      "bytes": 201
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/m7",
+      "bytes": 271
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/m8",
+      "bytes": 300
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/marcelo",
+      "bytes": 268
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/max",
+      "bytes": 225
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/michel",
+      "bytes": 404
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/miguel",
+      "bytes": 404
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/norbert",
+      "bytes": 3189
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/pablo",
+      "bytes": 3194
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/paul",
+      "bytes": 300
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/pedro",
+      "bytes": 375
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/quincy",
+      "bytes": 354
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/rob",
+      "bytes": 265
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/robert",
+      "bytes": 274
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/robosoft",
+      "bytes": 477
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/robosoft2",
+      "bytes": 480
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/robosoft3",
+      "bytes": 481
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/robosoft4",
+      "bytes": 472
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/robosoft5",
+      "bytes": 470
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/robosoft6",
+      "bytes": 302
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/robosoft7",
+      "bytes": 435
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/robosoft8",
+      "bytes": 259
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/sandro",
+      "bytes": 555
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/shelby",
+      "bytes": 297
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/steph",
+      "bytes": 385
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/steph2",
+      "bytes": 388
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/steph3",
+      "bytes": 399
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/travis",
+      "bytes": 383
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/victor",
+      "bytes": 268
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/whisper",
+      "bytes": 199
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/whisperf",
+      "bytes": 416
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/!v/zac",
+      "bytes": 275
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-af1",
+      "bytes": 95
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-af1-en",
+      "bytes": 90
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ar1",
+      "bytes": 90
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ar2",
+      "bytes": 90
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-br1",
+      "bytes": 144
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-br2",
+      "bytes": 148
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-br3",
+      "bytes": 143
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-br4",
+      "bytes": 148
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ca1",
+      "bytes": 111
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ca2",
+      "bytes": 111
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-cn1",
+      "bytes": 98
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-cr1",
+      "bytes": 120
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-cz1",
+      "bytes": 74
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-cz2",
+      "bytes": 88
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de1",
+      "bytes": 153
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de1-en",
+      "bytes": 105
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de2",
+      "bytes": 136
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de2-en",
+      "bytes": 88
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de3",
+      "bytes": 107
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de3-en",
+      "bytes": 105
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de4",
+      "bytes": 137
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de4-en",
+      "bytes": 89
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de5",
+      "bytes": 246
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de5-en",
+      "bytes": 97
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de6",
+      "bytes": 128
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de6-en",
+      "bytes": 80
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de6-grc",
+      "bytes": 89
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de7",
+      "bytes": 158
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-de8",
+      "bytes": 76
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ee1",
+      "bytes": 105
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-en1",
+      "bytes": 140
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-es1",
+      "bytes": 123
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-es2",
+      "bytes": 116
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-es3",
+      "bytes": 110
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-es4",
+      "bytes": 93
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-fr1",
+      "bytes": 178
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-fr1-en",
+      "bytes": 113
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-fr2",
+      "bytes": 110
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-fr3",
+      "bytes": 107
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-fr4",
+      "bytes": 137
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-fr4-en",
+      "bytes": 116
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-fr5",
+      "bytes": 107
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-fr6",
+      "bytes": 107
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-fr7",
+      "bytes": 89
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-gr1",
+      "bytes": 101
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-gr2",
+      "bytes": 101
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-gr2-en",
+      "bytes": 95
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-hb1",
+      "bytes": 73
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-hb2",
+      "bytes": 88
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-hu1",
+      "bytes": 109
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-hu1-en",
+      "bytes": 104
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ic1",
+      "bytes": 95
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-id1",
+      "bytes": 109
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-in1",
+      "bytes": 74
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-in2",
+      "bytes": 91
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ir1",
+      "bytes": 775
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-it1",
+      "bytes": 89
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-it2",
+      "bytes": 92
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-it3",
+      "bytes": 151
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-it4",
+      "bytes": 154
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-jp1",
+      "bytes": 75
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-jp2",
+      "bytes": 107
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-jp3",
+      "bytes": 92
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-la1",
+      "bytes": 89
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-lt1",
+      "bytes": 93
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-lt2",
+      "bytes": 93
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ma1",
+      "bytes": 105
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-mx1",
+      "bytes": 130
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-mx2",
+      "bytes": 130
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-nl1",
+      "bytes": 74
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-nl2",
+      "bytes": 105
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-nl2-en",
+      "bytes": 100
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-nl3",
+      "bytes": 91
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-nz1",
+      "bytes": 73
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-pl1",
+      "bytes": 106
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-pl1-en",
+      "bytes": 88
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-pt1",
+      "bytes": 142
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ro1",
+      "bytes": 94
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-ro1-en",
+      "bytes": 88
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-sw1",
+      "bytes": 107
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-sw1-en",
+      "bytes": 102
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-sw2",
+      "bytes": 111
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-sw2-en",
+      "bytes": 108
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-tl1",
+      "bytes": 91
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-tr1",
+      "bytes": 92
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-tr2",
+      "bytes": 124
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-us1",
+      "bytes": 182
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-us2",
+      "bytes": 191
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-us3",
+      "bytes": 193
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/voices/mb/mb-vz1",
+      "bytes": 155
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng-data/yue_dict",
+      "bytes": 563571
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/espeak-ng.exe",
+      "bytes": 27136
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/espeak-ng/libespeak-ng.dll",
+      "bytes": 477184
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-base.dll",
+      "bytes": 672768
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-cpu-alderlake.dll",
+      "bytes": 979968
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-cpu-haswell.dll",
+      "bytes": 983040
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-cpu-icelake.dll",
+      "bytes": 1209344
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-cpu-sandybridge.dll",
+      "bytes": 869376
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-cpu-sapphirerapids.dll",
+      "bytes": 1473024
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-cpu-skylakex.dll",
+      "bytes": 1207296
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-cpu-sse42.dll",
+      "bytes": 706560
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-cpu-x64.dll",
+      "bytes": 698880
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml-rpc.dll",
+      "bytes": 140800
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/ggml.dll",
+      "bytes": 95744
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/libcurl-x64.dll",
+      "bytes": 3144776
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/libomp140.x86_64.dll",
+      "bytes": 634936
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-batched-bench.exe",
+      "bytes": 3589120
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-bench.exe",
+      "bytes": 502784
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-cli.exe",
+      "bytes": 5049344
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-completion.exe",
+      "bytes": 3615232
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-gemma3-cli.exe",
+      "bytes": 27648
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-gguf-split.exe",
+      "bytes": 60416
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-imatrix.exe",
+      "bytes": 3672576
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-llava-cli.exe",
+      "bytes": 27648
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-minicpmv-cli.exe",
+      "bytes": 27648
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-mtmd-cli.exe",
+      "bytes": 3602432
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-perplexity.exe",
+      "bytes": 3714560
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-quantize.exe",
+      "bytes": 350720
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-qwen2vl-cli.exe",
+      "bytes": 27648
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-run.exe",
+      "bytes": 2940416
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-server.exe",
+      "bytes": 7473152
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-tokenize.exe",
+      "bytes": 293376
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama-tts.exe",
+      "bytes": 3694592
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/llama.dll",
+      "bytes": 2099200
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/mtmd.dll",
+      "bytes": 709120
+    },
+    {
+      "path": "FULL_REZZ/app/vendor/llama-cpp/rpc-server.exe",
+      "bytes": 111616
+    },
+    {
+      "path": "animation/Rebecca_Full_Action_Player.html",
+      "bytes": 24119980
+    },
+    {
+      "path": "animation/baseline/Rebecca_720p60.mp4",
+      "bytes": 2535322
+    },
+    {
+      "path": "animation/layout_review/FULL_REZZ_Scene_Continuity_Review.html",
+      "bytes": 13785911
+    },
+    {
+      "path": "animation/layout_review/guide_0000.svg",
+      "bytes": 1016
+    },
+    {
+      "path": "animation/layout_review/guide_0352.svg",
+      "bytes": 1015
+    },
+    {
+      "path": "animation/layout_review/guide_0482.svg",
+      "bytes": 1015
+    },
+    {
+      "path": "animation/layout_review/guide_0719.svg",
+      "bytes": 1015
+    },
+    {
+      "path": "FILESET_CHECKSUMS.sha256",
+      "bytes": 165656
+    }
+  ]
+}

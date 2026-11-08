@@ -1,0 +1,6 @@
+{
+  "installed_startup_and_web_assets": "passed",
+  "installed_http_import_authoring_binding_and_export": "passed",
+  "cli_writer_blocked_while_server_running": "passed",
+  "clean_shutdown_and_cli_lock_release": "passed"
+}

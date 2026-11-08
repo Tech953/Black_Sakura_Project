@@ -1,0 +1,59 @@
+{
+  "checks": [
+    {
+      "name": "six native tabs",
+      "passed": true
+    },
+    {
+      "name": "four recovered recordings",
+      "passed": true
+    },
+    {
+      "name": "historical generation present",
+      "passed": true
+    },
+    {
+      "name": "custom field retained",
+      "passed": true
+    },
+    {
+      "name": "profile history retained",
+      "passed": true
+    },
+    {
+      "name": "record history retained",
+      "passed": true
+    },
+    {
+      "name": "PCM16 preview prepared",
+      "passed": true
+    },
+    {
+      "name": "review appended",
+      "passed": true
+    },
+    {
+      "name": "failed historical word check retained",
+      "passed": true
+    },
+    {
+      "name": "ratings remain unreviewed",
+      "passed": true
+    },
+    {
+      "name": "native model worker completed",
+      "passed": true
+    },
+    {
+      "name": "real generation performed",
+      "passed": true
+    },
+    {
+      "name": "six screenshot captures",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "actual_windows_execution": false,
+  "playback_device_verified": false
+}

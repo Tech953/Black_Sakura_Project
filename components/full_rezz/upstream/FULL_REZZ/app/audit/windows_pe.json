@@ -1,0 +1,60 @@
+{
+  "pe_files_checked": 556,
+  "unresolved_import_names": [],
+  "passed": true,
+  "limits": "Import-name coverage only; no Windows execution, ABI/export-symbol/loader compatibility or playback verified.",
+  "generic_child_search_paths": [
+    "app/vendor/espeak-ng",
+    "python"
+  ],
+  "generic_private_import_checks": [
+    {
+      "file": "app/vendor/espeak-ng/espeak-ng.exe",
+      "machine": "0x8664",
+      "resolved_private_imports": [
+        {
+          "dependency": "libespeak-ng.dll",
+          "path": "app/vendor/espeak-ng/libespeak-ng.dll",
+          "machine": "0x8664",
+          "named_import_symbols_checked": 27,
+          "missing_symbols": []
+        },
+        {
+          "dependency": "VCRUNTIME140.dll",
+          "path": "python/vcruntime140.dll",
+          "machine": "0x8664",
+          "named_import_symbols_checked": 7,
+          "missing_symbols": []
+        }
+      ]
+    },
+    {
+      "file": "app/vendor/espeak-ng/libespeak-ng.dll",
+      "machine": "0x8664",
+      "resolved_private_imports": [
+        {
+          "dependency": "MSVCP140.dll",
+          "path": "python/msvcp140.dll",
+          "machine": "0x8664",
+          "named_import_symbols_checked": 1,
+          "missing_symbols": []
+        },
+        {
+          "dependency": "VCRUNTIME140.dll",
+          "path": "python/vcruntime140.dll",
+          "machine": "0x8664",
+          "named_import_symbols_checked": 14,
+          "missing_symbols": []
+        },
+        {
+          "dependency": "VCRUNTIME140_1.dll",
+          "path": "python/vcruntime140_1.dll",
+          "machine": "0x8664",
+          "named_import_symbols_checked": 1,
+          "missing_symbols": []
+        }
+      ]
+    }
+  ],
+  "generic_private_import_errors": []
+}

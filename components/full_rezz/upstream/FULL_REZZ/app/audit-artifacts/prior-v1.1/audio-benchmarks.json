@@ -1,0 +1,35 @@
+{
+  "FLOAT32": {
+    "rate_hz": 48000,
+    "frames": 144000,
+    "identical_samples": true,
+    "max_absolute_error": 0.0,
+    "signal_to_quantization_error_db": null,
+    "bits_per_sample": 32
+  },
+  "PCM24": {
+    "rate_hz": 48000,
+    "frames": 144000,
+    "identical_samples": false,
+    "max_absolute_error": 1.73225998878479e-07,
+    "signal_to_quantization_error_db": 127.496,
+    "bits_per_sample": 24
+  },
+  "PCM16": {
+    "rate_hz": 48000,
+    "frames": 144000,
+    "identical_samples": false,
+    "max_absolute_error": 4.540383815765381e-05,
+    "signal_to_quantization_error_db": 79.358,
+    "bits_per_sample": 16
+  },
+  "cleanup": {
+    "noise_reduction_db_gain_compensated": 8.41,
+    "frame_count_unchanged": true,
+    "output_peak_dbfs": -3.0,
+    "output_dc_offset": 0.00015653,
+    "clipping_fraction": 0.0,
+    "source_rate_hz": 48000,
+    "output_rate_hz": 48000
+  }
+}

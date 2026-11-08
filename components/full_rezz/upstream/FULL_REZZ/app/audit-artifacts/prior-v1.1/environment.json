@@ -1,0 +1,17 @@
+{
+  "python": "3.12.14",
+  "platform": "Linux",
+  "packages": {
+    "numpy": "2.3.5",
+    "scipy": "1.17.0",
+    "av": "17.1.0",
+    "faster-whisper": "1.2.1",
+    "speechbrain": "1.1.1",
+    "torch": "2.8.0+cpu",
+    "torchaudio": "2.8.0+cpu",
+    "huggingface-hub": "0.36.2",
+    "playwright": "1.51.0",
+    "jsonschema": "4.26.0",
+    "pypdf": "6.10.0"
+  }
+}

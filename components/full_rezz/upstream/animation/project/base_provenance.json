@@ -1,0 +1,56 @@
+{
+  "visual_identity": "Original portrait and four recovered user-uploaded anime stills",
+  "original_portrait_sha256": "3ace008e163d7c8314d3b48cb755f2b9f3f0ab34b6ef7935a99edf830780678a",
+  "additional_references": [
+    {
+      "filename": "786a49967df7f8c418aa010f55360037.gif",
+      "format": "PNG",
+      "dimensions": [
+        498,
+        280
+      ],
+      "frames": 1,
+      "duration_ms": 0,
+      "sha256": "f4ea9f5dc9af20c002e3685c1d62f2cf2ce84988e1cea63c51e16e836c138d00"
+    },
+    {
+      "filename": "c759026d330713bb94f38142e181fa4ac48a1a49.gif",
+      "format": "PNG",
+      "dimensions": [
+        605,
+        463
+      ],
+      "frames": 1,
+      "duration_ms": 0,
+      "sha256": "c18585ff0f86c5edb9b74f26e8000e65b37b69238bc5d91436a06957164cf9ba"
+    },
+    {
+      "filename": "dhurayt-49aaeeeb-a423-4907-885b-2ce0fe7c3edf.gif",
+      "format": "PNG",
+      "dimensions": [
+        800,
+        452
+      ],
+      "frames": 1,
+      "duration_ms": 0,
+      "sha256": "5a25efae6ce1fb2ea9b14f556acc41215d868eae82686e79e9feccb3954c0101"
+    },
+    {
+      "filename": "rebecca-edgerunners (1).gif",
+      "format": "PNG",
+      "dimensions": [
+        498,
+        432
+      ],
+      "frames": 1,
+      "duration_ms": 0,
+      "sha256": "7aad7405a0ed80c8f9c58a6f8640c765282b67429ee4b1cf8a682e00f62ff002"
+    }
+  ],
+  "fullbody_art": "Generated costume continuation; unseen lower body is an artistic extension",
+  "selected_audio_sha256": "6f0473608ab369773cd2b0da304403c3e02918e8a00e4d50e2f75e326284b90c",
+  "supplied_voice_package_sha256": "89a0b5d1d465832b8d7539d5b95cb0449bd79f19992ca841090e3f0a5a5ff491",
+  "speech_generation_performed": false,
+  "actual_anime_motion_reference_available": false,
+  "reference_inventory_observation": "All five uploads named .gif are single-frame PNGs; no recoverable timing"
+}

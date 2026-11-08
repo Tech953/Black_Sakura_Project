@@ -1,0 +1,4 @@
+FULL_REZZ 3.0
+Launch the FULL_REZZ shortcut after installing the complete verified Setup.exe.
+Read docs/User_Guide.pdf and docs/Quick_Start.pdf.
+Source-only Replit imports require their own development environment and verified model assets.

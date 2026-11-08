@@ -1,0 +1,187 @@
+{
+  "package": "opencc-python-reimplemented",
+  "version": "0.1.7",
+  "pure_python": true,
+  "files": [
+    {
+      "path": "opencc/NOTICE.txt",
+      "bytes": 149,
+      "sha256": "afcbc6ee2d4fa9c2e9d5944b53ca05d3cc06bab6d082817c689bdfa33c38fcb0"
+    },
+    {
+      "path": "opencc/README.md",
+      "bytes": 3446,
+      "sha256": "c7343f42523285b12b2b4cc55ed3a0c5389c52ddc176f43b7b0e58534eb04a5e"
+    },
+    {
+      "path": "opencc/__init__.py",
+      "bytes": 255,
+      "sha256": "9ee2882ab0156a817c928fa4800b38def0b7cbf5ff33b2c4c42294c3c0648f23"
+    },
+    {
+      "path": "opencc/__main__.py",
+      "bytes": 1378,
+      "sha256": "dafcba671d01b7ba86222d9f9e2a96bb26f13a0fb5a3a2c53750b1cc560d5b6c"
+    },
+    {
+      "path": "opencc/config/hk2s.json",
+      "bytes": 666,
+      "sha256": "11d1001e56bf26f73a9bd4e88e63e064bbab421054701f22d948bb4d72e0a6cb"
+    },
+    {
+      "path": "opencc/config/s2hk.json",
+      "bytes": 526,
+      "sha256": "423ae690c62e0829044ce76cd5736667ff196562b06b1beedd60d1446bfd0ec9"
+    },
+    {
+      "path": "opencc/config/s2t.json",
+      "bytes": 422,
+      "sha256": "246f559aaf3756b280157f4eb2ab1dd22f31ebac2a9e0aafa2b4a99c1cb676ce"
+    },
+    {
+      "path": "opencc/config/s2tw.json",
+      "bytes": 524,
+      "sha256": "5eaf3d5138ad09ca34aae6b424c9928aaf870fcadd8495e4f8bd4172f57c3017"
+    },
+    {
+      "path": "opencc/config/s2twp.json",
+      "bytes": 621,
+      "sha256": "e2eeb094abf6ef8f1b75971110ab9b37471d19eb4d79b7cbe2dc7ce8eb46def1"
+    },
+    {
+      "path": "opencc/config/t2hk.json",
+      "bytes": 316,
+      "sha256": "2362f65edb9eb6627762e959ebb22e7c91a7260435e3135ecb7a21844ee913f8"
+    },
+    {
+      "path": "opencc/config/t2s.json",
+      "bytes": 422,
+      "sha256": "3848b420a86a7c5f79a796321029db6f9aaa534bc3a7a67b90fc66744d3030d0"
+    },
+    {
+      "path": "opencc/config/t2tw.json",
+      "bytes": 314,
+      "sha256": "0cb4078cd55c50892c8beeae79be73bbd4dc7c256b13c12f0aa6fe79f3436624"
+    },
+    {
+      "path": "opencc/config/tw2s.json",
+      "bytes": 664,
+      "sha256": "efefc6b3031f370558cb9f3a75c7940927d6849aa92512cd2896dffa4e1b9ce2"
+    },
+    {
+      "path": "opencc/config/tw2sp.json",
+      "bytes": 751,
+      "sha256": "ab8645dc184af734199701f09f515e68b5ef4f7f4fea20db79354c6fe6db33f2"
+    },
+    {
+      "path": "opencc/dictionary/HKVariants.txt",
+      "bytes": 532,
+      "sha256": "c3c93c35885902ba2b12a3235a7761b00fb2b027f36aa8314db2f6b6ad51d374"
+    },
+    {
+      "path": "opencc/dictionary/HKVariantsPhrases.txt",
+      "bytes": 279,
+      "sha256": "d790e9bcafd2610efc3c44db7d859d6882d2864ac43792fd13fd2825cb341192"
+    },
+    {
+      "path": "opencc/dictionary/HKVariantsRev.txt",
+      "bytes": 630,
+      "sha256": "2b4fdb5865703f1cf75d6e524e0b0d33733e9bb6f92df697cf1ad8fe27989619"
+    },
+    {
+      "path": "opencc/dictionary/HKVariantsRevPhrases.txt",
+      "bytes": 2709,
+      "sha256": "c2da309afa7fdd9061f204664039d33b000a4dca0ecae4e7480dcbf9e20f658e"
+    },
+    {
+      "path": "opencc/dictionary/JPVariants.txt",
+      "bytes": 2940,
+      "sha256": "7e998db5d6f437a605c901c9413ccd7505f8b2e1cd3f9e2dd84572d0af1d3fc0"
+    },
+    {
+      "path": "opencc/dictionary/STCharacters.txt",
+      "bytes": 34353,
+      "sha256": "9207708da9f2e2a248f39c457b2fccad26ec42e7efaf47a860e6900464f4cac5"
+    },
+    {
+      "path": "opencc/dictionary/STPhrases.txt",
+      "bytes": 1004153,
+      "sha256": "a4de4d2471f73cdb7e5b1b22920139aa4e4bbb1ebeea8f1fc341f988aa75c586"
+    },
+    {
+      "path": "opencc/dictionary/TSCharacters.txt",
+      "bytes": 34627,
+      "sha256": "6b5a0a799bea2bb22c001f635eaa3fc2904310f0c08addbff275477a80ecf09a"
+    },
+    {
+      "path": "opencc/dictionary/TSPhrases.txt",
+      "bytes": 5161,
+      "sha256": "b2ef895dd4953b4bb77fc8ef8d26a2a9ca6d43a760ed9a1d767672cfafa6324f"
+    },
+    {
+      "path": "opencc/dictionary/TWPhrases.txt",
+      "bytes": 10812,
+      "sha256": "2ac64976553b8dd1f8d308b699540716099c04238d175ff336f53ababed26f07"
+    },
+    {
+      "path": "opencc/dictionary/TWPhrasesRev.txt",
+      "bytes": 10854,
+      "sha256": "85059c3722d6098a44db23d78ef583fb10e34002c5ea717ab738d3b170d48d14"
+    },
+    {
+      "path": "opencc/dictionary/TWVariants.txt",
+      "bytes": 312,
+      "sha256": "30e6f8395edbfdd74e293fd8b9c62105d787c849fbb208d2a7832eac696734d7"
+    },
+    {
+      "path": "opencc/dictionary/TWVariantsRev.txt",
+      "bytes": 351,
+      "sha256": "1ea2b90f85eea6a2c9440716beee3268c740408caa334aa890bb4a35833f1b72"
+    },
+    {
+      "path": "opencc/dictionary/TWVariantsRevPhrases.txt",
+      "bytes": 1075,
+      "sha256": "bef60ceb4e57b6b062351406cb5d4644875574231d64787e03711317b7e773f3"
+    },
+    {
+      "path": "opencc/opencc.py",
+      "bytes": 12385,
+      "sha256": "dfba0adb8ca2d07e9fc90aab9de38cc3830ed338fa51c6a1e408c71a916e65f9"
+    },
+    {
+      "path": "opencc_python_reimplemented-0.1.7.dist-info/INSTALLER",
+      "bytes": 4,
+      "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508"
+    },
+    {
+      "path": "opencc_python_reimplemented-0.1.7.dist-info/LICENSE.txt",
+      "bytes": 10354,
+      "sha256": "18f3fedf9eac72e6054260489c764c1e54f63cf2b16055523f561ffeec7bc908"
+    },
+    {
+      "path": "opencc_python_reimplemented-0.1.7.dist-info/METADATA",
+      "bytes": 4563,
+      "sha256": "0da812fd9236be4f841553350a64dcf76f84dd580de99320b6e3030c1b9c7a4b"
+    },
+    {
+      "path": "opencc_python_reimplemented-0.1.7.dist-info/RECORD",
+      "bytes": 3323,
+      "sha256": "0ef7c31018c34a3d118fb5d182944ee5783425c7dba010e42dea6844ffeb63bb"
+    },
+    {
+      "path": "opencc_python_reimplemented-0.1.7.dist-info/REQUESTED",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "opencc_python_reimplemented-0.1.7.dist-info/WHEEL",
+      "bytes": 110,
+      "sha256": "6dbd8eb7db1c7251ca30e2c310763a076b227163a0ba08c529a26c4fbbf0310a"
+    },
+    {
+      "path": "opencc_python_reimplemented-0.1.7.dist-info/top_level.txt",
+      "bytes": 7,
+      "sha256": "3b0d478c45145dff3e68c8b8b9d3dfd731e23eb91b37e61210b6b7b415b215c1"
+    }
+  ]
+}

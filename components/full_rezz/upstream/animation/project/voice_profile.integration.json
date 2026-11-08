@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "supplied_voice_profile_adapter",
+  "profile_id": "voice_57373fea79f3473e",
+  "profile_name": "Rebecca — Posthumous English Archive",
+  "profile_manifest_path": "integrations/reference_pack/manifest.json",
+  "profile_index": 0,
+  "source_audio_path": "assets/statement.original.wav",
+  "source_audio_sha256": "6f0473608ab369773cd2b0da304403c3e02918e8a00e4d50e2f75e326284b90c",
+  "sequence_audio_path": "assets/sequence.audio.wav",
+  "timeline_offset_seconds": 1.25,
+  "source_duration_seconds": 8.309333333333333,
+  "envelope_path": "audio_envelope.json",
+  "aggregate_measurements": {
+    "pitch_hz": {
+      "count": 1,
+      "median": 311.8531,
+      "p10": 311.8531,
+      "p90": 311.8531,
+      "mean": 311.8531,
+      "std": 0.0
+    },
+    "spectral_centroid_hz": {
+      "count": 1,
+      "median": 1819.125,
+      "p10": 1819.125,
+      "p90": 1819.125,
+      "mean": 1819.125,
+      "std": 0.0
+    },
+    "frame_energy_dbfs": {
+      "count": 1,
+      "median": -26.851,
+      "p10": -26.851,
+      "p90": -26.851,
+      "mean": -26.851,
+      "std": 0.0
+    },
+    "voicing_periodicity": {
+      "count": 1,
+      "median": 0.8738,
+      "p10": 0.8738,
+      "p90": 0.8738,
+      "mean": 0.8738,
+      "std": 0.0
+    }
+  },
+  "embeddings": [],
+  "provided_script": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+  "spoken_label": "Non-canon archive simulation.",
+  "generation_performed_in_this_sequence": false,
+  "source_processing": "None; native PCM samples unchanged",
+  "preview_encoding": "H.264 video / AAC audio",
+  "limits": [
+    "AI-generated approximation; not an official Cyberpunk recording or a performance by either credited actor.",
+    "A 4.35-second attributed excerpt does not establish broad voice, emotion, or accent fidelity.",
+    "The initial words of the automatic conditioning transcript are uncertain.",
+    "F5-TTS does not execute the character system prompt or SSML; delivery targets are not audited vocal facts.",
+    "Automated signal and word checks do not establish naturalness, speaker purity, emotion, or identity."
+  ]
+}

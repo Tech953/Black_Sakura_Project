@@ -1,0 +1,256 @@
+{
+  "assets": [
+    {
+      "name": "llama-windows.zip",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b7371/llama-b7371-bin-win-cpu-x64.zip",
+      "bytes": 18663885,
+      "sha256": "80ba7d4347c3d8d5429142b235bec4acffa9cfea531a57bbb22b2d5204c3cab8",
+      "verified": true
+    },
+    {
+      "name": "llama-linux.zip",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b7371/llama-b7371-bin-ubuntu-x64.zip",
+      "bytes": 17739802,
+      "sha256": "7814fa52436634a579624c7da1f820c27542e1b73515eaa5d26df9817c151b41",
+      "verified": true
+    },
+    {
+      "name": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "bytes": 491400032,
+      "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "verified": true
+    },
+    {
+      "name": "python-3.11.9-embed-amd64.zip",
+      "url": "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip",
+      "bytes": 11249023,
+      "sha256": "009d6bf7e3b2ddca3d784fa09f90fe54336d5b60f0e0f305c37f400bf83cfd3b"
+    },
+    {
+      "name": "qtmultimedia-everywhere-src-6.8.3.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtmultimedia-everywhere-src-6.8.3.tar.xz",
+      "bytes": 9705340,
+      "sha256": "32e82307d783172a3b984cc3c47c5e4e8b819cee3cbfc702c7012c47f15f6b01"
+    },
+    {
+      "name": "ffmpeg-7.1.tar.xz",
+      "url": "https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz",
+      "bytes": 11011364,
+      "sha256": "40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6"
+    },
+    {
+      "name": "pyopengl-3.1.10-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/de/e4/1ba6f44e491c4eece978685230dde56b14d51a0365bc1b774ddaa94d14cd/pyopengl-3.1.10-py3-none-any.whl",
+      "bytes": 3194996,
+      "sha256": "794a943daced39300879e4e47bd94525280685f42dbb5a998d336cfff151d74f"
+    },
+    {
+      "name": "PySide6_Addons-6.8.3-cp39-abi3-win_amd64.whl",
+      "url": "https://files.pythonhosted.org/packages/77/e8/bbe84519355814166bbb7e867dfc8c7ea0044827d64b6b11c29a7b1a7424/PySide6_Addons-6.8.3-cp39-abi3-win_amd64.whl",
+      "bytes": 127865208,
+      "sha256": "67548f6db11f4e1b7e4b6efd9c3fc2e8d275188a7b2feac388961128572a6955"
+    }
+  ],
+  "tools": {
+    "7zip": {
+      "Version": "23.01+dfsg-11",
+      "Filename": "pool/universe/7/7zip/7zip_23.01+dfsg-11_amd64.deb",
+      "Size": "1846156",
+      "SHA256": "0f79450d81e64326a862a8645ae1613890e486115101e51e41ca07d929388d87"
+    },
+    "binutils-mingw-w64-x86-64": {
+      "Version": "2.41.90.20240122-1ubuntu1+11.4",
+      "Filename": "pool/universe/b/binutils-mingw-w64/binutils-mingw-w64-x86-64_2.41.90.20240122-1ubuntu1+11.4_amd64.deb",
+      "Size": "6053282",
+      "SHA256": "28bfabbf64a68813a56360bca056072af9ff71ef4090a4b8a8a085afcda3e4dd"
+    },
+    "gcc-mingw-w64-base": {
+      "Version": "13.2.0-6ubuntu1+26.1",
+      "Filename": "pool/universe/g/gcc-mingw-w64/gcc-mingw-w64-base_13.2.0-6ubuntu1+26.1_amd64.deb",
+      "Size": "188046",
+      "SHA256": "a30c07e807e9874ea93909448c5d6d37f9569ebe60ad32de8e490aad198538a3"
+    },
+    "gcc-mingw-w64-x86-64-posix": {
+      "Version": "13.2.0-6ubuntu1+26.1",
+      "Filename": "pool/universe/g/gcc-mingw-w64/gcc-mingw-w64-x86-64-posix_13.2.0-6ubuntu1+26.1_amd64.deb",
+      "Size": "35401298",
+      "SHA256": "0855fa1d4a618550faac3a3e4352aa3226833b28184ad3c3b496a68a22c4eda2"
+    },
+    "gcc-mingw-w64-x86-64-posix-runtime": {
+      "Version": "13.2.0-6ubuntu1+26.1",
+      "Filename": "pool/universe/g/gcc-mingw-w64/gcc-mingw-w64-x86-64-posix-runtime_13.2.0-6ubuntu1+26.1_amd64.deb",
+      "Size": "14036962",
+      "SHA256": "aca6b438e0b55b11cedcf1170a1ee26e7979e34192e34f6e6389e560908a5bfc"
+    },
+    "mingw-w64-common": {
+      "Version": "11.0.1-3build1",
+      "Filename": "pool/universe/m/mingw-w64/mingw-w64-common_11.0.1-3build1_all.deb",
+      "Size": "5580230",
+      "SHA256": "4a42fd30fbc3838c58c929d8a4882682fc12408bb7a0e6cafa913c0f0a57c187"
+    },
+    "mingw-w64-x86-64-dev": {
+      "Version": "11.0.1-3build1",
+      "Filename": "pool/universe/m/mingw-w64/mingw-w64-x86-64-dev_11.0.1-3build1_all.deb",
+      "Size": "3786378",
+      "SHA256": "018480a62907fcca19c6bf2975ae01f5c92c23dee8c3cf7a8355c10bf7d42c6f"
+    },
+    "nsis": {
+      "Version": "3.09-4ubuntu1",
+      "Filename": "pool/universe/n/nsis/nsis_3.09-4ubuntu1_amd64.deb",
+      "Size": "319510",
+      "SHA256": "9e061bef1a8b611aeb2ea76d9a3bd7722b960ca1a9dff8e38d2ab51e5a8f5e5b"
+    },
+    "nsis-common": {
+      "Version": "3.09-4ubuntu1",
+      "Filename": "pool/universe/n/nsis/nsis-common_3.09-4ubuntu1_all.deb",
+      "Size": "968106",
+      "SHA256": "49471b9debdee4751ebb4caf6b705cc4c678eebfaecefbe56362258893f85859"
+    }
+  },
+  "models": {
+    "assets": [
+      {
+        "path": "tts/model_1250000.safetensors",
+        "bytes": 1348435761,
+        "sha256": "670900fd14e6c458b95da6e9ed317cdb20dbaf7a1c02ac06a05475a9d32b6a38",
+        "source": "https://huggingface.co/SWivid/F5-TTS/resolve/main/F5TTS_v1_Base/model_1250000.safetensors",
+        "license": "CC-BY-NC-4.0"
+      },
+      {
+        "path": "tts/vocab.txt",
+        "bytes": 13800,
+        "sha256": "2a05f992e00af9b0bd3800a8d23e78d520dbd705284ed2eedb5f4bd29398fa3c",
+        "source": "https://huggingface.co/SWivid/F5-TTS/resolve/main/F5TTS_v1_Base/vocab.txt",
+        "license": "CC-BY-NC-4.0"
+      },
+      {
+        "path": "vocos/config.yaml",
+        "bytes": 461,
+        "sha256": "da9033922f969a47f0c160010226919e59f27761fd5066f3828d46de6650b0fc",
+        "source": "https://huggingface.co/charactr/vocos-mel-24khz/resolve/main/config.yaml",
+        "license": "MIT"
+      },
+      {
+        "path": "vocos/pytorch_model.bin",
+        "bytes": 54365991,
+        "sha256": "97ec976ad1fd67a33ab2682d29c0ac7df85234fae875aefcc5fb215681a91b2a",
+        "source": "https://huggingface.co/charactr/vocos-mel-24khz/resolve/main/pytorch_model.bin",
+        "license": "MIT"
+      },
+      {
+        "path": "asr/config.json",
+        "bytes": 2309,
+        "sha256": "56a6d8110d311f19c8f0471e562832c7527f146b567275bfca59fcf7c184da9a",
+        "source": "https://huggingface.co/Systran/faster-whisper-base/resolve/main/config.json",
+        "license": "MIT"
+      },
+      {
+        "path": "asr/model.bin",
+        "bytes": 145217532,
+        "sha256": "d01c3014881c9c6f3133c182f3d2887eb6ca1c789a7538c5c007196857a0a6a9",
+        "source": "https://huggingface.co/Systran/faster-whisper-base/resolve/main/model.bin",
+        "license": "MIT"
+      },
+      {
+        "path": "asr/tokenizer.json",
+        "bytes": 2203239,
+        "sha256": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+        "source": "https://huggingface.co/Systran/faster-whisper-base/resolve/main/tokenizer.json",
+        "license": "MIT"
+      },
+      {
+        "path": "asr/vocabulary.txt",
+        "bytes": 459861,
+        "sha256": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+        "source": "https://huggingface.co/Systran/faster-whisper-base/resolve/main/vocabulary.txt",
+        "license": "MIT"
+      },
+      {
+        "path": "speaker/hyperparams.yaml",
+        "bytes": 1919,
+        "sha256": "6f78854fa04ba59e761437b76a2575d3aba5e5016de3e9b69f0c9a5077fb1a41",
+        "source": "https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb/resolve/main/hyperparams.yaml",
+        "license": "Apache-2.0"
+      },
+      {
+        "path": "speaker/embedding_model.ckpt",
+        "bytes": 83316686,
+        "sha256": "0575cb64845e6b9a10db9bcb74d5ac32b326b8dc90352671d345e2ee3d0126a2",
+        "source": "https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb/resolve/main/embedding_model.ckpt",
+        "license": "Apache-2.0"
+      },
+      {
+        "path": "speaker/mean_var_norm_emb.ckpt",
+        "bytes": 1921,
+        "sha256": "cd70225b05b37be64fc5a95e24395d804231d43f74b2e1e5a513db7b69b34c33",
+        "source": "https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb/resolve/main/mean_var_norm_emb.ckpt",
+        "license": "Apache-2.0"
+      },
+      {
+        "path": "speaker/classifier.ckpt",
+        "bytes": 5534328,
+        "sha256": "fd9e3634fe68bd0a427c95e354c0c677374f62b3f434e45b78599950d860d535",
+        "source": "https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb/resolve/main/classifier.ckpt",
+        "license": "Apache-2.0"
+      },
+      {
+        "path": "speaker/label_encoder.txt",
+        "bytes": 128619,
+        "sha256": "e13c3a167bb4112685670ee896d20e2b565af16b3a4ceeaa8689fa4d22adb8b9",
+        "source": "https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb/resolve/main/label_encoder.txt",
+        "license": "Apache-2.0"
+      },
+      {
+        "path": "separator/hyperparams.yaml",
+        "bytes": 1515,
+        "sha256": "939c86a8d36c52ae148859de34a3e7b984f4b576213957bdba09462cc88168bf",
+        "source": "https://huggingface.co/speechbrain/sepformer-wsj02mix/resolve/main/hyperparams.yaml",
+        "license": "Apache-2.0"
+      },
+      {
+        "path": "separator/encoder.ckpt",
+        "bytes": 17267,
+        "sha256": "3139bb880b29ea77ae8a168b8f2ad6e8eb5c2c0904289676c223d0e93cd2a35d",
+        "source": "https://huggingface.co/speechbrain/sepformer-wsj02mix/resolve/main/encoder.ckpt",
+        "license": "Apache-2.0"
+      },
+      {
+        "path": "separator/decoder.ckpt",
+        "bytes": 17202,
+        "sha256": "abea1a2d41151331b4c36071d1b3205aed940a189721f008b12a703e9c63e7e4",
+        "source": "https://huggingface.co/speechbrain/sepformer-wsj02mix/resolve/main/decoder.ckpt",
+        "license": "Apache-2.0"
+      },
+      {
+        "path": "separator/masknet.ckpt",
+        "bytes": 113108458,
+        "sha256": "57dd5f49bf21c5a2101bb4e46648d05d34d517a59e26f0b06646d0bebe8214c7",
+        "source": "https://huggingface.co/speechbrain/sepformer-wsj02mix/resolve/main/masknet.ckpt",
+        "license": "Apache-2.0"
+      },
+      {
+        "path": "speaker/custom.py",
+        "bytes": 63,
+        "sha256": "2a204f7f59c78c9f4bb25e8a8e4879efa793f93665e9cde16310d0e2acd52e88",
+        "license": "MIT",
+        "source": "Local compatibility file"
+      },
+      {
+        "path": "separator/custom.py",
+        "bytes": 63,
+        "sha256": "2a204f7f59c78c9f4bb25e8a8e4879efa793f93665e9cde16310d0e2acd52e88",
+        "license": "MIT",
+        "source": "Local compatibility file"
+      },
+      {
+        "path": "companion/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+        "bytes": 491400032,
+        "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+        "source": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/tree/9217f5db79a29953eb74d5343926648285ec7e67",
+        "license": "Apache-2.0"
+      }
+    ],
+    "runtime_downloads": false
+  }
+}

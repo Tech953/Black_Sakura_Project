@@ -1,0 +1,273 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "voice_expression_request",
+  "profile_id": "voice_ae0b244490e44800",
+  "text": "A < B & C. We can continue.",
+  "requested_style": "gentle",
+  "reference_style": "gentle",
+  "style_match": true,
+  "reference": {
+    "id": "ref_29ec4ab76fb74678",
+    "path": "clips/rec_70802c1e3e16495b_seg_9e8562e80b2d4b37_0_0.wav",
+    "recording_id": "rec_70802c1e3e16495b",
+    "sha256": "3c0de4a2482437507a20c505d63d01fb7a2e32f4b708ed81c192f704ae920f7f",
+    "segment_id": "seg_9e8562e80b2d4b37",
+    "source_start_seconds": 0.44,
+    "source_end_seconds": 2.56,
+    "channel": 0,
+    "duration_seconds": 2.12,
+    "sample_rate_hz": 24000,
+    "encoding": "FLOAT_32",
+    "style": "gentle",
+    "review_status": "reviewed_single_voice",
+    "text": "The route is clear.",
+    "text_alignment": "whole_manual_region",
+    "measurements": {
+      "duration_seconds": 2.12,
+      "sample_rate_hz": 24000,
+      "analysis_sample_rate_hz": 16000,
+      "peak_dbfs": -3,
+      "rms_dbfs": -7.1492,
+      "clipping_fraction": 0,
+      "pitch_hz": {
+        "count": 101,
+        "median": 179.9991,
+        "p10": 179.9984,
+        "p90": 180.0014,
+        "mean": 180.0076,
+        "std": 0.0644
+      },
+      "voicing_periodicity": {
+        "count": 101,
+        "median": 1,
+        "p10": 1,
+        "p90": 1,
+        "mean": 0.9991,
+        "std": 0.005
+      },
+      "frame_energy_dbfs": {
+        "count": 105,
+        "median": -6.7194,
+        "p10": -6.9207,
+        "p90": -6.703,
+        "mean": -10.7277,
+        "std": 17.8621
+      },
+      "spectral_centroid_hz": {
+        "count": 101,
+        "median": 218.0204,
+        "p10": 217.6117,
+        "p90": 222.6048,
+        "mean": 218.875,
+        "std": 1.9285
+      },
+      "estimated_voiced_frame_fraction": 0.9619,
+      "method": "40ms normalized-autocorrelation frames; 65-500Hz search; periodicity >=0.65",
+      "limitations": [
+        "Pitch estimates can be wrong with music, noise, or overlapping voices.",
+        "No gender, age, accent, emotion, clinical voice quality, or identity is inferred.",
+        "Energy gating detects acoustic activity, not necessarily speech."
+      ]
+    },
+    "quality": {
+      "sample_rate_hz": 24000,
+      "duration_seconds": 2.12,
+      "peak_dbfs": -3,
+      "rms_dbfs": -7.1492,
+      "dc_offset": 0,
+      "near_full_scale_fraction": 0,
+      "over_range_fraction": 0,
+      "quiet_frame_noise_dbfs": null,
+      "estimated_snr_db": null,
+      "noise_estimate_available": false,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "processing": {
+      "enabled": true,
+      "steps": [
+        "remove_dc",
+        "highpass",
+        "boundary_fades",
+        "peak_headroom"
+      ],
+      "gain_db": 10.7878,
+      "settings": {
+        "enabled": true,
+        "remove_dc": true,
+        "highpass_hz": 30,
+        "peak_dbfs": -3,
+        "fade_ms": 5,
+        "denoise_db": 0,
+        "noise_start": null,
+        "noise_end": null
+      },
+      "sample_rate_changed": false,
+      "sample_count_changed": false,
+      "source_quality": {
+        "sample_rate_hz": 24000,
+        "duration_seconds": 2.12,
+        "peak_dbfs": -13.7836,
+        "rms_dbfs": -17.9308,
+        "dc_offset": 0,
+        "near_full_scale_fraction": 0,
+        "over_range_fraction": 0,
+        "quiet_frame_noise_dbfs": null,
+        "estimated_snr_db": null,
+        "noise_estimate_available": false,
+        "status": "signal_checks_passed",
+        "issues": [],
+        "listening_review_required": true,
+        "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+        "limitations": [
+          "Energy contrast is not a calibrated speech/noise SNR measurement.",
+          "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+          "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+        ]
+      },
+      "output_quality": {
+        "sample_rate_hz": 24000,
+        "duration_seconds": 2.12,
+        "peak_dbfs": -3,
+        "rms_dbfs": -7.1492,
+        "dc_offset": 0,
+        "near_full_scale_fraction": 0,
+        "over_range_fraction": 0,
+        "quiet_frame_noise_dbfs": null,
+        "estimated_snr_db": null,
+        "noise_estimate_available": false,
+        "status": "signal_checks_passed",
+        "issues": [],
+        "listening_review_required": true,
+        "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+        "limitations": [
+          "Energy contrast is not a calibrated speech/noise SNR measurement.",
+          "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+          "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+        ]
+      }
+    },
+    "source_sample_start": 10560,
+    "source_sample_end": 61440
+  },
+  "prosody": {
+    "rate_multiplier": 1,
+    "pitch_semitones": 0,
+    "volume_db": 0
+  },
+  "character": {
+    "kind": "original",
+    "incarnation": "",
+    "biography": "Authored navigator canon.",
+    "demographics": {
+      "age": 42
+    },
+    "statistics": {
+      "navigation": {
+        "value": 9,
+        "unit": "points"
+      }
+    },
+    "persona": {
+      "traits": [
+        "curious"
+      ],
+      "motivations": [],
+      "goals": [],
+      "speech_style": "precise",
+      "mannerisms": "",
+      "boundaries": ""
+    },
+    "prompts": {
+      "system": "Speak precisely and calmly.",
+      "dialogue": "",
+      "scenario": ""
+    },
+    "field_sources": {
+      "demographics.age": [
+        "src_b583774ed0ac4058"
+      ],
+      "statistics.navigation": [
+        "src_b583774ed0ac4058"
+      ],
+      "persona.traits": [
+        "src_b583774ed0ac4058"
+      ],
+      "persona.speech_style": [
+        "src_b583774ed0ac4058"
+      ]
+    },
+    "canon_notes": "",
+    "review_status": "source_draft",
+    "voice_observations": {
+      "style_labels": [
+        "gentle",
+        "neutral"
+      ],
+      "voice_log_count": 2,
+      "provenance": "User-authored recording annotations. Labels describe samples, not inferred psychological traits."
+    }
+  },
+  "character_context": {
+    "path": "characters/voice_ae0b244490e44800/character.json",
+    "prompt_path": "characters/voice_ae0b244490e44800/prompt.txt",
+    "voice_logs_path": "characters/voice_ae0b244490e44800/voice_logs.jsonl",
+    "completeness": {
+      "biography_present": true,
+      "demographic_field_count": 1,
+      "statistic_field_count": 1,
+      "source_count": 2,
+      "voice_log_count": 2,
+      "audio_reference_count": 2
+    },
+    "provenance": "Authored canon and field_sources are separate from unreviewed retrieved claims."
+  },
+  "sources": [
+    {
+      "title": "character.json",
+      "kind": "imported_document",
+      "warnings": [],
+      "claims": [],
+      "sha256": "d69e352e9fd199708553b0b655c8af3fcefdfd42f2f0e782af7c056ef80144fe",
+      "id": "src_b583774ed0ac4058",
+      "retrieved_at": "2026-10-05T17:01:56.822633+00:00",
+      "review_status": "unreviewed",
+      "text_sha256": "d69e352e9fd199708553b0b655c8af3fcefdfd42f2f0e782af7c056ef80144fe",
+      "text_characters": 209,
+      "text_path": "sources/src_b583774ed0ac4058/text.txt",
+      "original_path": "sources/src_b583774ed0ac4058/original.json",
+      "original_sha256": "d69e352e9fd199708553b0b655c8af3fcefdfd42f2f0e782af7c056ef80144fe"
+    },
+    {
+      "title": "canon.md",
+      "kind": "imported_document",
+      "warnings": [],
+      "claims": [],
+      "sha256": "3251a38f3ebfe3b717b43b41d67e20cc0a7cbdd38ae13e92cb19088a2c3bfc58",
+      "id": "src_2b80abe797ce46f6",
+      "retrieved_at": "2026-10-05T17:01:56.855831+00:00",
+      "review_status": "unreviewed",
+      "text_sha256": "3251a38f3ebfe3b717b43b41d67e20cc0a7cbdd38ae13e92cb19088a2c3bfc58",
+      "text_characters": 48,
+      "text_path": "sources/src_2b80abe797ce46f6/text.txt",
+      "original_path": "sources/src_2b80abe797ce46f6/original.md",
+      "original_sha256": "3251a38f3ebfe3b717b43b41d67e20cc0a7cbdd38ae13e92cb19088a2c3bfc58"
+    }
+  ],
+  "ssml": "<speak><prosody rate=\"100%\" pitch=\"+0st\" volume=\"+0dB\">A &lt; B &amp; C. We can continue.</prosody></speak>",
+  "renderer": null,
+  "generated_audio": null,
+  "renderer_contract": "Pass reference audio and text to a compatible synthesis adapter; SSML support and speaker conditioning depend on that adapter.",
+  "reference_package": {
+    "filename": "pack_9df4dcf6a554484f.zip",
+    "download_path": "/api/exports/pack_9df4dcf6a554484f.zip",
+    "reference_path": "clips/rec_70802c1e3e16495b_seg_9e8562e80b2d4b37_0_0.wav"
+  }
+}

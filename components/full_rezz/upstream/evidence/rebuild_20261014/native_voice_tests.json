@@ -1,0 +1,32 @@
+[
+  {
+    "suite": "test_core",
+    "count": 29,
+    "passed": true,
+    "log": "test_core.log"
+  },
+  {
+    "suite": "test_audit",
+    "count": 26,
+    "passed": true,
+    "log": "test_audit.log"
+  },
+  {
+    "suite": "test_audio_quality",
+    "count": 24,
+    "passed": true,
+    "log": "test_audio_quality.log"
+  },
+  {
+    "suite": "test_offline",
+    "count": 8,
+    "passed": true,
+    "log": "test_offline.log"
+  },
+  {
+    "suite": "test_languages",
+    "count": 21,
+    "passed": true,
+    "log": "test_languages.log"
+  }
+]

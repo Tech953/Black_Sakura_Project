@@ -1,0 +1,22 @@
+[
+  {
+    "file": "FULL_REZZ_3.0_Product_Audit.pdf",
+    "sha256": "192191dbb1490aca2fa51eed08e917f07354060a184aaff0cf75a0f6f553b331",
+    "rendered_pages_visually_reviewed": true
+  },
+  {
+    "file": "FULL_REZZ_3.0_Quick_Start.pdf",
+    "sha256": "7d5fa7d09c0674cd10656c191070866d77a4c83053654e8452e27606dac19e5b",
+    "rendered_pages_visually_reviewed": true
+  },
+  {
+    "file": "FULL_REZZ_3.0_Replit_Integration_Guide.pdf",
+    "sha256": "f52f7563573259c31096116f30ba78679e01fcf7272c3211cebee7f154475908",
+    "rendered_pages_visually_reviewed": true
+  },
+  {
+    "file": "FULL_REZZ_3.0_User_Guide.pdf",
+    "sha256": "4e58fa34832db0eb5ba177da908b3c12412c747918d9046ffdf71c6cc2d7df6a",
+    "rendered_pages_visually_reviewed": true
+  }
+]

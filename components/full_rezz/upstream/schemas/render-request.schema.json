@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:full-rezz:bridge:render-request:1.0.0",
+  "title": "FULL_REZZ executable render request descriptor",
+  "type": "object",
+  "properties": {
+    "bridge_schema_version": {
+      "const": "1.0.0"
+    },
+    "kind": {
+      "const": "full_rezz_render_request"
+    },
+    "body": {
+      "type": "object",
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "pattern": "^voice_[a-f0-9]{16}$"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "\\S"
+        },
+        "style": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "rate": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
+        },
+        "pitch": {
+          "type": "number",
+          "minimum": -12,
+          "maximum": 12
+        },
+        "volume": {
+          "type": "number",
+          "minimum": -20,
+          "maximum": 6
+        },
+        "steps": {
+          "type": "integer",
+          "enum": [
+            16,
+            32
+          ]
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "reference_text": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "scene_notes": {
+          "type": "string",
+          "maxLength": 10000
+        },
+        "quality_policy": {
+          "enum": [
+            "high_fidelity",
+            "standard"
+          ]
+        }
+      },
+      "required": [
+        "profile_id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "reference_candidate": {
+      "type": "object"
+    },
+    "generates_audio": {
+      "const": false
+    }
+  },
+  "required": [
+    "bridge_schema_version",
+    "kind",
+    "body",
+    "reference_candidate",
+    "generates_audio"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,17 @@
+{
+  "kind": "authored_evidence_json",
+  "title": "User-provided original-anime audio",
+  "url": "",
+  "authority": "user_provided_media_provenance_unverified",
+  "evidence_section": "Rebecca compilation and English finale upload; hashed files and timed crops",
+  "content_type": "application/json",
+  "note": "Authored source summary; source attribution is not perceptual or biometric review.",
+  "id": "src_95d84e6c0ab94204",
+  "retrieved_at": "2026-10-07T08:25:19.305998+00:00",
+  "review_status": "unreviewed",
+  "text_sha256": "3961aa3a536af774d7a85e346e77862a7fce772e366635654dbac0493c636b49",
+  "text_characters": 672,
+  "text_path": "sources/src_95d84e6c0ab94204/text.txt",
+  "original_path": "sources/src_95d84e6c0ab94204/original.json",
+  "original_sha256": "3961aa3a536af774d7a85e346e77862a7fce772e366635654dbac0493c636b49"
+}

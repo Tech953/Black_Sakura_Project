@@ -1,0 +1,5 @@
+FULL_REZZ 2.0
+Install the reconstructed FULL_REZZ_2.0_Offline_Setup.exe. Open FULL_REZZ from the shortcut.
+Read docs/User_Guide.pdf and docs/Quick_Start.pdf.
+This source folder alone does not include the Windows runtime or every model weight. The installer does.
+Native Windows validation is pending; F5 weights are noncommercial.

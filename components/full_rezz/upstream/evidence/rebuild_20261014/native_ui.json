@@ -1,0 +1,24 @@
+{
+  "native_linux_offscreen_startup_passed": true,
+  "tabs": 9,
+  "embedded_and_detached_share_workspace_and_profile": true,
+  "localized_interface_switches": [
+    "en",
+    "es",
+    "fr",
+    "de",
+    "pt",
+    "it",
+    "ru",
+    "ja",
+    "ko",
+    "zh-Hans",
+    "ar",
+    "hi"
+  ],
+  "arabic_RTL_verified": true,
+  "actual_authored_2d_pixels_rendered": true,
+  "native_windows_execution_tested": false,
+  "audio_device_playback_tested": false,
+  "target_GPU_driver_tested": false
+}

@@ -1,0 +1,13 @@
+Processing ./.
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: voice-profile-studio
+  Building wheel for voice-profile-studio (pyproject.toml): started
+  Building wheel for voice-profile-studio (pyproject.toml): finished with status 'done'
+  Created wheel for voice-profile-studio: filename=voice_profile_studio-1.2.0-py3-none-any.whl size=63777 sha256=315d824fd41fc1c10c5fefcefdfbf7ef90ca9a85691343e7b52ef6c881e425fc
+  Stored in directory: /tmp/pip-ephem-wheel-cache-qvh_n825/wheels/05/20/55/5bbab31cacc2d5d3fd0129bcd41c9d8d03ed6224441f8cbaf0
+Successfully built voice-profile-studio
+Processing ./audit-build-final/voice_profile_studio-1.2.0-py3-none-any.whl
+Installing collected packages: voice-profile-studio
+Successfully installed voice-profile-studio-1.2.0
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.

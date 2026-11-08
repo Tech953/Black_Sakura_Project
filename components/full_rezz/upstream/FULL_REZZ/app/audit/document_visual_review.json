@@ -1,0 +1,13 @@
+{
+  "version": "3.0.0",
+  "documents": {
+    "User_Guide.pdf": 4,
+    "Quick_Start.pdf": 1,
+    "Release_Audit.pdf": 3
+  },
+  "all_pages_rendered_and_visually_reviewed": true,
+  "native_screenshots_reviewed": 15,
+  "layout_issues_remaining": [],
+  "professional_translation_review": "pending",
+  "windows_child_fix_audit_rerendered": true
+}

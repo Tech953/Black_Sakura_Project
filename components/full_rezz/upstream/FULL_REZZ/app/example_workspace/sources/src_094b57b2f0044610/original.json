@@ -1,0 +1,16 @@
+{
+  "key": "episodes",
+  "title": "Netflix — Cyberpunk: Edgerunners title and episode list",
+  "url": "https://www.netflix.com/title/81054853",
+  "authority": "official_primary",
+  "evidence_section": "Original season episodes 8–10 and separate audio tracks",
+  "summary": "Netflix lists episode 8 as Stay, with Rebecca and Lucy confronting David about his behavior; episode 10 is My Moon My Man. English and original Japanese audio are distinct tracks. The listing alone does not establish the death mechanism.",
+  "character": {
+    "demographics": {
+      "original_series_release_year": 2022,
+      "canonical_endpoint_episode": "Season 1, episode 10 — My Moon My Man",
+      "selected_language_track": "English dub"
+    }
+  },
+  "research_checked_at_utc": "2026-10-06"
+}

@@ -1,0 +1,165 @@
+{
+  "bridge_schema_version": "1.0.0",
+  "kind": "full_rezz_render_request",
+  "body": {
+    "profile_id": "voice_57373fea79f3473e",
+    "text": "The offline archive is ready.",
+    "style": "concern",
+    "rate": 1.0,
+    "pitch": 0.0,
+    "volume": 0.0,
+    "steps": 32,
+    "seed": 42,
+    "reference_text": "",
+    "scene_notes": "",
+    "quality_policy": "high_fidelity"
+  },
+  "reference_candidate": {
+    "id": "ref_15a63c366ddf4d04",
+    "path": "clips/rec_0cb951970b18433e_seg_c9d06619373b4d9f_0_0.wav",
+    "recording_id": "rec_0cb951970b18433e",
+    "sha256": "2f2524c4fef5ef2de914dceaba3fae240e148f51b3603d7f8994ea8b1d2bdf82",
+    "segment_id": "seg_c9d06619373b4d9f",
+    "source_start_seconds": 0.0,
+    "source_end_seconds": 4.35,
+    "channel": null,
+    "duration_seconds": 4.35,
+    "sample_rate_hz": 44100,
+    "encoding": "FLOAT_32",
+    "style": "concern",
+    "review_status": "user_declared_single_voice",
+    "text": "Oh David, my man, what's going on? Everything good?",
+    "text_alignment": "whole_manual_region",
+    "measurements": {
+      "duration_seconds": 4.35,
+      "sample_rate_hz": 44100,
+      "analysis_sample_rate_hz": 16000,
+      "peak_dbfs": -5.1663,
+      "rms_dbfs": -24.2681,
+      "clipping_fraction": 0.0,
+      "pitch_hz": {
+        "count": 98,
+        "median": 311.8531,
+        "p10": 231.3703,
+        "p90": 433.6951,
+        "mean": 311.703,
+        "std": 89.6775
+      },
+      "voicing_periodicity": {
+        "count": 98,
+        "median": 0.8738,
+        "p10": 0.7258,
+        "p90": 0.9735,
+        "mean": 0.8599,
+        "std": 0.0901
+      },
+      "frame_energy_dbfs": {
+        "count": 216,
+        "median": -26.851,
+        "p10": -45.8216,
+        "p90": -19.9708,
+        "mean": -29.9568,
+        "std": 9.9965
+      },
+      "spectral_centroid_hz": {
+        "count": 206,
+        "median": 1819.125,
+        "p10": 1028.6395,
+        "p90": 2771.9295,
+        "mean": 1903.0673,
+        "std": 679.2208
+      },
+      "estimated_voiced_frame_fraction": 0.4537,
+      "method": "40ms normalized-autocorrelation frames; 65-500Hz search; periodicity >=0.65",
+      "limitations": [
+        "Pitch estimates can be wrong with music, noise, or overlapping voices.",
+        "No gender, age, accent, emotion, clinical voice quality, or identity is inferred.",
+        "Energy gating detects acoustic activity, not necessarily speech."
+      ]
+    },
+    "quality": {
+      "sample_rate_hz": 44100,
+      "duration_seconds": 4.35,
+      "peak_dbfs": -5.1663,
+      "rms_dbfs": -24.2681,
+      "dc_offset": 0.00173361,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -45.7822,
+      "estimated_snr_db": 26.0192,
+      "noise_estimate_available": true,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "processing": {
+      "enabled": false,
+      "steps": [],
+      "gain_db": 0.0,
+      "settings": {
+        "enabled": false,
+        "remove_dc": true,
+        "highpass_hz": 30.0,
+        "peak_dbfs": -3.0,
+        "fade_ms": 5.0,
+        "denoise_db": 0.0,
+        "noise_start": null,
+        "noise_end": null
+      },
+      "sample_rate_changed": false,
+      "sample_count_changed": false,
+      "source_quality": {
+        "sample_rate_hz": 44100,
+        "duration_seconds": 4.35,
+        "peak_dbfs": -5.1663,
+        "rms_dbfs": -24.2681,
+        "dc_offset": 0.00173361,
+        "near_full_scale_fraction": 0.0,
+        "over_range_fraction": 0.0,
+        "quiet_frame_noise_dbfs": -45.7822,
+        "estimated_snr_db": 26.0192,
+        "noise_estimate_available": true,
+        "status": "signal_checks_passed",
+        "issues": [],
+        "listening_review_required": true,
+        "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+        "limitations": [
+          "Energy contrast is not a calibrated speech/noise SNR measurement.",
+          "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+          "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+        ]
+      },
+      "output_quality": {
+        "sample_rate_hz": 44100,
+        "duration_seconds": 4.35,
+        "peak_dbfs": -5.1663,
+        "rms_dbfs": -24.2681,
+        "dc_offset": 0.00173361,
+        "near_full_scale_fraction": 0.0,
+        "over_range_fraction": 0.0,
+        "quiet_frame_noise_dbfs": -45.7822,
+        "estimated_snr_db": 26.0192,
+        "noise_estimate_available": true,
+        "status": "signal_checks_passed",
+        "issues": [],
+        "listening_review_required": true,
+        "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+        "limitations": [
+          "Energy contrast is not a calibrated speech/noise SNR measurement.",
+          "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+          "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+        ]
+      }
+    },
+    "source_sample_start": 0,
+    "source_sample_end": 191835
+  },
+  "selection_note": "Candidate is checked now; Studio re-exports and selects its current reference at render time.",
+  "generates_audio": false
+}

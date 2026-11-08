@@ -1,0 +1,15 @@
+{
+  "program": "FULL_REZZ",
+  "version": "2.0.0",
+  "installer_filename": "FULL_REZZ_2.0_Offline_Setup.exe",
+  "installer_sha256": "1232d1b909aa8031891d37a43a08718bc053527c3d04652b9dc4cfd70aa7888c",
+  "installer_bytes": 2089093210,
+  "payload_files_checked": 13171,
+  "payload_bytes_checked": 3065704333,
+  "all_payload_sizes_and_sha256_match": true,
+  "largest_model_streamed_and_fsynced": true,
+  "windows_native_execution_tested": false,
+  "human_listening_review_performed": false,
+  "unsigned": true,
+  "method": "Independent 7-Zip NSIS extraction plus every-file size/SHA256 comparison; large F5 payload separately streamed, hashed and fsynced."
+}

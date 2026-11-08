@@ -1,0 +1,16 @@
+PASS character drafts survive profile switching, including invalid JSON
+PASS region drafts survive recording switches
+PASS polling preserves drafts and their original save revision
+PASS export refuses unsaved drafts belonging to another item
+PASS audio processing refuses pending edits
+PASS historical source-draft jobs cannot replace the current character editor
+PASS character voice logs exclude ambiguous mixed ASR words
+PASS discarding edits restores current saved data
+PASS edits typed while saving remain as a draft
+PASS stale UI saves send the editor's original revision
+PASS multi-document uploads stay attached to their initial profile
+PASS a late source response cannot enter a different profile's editor
+PASS cleanup drafts block recording switches and measurement until saved
+PASS cleanup saves retain edits typed during the request and use the original revision
+PASS region saves retain edits typed during the request
+15 UI state regressions passed (DOM harness; no browser rendering).

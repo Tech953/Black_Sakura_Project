@@ -1,0 +1,34 @@
+test_fractional_rate_does_not_accumulate_float_drift (test_render_strength.ExposureTests.test_fractional_rate_does_not_accumulate_float_drift) ... ok
+test_gap_is_rejected (test_render_strength.ExposureTests.test_gap_is_rejected) ... ok
+test_higher_output_rate_preserves_key_seconds (test_render_strength.ExposureTests.test_higher_output_rate_preserves_key_seconds) ... ok
+test_incomplete_end_or_subframe_duration_is_rejected (test_render_strength.ExposureTests.test_incomplete_end_or_subframe_duration_is_rejected) ... ok
+test_key_does_not_get_delayed_by_a_hold (test_render_strength.ExposureTests.test_key_does_not_get_delayed_by_a_hold) ... ok
+test_missing_initial_pose_is_rejected (test_render_strength.ExposureTests.test_missing_initial_pose_is_rejected) ... ok
+test_ones_convert_to_alternating_two_three_output_holds (test_render_strength.ExposureTests.test_ones_convert_to_alternating_two_three_output_holds) ... ok
+test_overlap_is_rejected (test_render_strength.ExposureTests.test_overlap_is_rejected) ... ok
+test_source_key_between_output_frames_uses_ceil (test_render_strength.ExposureTests.test_source_key_between_output_frames_uses_ceil) ... ok
+test_threes_preserve_alternating_eight_seven (test_render_strength.ExposureTests.test_threes_preserve_alternating_eight_seven) ... ok
+test_twos_hold_for_five_at_sixty (test_render_strength.ExposureTests.test_twos_hold_for_five_at_sixty) ... ok
+test_unsupported_or_boolean_fps_is_rejected (test_render_strength.ExposureTests.test_unsupported_or_boolean_fps_is_rejected) ... ok
+test_duplicate_and_nonfinite_json_are_rejected (test_render_strength.InputBoundaryTests.test_duplicate_and_nonfinite_json_are_rejected) ... ok
+test_path_escape_and_windows_drive_are_rejected (test_render_strength.InputBoundaryTests.test_path_escape_and_windows_drive_are_rejected) ... ok
+test_symlink_is_rejected (test_render_strength.InputBoundaryTests.test_symlink_is_rejected) ... ok
+test_actual_fixture_encodes_sixty_frames_at_120_fps (test_render_strength.OfflineIntegrationTests.test_actual_fixture_encodes_sixty_frames_at_120_fps) ... ok
+test_cancelled_render_never_publishes_partial_output (test_render_strength.OfflineIntegrationTests.test_cancelled_render_never_publishes_partial_output) ... ok
+test_existing_output_is_preserved (test_render_strength.OfflineIntegrationTests.test_existing_output_is_preserved) ... ok
+test_missing_encoded_frame_is_rejected_even_when_hash_is_updated (test_render_strength.OfflineIntegrationTests.test_missing_encoded_frame_is_rejected_even_when_hash_is_updated) ... ok
+test_modified_exposure_evidence_is_rejected (test_render_strength.OfflineIntegrationTests.test_modified_exposure_evidence_is_rejected) ... ok
+test_offline_audit_can_pass_without_external_ffmpeg (test_render_strength.OfflineIntegrationTests.test_offline_audit_can_pass_without_external_ffmpeg) ... ok
+test_rim_lighting_does_not_repaint_protected_face (test_render_strength.OfflineIntegrationTests.test_rim_lighting_does_not_repaint_protected_face) ... ok
+test_audio_metrics_detect_shift_and_clipping (test_render_strength.RasterTests.test_audio_metrics_detect_shift_and_clipping) ... ok
+test_barycentric_identity_preserves_solid_silhouette (test_render_strength.RasterTests.test_barycentric_identity_preserves_solid_silhouette) ... ok
+test_extreme_target_is_limited_without_folding (test_render_strength.RasterTests.test_extreme_target_is_limited_without_folding) ... ok
+test_facial_protection_keeps_eyes_and_mouth_stationary (test_render_strength.RasterTests.test_facial_protection_keeps_eyes_and_mouth_stationary) ... ok
+test_raster_reader_rejects_truncation_and_extra_data (test_render_strength.RasterTests.test_raster_reader_rejects_truncation_and_extra_data) ... ok
+test_transparent_rgb_does_not_bleed_into_edges (test_render_strength.RasterTests.test_transparent_rgb_does_not_bleed_into_edges) ... ok
+test_triangle_seams_do_not_create_holes (test_render_strength.RasterTests.test_triangle_seams_do_not_create_holes) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 2.163s
+
+OK

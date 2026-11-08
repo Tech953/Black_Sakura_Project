@@ -1,0 +1,163 @@
+{
+  "schema_version": "3.0.0",
+  "name": "FULL_REZZ 60 fps dialogue continuity test",
+  "duration_seconds": 12,
+  "fps": 60,
+  "voice_offset_seconds": 1.25,
+  "keys": [
+    {
+      "frame": 0,
+      "time_seconds": 0.0,
+      "pose_id": "a1",
+      "label": "Alert rest"
+    },
+    {
+      "frame": 40,
+      "time_seconds": 0.6666666666666666,
+      "pose_id": "a2",
+      "label": "Head leads turn"
+    },
+    {
+      "frame": 60,
+      "time_seconds": 1.0,
+      "pose_id": "a3",
+      "label": "Anticipation hold"
+    },
+    {
+      "frame": 215,
+      "time_seconds": 3.5833333333333335,
+      "pose_id": "a2",
+      "label": "Return glance"
+    },
+    {
+      "frame": 235,
+      "time_seconds": 3.9166666666666665,
+      "pose_id": "a1",
+      "label": "Greeting hold"
+    },
+    {
+      "frame": 310,
+      "time_seconds": 5.166666666666667,
+      "pose_id": "c1",
+      "label": "Low palm transition"
+    },
+    {
+      "frame": 325,
+      "time_seconds": 5.416666666666667,
+      "pose_id": "c2",
+      "label": "Elbow leads transition"
+    },
+    {
+      "frame": 340,
+      "time_seconds": 5.666666666666667,
+      "pose_id": "a5",
+      "label": "Palm rise"
+    },
+    {
+      "frame": 350,
+      "time_seconds": 5.833333333333333,
+      "pose_id": "c3",
+      "label": "Extension transition"
+    },
+    {
+      "frame": 360,
+      "time_seconds": 6.0,
+      "pose_id": "a6",
+      "label": "Palm-up extension"
+    },
+    {
+      "frame": 370,
+      "time_seconds": 6.166666666666667,
+      "pose_id": "a7",
+      "label": "Gesture overshoot"
+    },
+    {
+      "frame": 380,
+      "time_seconds": 6.333333333333333,
+      "pose_id": "c4",
+      "label": "Overshoot recovery"
+    },
+    {
+      "frame": 390,
+      "time_seconds": 6.5,
+      "pose_id": "a8",
+      "label": "Big attitude hold"
+    },
+    {
+      "frame": 410,
+      "time_seconds": 6.833333333333333,
+      "pose_id": "b1",
+      "label": "Gesture release"
+    },
+    {
+      "frame": 420,
+      "time_seconds": 7.0,
+      "pose_id": "c5",
+      "label": "Retraction transition"
+    },
+    {
+      "frame": 435,
+      "time_seconds": 7.25,
+      "pose_id": "b2",
+      "label": "Impatient retraction"
+    },
+    {
+      "frame": 455,
+      "time_seconds": 7.583333333333333,
+      "pose_id": "c6",
+      "label": "Head and arm transition"
+    },
+    {
+      "frame": 465,
+      "time_seconds": 7.75,
+      "pose_id": "b3",
+      "label": "Head leads turn"
+    },
+    {
+      "frame": 475,
+      "time_seconds": 7.916666666666667,
+      "pose_id": "b4",
+      "label": "Three-quarter torso"
+    },
+    {
+      "frame": 485,
+      "time_seconds": 8.083333333333334,
+      "pose_id": "b5",
+      "label": "Tiny patience reaction"
+    },
+    {
+      "frame": 510,
+      "time_seconds": 8.5,
+      "pose_id": "c7",
+      "label": "Invitation transition"
+    },
+    {
+      "frame": 525,
+      "time_seconds": 8.75,
+      "pose_id": "b6",
+      "label": "Head leads return"
+    },
+    {
+      "frame": 540,
+      "time_seconds": 9.0,
+      "pose_id": "b7",
+      "label": "Your-turn invitation"
+    },
+    {
+      "frame": 555,
+      "time_seconds": 9.25,
+      "pose_id": "c8",
+      "label": "Invitation recovery"
+    },
+    {
+      "frame": 570,
+      "time_seconds": 9.5,
+      "pose_id": "b8",
+      "label": "Invitation settle"
+    }
+  ],
+  "timing_basis": "Authored drawing changes every five 60 Hz frames; event seconds preserved from 24 fps baseline",
+  "stance": "Fixed declared sole coordinates x 546.72/733.28, y 618; upper body remains rigid in registration",
+  "lip_sync": "Continuous audio-energy aperture; no phoneme alignment",
+  "camera": "Single full-body shot"
+}

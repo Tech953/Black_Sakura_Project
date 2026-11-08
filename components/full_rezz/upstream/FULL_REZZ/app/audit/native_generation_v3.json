@@ -1,0 +1,64 @@
+{
+  "renders": [
+    {
+      "language": "en",
+      "native_QProcess": true,
+      "generation_performed": true,
+      "generation_id": "gen_c92ead39b5234a2c",
+      "seconds": 162.04609872800006,
+      "word_check": {
+        "expected_text": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+        "transcribed_text": "Non-canon-archive simulation. Easy-tune. Big attitude, tiny patience. Now let's hear what you've got.",
+        "comparison_expected_text": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+        "comparison_transcribed_text": "Non-canon-archive simulation. Easy-tune. Big attitude, tiny patience. Now let's hear what you've got.",
+        "script_normalization": null,
+        "word_errors": 1,
+        "expected_word_count": 16,
+        "word_error_rate": 0.0625,
+        "character_error_rate": null,
+        "error_rate": 0.0625,
+        "metric": "WER",
+        "language": "en",
+        "threshold": 0.2,
+        "passed": true,
+        "normalization": "NFKC Unicode words with combining marks; optional Arabic vocalization ignored; no slang replacement",
+        "limits": "Text agreement cannot approve pronunciation, likeness, purity, delivery or naturalness.",
+        "at": "2026-10-12T18:34:27.430242+00:00",
+        "model": "bundled-base-multilingual",
+        "audio_sha256": "808e760f4d0385596328fe77b3db0ec0c28e86e0687200f18067cb9c7066e776"
+      },
+      "all_ratings_unreviewed": true
+    },
+    {
+      "language": "zh-Hans",
+      "native_QProcess": true,
+      "generation_performed": true,
+      "generation_id": "gen_f5206bf1a55c4665",
+      "seconds": 126.29692744299996,
+      "word_check": {
+        "expected_text": "非正史档案模拟。 这是中文声音测试。请检查清晰度。",
+        "transcribed_text": "很非正式當案模擬 這是中文聲音測試 請檢查清晰度",
+        "comparison_expected_text": "非正史档案模拟。 这是中文声音测试。请检查清晰度。",
+        "comparison_transcribed_text": "很非正式当案模拟 这是中文声音测试 请检查清晰度",
+        "script_normalization": "OpenCC 0.1.7 Traditional-to-Simplified per-character mapping; no phrase or slang replacement",
+        "word_errors": 3,
+        "expected_word_count": 21,
+        "word_error_rate": null,
+        "character_error_rate": 0.14285714285714285,
+        "error_rate": 0.14285714285714285,
+        "metric": "CER",
+        "language": "zh-Hans",
+        "threshold": 0.2,
+        "passed": true,
+        "normalization": "NFKC characters",
+        "limits": "Text agreement cannot approve pronunciation, likeness, purity, delivery or naturalness.",
+        "at": "2026-10-12T18:36:36.349510+00:00",
+        "model": "bundled-base-multilingual",
+        "audio_sha256": "f24427f26d3eb14848ce5e1e23da0fb13c9fa1a6f43984e19244f24ae9e60b96"
+      },
+      "all_ratings_unreviewed": true
+    }
+  ],
+  "errors": [],
+  "actual_windows_execution": false
+}

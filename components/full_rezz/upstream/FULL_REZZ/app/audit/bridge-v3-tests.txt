@@ -1,0 +1,13 @@
+✔ UTF-8 result after diagnostic output, never autoapproved (33.843041ms)
+✔ failed worker cannot be available speech (19.28529ms)
+✔ missing result cannot be success (22.704879ms)
+✔ timeout terminates the worker (104.662897ms)
+✔ unknown operation never spawns (0.394467ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 270.306302

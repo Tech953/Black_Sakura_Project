@@ -1,0 +1,29 @@
+{
+  "scope": "Audit material validation, not new-engine or native Windows acceptance",
+  "finalized_utc": "2026-10-13",
+  "checks_passed": {
+    "transcript_messages": 18,
+    "requirements": 8,
+    "findings": 14,
+    "original_frame_flags_preserved": 32,
+    "hand_comparison_pairs": 6,
+    "source_probe_locations": 72,
+    "opaque_probe_locations": 72,
+    "nonzero_influence_probes": 46,
+    "comparison_image_hash_and_dimensions": true,
+    "original_movie_unchanged": true,
+    "legacy_source_and_assets_unchanged": true,
+    "draft_example_shape_and_legacy_paths": true
+  },
+  "draft_schema_metaschema_validation": false,
+  "changed_existing_files": [
+    "README.md",
+    "TASK_QUERY.md",
+    "replit.md"
+  ],
+  "unchanged_existing_file_count": 392,
+  "movie_sha256": "b74f599a5eebeaf5a07a069d706a440d4614e12fc654458b063bf838b9ced97e",
+  "inherited_full_tests_rerun": false,
+  "native_windows_execution_tested": false,
+  "new_engine_implemented": false
+}

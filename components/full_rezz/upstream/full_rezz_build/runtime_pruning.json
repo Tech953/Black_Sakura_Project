@@ -1,0 +1,1994 @@
+{
+  "application_roots": [
+    "opengl32sw.dll",
+    "pyside6.abi3.dll",
+    "pyside6qml.abi3.dll",
+    "qtcore.pyd",
+    "qtgui.pyd",
+    "qtnetwork.pyd",
+    "qtprintsupport.pyd",
+    "qtqml.pyd",
+    "qtquick.pyd",
+    "qtquickwidgets.pyd",
+    "qtwebchannel.pyd",
+    "qtwebenginecore.pyd",
+    "qtwebengineprocess.exe",
+    "qtwebenginewidgets.pyd",
+    "qtwidgets.pyd"
+  ],
+  "retained_qt_binaries": [
+    "datavisualizationqmlplugin.dll",
+    "declarative_locationplugin.dll",
+    "declarative_remoteobjectsplugin.dll",
+    "declarative_scxmlplugin.dll",
+    "effectsplugin.dll",
+    "graphsplugin.dll",
+    "labsanimationplugin.dll",
+    "labsmodelsplugin.dll",
+    "labsplatformplugin.dll",
+    "modelsplugin.dll",
+    "msvcp140.dll",
+    "msvcp140_1.dll",
+    "msvcp140_2.dll",
+    "opengl32sw.dll",
+    "particlesplugin.dll",
+    "pdfquickplugin.dll",
+    "positioningquickplugin.dll",
+    "pyside6.abi3.dll",
+    "pyside6qml.abi3.dll",
+    "qdirect2d.dll",
+    "qgif.dll",
+    "qicns.dll",
+    "qico.dll",
+    "qjpeg.dll",
+    "qminimal.dll",
+    "qmlfolderlistmodelplugin.dll",
+    "qmllocalstorageplugin.dll",
+    "qmlnetworkplugin.dll",
+    "qmlplugin.dll",
+    "qmlsettingsplugin.dll",
+    "qmlshapesplugin.dll",
+    "qmlwavefrontmeshplugin.dll",
+    "qmlwebsocketsplugin.dll",
+    "qmlxmllistmodelplugin.dll",
+    "qmodernwindowsstyle.dll",
+    "qoffscreen.dll",
+    "qpdf.dll",
+    "qquick3dplugin.dll",
+    "qquicklayoutsplugin.dll",
+    "qquickvectorimageplugin.dll",
+    "qsvg.dll",
+    "qsvgicon.dll",
+    "qt63danimation.dll",
+    "qt63dcore.dll",
+    "qt63dextras.dll",
+    "qt63dinput.dll",
+    "qt63dlogic.dll",
+    "qt63dquick.dll",
+    "qt63dquickanimation.dll",
+    "qt63dquickextras.dll",
+    "qt63dquickinput.dll",
+    "qt63dquicklogic.dll",
+    "qt63dquickrender.dll",
+    "qt63dquickscene2d.dll",
+    "qt63dquickscene3d.dll",
+    "qt63drender.dll",
+    "qt6charts.dll",
+    "qt6chartsqml.dll",
+    "qt6concurrent.dll",
+    "qt6core.dll",
+    "qt6datavisualization.dll",
+    "qt6datavisualizationqml.dll",
+    "qt6graphs.dll",
+    "qt6gui.dll",
+    "qt6labsanimation.dll",
+    "qt6labsfolderlistmodel.dll",
+    "qt6labsplatform.dll",
+    "qt6labsqmlmodels.dll",
+    "qt6labssettings.dll",
+    "qt6labssharedimage.dll",
+    "qt6labswavefrontmesh.dll",
+    "qt6location.dll",
+    "qt6multimedia.dll",
+    "qt6multimediaquick.dll",
+    "qt6network.dll",
+    "qt6opengl.dll",
+    "qt6openglwidgets.dll",
+    "qt6pdf.dll",
+    "qt6pdfquick.dll",
+    "qt6positioning.dll",
+    "qt6positioningquick.dll",
+    "qt6printsupport.dll",
+    "qt6qml.dll",
+    "qt6qmlcore.dll",
+    "qt6qmllocalstorage.dll",
+    "qt6qmlmeta.dll",
+    "qt6qmlmodels.dll",
+    "qt6qmlnetwork.dll",
+    "qt6qmlworkerscript.dll",
+    "qt6qmlxmllistmodel.dll",
+    "qt6quick.dll",
+    "qt6quick3d.dll",
+    "qt6quick3dassetimport.dll",
+    "qt6quick3dassetutils.dll",
+    "qt6quick3deffects.dll",
+    "qt6quick3dhelpers.dll",
+    "qt6quick3dhelpersimpl.dll",
+    "qt6quick3dparticleeffects.dll",
+    "qt6quick3dparticles.dll",
+    "qt6quick3druntimerender.dll",
+    "qt6quick3dspatialaudio.dll",
+    "qt6quick3dutils.dll",
+    "qt6quick3dxr.dll",
+    "qt6quickcontrols2.dll",
+    "qt6quickcontrols2basic.dll",
+    "qt6quickcontrols2basicstyleimpl.dll",
+    "qt6quickcontrols2fluentwinui3styleimpl.dll",
+    "qt6quickcontrols2fusion.dll",
+    "qt6quickcontrols2fusionstyleimpl.dll",
+    "qt6quickcontrols2imagine.dll",
+    "qt6quickcontrols2imaginestyleimpl.dll",
+    "qt6quickcontrols2impl.dll",
+    "qt6quickcontrols2material.dll",
+    "qt6quickcontrols2materialstyleimpl.dll",
+    "qt6quickcontrols2universal.dll",
+    "qt6quickcontrols2universalstyleimpl.dll",
+    "qt6quickcontrols2windowsstyleimpl.dll",
+    "qt6quickdialogs2.dll",
+    "qt6quickdialogs2quickimpl.dll",
+    "qt6quickdialogs2utils.dll",
+    "qt6quickeffects.dll",
+    "qt6quicklayouts.dll",
+    "qt6quickparticles.dll",
+    "qt6quickshapes.dll",
+    "qt6quicktemplates2.dll",
+    "qt6quicktest.dll",
+    "qt6quicktimeline.dll",
+    "qt6quicktimelineblendtrees.dll",
+    "qt6quickvectorimage.dll",
+    "qt6quickvectorimagegenerator.dll",
+    "qt6quickwidgets.dll",
+    "qt6remoteobjects.dll",
+    "qt6remoteobjectsqml.dll",
+    "qt6scxml.dll",
+    "qt6scxmlqml.dll",
+    "qt6sensors.dll",
+    "qt6sensorsquick.dll",
+    "qt6shadertools.dll",
+    "qt6spatialaudio.dll",
+    "qt6sql.dll",
+    "qt6statemachine.dll",
+    "qt6statemachineqml.dll",
+    "qt6svg.dll",
+    "qt6test.dll",
+    "qt6texttospeech.dll",
+    "qt6virtualkeyboard.dll",
+    "qt6virtualkeyboardqml.dll",
+    "qt6virtualkeyboardsettings.dll",
+    "qt6webchannel.dll",
+    "qt6webchannelquick.dll",
+    "qt6webenginecore.dll",
+    "qt6webenginequick.dll",
+    "qt6webenginequickdelegatesqml.dll",
+    "qt6webenginewidgets.dll",
+    "qt6websockets.dll",
+    "qt6webview.dll",
+    "qt6webviewquick.dll",
+    "qt6widgets.dll",
+    "qtchartsqml2plugin.dll",
+    "qtcore.pyd",
+    "qtga.dll",
+    "qtgraphicaleffectsplugin.dll",
+    "qtgraphicaleffectsprivateplugin.dll",
+    "qtgui.pyd",
+    "qtiff.dll",
+    "qtnetwork.pyd",
+    "qtprintsupport.pyd",
+    "qtqml.pyd",
+    "qtqmlcoreplugin.dll",
+    "qtqmlstatemachineplugin.dll",
+    "qtquick.pyd",
+    "qtquick2plugin.dll",
+    "qtquick3dassetutilsplugin.dll",
+    "qtquick3deffectplugin.dll",
+    "qtquick3dhelpersimplplugin.dll",
+    "qtquick3dhelpersplugin.dll",
+    "qtquick3dparticleeffectsplugin.dll",
+    "qtquick3dparticles3dplugin.dll",
+    "qtquickcontrols2basicstyleimplplugin.dll",
+    "qtquickcontrols2basicstyleplugin.dll",
+    "qtquickcontrols2fluentwinui3styleimplplugin.dll",
+    "qtquickcontrols2fluentwinui3styleplugin.dll",
+    "qtquickcontrols2fusionstyleimplplugin.dll",
+    "qtquickcontrols2fusionstyleplugin.dll",
+    "qtquickcontrols2imaginestyleimplplugin.dll",
+    "qtquickcontrols2imaginestyleplugin.dll",
+    "qtquickcontrols2implplugin.dll",
+    "qtquickcontrols2materialstyleimplplugin.dll",
+    "qtquickcontrols2materialstyleplugin.dll",
+    "qtquickcontrols2nativestyleplugin.dll",
+    "qtquickcontrols2plugin.dll",
+    "qtquickcontrols2universalstyleimplplugin.dll",
+    "qtquickcontrols2universalstyleplugin.dll",
+    "qtquickcontrols2windowsstyleimplplugin.dll",
+    "qtquickcontrols2windowsstyleplugin.dll",
+    "qtquickdialogs2quickimplplugin.dll",
+    "qtquickdialogsplugin.dll",
+    "qtquickscene2dplugin.dll",
+    "qtquickscene3dplugin.dll",
+    "qtquicktemplates2plugin.dll",
+    "qtquicktimelineblendtreesplugin.dll",
+    "qtquicktimelineplugin.dll",
+    "qtquickwidgets.pyd",
+    "qtuiotouchplugin.dll",
+    "qtvkbbuiltinstylesplugin.dll",
+    "qtvkbcomponentsplugin.dll",
+    "qtvkbhangulplugin.dll",
+    "qtvkblayoutsplugin.dll",
+    "qtvkbopenwnnplugin.dll",
+    "qtvkbpinyinplugin.dll",
+    "qtvkbplugin.dll",
+    "qtvkbpluginsplugin.dll",
+    "qtvkbsettingsplugin.dll",
+    "qtvkbstylesplugin.dll",
+    "qtvkbtcimeplugin.dll",
+    "qtvkbthaiplugin.dll",
+    "qtwebchannel.pyd",
+    "qtwebenginecore.pyd",
+    "qtwebengineprocess.exe",
+    "qtwebenginequickdelegatesplugin.dll",
+    "qtwebenginequickplugin.dll",
+    "qtwebenginewidgets.pyd",
+    "qtwebviewquickplugin.dll",
+    "qtwidgets.pyd",
+    "quick3danimationplugin.dll",
+    "quick3dcoreplugin.dll",
+    "quick3dextrasplugin.dll",
+    "quick3dinputplugin.dll",
+    "quick3dlogicplugin.dll",
+    "quick3drenderplugin.dll",
+    "quick3dspatialaudioplugin.dll",
+    "quick3dxrplugin.dll",
+    "quickmultimediaplugin.dll",
+    "quicktestplugin.dll",
+    "quicktoolingplugin.dll",
+    "quickwindowplugin.dll",
+    "qwbmp.dll",
+    "qwebp.dll",
+    "qwindows.dll",
+    "sensorsquickplugin.dll",
+    "sharedimageplugin.dll",
+    "texttospeechqmlplugin.dll",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+    "virtualkeyboardplugin.dll",
+    "webchannelquickplugin.dll",
+    "workerscriptplugin.dll"
+  ],
+  "removed_files": [
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtQuickTest.pyd",
+      "bytes": 69856
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt3DInput.pyd",
+      "bytes": 263392
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtDataVisualization.pyd",
+      "bytes": 650976
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/swresample-5.dll",
+      "bytes": 243424
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt3DLogic.pyd",
+      "bytes": 94944
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6MultimediaWidgets.dll",
+      "bytes": 62688
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtSvg.pyd",
+      "bytes": 114400
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtTextToSpeech.pyd",
+      "bytes": 148192
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/vcamp140.dll",
+      "bytes": 450784
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6SerialBus.dll",
+      "bytes": 428256
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtBluetooth.pyd",
+      "bytes": 459488
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtTest.pyd",
+      "bytes": 181984
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtExampleIcons.pyd",
+      "bytes": 244960
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtStateMachine.pyd",
+      "bytes": 217312
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtWebEngineQuick.pyd",
+      "bytes": 115936
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtSerialBus.pyd",
+      "bytes": 411360
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtSvgWidgets.pyd",
+      "bytes": 137952
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/msvcp140_codecvt_ids.dll",
+      "bytes": 24288
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6Quick3DGlslParser.dll",
+      "bytes": 286432
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtAxContainer.pyd",
+      "bytes": 624352
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/vcomp140.dll",
+      "bytes": 156384
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6Quick3DIblBaker.dll",
+      "bytes": 72928
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtPdf.pyd",
+      "bytes": 240352
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/assistant.exe",
+      "bytes": 1731808
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtGraphs.pyd",
+      "bytes": 799968
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6QmlCompiler.dll",
+      "bytes": 2431712
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6Designer.dll",
+      "bytes": 5304032
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6HttpServer.dll",
+      "bytes": 199392
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/concrt140.dll",
+      "bytes": 316640
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/svgtoqml.exe",
+      "bytes": 39648
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/avcodec-61.dll",
+      "bytes": 13817568
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtPositioning.pyd",
+      "bytes": 323808
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt3DRender.pyd",
+      "bytes": 1120992
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtOpenGLWidgets.pyd",
+      "bytes": 121056
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6DBus.dll",
+      "bytes": 723168
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtDBus.pyd",
+      "bytes": 291552
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6NetworkAuth.dll",
+      "bytes": 290016
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtMultimedia.pyd",
+      "bytes": 551136
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/qmltyperegistrar.exe",
+      "bytes": 279264
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtSpatialAudio.pyd",
+      "bytes": 143072
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/qmlformat.exe",
+      "bytes": 2291936
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/balsam.exe",
+      "bytes": 62176
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6UiTools.dll",
+      "bytes": 714464
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6SvgWidgets.dll",
+      "bytes": 59104
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/vccorlib140.dll",
+      "bytes": 344800
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/designer.exe",
+      "bytes": 677088
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtMultimediaWidgets.pyd",
+      "bytes": 138976
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6GraphsWidgets.dll",
+      "bytes": 134368
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtRemoteObjects.pyd",
+      "bytes": 441056
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtWebView.pyd",
+      "bytes": 71392
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/qmlls.exe",
+      "bytes": 3632352
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6SerialPort.dll",
+      "bytes": 135392
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtQuickControls2.pyd",
+      "bytes": 92384
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/lupdate.exe",
+      "bytes": 646368
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt3DAnimation.pyd",
+      "bytes": 323296
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtSensors.pyd",
+      "bytes": 396000
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtDesigner.pyd",
+      "bytes": 483552
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtWebSockets.pyd",
+      "bytes": 140000
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtSerialPort.pyd",
+      "bytes": 128224
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtScxml.pyd",
+      "bytes": 249568
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/qmllint.exe",
+      "bytes": 99040
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtConcurrent.pyd",
+      "bytes": 108256
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtXml.pyd",
+      "bytes": 208608
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtGraphsWidgets.pyd",
+      "bytes": 170208
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6PdfWidgets.dll",
+      "bytes": 102624
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/qmlcachegen.exe",
+      "bytes": 64736
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt3DExtras.pyd",
+      "bytes": 544480
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6Nfc.dll",
+      "bytes": 208096
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtLocation.pyd",
+      "bytes": 494304
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtHelp.pyd",
+      "bytes": 291552
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtQuick3D.pyd",
+      "bytes": 176352
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/avformat-61.dll",
+      "bytes": 2625248
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/linguist.exe",
+      "bytes": 1105632
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/uic.exe",
+      "bytes": 519392
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt3DCore.pyd",
+      "bytes": 321248
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/balsamui.exe",
+      "bytes": 123616
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6Help.dll",
+      "bytes": 593632
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtSql.pyd",
+      "bytes": 415968
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/avutil-59.dll",
+      "bytes": 1187040
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6Xml.dll",
+      "bytes": 157920
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtCharts.pyd",
+      "bytes": 798432
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtOpenGL.pyd",
+      "bytes": 8762080
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/swscale-8.dll",
+      "bytes": 746720
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/qsb.exe",
+      "bytes": 104672
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/qmlimportscanner.exe",
+      "bytes": 143072
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/lrelease.exe",
+      "bytes": 329440
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtNetworkAuth.pyd",
+      "bytes": 257760
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6DesignerComponents.dll",
+      "bytes": 2558688
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtPdfWidgets.pyd",
+      "bytes": 137440
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtUiTools.pyd",
+      "bytes": 116448
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtHttpServer.pyd",
+      "bytes": 157920
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/rcc.exe",
+      "bytes": 148192
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/QtNfc.pyd",
+      "bytes": 204000
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/Qt6Bluetooth.dll",
+      "bytes": 856800
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/geoservices/qtgeoservices_osm.dll",
+      "bytes": 276192
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/geoservices/qtgeoservices_itemsoverlay.dll",
+      "bytes": 46304
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/designer/qwebengineview.dll",
+      "bytes": 48352
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/designer/qaxwidget.dll",
+      "bytes": 424672
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/designer/qquickwidget.dll",
+      "bytes": 44768
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/designer/PySidePlugin.dll",
+      "bytes": 47840
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/canbus/qtvirtualcanbus.dll",
+      "bytes": 66272
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/canbus/qtpassthrucanbus.dll",
+      "bytes": 80096
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/canbus/qtvectorcanbus.dll",
+      "bytes": 60640
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/canbus/qtpeakcanbus.dll",
+      "bytes": 63200
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/canbus/qtsysteccanbus.dll",
+      "bytes": 56032
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/canbus/qttinycanbus.dll",
+      "bytes": 57056
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sqldrivers/qsqlpsql.dll",
+      "bytes": 106720
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sqldrivers/qsqlmimer.dll",
+      "bytes": 89312
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sqldrivers/qsqloci.dll",
+      "bytes": 129248
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sqldrivers/qsqlibase.dll",
+      "bytes": 137952
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sqldrivers/qsqlite.dll",
+      "bytes": 1978592
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sqldrivers/qsqlodbc.dll",
+      "bytes": 126176
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/tls/qcertonlybackend.dll",
+      "bytes": 103136
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/tls/qopensslbackend.dll",
+      "bytes": 314592
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/tls/qschannelbackend.dll",
+      "bytes": 259296
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmllint/quicklintplugin.dll",
+      "bytes": 152800
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/texttospeech/qtexttospeech_winrt.dll",
+      "bytes": 87776
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/texttospeech/qtexttospeech_sapi.dll",
+      "bytes": 67296
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/texttospeech/qtexttospeech_mock.dll",
+      "bytes": 63200
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/platforminputcontexts/qtvirtualkeyboardplugin.dll",
+      "bytes": 34528
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sensors/qtsensors_winrt.dll",
+      "bytes": 100576
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sensors/qtsensors_generic.dll",
+      "bytes": 52448
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/webview/qtwebview_webengine.dll",
+      "bytes": 57056
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/renderers/openglrenderer.dll",
+      "bytes": 1017568
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/renderers/rhirenderer.dll",
+      "bytes": 551648
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/renderplugins/scene2d.dll",
+      "bytes": 41696
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/assetimporters/assimp.dll",
+      "bytes": 2040032
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sceneparsers/assimpsceneimport.dll",
+      "bytes": 1835232
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sceneparsers/gltfsceneimport.dll",
+      "bytes": 270560
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/sceneparsers/gltfsceneexport.dll",
+      "bytes": 286432
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/geometryloaders/defaultgeometryloader.dll",
+      "bytes": 102624
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/geometryloaders/gltfgeometryloader.dll",
+      "bytes": 87264
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/position/qtposition_winrt.dll",
+      "bytes": 68320
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/position/qtposition_nmea.dll",
+      "bytes": 83680
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/position/qtposition_positionpoll.dll",
+      "bytes": 77024
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/scxmldatamodel/qscxmlecmascriptdatamodel.dll",
+      "bytes": 78560
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_native.dll",
+      "bytes": 49888
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_tcp.dll",
+      "bytes": 36576
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_local.dll",
+      "bytes": 39648
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_nativedebugger.dll",
+      "bytes": 73952
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_messages.dll",
+      "bytes": 36064
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_debugger.dll",
+      "bytes": 212192
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_profiler.dll",
+      "bytes": 120544
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_server.dll",
+      "bytes": 101088
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_inspector.dll",
+      "bytes": 100576
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_quickprofiler.dll",
+      "bytes": 44768
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_quick3dprofiler.dll",
+      "bytes": 44768
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/qmltooling/qmldbg_preview.dll",
+      "bytes": 203488
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/networkinformation/qnetworklistmanager.dll",
+      "bytes": 71904
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/multimedia/windowsmediaplugin.dll",
+      "bytes": 289504
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/plugins/multimedia/ffmpegmediaplugin.dll",
+      "bytes": 629472
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtwebenginecore.cpp",
+      "bytes": 6018
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtgraphs.cpp",
+      "bytes": 374
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qttest.cpp",
+      "bytes": 1414
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtsql.cpp",
+      "bytes": 1811
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtqml.cpp",
+      "bytes": 3265
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtprintsupport.cpp",
+      "bytes": 630
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtstatemachine.cpp",
+      "bytes": 3097
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtxml.cpp",
+      "bytes": 731
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtquick3d.cpp",
+      "bytes": 984
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtdesigner.cpp",
+      "bytes": 340
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtnetworkauth.cpp",
+      "bytes": 1794
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtgui.cpp",
+      "bytes": 38604
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtwidgets.cpp",
+      "bytes": 30331
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtquicktest.cpp",
+      "bytes": 1864
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtdatavisualization.cpp",
+      "bytes": 3017
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtuitools.cpp",
+      "bytes": 7361
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtremoteobjects.cpp",
+      "bytes": 1210
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtmultimedia.cpp",
+      "bytes": 1163
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtcharts.cpp",
+      "bytes": 650
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtnetwork.cpp",
+      "bytes": 4203
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtserialbus.cpp",
+      "bytes": 1595
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtopengl.cpp",
+      "bytes": 4586
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtcore.cpp",
+      "bytes": 79985
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtpositioning.cpp",
+      "bytes": 564
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/glue/qtquick.cpp",
+      "bytes": 1001
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidelogging_p.h",
+      "bytes": 316
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideproperty_p.h",
+      "bytes": 4721
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqenum.h",
+      "bytes": 572
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmlextended_p.h",
+      "bytes": 589
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideproperty.h",
+      "bytes": 2030
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidedynamicenum_p.h",
+      "bytes": 412
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pyside_numpy.h",
+      "bytes": 994
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidesignal.h",
+      "bytes": 4591
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideweakref.h",
+      "bytes": 494
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmetatype.h",
+      "bytes": 1102
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmluncreatable.h",
+      "bytes": 824
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/class_property.h",
+      "bytes": 991
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidestaticstrings.h",
+      "bytes": 1039
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/dynamicqmetaobject.h",
+      "bytes": 1664
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidecleanup.h",
+      "bytes": 504
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pyside_p.h",
+      "bytes": 912
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmlmacros.h",
+      "bytes": 484
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidedynamicclass_p.h",
+      "bytes": 450
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidedynamiccommon_p.h",
+      "bytes": 2731
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideclassinfo.h",
+      "bytes": 834
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidemetatype.h",
+      "bytes": 588
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidesignal_p.h",
+      "bytes": 1794
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmltypeinfo_p.h",
+      "bytes": 1492
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmlregistertype_p.h",
+      "bytes": 463
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqapp.h",
+      "bytes": 457
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideutils.h",
+      "bytes": 2050
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidecapsulemethod_p.h",
+      "bytes": 3706
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/signalmanager.h",
+      "bytes": 3394
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmlforeign_p.h",
+      "bytes": 414
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideclassinfo_p.h",
+      "bytes": 985
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidemacros.h",
+      "bytes": 454
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqslotobject_p.h",
+      "bytes": 1031
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmlregistertype.h",
+      "bytes": 3708
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqml.h",
+      "bytes": 376
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmllistproperty_p.h",
+      "bytes": 354
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidemetafunction.h",
+      "bytes": 965
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqhash.h",
+      "bytes": 570
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqobject.h",
+      "bytes": 2914
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideclassdecorator_p.h",
+      "bytes": 5490
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/dynamicslot_p.h",
+      "bytes": 1252
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysiderephandler_p.h",
+      "bytes": 745
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/feature_select.h",
+      "bytes": 491
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/qobjectconnect.h",
+      "bytes": 1936
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideslot_p.h",
+      "bytes": 744
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidemetafunction_p.h",
+      "bytes": 605
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysidedynamicpod_p.h",
+      "bytes": 409
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmlnamedelement_p.h",
+      "bytes": 330
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pyside6_global.h",
+      "bytes": 434
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmlmetacallerror_p.h",
+      "bytes": 607
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pyside.h",
+      "bytes": 367
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmlattached_p.h",
+      "bytes": 593
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideqmlattached.h",
+      "bytes": 847
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/pysideinit.h",
+      "bytes": 798
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtQuick/pyside6_qtquick_python.h",
+      "bytes": 41536
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtSvgWidgets/pyside6_qtsvgwidgets_python.h",
+      "bytes": 3067
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtMultimedia/pyside6_qtmultimedia_python.h",
+      "bytes": 31799
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtNetworkAuth/pyside6_qtnetworkauth_python.h",
+      "bytes": 8911
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/Qt3DAnimation/pyside6_qt3danimation_python.h",
+      "bytes": 17545
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtSvg/pyside6_qtsvg_python.h",
+      "bytes": 3979
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtQuickWidgets/pyside6_qtquickwidgets_python.h",
+      "bytes": 3687
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtUiTools/pyside6_qtuitools_python.h",
+      "bytes": 2690
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtPrintSupport/pyside6_qtprintsupport_python.h",
+      "bytes": 10862
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtTest/pyside6_qttest_python.h",
+      "bytes": 5479
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtSpatialAudio/pyside6_qtspatialaudio_python.h",
+      "bytes": 5925
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtWebEngineQuick/pyside6_qtwebenginequick_python.h",
+      "bytes": 4814
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtHttpServer/pyside6_qthttpserver_python.h",
+      "bytes": 8013
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtPdfWidgets/pyside6_qtpdfwidgets_python.h",
+      "bytes": 3670
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtQuickControls2/pyside6_qtquickcontrols2_python.h",
+      "bytes": 3467
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtGraphs/pyside6_qtgraphs_python.h",
+      "bytes": 29535
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtGraphs/qtgraphs_helper.h",
+      "bytes": 535
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtWebSockets/pyside6_qtwebsockets_python.h",
+      "bytes": 5524
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtMultimediaWidgets/pyside6_qtmultimediawidgets_python.h",
+      "bytes": 3187
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtQuick3D/pyside6_qtquick3d_python.h",
+      "bytes": 7410
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtGui/qpytextobject.h",
+      "bytes": 789
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtGui/qtguihelper.h",
+      "bytes": 798
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtGui/pyside6_qtgui_python.h",
+      "bytes": 146300
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/Qt3DInput/pyside6_qt3dinput_python.h",
+      "bytes": 13127
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtXml/pyside6_qtxml_python.h",
+      "bytes": 9282
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/Qt3DRender/pyside6_qt3drender_python.h",
+      "bytes": 68104
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtWebView/pyside6_qtwebview_python.h",
+      "bytes": 2333
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/Qt3DCore/pyside6_qt3dcore_python.h",
+      "bytes": 16261
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/Qt3DLogic/pyside6_qt3dlogic_python.h",
+      "bytes": 3494
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtConcurrent/pyside6_qtconcurrent_python.h",
+      "bytes": 6043
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtLocation/pyside6_qtlocation_python.h",
+      "bytes": 27876
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtScxml/pyside6_qtscxml_python.h",
+      "bytes": 9754
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtHelp/pyside6_qthelp_python.h",
+      "bytes": 11244
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtWebEngineWidgets/pyside6_qtwebenginewidgets_python.h",
+      "bytes": 2943
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtWidgets/pyside6_qtwidgets_python.h",
+      "bytes": 150493
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtPositioning/pyside6_qtpositioning_python.h",
+      "bytes": 14004
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtSensors/pyside6_qtsensors_python.h",
+      "bytes": 23075
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtBluetooth/pyside6_qtbluetooth_python.h",
+      "bytes": 31186
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtQuickTest/pyside6_qtquicktest_python.h",
+      "bytes": 2173
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtAxContainer/pyside6_qtaxcontainer_python.h",
+      "bytes": 6444
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtOpenGLWidgets/pyside6_qtopenglwidgets_python.h",
+      "bytes": 3408
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtWebChannel/pyside6_qtwebchannel_python.h",
+      "bytes": 3186
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtDBus/qtdbushelper.h",
+      "bytes": 1495
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtDBus/pyside6_qtdbus_python.h",
+      "bytes": 14571
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtTextToSpeech/pyside6_qttexttospeech_python.h",
+      "bytes": 5806
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtOpenGL/pyside6_qtopengl_python.h",
+      "bytes": 31017
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/Qt3DExtras/pyside6_qt3dextras_python.h",
+      "bytes": 18498
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtStateMachine/pyside6_qtstatemachine_python.h",
+      "bytes": 8889
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtRemoteObjects/pyside6_qtremoteobjects_python.h",
+      "bytes": 12792
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtPdf/pyside6_qtpdf_python.h",
+      "bytes": 9605
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtSql/pyside6_qtsql_python.h",
+      "bytes": 12753
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtQml/pyside6_qtqml_python.h",
+      "bytes": 20182
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtNetwork/pyside6_qtnetwork_python.h",
+      "bytes": 51787
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtDesigner/qpydesignerextensions.h",
+      "bytes": 3033
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtDesigner/pyside6_qtdesigner_python.h",
+      "bytes": 17565
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtSerialBus/pyside6_qtserialbus_python.h",
+      "bytes": 24209
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtWebEngineCore/pyside6_qtwebenginecore_python.h",
+      "bytes": 37375
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtSerialPort/pyside6_qtserialport_python.h",
+      "bytes": 6417
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtNfc/pyside6_qtnfc_python.h",
+      "bytes": 8988
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtCharts/pyside6_qtcharts_python.h",
+      "bytes": 27309
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtGraphsWidgets/pyside6_qtgraphswidgets_python.h",
+      "bytes": 5265
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtDataVisualization/qtdatavisualization_helper.h",
+      "bytes": 603
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtDataVisualization/pyside6_qtdatavisualization_python.h",
+      "bytes": 23610
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtCore/pyside6_qtcore_python.h",
+      "bytes": 153878
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtCore/qiopipe.h",
+      "bytes": 669
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/include/QtCore/qtcorehelper.h",
+      "bytes": 4500
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_pdfwidgets.xml",
+      "bytes": 812
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_glgetv_modifications.xml",
+      "bytes": 1748
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications3_3.xml",
+      "bytes": 439
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_3danimation.xml",
+      "bytes": 2752
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_gui.xml",
+      "bytes": 838
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_texttospeech.xml",
+      "bytes": 803
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_quick3d.xml",
+      "bytes": 1991
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications3_3a.xml",
+      "bytes": 888
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_core_win.xml",
+      "bytes": 1259
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/widgets_common.xml",
+      "bytes": 1285
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_statemachine.xml",
+      "bytes": 7486
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_3dinput.xml",
+      "bytes": 2723
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_graphs.xml",
+      "bytes": 8546
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_positioning.xml",
+      "bytes": 2026
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_pdf.xml",
+      "bytes": 1399
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_serialbus.xml",
+      "bytes": 7409
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_quickcontrols2.xml",
+      "bytes": 551
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications2_0.xml",
+      "bytes": 557
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_webenginecore.xml",
+      "bytes": 13858
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/common.xml",
+      "bytes": 1833
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_nfc.xml",
+      "bytes": 1417
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications3_0.xml",
+      "bytes": 425
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications4_0.xml",
+      "bytes": 432
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_graphswidgets.xml",
+      "bytes": 4834
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_websockets.xml",
+      "bytes": 1142
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications4_5_core.xml",
+      "bytes": 170
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_bluetooth.xml",
+      "bytes": 5129
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_gui_win.xml",
+      "bytes": 1986
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_dbus.xml",
+      "bytes": 6954
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_serialport.xml",
+      "bytes": 885
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications4_4.xml",
+      "bytes": 1074
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications4_4_core.xml",
+      "bytes": 295
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_3dlogic.xml",
+      "bytes": 599
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications4_5.xml",
+      "bytes": 1074
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_spatialaudio.xml",
+      "bytes": 1167
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_glgeti_v_includes.xml",
+      "bytes": 121
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_multimedia.xml",
+      "bytes": 7440
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_multimediawidgets.xml",
+      "bytes": 726
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_core.xml",
+      "bytes": 495
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_glgeti_v_modifications.xml",
+      "bytes": 907
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications2_0_compat.xml",
+      "bytes": 42
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_axcontainer.xml",
+      "bytes": 1986
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_widgets_common.xml",
+      "bytes": 155674
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_gui_x11.xml",
+      "bytes": 331
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_printsupport.xml",
+      "bytes": 474
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications1_4_compat.xml",
+      "bytes": 572
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications1_4.xml",
+      "bytes": 488
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_network.xml",
+      "bytes": 26741
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_sql.xml",
+      "bytes": 8334
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications1_1.xml",
+      "bytes": 335
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications1_0_compat.xml",
+      "bytes": 3006
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_test.xml",
+      "bytes": 6253
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_gui_common.xml",
+      "bytes": 158610
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_quick.xml",
+      "bytes": 11501
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_remoteobjects.xml",
+      "bytes": 3813
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_uitools.xml",
+      "bytes": 4048
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_designer.xml",
+      "bytes": 4814
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_webview.xml",
+      "bytes": 443
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_core_common.xml",
+      "bytes": 189552
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_svg.xml",
+      "bytes": 1059
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_svgwidgets.xml",
+      "bytes": 1014
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_3drender.xml",
+      "bytes": 10484
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications1_2_compat.xml",
+      "bytes": 444
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_xml.xml",
+      "bytes": 8038
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_quickwidgets.xml",
+      "bytes": 838
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_sensors.xml",
+      "bytes": 3649
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_widgets.xml",
+      "bytes": 460
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_webenginequick.xml",
+      "bytes": 897
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_glgetv_includes.xml",
+      "bytes": 287
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications4_3.xml",
+      "bytes": 303
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications1_0.xml",
+      "bytes": 582
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_gui_mac.xml",
+      "bytes": 236
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications4_1.xml",
+      "bytes": 1955
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_networkauth.xml",
+      "bytes": 5905
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications2_1.xml",
+      "bytes": 300
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_webchannel.xml",
+      "bytes": 951
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_charts.xml",
+      "bytes": 10831
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_help.xml",
+      "bytes": 1852
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_concurrent.xml",
+      "bytes": 1660
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_gui_rhi.xml",
+      "bytes": 9022
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_location.xml",
+      "bytes": 3575
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_quicktest.xml",
+      "bytes": 1770
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/datavisualization_common.xml",
+      "bytes": 1729
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/core_common.xml",
+      "bytes": 8303
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_httpserver.xml",
+      "bytes": 2064
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications1_3_compat.xml",
+      "bytes": 446
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_qml.xml",
+      "bytes": 19024
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_datavisualization.xml",
+      "bytes": 21785
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_3dcore.xml",
+      "bytes": 3699
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_printsupport_common.xml",
+      "bytes": 2597
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_scxml.xml",
+      "bytes": 2284
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications_va.xml",
+      "bytes": 307
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl.xml",
+      "bytes": 34638
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_openglwidgets.xml",
+      "bytes": 720
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_opengl_modifications1_1_compat.xml",
+      "bytes": 480
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_3dextras.xml",
+      "bytes": 2761
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/typesystem_webenginewidgets.xml",
+      "bytes": 1157
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/gui_common.xml",
+      "bytes": 3058
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/glue/qeasingcurve_glue.cpp",
+      "bytes": 3335
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/glue/plugins.h",
+      "bytes": 803
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/typesystems/glue/qeasingcurve_glue.h",
+      "bytes": 858
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy.py",
+      "bytes": 9077
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/qml.py",
+      "bytes": 9183
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/metaobjectdump.py",
+      "bytes": 17422
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/__init__.py",
+      "bytes": 0
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/project.py",
+      "bytes": 15103
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/qtpy2cpp.py",
+      "bytes": 2586
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/pyside_tool.py",
+      "bytes": 8269
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/qtpy2cpp_lib/nodedump.py",
+      "bytes": 1961
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/qtpy2cpp_lib/astdump.py",
+      "bytes": 3699
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/qtpy2cpp_lib/tokenizer.py",
+      "bytes": 1680
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/qtpy2cpp_lib/qt.py",
+      "bytes": 2809
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/qtpy2cpp_lib/formatter.py",
+      "bytes": 9358
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/qtpy2cpp_lib/visitor.py",
+      "bytes": 15911
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/project_lib/project_data.py",
+      "bytes": 8434
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/project_lib/__init__.py",
+      "bytes": 1839
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/project_lib/pyproject_toml.py",
+      "bytes": 8841
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/project_lib/pyproject_json.py",
+      "bytes": 2088
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/project_lib/utils.py",
+      "bytes": 7650
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/project_lib/newproject.py",
+      "bytes": 5786
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/project_lib/pyproject_parse_result.py",
+      "bytes": 363
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/project_lib/design_studio_project.py",
+      "bytes": 2619
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/default.spec",
+      "bytes": 2331
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/pyside_icon.icns",
+      "bytes": 47064
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/pyside_icon.ico",
+      "bytes": 48446
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/config.py",
+      "bytes": 21408
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/pyside_icon.jpg",
+      "bytes": 8157
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/__init__.py",
+      "bytes": 2977
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/python_helper.py",
+      "bytes": 5021
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/commands.py",
+      "bytes": 2149
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/dependency_util.py",
+      "bytes": 14574
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/deploy_util.py",
+      "bytes": 4051
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/scripts/deploy_lib/nuitka_helper.py",
+      "bytes": 8889
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/resources/qtwebengine_devtools_resources.debug.pak",
+      "bytes": 75580311
+    },
+    {
+      "path": "runtime/Lib/site-packages/PySide6/resources/qtwebengine_devtools_resources.pak",
+      "bytes": 10216099
+    }
+  ],
+  "removed_bytes": 172379568,
+  "scope": "Unused Qt Python bindings and development/debug resources. Widget/WebEngine, Qt Python support, QML resources, Windows platform/style/image plugins, translations, primary WebEngine resources and their declared DLL closure remain.",
+  "models_modified": false,
+  "native_windows_execution_tested": false
+}

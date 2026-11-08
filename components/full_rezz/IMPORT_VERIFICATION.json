@@ -1,0 +1,56 @@
+{
+  "checked_at_utc": "2026-11-08T10:58:48.487731+00:00",
+  "source_files_verified_against_original_archive": 801,
+  "source_hash_mismatches": 0,
+  "test_command": "python3 -m unittest discover -s tests -v",
+  "test_run_directory": "components/full_rezz/upstream",
+  "tests": {
+    "run": 117,
+    "passed": 96,
+    "skipped": 21,
+    "failures": 0,
+    "errors": 0,
+    "skip_reason": "Optional raster dependencies are not installed."
+  },
+  "starter_command": "python3 main.py",
+  "starter": {
+    "program": "FULL_REZZ engram integration demo",
+    "bridge_version": "1.0.0",
+    "profile_id": "voice_57373fea79f3473e",
+    "character": "Rebecca \u2014 Posthumous English Archive",
+    "engram_key": "full_rezz:pack_27e39b3817c8490d:voice_57373fea79f3473e",
+    "canonical_status": "deceased",
+    "source_count": 10,
+    "checked_asset_count": 24,
+    "fps": 60,
+    "frame_count": 720,
+    "voice_start_frame": 75,
+    "distinct_scheduled_poses": 23,
+    "render_request": {
+      "profile_id": "voice_57373fea79f3473e",
+      "text": "The offline archive is ready.",
+      "style": "concern",
+      "rate": 1.0,
+      "pitch": 0.0,
+      "volume": 0.0,
+      "steps": 32,
+      "seed": 42,
+      "reference_text": "",
+      "scene_notes": "",
+      "quality_policy": "high_fidelity"
+    },
+    "inference_performed_on_this_run": false,
+    "new_animation_generated": false,
+    "next_step": "Read TASK_QUERY.md and docs/INTEGRATION.md; run python3 -m unittest discover -s tests -v."
+  },
+  "native_windows_acceptance_performed": false,
+  "new_neural_speech_or_animation_generated": false,
+  "github_publish_attempt": {
+    "repository": "Tech953/Black_Sakura_Project",
+    "date": "2026-11-08",
+    "status": "blocked",
+    "http_status": 403,
+    "message": "Resource not accessible by integration"
+  },
+  "external_installer_and_complete_source_archives": 18
+}

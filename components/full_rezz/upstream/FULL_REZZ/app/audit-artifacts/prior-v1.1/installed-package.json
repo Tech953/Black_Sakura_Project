@@ -1,0 +1,7 @@
+{
+  "version": "1.1.0",
+  "web_files_present": true,
+  "startup_http_status": 200,
+  "state_http_status": 200,
+  "final_binding_fix_present": true
+}

@@ -1,0 +1,8 @@
+{
+  "PE_files_checked": 612,
+  "application_and_all_Python_extensions_x64": true,
+  "unexpected_non_x64": [],
+  "all_import_tables_parsed": true,
+  "native_windows_loader_execution_tested": false,
+  "system_and_dynamic_DLL_closure_verified": false
+}

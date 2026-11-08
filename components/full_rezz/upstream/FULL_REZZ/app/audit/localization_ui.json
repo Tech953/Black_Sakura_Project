@@ -1,0 +1,103 @@
+{
+  "locales": [
+    {
+      "locale": "en",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "es",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "fr",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "de",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "pt",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "it",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "ru",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "ja",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "ko",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "zh-Hans",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "ar",
+      "native_ui": true,
+      "rtl": true,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    },
+    {
+      "locale": "hi",
+      "native_ui": true,
+      "rtl": false,
+      "glyphs_verified": true,
+      "settings_and_machine_codes_preserved": true,
+      "source_and_unsaved_text_unchanged": true
+    }
+  ],
+  "passed": true,
+  "actual_windows_execution_verified": false,
+  "professional_translation_review": "pending"
+}

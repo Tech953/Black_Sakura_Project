@@ -1,0 +1,12 @@
+{
+  "actual_embedded_install_transaction_executed": true,
+  "manifest_pin_matches_final_build": true,
+  "installed_files_sha256_verified": 23923,
+  "model_assets_verified": 20,
+  "active_guides_source_and_notices_match_final_product": true,
+  "failures": [],
+  "execution_environment": "Linux filesystem transaction",
+  "native_windows_execution_tested": false,
+  "installer_sha256": "4e4308f87520247075823bb598f8666733ca90beaee0a547544e81a6c00d6c90",
+  "delivery_revision": "2026-10-14.2"
+}

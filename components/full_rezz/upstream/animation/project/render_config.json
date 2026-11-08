@@ -1,0 +1,316 @@
+{
+  "schema_version": "1.0.0",
+  "source_fps": {
+    "numerator": 24,
+    "denominator": 1
+  },
+  "duration_seconds": 12,
+  "voice_offset_seconds": 1.25,
+  "canvas": [
+    1280,
+    720
+  ],
+  "keys": [
+    {
+      "frame": 0,
+      "time_seconds": 0.0,
+      "pose_id": "a1",
+      "label": "Alert rest",
+      "source_frame": 0
+    },
+    {
+      "frame": 40,
+      "time_seconds": 0.6666666666666666,
+      "pose_id": "a2",
+      "label": "Head leads turn",
+      "source_frame": 16
+    },
+    {
+      "frame": 60,
+      "time_seconds": 1.0,
+      "pose_id": "a3",
+      "label": "Anticipation hold",
+      "source_frame": 24
+    },
+    {
+      "frame": 215,
+      "time_seconds": 3.5833333333333335,
+      "pose_id": "a2",
+      "label": "Return glance",
+      "source_frame": 86
+    },
+    {
+      "frame": 235,
+      "time_seconds": 3.9166666666666665,
+      "pose_id": "a1",
+      "label": "Greeting hold",
+      "source_frame": 94
+    },
+    {
+      "frame": 310,
+      "time_seconds": 5.166666666666667,
+      "pose_id": "c1",
+      "label": "Low palm transition",
+      "source_frame": 124
+    },
+    {
+      "frame": 325,
+      "time_seconds": 5.416666666666667,
+      "pose_id": "c2",
+      "label": "Elbow leads transition",
+      "source_frame": 130
+    },
+    {
+      "frame": 340,
+      "time_seconds": 5.666666666666667,
+      "pose_id": "a5",
+      "label": "Palm rise",
+      "source_frame": 136
+    },
+    {
+      "frame": 350,
+      "time_seconds": 5.833333333333333,
+      "pose_id": "c3",
+      "label": "Extension transition",
+      "source_frame": 140
+    },
+    {
+      "frame": 360,
+      "time_seconds": 6.0,
+      "pose_id": "a6",
+      "label": "Palm-up extension",
+      "source_frame": 144
+    },
+    {
+      "frame": 370,
+      "time_seconds": 6.166666666666667,
+      "pose_id": "a7",
+      "label": "Gesture overshoot",
+      "source_frame": 148
+    },
+    {
+      "frame": 380,
+      "time_seconds": 6.333333333333333,
+      "pose_id": "c4",
+      "label": "Overshoot recovery",
+      "source_frame": 152
+    },
+    {
+      "frame": 390,
+      "time_seconds": 6.5,
+      "pose_id": "a8",
+      "label": "Big attitude hold",
+      "source_frame": 156
+    },
+    {
+      "frame": 410,
+      "time_seconds": 6.833333333333333,
+      "pose_id": "b1",
+      "label": "Gesture release",
+      "source_frame": 164
+    },
+    {
+      "frame": 420,
+      "time_seconds": 7.0,
+      "pose_id": "c5",
+      "label": "Retraction transition",
+      "source_frame": 168
+    },
+    {
+      "frame": 435,
+      "time_seconds": 7.25,
+      "pose_id": "b2",
+      "label": "Impatient retraction",
+      "source_frame": 174
+    },
+    {
+      "frame": 455,
+      "time_seconds": 7.583333333333333,
+      "pose_id": "c6",
+      "label": "Head and arm transition",
+      "source_frame": 182
+    },
+    {
+      "frame": 465,
+      "time_seconds": 7.75,
+      "pose_id": "b3",
+      "label": "Head leads turn",
+      "source_frame": 186
+    },
+    {
+      "frame": 475,
+      "time_seconds": 7.916666666666667,
+      "pose_id": "b4",
+      "label": "Three-quarter torso",
+      "source_frame": 190
+    },
+    {
+      "frame": 485,
+      "time_seconds": 8.083333333333334,
+      "pose_id": "b5",
+      "label": "Tiny patience reaction",
+      "source_frame": 194
+    },
+    {
+      "frame": 510,
+      "time_seconds": 8.5,
+      "pose_id": "c7",
+      "label": "Invitation transition",
+      "source_frame": 204
+    },
+    {
+      "frame": 525,
+      "time_seconds": 8.75,
+      "pose_id": "b6",
+      "label": "Head leads return",
+      "source_frame": 210
+    },
+    {
+      "frame": 540,
+      "time_seconds": 9.0,
+      "pose_id": "b7",
+      "label": "Your-turn invitation",
+      "source_frame": 216
+    },
+    {
+      "frame": 555,
+      "time_seconds": 9.25,
+      "pose_id": "c8",
+      "label": "Invitation recovery",
+      "source_frame": 222
+    },
+    {
+      "frame": 570,
+      "time_seconds": 9.5,
+      "pose_id": "b8",
+      "label": "Invitation settle",
+      "source_frame": 228
+    }
+  ],
+  "exposures": [
+    {
+      "start_source_frame": 0,
+      "end_source_frame": 24,
+      "hold": 1,
+      "label": "head-led entrance"
+    },
+    {
+      "start_source_frame": 24,
+      "end_source_frame": 78,
+      "hold": 3,
+      "label": "anticipation hold"
+    },
+    {
+      "start_source_frame": 78,
+      "end_source_frame": 100,
+      "hold": 1,
+      "label": "return glance"
+    },
+    {
+      "start_source_frame": 100,
+      "end_source_frame": 116,
+      "hold": 3,
+      "label": "greeting hold"
+    },
+    {
+      "start_source_frame": 116,
+      "end_source_frame": 140,
+      "hold": 2,
+      "label": "palm anticipation"
+    },
+    {
+      "start_source_frame": 140,
+      "end_source_frame": 160,
+      "hold": 1,
+      "label": "gesture accent"
+    },
+    {
+      "start_source_frame": 160,
+      "end_source_frame": 174,
+      "hold": 2,
+      "label": "retraction"
+    },
+    {
+      "start_source_frame": 174,
+      "end_source_frame": 198,
+      "hold": 1,
+      "label": "head and torso turn"
+    },
+    {
+      "start_source_frame": 198,
+      "end_source_frame": 204,
+      "hold": 3,
+      "label": "reaction hold"
+    },
+    {
+      "start_source_frame": 204,
+      "end_source_frame": 232,
+      "hold": 2,
+      "label": "invitation"
+    },
+    {
+      "start_source_frame": 232,
+      "end_source_frame": 288,
+      "hold": 3,
+      "label": "settle"
+    }
+  ],
+  "camera": {
+    "push_fraction": 0.018,
+    "pivot": [
+      640,
+      618
+    ]
+  },
+  "lighting": {
+    "enabled": true,
+    "warm_rgb": [
+      246,
+      194,
+      97
+    ],
+    "cool_rgb": [
+      70,
+      211,
+      209
+    ],
+    "warm_strength": 0.2,
+    "cool_strength": 0.12,
+    "edge_width_source_pixels": 2.0
+  },
+  "audit": {
+    "minimum_triangle_area_ratio": 0.4,
+    "maximum_arm_offset_source_pixels": 45,
+    "maximum_contact_drift_design_pixels": 1.6,
+    "minimum_full_frame_psnr_db": 34,
+    "minimum_audio_correlation": 0.999,
+    "minimum_audio_snr_db": 30,
+    "pose_jump_review_design_pixels": 30,
+    "silhouette_jump_review_fraction": 0.06
+  },
+  "presets": {
+    "preview": {
+      "width": 1280,
+      "height": 720,
+      "supersampling": 1,
+      "crf": 20
+    },
+    "production": {
+      "width": 1920,
+      "height": 1080,
+      "supersampling": 2,
+      "crf": 14
+    },
+    "ultra": {
+      "width": 3840,
+      "height": 2160,
+      "supersampling": 2,
+      "crf": 12
+    }
+  },
+  "statement": "Non-canon archive simulation. Easy, choom.\nBig attitude, tiny patience. Now let's hear what you've got.",
+  "rig": {
+    "mode": "authored_cels",
+    "unsupported_hand_target": "preserve_authored_geometry"
+  }
+}

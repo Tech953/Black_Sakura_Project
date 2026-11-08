@@ -1,0 +1,208 @@
+{
+  "audit_date_utc": "2026-10-07",
+  "profile_audit": {
+    "passed": 90,
+    "total": 90,
+    "path": "evidence/profile_checks.json"
+  },
+  "delivery_audit": {
+    "passed": 15,
+    "total": 15,
+    "checks": [
+      {
+        "name": "Actual local synthesis result exists",
+        "passed": true
+      },
+      {
+        "name": "Renderer is conditioned on the requested exported reference",
+        "passed": true
+      },
+      {
+        "name": "Conditioner belongs to the supplied original-anime group",
+        "passed": true
+      },
+      {
+        "name": "Spoken output uses the original line plus the disclosed label",
+        "passed": true
+      },
+      {
+        "name": "Original request hash matches",
+        "passed": true
+      },
+      {
+        "name": "Final word check belongs to the delivered WAV",
+        "passed": true
+      },
+      {
+        "name": "Automatic word criterion passes",
+        "passed": true
+      },
+      {
+        "name": "Delivered checksum and byte count: Rebecca_Synthetic_Noncanon_Test.wav",
+        "passed": true
+      },
+      {
+        "name": "Decoded delivered signal finite at 24 kHz: Rebecca_Synthetic_Noncanon_Test.wav",
+        "passed": true
+      },
+      {
+        "name": "Decoded delivered headroom: Rebecca_Synthetic_Noncanon_Test.wav",
+        "passed": true
+      },
+      {
+        "name": "Delivered checksum and byte count: Rebecca_Synthetic_Noncanon_Test.mp3",
+        "passed": true
+      },
+      {
+        "name": "Decoded delivered signal finite at 24 kHz: Rebecca_Synthetic_Noncanon_Test.mp3",
+        "passed": true
+      },
+      {
+        "name": "Decoded delivered headroom: Rebecca_Synthetic_Noncanon_Test.mp3",
+        "passed": true
+      },
+      {
+        "name": "Both delivered encodings avoid signal rejection",
+        "passed": true
+      },
+      {
+        "name": "Raw generation is distinct from archived reference",
+        "passed": true
+      }
+    ]
+  },
+  "generation_performed": true,
+  "generated_clip_seconds": 8.309333,
+  "automatic_word_check": {
+    "method": "Offline Whisper transcription and normalized token edit distance",
+    "model": "openai/whisper-base.en",
+    "expected_text": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+    "transcribed_text": "Non-canon archive simulation. Easy chume. Big attitude, tiny patience. Now let's hear what you've got.",
+    "audio_sha256": "6f0473608ab369773cd2b0da304403c3e02918e8a00e4d50e2f75e326284b90c",
+    "expected_word_count": 15,
+    "word_errors": 1,
+    "word_error_rate": 0.066667,
+    "exact_normalized_match": false,
+    "normalization": "Case, punctuation, and non-canon spacing only; slang is not remapped",
+    "criterion": "At most 15% word error rate for this short test; subjective likeness remains untested",
+    "passed": true,
+    "perceptual_listening_review_performed": false,
+    "limits": "ASR can err. Word matching does not measure identity, emotion, accent, or naturalness."
+  },
+  "all_automatic_word_checks": [
+    {
+      "method": "Offline Whisper tiny.en transcription and normalized token edit distance",
+      "model": "openai/whisper-tiny.en",
+      "expected_text": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+      "transcribed_text": "No, in Canada, archive simulation. Easy, Chume. Big attitude, tiny patience. Now let's hear what you've got.",
+      "expected_word_count": 15,
+      "word_errors": 4,
+      "word_error_rate": 0.266667,
+      "exact_normalized_match": false,
+      "normalization": "Case, punctuation, and non-canon spacing only; slang is not remapped",
+      "criterion": "At most 15% word error rate for this short test; subjective likeness remains untested",
+      "passed": false,
+      "perceptual_listening_review_performed": false,
+      "limits": "ASR can err. Word matching does not measure identity, emotion, accent, or naturalness."
+    },
+    {
+      "method": "Offline Whisper transcription and normalized token edit distance",
+      "model": "openai/whisper-base.en",
+      "expected_text": "Non-canon archive simulation. Easy, choom. Big attitude, tiny patience. Now let's hear what you've got.",
+      "transcribed_text": "Non-canon archive simulation. Easy chume. Big attitude, tiny patience. Now let's hear what you've got.",
+      "audio_sha256": "6f0473608ab369773cd2b0da304403c3e02918e8a00e4d50e2f75e326284b90c",
+      "expected_word_count": 15,
+      "word_errors": 1,
+      "word_error_rate": 0.066667,
+      "exact_normalized_match": false,
+      "normalization": "Case, punctuation, and non-canon spacing only; slang is not remapped",
+      "criterion": "At most 15% word error rate for this short test; subjective likeness remains untested",
+      "passed": true,
+      "perceptual_listening_review_performed": false,
+      "limits": "ASR can err. Word matching does not measure identity, emotion, accent, or naturalness."
+    }
+  ],
+  "signal_quality": {
+    "raw": {
+      "sample_rate_hz": 24000,
+      "duration_seconds": 8.309333,
+      "peak_dbfs": -2.3908,
+      "rms_dbfs": -22.9154,
+      "dc_offset": 7.99e-06,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -84.2922,
+      "estimated_snr_db": 66.1406,
+      "noise_estimate_available": true,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "wav": {
+      "sample_rate_hz": 24000,
+      "duration_seconds": 8.309333,
+      "peak_dbfs": -2.9996,
+      "rms_dbfs": -23.5245,
+      "dc_offset": 7.07e-06,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -84.7558,
+      "estimated_snr_db": 65.995,
+      "noise_estimate_available": true,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    },
+    "mp3": {
+      "sample_rate_hz": 24000,
+      "duration_seconds": 8.309333,
+      "peak_dbfs": -3.3831,
+      "rms_dbfs": -23.9681,
+      "dc_offset": 8.6e-06,
+      "near_full_scale_fraction": 0.0,
+      "over_range_fraction": 0.0,
+      "quiet_frame_noise_dbfs": -85.2485,
+      "estimated_snr_db": 66.055,
+      "noise_estimate_available": true,
+      "status": "signal_checks_passed",
+      "issues": [],
+      "listening_review_required": true,
+      "method": "Native-rate levels, DC, clipping runs, 20ms energy contrast, and crop boundaries.",
+      "limitations": [
+        "Energy contrast is not a calibrated speech/noise SNR measurement.",
+        "Checks cannot prove speaker purity, absence of bleed, or perceptual fidelity.",
+        "Clipping, lossy encoding, and low source bandwidth cannot be repaired by format conversion."
+      ]
+    }
+  },
+  "perceptual_review_performed": false,
+  "speaker_purity_verified": false,
+  "speaker_likeness_verified": false,
+  "llm_persona_response_test_performed": false,
+  "canon_status": "deceased; all new dialogue and archive framing authored non-canon",
+  "latest_profile_metadata_revision": {
+    "date_utc": "2026-10-07",
+    "profile_revision": 2,
+    "source_count": 11,
+    "revision_checks": {
+      "passed": 34,
+      "total": 34
+    },
+    "evidence_path": "evidence/spectrum_revision_checks.json",
+    "spectral_balance_path": "evidence/spectral_balance.json",
+    "spectral_agreement_verified": false,
+    "historical_generation_and_audits_preserved": true
+  }
+}

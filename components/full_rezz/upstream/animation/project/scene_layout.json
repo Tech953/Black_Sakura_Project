@@ -1,0 +1,132 @@
+{
+  "schema_version": "1.0.0",
+  "canvas": [
+    1280,
+    720
+  ],
+  "provenance": {
+    "kind": "authored_guide",
+    "metric_geometry_verified": false,
+    "notes": "Flat image-plane floor registration authored from existing 2D coordinates. The Google-summary screenshots supply direction, not CAD or measured camera calibration."
+  },
+  "camera": {
+    "projection": "orthographic",
+    "eye": [
+      640,
+      360,
+      1000
+    ],
+    "target": [
+      640,
+      360,
+      0
+    ],
+    "up": [
+      0,
+      1,
+      0
+    ],
+    "near": 0.1,
+    "far": 2000,
+    "vertical_span": 720
+  },
+  "anchors": [
+    {
+      "id": "left_boot",
+      "world": [
+        546.72,
+        102,
+        0
+      ],
+      "contact_index": 0
+    },
+    {
+      "id": "right_boot",
+      "world": [
+        733.28,
+        102,
+        0
+      ],
+      "contact_index": 1
+    }
+  ],
+  "objects": [
+    {
+      "id": "floor_registration",
+      "vertices": [
+        [
+          450,
+          102,
+          0
+        ],
+        [
+          830,
+          102,
+          0
+        ],
+        [
+          830,
+          86,
+          0
+        ],
+        [
+          450,
+          86,
+          0
+        ]
+      ],
+      "edges": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          0
+        ]
+      ]
+    }
+  ],
+  "background_regions": [
+    {
+      "id": "upper_right_plate",
+      "rect": [
+        1020,
+        130,
+        120,
+        80
+      ]
+    },
+    {
+      "id": "left_plate",
+      "rect": [
+        100,
+        430,
+        120,
+        80
+      ]
+    },
+    {
+      "id": "right_plate",
+      "rect": [
+        1030,
+        430,
+        120,
+        80
+      ]
+    }
+  ],
+  "thresholds": {
+    "projection_error_design_pixels": 0.05,
+    "background_mean_absolute_error_rgb": 8,
+    "minimum_region_samples": 48
+  }
+}

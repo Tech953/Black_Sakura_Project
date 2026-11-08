@@ -1,0 +1,167 @@
+{
+  "schema": "full-rezz-zip-recovery/v1",
+  "program_version": "3.0.0",
+  "delivery_revision": "2026-10-14.3-download-repair",
+  "outputs": {
+    "installer": {
+      "name": "FULL_REZZ_3.0_Offline_Windows_x64_Setup.exe",
+      "bytes": 2727838324,
+      "sha256": "4e4308f87520247075823bb598f8666733ca90beaee0a547544e81a6c00d6c90",
+      "bundles": [
+        {
+          "name": "FULL_REZZ_3.0_Installer_01_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "854224d9ed59f06a63915ea837a650588db54cccf4925e4d2a6c1af0d369cace",
+          "entry": "FULL_REZZ_installer_01.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "7f45ce68dbd2e441ad2ddbb165a0c91df7598dabab885fb79ccbfa6bce4f3fa0"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_02_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "1d07adf0e214800ce13124cd01316e737aca9302a1802bfe37efe229c4ca8cb0",
+          "entry": "FULL_REZZ_installer_02.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "80d7b82b031fc4171f48f87b343787966e216fc1a6408e8b7b9292e7d4048e3b"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_03_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "f3441707f805bba98cbef30c04921f9917d5436acdfe30a26bf995a81d4d71ef",
+          "entry": "FULL_REZZ_installer_03.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "49c8540637ca262c33c0f4261a78575cee9bb9f0b28a89b25283fae85c3252e7"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_04_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "d2bcee317cd05d0db55422df02f993de6d260ad4148f72f2e67b83e4511740cf",
+          "entry": "FULL_REZZ_installer_04.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "d9fd0ee7d644b27c424f262d9e53ecb6750c53c633794e464bd0d4e8570e0529"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_05_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "a08c7b42719e2398d6bb7b2334aa3da4851b1d3bc9b27cc841fb9a290429d6af",
+          "entry": "FULL_REZZ_installer_05.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "84c81b8edf93fc6e562d4dddb5eef5e4cfe171c48660b63e3c7f5463577acc25"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_06_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "8bd4441cb65e3bc9d5b7e4650ae45f16c587494b92378d8c1653b63581bde142",
+          "entry": "FULL_REZZ_installer_06.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "3c5d08fa52e85ff86683e99ea70fb08ef87f51bcb5802a0be714b660fc2dbe84"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_07_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "202240c650bb14e7d71375d6c781cc899a4c5670198f8202fcc38ef755288dee",
+          "entry": "FULL_REZZ_installer_07.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "9ed078d7bdafbe458d5a98fe44b6ae182ea62a0ae237658081b604be02759813"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_08_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "453dd895b1415d28a7e91ebb480032da2dd8545752f5b62c705d70081a0f7505",
+          "entry": "FULL_REZZ_installer_08.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "70981ef57b5c516de002cab86bccc60960e9493e2a4efe44e95cc1231eaecc9f"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_09_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "bf0e6f3e4e1b07bbbb91a224c1102b1c64ee820412502218ca95e0e1f348365d",
+          "entry": "FULL_REZZ_installer_09.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "cf1ac0afaf7e6580f9c92e11fd3660d37135d2606da59ac54d5c1e973d96a496"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_10_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "0a22b5c6e06617c984a129883e2905025898f32d6d475bb21bd446ad1eefab50",
+          "entry": "FULL_REZZ_installer_10.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "f72565bd9ac8cd1fb3a4b88b4f31b947b56c094267f3b10c0ec1a63786ab4b80"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_11_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "a4e7a95df31cef20a6a34e3a10271845dfa1ac5724b9b934a8ea2da101cd0eaa",
+          "entry": "FULL_REZZ_installer_11.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "6e3bd8994a741c04457bbcb6663e5463293e218494e11fc2216ad783ddee25ce"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_12_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "66a18c0c578a375a989f8c8db60148baef46ef4ae5f87b9d9d2bb085dd6c2528",
+          "entry": "FULL_REZZ_installer_12.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "f50d2376adc5c5e06eaea841a85a7ba10681fd4253c42c87289e518e4ece3c02"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_13_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "6aff8361a6ba294ebd1044e6231d38a0a3a27ec02ce07689ad049cac7bbc4e51",
+          "entry": "FULL_REZZ_installer_13.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "d4c5759a42a15c70545ef855220223ac8efe06e10692b0dbb77d07f5494e1760"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_14_of_15.zip",
+          "bytes": 190000371,
+          "sha256": "731f915ba2599b12fa17209cee6b81d773ec570d8234ddea4f389126bb7843b4",
+          "entry": "FULL_REZZ_installer_14.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "44261eeddf1a7fee41bc8b660d87b0ecb850294e85477fb453cc46be38c098c7"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Installer_15_of_15.zip",
+          "bytes": 67838695,
+          "sha256": "a5847446a71e86a13671d31f5466bbdadb020b814d726653dcd933de38110e3c",
+          "entry": "FULL_REZZ_installer_15.chunk",
+          "payload_bytes": 67838324,
+          "payload_sha256": "73d360034061f9150323bd71c8754c15b09182a5049df7a135e1f2b7275c83cc"
+        }
+      ],
+      "zip_crc_and_roundtrip_verified": true
+    },
+    "source": {
+      "name": "FULL_REZZ_3.0_Source.zip",
+      "bytes": 521207297,
+      "sha256": "95759e8b5acc3c3040826b2d9bffc0ca5e0eaa4c53326640607efda419168762",
+      "bundles": [
+        {
+          "name": "FULL_REZZ_3.0_Full_Source_01_of_03.zip",
+          "bytes": 190000365,
+          "sha256": "7961089dbff1ca4a58f14be5fc01b6f49a0bde042416618341c3a7fb6478dca1",
+          "entry": "FULL_REZZ_source_01.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "85da74c4745719c37d28692385e3aafd3199ba104c703578a8f973de53f3dcc0"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Full_Source_02_of_03.zip",
+          "bytes": 190000365,
+          "sha256": "aa43f851f5ff0bbcf67e6aa9437e7e0940e4a580a5d61de81fdcdb0a6c533109",
+          "entry": "FULL_REZZ_source_02.chunk",
+          "payload_bytes": 190000000,
+          "payload_sha256": "fb216d4becadb968f6e80de57e39ad488ebed48cb4c3a5253a678d759a765bef"
+        },
+        {
+          "name": "FULL_REZZ_3.0_Full_Source_03_of_03.zip",
+          "bytes": 141207662,
+          "sha256": "82af4c9df38e95b8f12c5636f49c4b573bb39c7179dfdaadc3807fc16b656ad2",
+          "entry": "FULL_REZZ_source_03.chunk",
+          "payload_bytes": 141207297,
+          "payload_sha256": "946c941621c40feee87a02ee62a9cca558b4838c60df4805377b4cff8b2d4ef8"
+        }
+      ],
+      "zip_crc_and_roundtrip_verified": true
+    }
+  }
+}
