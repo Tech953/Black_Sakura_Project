@@ -17,6 +17,17 @@ spec.loader.exec_module(builder)
 
 
 class WindowsBuilderTests(unittest.TestCase):
+    def test_espeak_corresponding_source_is_pinned_to_codeload(self):
+        self.assertEqual(
+            builder.ESPEAK_SOURCE_URL,
+            "https://codeload.github.com/espeak-ng/espeak-ng/tar.gz/refs/tags/1.52.0",
+        )
+        self.assertEqual(builder.ESPEAK_SOURCE_BYTES, 17739803)
+        self.assertEqual(
+            builder.ESPEAK_SOURCE_SHA256,
+            "bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23",
+        )
+
     def test_get_json_retries_transient_gateway_timeout(self):
         timeout = urllib.error.HTTPError(
             "https://example.invalid/metadata", 504, "Gateway Timeout", {}, io.BytesIO()
