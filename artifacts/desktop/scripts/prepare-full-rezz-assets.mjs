@@ -63,21 +63,18 @@ export function validateSourceInventory(entries) {
   return inventory;
 }
 
-async function sourceSpecs(root, verifyOnly) {
+export async function sourceSpecs(root, verifyOnly) {
   const treeFile = path.join(root, "source-tree.json");
   let files;
   if (verifyOnly) {
     files = validateSourceInventory(JSON.parse(await readFile(treeFile, "utf8")));
   } else {
-    const response = await fetch(`https://api.github.com/repos/${SOURCE.repository}/git/trees/${SOURCE.revision}?recursive=1`);
-    if (!response.ok) throw new Error(`Source inventory unavailable (${response.status}).`);
-    const tree = await response.json();
-    if (tree.truncated || tree.sha !== SOURCE.revision) throw new Error("Unexpected source revision or truncated inventory.");
-    files = validateSourceInventory(tree.tree
-      .filter((entry) => entry.type === "blob" && entry.path.startsWith(SOURCE.prefix))
-      .map((entry) => ({
-        path: entry.path.slice(SOURCE.prefix.length), bytes: entry.size, gitBlob: entry.sha,
-      })));
+    // This reviewed inventory is bound to SOURCE.revision by its existing digest.
+    // Public GitHub API calls share runner-IP quotas; no live listing or token
+    // should be needed to discover an immutable, already-reviewed source list.
+    files = validateSourceInventory(JSON.parse(await readFile(
+      new URL("./full-rezz-source-inventory.json", import.meta.url), "utf8",
+    )));
     await writeFile(treeFile, JSON.stringify(files, null, 2) + "\n");
   }
   return files.map((entry) => ({
