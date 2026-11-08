@@ -13,13 +13,17 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.parse
+import urllib.error
 import urllib.request
 import zipfile
 
 PYTHON_URL = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
 PYTHON_SHA = "009d6bf7e3b2ddca3d784fa09f90fe54336d5b60f0e0f305c37f400bf83cfd3b"
 F5_SHA = "b65de138b25e35fb1896a511279298c904088bb5f33f39ce83d5e7706993e93b"
+RETRYABLE_HTTP_STATUSES = {408, 425, 429, 500, 502, 503, 504}
+DOWNLOAD_ATTEMPTS = 4
 
 
 def sha256(file):
@@ -27,8 +31,24 @@ def sha256(file):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def open_url(request, timeout):
+    """Retry transient upstream and runner-network failures, then fail explicitly."""
+    for attempt in range(DOWNLOAD_ATTEMPTS):
+        try:
+            return urllib.request.urlopen(request, timeout=timeout)
+        except urllib.error.HTTPError as error:
+            if error.code not in RETRYABLE_HTTP_STATUSES or attempt == DOWNLOAD_ATTEMPTS - 1:
+                raise
+            error.close()
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == DOWNLOAD_ATTEMPTS - 1:
+                raise
+        time.sleep(min(2 ** attempt, 8))
+    raise AssertionError("Retry loop exited without a response or exception")
+
+
 def get_json(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "ENGRAM-offline-builder"}), timeout=120) as response:
+    with open_url(urllib.request.Request(url, headers={"User-Agent": "ENGRAM-offline-builder"}), timeout=120) as response:
         return json.load(response)
 
 
@@ -37,7 +57,7 @@ def download(url, dest, expected=None):
     dest.parent.mkdir(parents=True, exist_ok=True)
     partial = dest.with_name(dest.name + ".partial")
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "ENGRAM-offline-builder"}), timeout=180) as response, partial.open("wb") as output:
+        with open_url(urllib.request.Request(url, headers={"User-Agent": "ENGRAM-offline-builder"}), timeout=180) as response, partial.open("wb") as output:
             shutil.copyfileobj(response, output, 1024 * 1024)
         digest = sha256(partial)
         if expected and digest != expected:

@@ -8,6 +8,7 @@ import tempfile
 import types
 import unittest
 from unittest.mock import patch
+import urllib.error
 import zipfile
 
 spec = importlib.util.spec_from_file_location("windows_builder", Path(__file__).with_name("build-full-rezz-windows.py"))
@@ -16,6 +17,28 @@ spec.loader.exec_module(builder)
 
 
 class WindowsBuilderTests(unittest.TestCase):
+    def test_get_json_retries_transient_gateway_timeout(self):
+        timeout = urllib.error.HTTPError(
+            "https://example.invalid/metadata", 504, "Gateway Timeout", {}, io.BytesIO()
+        )
+        with patch.object(builder.urllib.request, "urlopen",
+                          side_effect=[timeout, io.BytesIO(b'{"sha":"pinned"}')]) as request, \
+                patch.object(builder.time, "sleep") as sleep:
+            self.assertEqual(builder.get_json("https://example.invalid/metadata"), {"sha": "pinned"})
+        self.assertEqual(request.call_count, 2)
+        sleep.assert_called_once_with(1)
+
+    def test_get_json_does_not_retry_permanent_http_failure(self):
+        denied = urllib.error.HTTPError(
+            "https://example.invalid/metadata", 403, "Forbidden", {}, io.BytesIO()
+        )
+        with patch.object(builder.urllib.request, "urlopen", side_effect=denied) as request, \
+                patch.object(builder.time, "sleep") as sleep:
+            with self.assertRaises(urllib.error.HTTPError):
+                builder.get_json("https://example.invalid/metadata")
+        self.assertEqual(request.call_count, 1)
+        sleep.assert_not_called()
+
     def test_normal_zip(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -51,6 +74,24 @@ class WindowsBuilderTests(unittest.TestCase):
                 record = builder.download("https://example.invalid/test", target, hashlib.sha256(data).hexdigest())
             self.assertEqual(target.read_bytes(), data)
             self.assertEqual(record["bytes"], len(data))
+
+    def test_download_retries_transient_gateway_timeout(self):
+        data = b"verified fixture"
+        timeout = urllib.error.HTTPError(
+            "https://example.invalid/asset", 504, "Gateway Timeout", {}, io.BytesIO()
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "asset"
+            with patch.object(builder.urllib.request, "urlopen",
+                              side_effect=[timeout, io.BytesIO(data)]) as request, \
+                    patch.object(builder.time, "sleep") as sleep:
+                record = builder.download(
+                    "https://example.invalid/asset", target, hashlib.sha256(data).hexdigest()
+                )
+            self.assertEqual(target.read_bytes(), data)
+            self.assertEqual(record["bytes"], len(data))
+        self.assertEqual(request.call_count, 2)
+        sleep.assert_called_once_with(1)
 
     def test_inventory_records_real_content(self):
         with tempfile.TemporaryDirectory() as directory:
