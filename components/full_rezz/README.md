@@ -21,8 +21,9 @@ refreshed guides supersede the older download instructions bundled upstream.
 [`upstream/`](upstream) contains all 801 files extracted byte-for-byte from
 `FULL_REZZ_3.0_Replit_Source_Core.zip`. Original paths, fonts, authored assets,
 reference fixtures, tests, licenses, evidence and build inputs are preserved.
-The ZIP is represented by its expanded files, with its original SHA-256
-and per-file checksums recorded in [IMPORT_MANIFEST.json](IMPORT_MANIFEST.json).
+The original [compact Replit ZIP](https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Replit_Source_Core.zip) is also attached
+to the release. Its original SHA-256 and per-file checksums are recorded in
+[IMPORT_MANIFEST.json](IMPORT_MANIFEST.json).
 `upstream/CORE_OMISSIONS.json` retains the package's original exclusion list.
 
 The active, newer Black Sakura integration remains under
@@ -38,25 +39,30 @@ does not perform new inference or generate a new animation. Read
 
 ## Windows installer and complete source archives
 
-The small [recovery tools ZIP](archives/FULL_REZZ_3.0_Recovery_Tools.zip) and its
-expanded [assembly scripts](recovery/) are committed. The 15 large installer
-ZIPs and three complete-source ZIPs are **external downloads**, not Git blobs
-or uploaded LFS objects. Git LFS authentication is unavailable in the current
-transfer session. `IMPORT_MANIFEST.json` lists every external filename, exact
-byte count, SHA-256 and owner-authenticated download link.
+All delivery files are attached to the [FULL_REZZ component release](https://github.com/Tech953/Black_Sakura_Project/releases/tag/full-rezz-3.0-delivery-2026-10-14.3).
+Use the [GitHub download catalog](delivery/FULL_REZZ_3.0_GitHub_Downloads.html)
+or the release's Assets list for the 15 installer ZIPs, three complete-source
+ZIPs, direct Replit source ZIP, recovery tools and refreshed guides. The catalog
+can be downloaded and opened locally. Public links require no ChatGPT sign-in.
 
-Those ChatGPT download links require the owning account; they are not public
-GitHub release assets. The preserved [download page](delivery/FULL_REZZ_3.0_Downloads.html)
-and [download guide](delivery/FULL_REZZ_3.0_Download_Guide.md) retain the recovery
-instructions and original download provenance. Their older `sandbox:` links
-refer to the originating workspace; use this component's relative links or the
-authenticated browser links instead.
+The [GitHub asset checksums](delivery/FULL_REZZ_3.0_GitHub_CHECKSUMS.sha256)
+cover all other attached assets. GitHub's returned SHA-256 digest was checked
+for every upload. Both complete assembly hashes were also checked against the
+original delivery manifest; see [RELEASE_PUBLICATION.json](RELEASE_PUBLICATION.json).
 
-To assemble on Windows, save all 15 installer ZIPs in one folder and extract
-only the recovery tools beside them. Leave the installer ZIPs zipped and run
-`Assemble_Installer.cmd`. The tools verify the downloads and reconstruct
-`FULL_REZZ_3.0_Offline_Windows_x64_Setup.exe`. The three complete-source ZIPs
-use `Assemble_Full_Source.cmd`. Keep matching revisions together.
+For Windows, save all 15 installer ZIPs in one folder and extract only
+`FULL_REZZ_3.0_Recovery_Tools.zip` beside them. Leave the installer ZIPs zipped
+and run `Assemble_Installer.cmd`. It verifies the files and reconstructs
+`FULL_REZZ_3.0_Offline_Windows_x64_Setup.exe`. Allow about 15 GB of free disk
+space for downloads, assembly and installation.
+
+For the complete archival source and third-party corresponding sources, save
+all three `FULL_REZZ_3.0_Full_Source_NN_of_03.zip` files beside the extracted
+tools, leave them zipped and run `Assemble_Full_Source.cmd`. For Replit, use
+the separate direct compact-source ZIP.
+
+The earlier download page and guide under `delivery/` are preserved as dated
+provenance. Use the GitHub catalog above for the current public download links.
 
 ## Evidence and limitations
 

@@ -1,0 +1,317 @@
+{
+  "schema": "full-rezz-github-publication/v1",
+  "release_url": "https://github.com/Tech953/Black_Sakura_Project/releases/tag/full-rezz-3.0-delivery-2026-10-14.3",
+  "tag": "full-rezz-3.0-delivery-2026-10-14.3",
+  "release_id": 438747071,
+  "source_commit": "8aefff253b525d6c21f8a1b62997143e988bdad8",
+  "upload_verification_at_utc": "2026-11-09T04:41:09.732831+00:00",
+  "asset_count": 32,
+  "all_github_sha256_digests_match": true,
+  "assets": [
+    {
+      "name": "FULL_REZZ_3.0_Download_CHECKSUMS.sha256",
+      "id": 726236051,
+      "bytes": 2460,
+      "sha256": "bd86e08cd5c0027ae899217d997d52091407a824d736f71f80c000561daac1c0",
+      "digest": "sha256:bd86e08cd5c0027ae899217d997d52091407a824d736f71f80c000561daac1c0",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Download_CHECKSUMS.sha256",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Download_Guide.md",
+      "id": 726236233,
+      "bytes": 11215,
+      "sha256": "fae12b83add53db699c16bc07e627d3cece09b6058ed4ee30119d0c66c1067c6",
+      "digest": "sha256:fae12b83add53db699c16bc07e627d3cece09b6058ed4ee30119d0c66c1067c6",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Download_Guide.md",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Download_Repair_Verification.json",
+      "id": 726236361,
+      "bytes": 11867,
+      "sha256": "2e260870261243b55ebf2cdd03c68425f384b3c958acfa051b379c2f307e8c96",
+      "digest": "sha256:2e260870261243b55ebf2cdd03c68425f384b3c958acfa051b379c2f307e8c96",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Download_Repair_Verification.json",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Downloads.html",
+      "id": 726236530,
+      "bytes": 7813,
+      "sha256": "6930accd36124bde758499f8ed8b432d90fa4cee595b9b308dfb11bb1cee2511",
+      "digest": "sha256:6930accd36124bde758499f8ed8b432d90fa4cee595b9b308dfb11bb1cee2511",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Downloads.html",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_GitHub_CHECKSUMS.sha256",
+      "id": 726236611,
+      "bytes": 3166,
+      "sha256": "d64479a59331139fdcde3f9c5dc52fb755ca081a2c06ff404fd2106280afdf59",
+      "digest": "sha256:d64479a59331139fdcde3f9c5dc52fb755ca081a2c06ff404fd2106280afdf59",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_GitHub_CHECKSUMS.sha256",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_GitHub_Downloads.html",
+      "id": 726236788,
+      "bytes": 9205,
+      "sha256": "79f4f485b7a5b74e148d3b784d45cd7c225f8b599a5aac03702abe7da9eef10d",
+      "digest": "sha256:79f4f485b7a5b74e148d3b784d45cd7c225f8b599a5aac03702abe7da9eef10d",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_GitHub_Downloads.html",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Guides.zip",
+      "id": 726236976,
+      "bytes": 212825,
+      "sha256": "4a3f68c21f5ad0bcfec396e387b7bca589788360b789f76cd5f0bd583459d48f",
+      "digest": "sha256:4a3f68c21f5ad0bcfec396e387b7bca589788360b789f76cd5f0bd583459d48f",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Guides.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_Verification.json",
+      "id": 726237080,
+      "bytes": 686,
+      "sha256": "0a041ce3a865639fc7594e2772625da31506cb7a77fbd2b44a4610572d1ea4d9",
+      "digest": "sha256:0a041ce3a865639fc7594e2772625da31506cb7a77fbd2b44a4610572d1ea4d9",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_Verification.json",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Product_Audit.pdf",
+      "id": 726237210,
+      "bytes": 76040,
+      "sha256": "d5ee6ce51ecde8aa587bca278039e26108671589337a84a2966436b6e4bd2be9",
+      "digest": "sha256:d5ee6ce51ecde8aa587bca278039e26108671589337a84a2966436b6e4bd2be9",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Product_Audit.pdf",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Recovery_Tools.zip",
+      "id": 726237401,
+      "bytes": 9583,
+      "sha256": "232931b75fa2f184f5abc400ad08d3752c3aed51ccef93e695f25b5ef49f7ecd",
+      "digest": "sha256:232931b75fa2f184f5abc400ad08d3752c3aed51ccef93e695f25b5ef49f7ecd",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Recovery_Tools.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Replit_Integration_Guide.pdf",
+      "id": 726237555,
+      "bytes": 89335,
+      "sha256": "eedd2f8240940621c44b16f2ba1e76db91e4191b67623f092f3e8dd1f6b60243",
+      "digest": "sha256:eedd2f8240940621c44b16f2ba1e76db91e4191b67623f092f3e8dd1f6b60243",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Replit_Integration_Guide.pdf",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_Quick_Start.pdf",
+      "id": 726237731,
+      "bytes": 70312,
+      "sha256": "7918402e9e53380f610536cd68c7e4fa52f52a90efeb29866396365f74357ca5",
+      "digest": "sha256:7918402e9e53380f610536cd68c7e4fa52f52a90efeb29866396365f74357ca5",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_Quick_Start.pdf",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_User_Guide.pdf",
+      "id": 726237880,
+      "bytes": 80579,
+      "sha256": "7f943ef93bdd8e2db25eb1840fd2a4ce075c989399b88539fabd46067932ec09",
+      "digest": "sha256:7f943ef93bdd8e2db25eb1840fd2a4ce075c989399b88539fabd46067932ec09",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_User_Guide.pdf",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Full_Source_01_of_03.zip",
+      "id": 726237995,
+      "bytes": 190000365,
+      "sha256": "7961089dbff1ca4a58f14be5fc01b6f49a0bde042416618341c3a7fb6478dca1",
+      "digest": "sha256:7961089dbff1ca4a58f14be5fc01b6f49a0bde042416618341c3a7fb6478dca1",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Full_Source_01_of_03.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Full_Source_02_of_03.zip",
+      "id": 726238312,
+      "bytes": 190000365,
+      "sha256": "aa43f851f5ff0bbcf67e6aa9437e7e0940e4a580a5d61de81fdcdb0a6c533109",
+      "digest": "sha256:aa43f851f5ff0bbcf67e6aa9437e7e0940e4a580a5d61de81fdcdb0a6c533109",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Full_Source_02_of_03.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Full_Source_03_of_03.zip",
+      "id": 726238676,
+      "bytes": 141207662,
+      "sha256": "82af4c9df38e95b8f12c5636f49c4b573bb39c7179dfdaadc3807fc16b656ad2",
+      "digest": "sha256:82af4c9df38e95b8f12c5636f49c4b573bb39c7179dfdaadc3807fc16b656ad2",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Full_Source_03_of_03.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_01_of_15.zip",
+      "id": 726239051,
+      "bytes": 190000371,
+      "sha256": "854224d9ed59f06a63915ea837a650588db54cccf4925e4d2a6c1af0d369cace",
+      "digest": "sha256:854224d9ed59f06a63915ea837a650588db54cccf4925e4d2a6c1af0d369cace",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_01_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_02_of_15.zip",
+      "id": 726239344,
+      "bytes": 190000371,
+      "sha256": "1d07adf0e214800ce13124cd01316e737aca9302a1802bfe37efe229c4ca8cb0",
+      "digest": "sha256:1d07adf0e214800ce13124cd01316e737aca9302a1802bfe37efe229c4ca8cb0",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_02_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_03_of_15.zip",
+      "id": 726239731,
+      "bytes": 190000371,
+      "sha256": "f3441707f805bba98cbef30c04921f9917d5436acdfe30a26bf995a81d4d71ef",
+      "digest": "sha256:f3441707f805bba98cbef30c04921f9917d5436acdfe30a26bf995a81d4d71ef",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_03_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_04_of_15.zip",
+      "id": 726240065,
+      "bytes": 190000371,
+      "sha256": "d2bcee317cd05d0db55422df02f993de6d260ad4148f72f2e67b83e4511740cf",
+      "digest": "sha256:d2bcee317cd05d0db55422df02f993de6d260ad4148f72f2e67b83e4511740cf",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_04_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_05_of_15.zip",
+      "id": 726240385,
+      "bytes": 190000371,
+      "sha256": "a08c7b42719e2398d6bb7b2334aa3da4851b1d3bc9b27cc841fb9a290429d6af",
+      "digest": "sha256:a08c7b42719e2398d6bb7b2334aa3da4851b1d3bc9b27cc841fb9a290429d6af",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_05_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_06_of_15.zip",
+      "id": 726240761,
+      "bytes": 190000371,
+      "sha256": "8bd4441cb65e3bc9d5b7e4650ae45f16c587494b92378d8c1653b63581bde142",
+      "digest": "sha256:8bd4441cb65e3bc9d5b7e4650ae45f16c587494b92378d8c1653b63581bde142",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_06_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_07_of_15.zip",
+      "id": 726241143,
+      "bytes": 190000371,
+      "sha256": "202240c650bb14e7d71375d6c781cc899a4c5670198f8202fcc38ef755288dee",
+      "digest": "sha256:202240c650bb14e7d71375d6c781cc899a4c5670198f8202fcc38ef755288dee",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_07_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_08_of_15.zip",
+      "id": 726242133,
+      "bytes": 190000371,
+      "sha256": "453dd895b1415d28a7e91ebb480032da2dd8545752f5b62c705d70081a0f7505",
+      "digest": "sha256:453dd895b1415d28a7e91ebb480032da2dd8545752f5b62c705d70081a0f7505",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_08_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_09_of_15.zip",
+      "id": 726242539,
+      "bytes": 190000371,
+      "sha256": "bf0e6f3e4e1b07bbbb91a224c1102b1c64ee820412502218ca95e0e1f348365d",
+      "digest": "sha256:bf0e6f3e4e1b07bbbb91a224c1102b1c64ee820412502218ca95e0e1f348365d",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_09_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_10_of_15.zip",
+      "id": 726242910,
+      "bytes": 190000371,
+      "sha256": "0a22b5c6e06617c984a129883e2905025898f32d6d475bb21bd446ad1eefab50",
+      "digest": "sha256:0a22b5c6e06617c984a129883e2905025898f32d6d475bb21bd446ad1eefab50",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_10_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_11_of_15.zip",
+      "id": 726243270,
+      "bytes": 190000371,
+      "sha256": "a4e7a95df31cef20a6a34e3a10271845dfa1ac5724b9b934a8ea2da101cd0eaa",
+      "digest": "sha256:a4e7a95df31cef20a6a34e3a10271845dfa1ac5724b9b934a8ea2da101cd0eaa",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_11_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_12_of_15.zip",
+      "id": 726243804,
+      "bytes": 190000371,
+      "sha256": "66a18c0c578a375a989f8c8db60148baef46ef4ae5f87b9d9d2bb085dd6c2528",
+      "digest": "sha256:66a18c0c578a375a989f8c8db60148baef46ef4ae5f87b9d9d2bb085dd6c2528",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_12_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_13_of_15.zip",
+      "id": 726244300,
+      "bytes": 190000371,
+      "sha256": "6aff8361a6ba294ebd1044e6231d38a0a3a27ec02ce07689ad049cac7bbc4e51",
+      "digest": "sha256:6aff8361a6ba294ebd1044e6231d38a0a3a27ec02ce07689ad049cac7bbc4e51",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_13_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_14_of_15.zip",
+      "id": 726244765,
+      "bytes": 190000371,
+      "sha256": "731f915ba2599b12fa17209cee6b81d773ec570d8234ddea4f389126bb7843b4",
+      "digest": "sha256:731f915ba2599b12fa17209cee6b81d773ec570d8234ddea4f389126bb7843b4",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_14_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Installer_15_of_15.zip",
+      "id": 726245127,
+      "bytes": 67838695,
+      "sha256": "a5847446a71e86a13671d31f5466bbdadb020b814d726653dcd933de38110e3c",
+      "digest": "sha256:a5847446a71e86a13671d31f5466bbdadb020b814d726653dcd933de38110e3c",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Installer_15_of_15.zip",
+      "verified": true
+    },
+    {
+      "name": "FULL_REZZ_3.0_Replit_Source_Core.zip",
+      "id": 726245354,
+      "bytes": 91851964,
+      "sha256": "252149de3861dd56d65e85f3e25020f4bf475c89dd4bb8d9cff19d4ae721d1eb",
+      "digest": "sha256:252149de3861dd56d65e85f3e25020f4bf475c89dd4bb8d9cff19d4ae721d1eb",
+      "url": "https://github.com/Tech953/Black_Sakura_Project/releases/download/full-rezz-3.0-delivery-2026-10-14.3/FULL_REZZ_3.0_Replit_Source_Core.zip",
+      "verified": true
+    }
+  ],
+  "reconstructed_outputs": {
+    "installer": {
+      "name": "FULL_REZZ_3.0_Offline_Windows_x64_Setup.exe",
+      "bytes": 2727838324,
+      "sha256": "4e4308f87520247075823bb598f8666733ca90beaee0a547544e81a6c00d6c90",
+      "verified": true
+    },
+    "source": {
+      "name": "FULL_REZZ_3.0_Source.zip",
+      "bytes": 521207297,
+      "sha256": "95759e8b5acc3c3040826b2d9bffc0ca5e0eaa4c53326640607efda419168762",
+      "verified": true
+    }
+  },
+  "prerelease": true,
+  "native_windows_acceptance_performed": false,
+  "new_application_build_performed": false
+}

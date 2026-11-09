@@ -286,5 +286,6 @@ proprietary to the project owner.
 
 The [FULL_REZZ component](components/full_rezz/README.md) contains the complete
 compact-source fileset, refreshed quick start, user, audit and Replit guides,
-and Windows recovery tools. Its manifest identifies the larger installer and
-full-source archives that remain external downloads.
+and Windows recovery tools. The [component release](https://github.com/Tech953/Black_Sakura_Project/releases/tag/full-rezz-3.0-delivery-2026-10-14.3)
+includes all installer parts, complete-source archive parts, refreshed guides
+and the direct Replit ZIP, with verified checksums.
