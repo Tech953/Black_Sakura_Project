@@ -1,0 +1,3 @@
+# Audited reference hashes cover exact text and audio bytes on all platforms.
+/upstream/examples/rebecca_reference_pack/** -text
+/reference-packs/** -text

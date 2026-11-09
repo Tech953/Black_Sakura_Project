@@ -35,8 +35,12 @@ implemented. Any future exception requires multistage executive confirmation.
 
 ## Runtime and scope limits
 
-The source package contains no model weights, Python runtime, or personal
-reference media. The verified Windows installer must be safely extracted and
+The repository includes the [Rebecca reference supplement](../../../components/full_rezz/reference-packs/README.md),
+with the complete import ZIP and the matching upstream reference WAV, transcript
+and source documents. It supplies one 4.35-second reference; per-account binding
+still uses the existing authenticated import flow. The permanent archive remains
+read-only. This source checkout contains no model weights or Python runtime.
+The verified Windows installer must be safely extracted and
 its model manifest, licenses, and hashes reviewed before runtime assets can be
 staged. The installer is not executed by this integration. This source-only
 checkout does not include the packaged runtime, so these endpoints return an

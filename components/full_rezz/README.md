@@ -16,6 +16,15 @@ or certify the application.
 The `guides/` folder also contains the four editable Markdown sources. These
 refreshed guides supersede the older download instructions bundled upstream.
 
+## Rebecca voice reference import
+
+The [Rebecca reference supplement](reference-packs/README.md) supplies the
+[complete import ZIP](reference-packs/FULL_REZZ_Rebecca_Reference_Pack.zip),
+binding instructions and current repository validation. Its actual reference
+WAV and 47 original pack files match the existing upstream fixture byte-for-byte.
+Import into the intended writable continuation through the host's authenticated
+FULL_REZZ flow; preserve the returned profile mapping and the permanent archive.
+
 ## Source and existing host integration
 
 [`upstream/`](upstream) contains all 801 files extracted byte-for-byte from
