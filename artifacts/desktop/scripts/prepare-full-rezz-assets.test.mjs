@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { inspectAsset, prepare, safeDestination, stageAsset, validateSourceInventory } from "./prepare-full-rezz-assets.mjs";
+import { inspectAsset, prepare, safeDestination, sourceSpecs, stageAsset, validateSourceInventory } from "./prepare-full-rezz-assets.mjs";
 import { BUNDLE_NOTICE, MODEL_ASSETS, NOTICES, SOURCE } from "./full-rezz-asset-spec.mjs";
 
 const digest = (text) => createHash("sha256").update(text).digest("hex");
@@ -61,6 +61,28 @@ test("a locally forged source inventory cannot bless modified source", () => {
   assert.throws(() => validateSourceInventory([{ path: "voice_studio/worker.py", bytes: 0, gitBlob: "0".repeat(40) }]), /inventory mismatch/);
 });
 
+test("fresh staging uses the reviewed pinned inventory without a GitHub API request", async () => temporary(async (root) => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error("GitHub API blocked (403)"); };
+  try {
+    const specs = await sourceSpecs(root, false);
+    assert.equal(specs.length, 73);
+    const inventory = JSON.parse(await readFile(path.join(root, "source-tree.json"), "utf8"));
+    assert.deepEqual(validateSourceInventory(inventory), inventory);
+    assert.deepEqual(await sourceSpecs(root, true), specs);
+    for (const spec of specs) {
+      assert.equal(spec.url, `https://raw.githubusercontent.com/${SOURCE.repository}/${SOURCE.revision}/${SOURCE.prefix}${spec.path}`);
+      assert.ok(spec.gitBlob);
+      assert.ok(spec.bytes > 0);
+    }
+    for (const field of ["path", "bytes", "gitBlob"]) {
+      const forged = structuredClone(inventory);
+      forged[0][field] = field === "bytes" ? 0 : "tampered";
+      assert.throws(() => validateSourceInventory(forged), /inventory mismatch/);
+    }
+  } finally { globalThis.fetch = original; }
+}));
+
 test("failed verification removes an old successful-looking stage marker without networking", async () => temporary(async (root) => {
   await writeFile(path.join(root, "asset-stage.json"), '{"assetsVerified":true}');
   const original = globalThis.fetch;
@@ -84,3 +106,16 @@ test("model sources are pinned and component-specific notices accompany noncomme
   assert.match(BUNDLE_NOTICE, /Studio Unit is not Rebecca/);
   assert.match(BUNDLE_NOTICE, /NOT relicensed as CC-BY-NC-4.0/);
 });
+
+test('checkout source is staged and verified against the actual repaired files',async()=>temporary(async(root)=>{
+ const source=path.join(root,'checkout');const destination=path.join(root,'stage');
+ const {mkdir}=await import('node:fs/promises');await mkdir(path.join(source,'voice_studio'),{recursive:true});
+ await writeFile(path.join(source,'voice_studio/worker.py'),'# repaired worker\n');
+ const original=globalThis.fetch;globalThis.fetch=async()=>{throw new Error('stop before model download');};
+ try{
+  await assert.rejects(prepare(destination,false,source),/stop before model/);
+  assert.equal(await readFile(path.join(destination,'voice_studio/worker.py'),'utf8'),'# repaired worker\n');
+  await writeFile(path.join(destination,'voice_studio/worker.py'),'# tampered worker\n');
+  await assert.rejects(prepare(destination,true,source),/hash|size/);
+ }finally{globalThis.fetch=original;}
+}));

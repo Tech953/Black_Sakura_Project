@@ -1,3 +1,4 @@
+import { verifyRuntimeCandidate } from "./full-rezz-runtime-layout.mjs";
 import {
   cpSync,
   rmSync,
@@ -476,21 +477,25 @@ const fullRezzSource = path.join(desktopDir, "full-rezz");
 const fullRezzOut = path.join(resources, "full-rezz");
 cpSync(fullRezzSource, fullRezzOut, { recursive: true, dereference: true });
 const fullRezzInstallerRoot = process.env.FULL_REZZ_INSTALLER_ROOT;
+const fullRezzRuntimeRoot = process.env.FULL_REZZ_RUNTIME_ROOT;
+if (fullRezzRuntimeRoot && fullRezzInstallerRoot) throw new Error("Set only one FULL_REZZ runtime source.");
 const requireFullRezzRuntime = process.env.FULL_REZZ_REQUIRE_RUNTIME === "1";
-if (fullRezzInstallerRoot) {
+if (fullRezzInstallerRoot || fullRezzRuntimeRoot) {
   if (pkgTarget !== "win32") {
     throw new Error(
       "[desktop] FULL_REZZ 3.0 currently ships only its verified Windows x64 Python runtime.",
     );
   }
-  const resolvedInstallerRoot = path.resolve(fullRezzInstallerRoot);
-  const fullRezzAppRoot = path.join(resolvedInstallerRoot, "app");
-  const pythonRoot = path.join(resolvedInstallerRoot, "python");
+  const candidate = fullRezzRuntimeRoot ? verifyRuntimeCandidate(fullRezzRuntimeRoot) : null;
+  const resolvedInstallerRoot = path.resolve(fullRezzInstallerRoot ?? fullRezzRuntimeRoot);
+  const fullRezzAppRoot = candidate?.appRoot ?? path.join(resolvedInstallerRoot, "app");
+  const pythonRoot = candidate?.pythonRoot ?? path.join(resolvedInstallerRoot, "python");
+  const fullRezzModelManifest = candidate?.modelManifest ?? path.join(fullRezzAppRoot, "audit", "model_manifest.json");
   for (const [dir, hint] of [
     [path.join(fullRezzAppRoot, "models"), "the installer app/models directory"],
     [path.join(fullRezzAppRoot, "fonts"), "the installer app/fonts directory"],
     [path.join(fullRezzAppRoot, "vendor"), "the installer app/vendor directory"],
-    [path.join(fullRezzAppRoot, "audit", "model_manifest.json"), "the installer model audit manifest"],
+    [fullRezzModelManifest, "the verified model manifest"],
     [pythonRoot, "the installer embedded Python directory"],
   ]) {
     requireDir(dir, `Stage the verified installer payload including ${hint}.`);
@@ -533,7 +538,7 @@ if (fullRezzInstallerRoot) {
     ["python311.zip", ".", "Lib", "Lib/site-packages", "DLLs", "../..", "import site", ""].join("\n"),
   );
   verifyModelAssets(
-    path.join(fullRezzAppRoot, "audit", "model_manifest.json"),
+    fullRezzModelManifest,
     path.join(fullRezzOut, "models"),
   );
   console.log(
@@ -541,7 +546,7 @@ if (fullRezzInstallerRoot) {
   );
 } else if (requireFullRezzRuntime) {
   throw new Error(
-    "[desktop] FULL_REZZ_REQUIRE_RUNTIME=1 but FULL_REZZ_INSTALLER_ROOT is not set. Extract the verified FULL_REZZ 3.0 installer payload first.",
+    "[desktop] FULL_REZZ_REQUIRE_RUNTIME=1 but neither FULL_REZZ_INSTALLER_ROOT nor FULL_REZZ_RUNTIME_ROOT is set. Extract the verified FULL_REZZ 3.0 installer payload first.",
   );
 } else {
   console.warn(

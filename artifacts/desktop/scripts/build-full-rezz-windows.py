@@ -13,13 +13,20 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.parse
+import urllib.error
 import urllib.request
 import zipfile
 
 PYTHON_URL = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
 PYTHON_SHA = "009d6bf7e3b2ddca3d784fa09f90fe54336d5b60f0e0f305c37f400bf83cfd3b"
 F5_SHA = "b65de138b25e35fb1896a511279298c904088bb5f33f39ce83d5e7706993e93b"
+ESPEAK_SOURCE_URL = "https://codeload.github.com/espeak-ng/espeak-ng/tar.gz/refs/tags/1.52.0"
+ESPEAK_SOURCE_BYTES = 17739803
+ESPEAK_SOURCE_SHA256 = "bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23"
+RETRYABLE_HTTP_STATUSES = {408, 425, 429, 500, 502, 503, 504}
+DOWNLOAD_ATTEMPTS = 4
 
 
 def sha256(file):
@@ -27,8 +34,24 @@ def sha256(file):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def open_url(request, timeout):
+    """Retry transient upstream and runner-network failures, then fail explicitly."""
+    for attempt in range(DOWNLOAD_ATTEMPTS):
+        try:
+            return urllib.request.urlopen(request, timeout=timeout)
+        except urllib.error.HTTPError as error:
+            if error.code not in RETRYABLE_HTTP_STATUSES or attempt == DOWNLOAD_ATTEMPTS - 1:
+                raise
+            error.close()
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == DOWNLOAD_ATTEMPTS - 1:
+                raise
+        time.sleep(min(2 ** attempt, 8))
+    raise AssertionError("Retry loop exited without a response or exception")
+
+
 def get_json(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "ENGRAM-offline-builder"}), timeout=120) as response:
+    with open_url(urllib.request.Request(url, headers={"User-Agent": "ENGRAM-offline-builder"}), timeout=120) as response:
         return json.load(response)
 
 
@@ -37,7 +60,7 @@ def download(url, dest, expected=None):
     dest.parent.mkdir(parents=True, exist_ok=True)
     partial = dest.with_name(dest.name + ".partial")
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "ENGRAM-offline-builder"}), timeout=180) as response, partial.open("wb") as output:
+        with open_url(urllib.request.Request(url, headers={"User-Agent": "ENGRAM-offline-builder"}), timeout=180) as response, partial.open("wb") as output:
             shutil.copyfileobj(response, output, 1024 * 1024)
         digest = sha256(partial)
         if expected and digest != expected:
@@ -64,7 +87,7 @@ def unzip(archive, root):
 def inventory(root):
     root = Path(root)
     return [{"path": file.relative_to(root).as_posix(), "bytes": file.stat().st_size, "sha256": sha256(file)}
-            for file in sorted(root.rglob("*")) if file.is_file() and file.name != "manifest.json"]
+            for file in sorted(root.rglob("*")) if file.is_file() and file != root / "manifest.json" and file.name != "windows-runtime-manifest.json"]
 
 
 def manifest(root):
@@ -106,8 +129,11 @@ def vendor_assets(root, temporary, records):
         raise RuntimeError("eSpeak voice data was not extracted beside its executable")
     records.append(download("https://raw.githubusercontent.com/espeak-ng/espeak-ng/1.52.0/COPYING",
                             destination / "COPYING"))
-    records.append(download("https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz",
-                            root / "licenses/corresponding_source/espeak-ng-1.52.0.tar.gz"))
+    records.append(download(ESPEAK_SOURCE_URL,
+                            root / "licenses/corresponding_source/espeak-ng-1.52.0.tar.gz",
+                            ESPEAK_SOURCE_SHA256))
+    if records[-1]["bytes"] != ESPEAK_SOURCE_BYTES:
+        raise ValueError("Unexpected eSpeak NG 1.52.0 corresponding-source size")
     manifest(destination)
 
     release = get_json("https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/b7371")
@@ -138,14 +164,14 @@ def vendor_assets(root, temporary, records):
     manifest(root / "models")
 
 
-def build(source, output):
+def build(source, output, source_root=None):
     if os.name != "nt":
         raise RuntimeError("This builder requires native Windows; Linux/Wine is not native acceptance.")
     source, output = Path(source).resolve(), Path(output).resolve()
     if source == output or output.exists():
         raise ValueError("Use a new output directory, separate from the verified source stage")
     here = Path(__file__).resolve().parent
-    subprocess.run(["node", str(here / "prepare-full-rezz-assets.mjs"), "--verify", str(source)], check=True)
+    subprocess.run(["node", str(here / "prepare-full-rezz-assets.mjs"), "--verify", str(source)] + (["--source-root", str(source_root)] if source_root else []), check=True)
     shutil.copytree(source, output, ignore=shutil.ignore_patterns("asset-stage.json"))
     records = []
     try:
@@ -201,5 +227,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--source-root")
     args = parser.parse_args()
-    build(args.source, args.out)
+    build(args.source, args.out, args.source_root)

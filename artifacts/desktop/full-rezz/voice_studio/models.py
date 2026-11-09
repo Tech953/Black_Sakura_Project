@@ -7,7 +7,12 @@ def threads():
  enforce_offline()
  import torch
  torch.set_num_threads(min(4,os.cpu_count() or 1));return torch
-def capabilities():return {'pyannote':model_path('speaker').is_dir(),'transcription':model_path('asr').is_dir(),'separation':model_path('separator').is_dir(),'note':'Anonymous clustering; no overlap detection or identity verification.'}
+def capabilities():
+ def present(name):
+  try:return model_path(name).is_dir()
+  except ValueError:return False
+ return {'pyannote':present('speaker'),'transcription':present('asr'),'separation':present('separator'),'separation_sample_rate_hz':8000,'separation_high_fidelity':False,'note':'Anonymous clustering; no overlap detection or identity verification. Two-source separation is limited to 8 kHz.'}
+
 def transcribe(data,sr,model='base',language=None):
  from .languages import canonical
  selected=canonical(language,automatic=True);language=None if selected=='auto' else ('zh' if selected=='zh-Hans' else selected)
@@ -44,13 +49,13 @@ def diarize(data,sr,count=None,model=None):
   if rows and rows[-1]['speaker']==speaker and abs(rows[-1]['end']-start)<.001:rows[-1]['end']=end
   else:rows.append({'start':start,'end':end,'speaker':speaker,'channel':None,'purity':'unreviewed','text':'','style':'neutral'})
   embeds.setdefault(speaker,[]).append(vectors[i])
- return {'requested_language':selected,'segments':rows,'exclusive_segments':[],'embeddings':{k:np.mean(v,axis=0).astype(float).tolist() for k,v in embeds.items()},'embedding_model':'ECAPA VoxCeleb','backend':'Local energy activity + ECAPA average-link cosine clustering','note':'Anonymous clusters require listening; no overlap detection or named identity verification.'}
+ return {'segments':rows,'exclusive_segments':[],'embeddings':{k:np.mean(v,axis=0).astype(float).tolist() for k,v in embeds.items()},'embedding_model':'ECAPA VoxCeleb','backend':'Local energy activity + ECAPA average-link cosine clustering','note':'Anonymous clusters require listening; no overlap detection or named identity verification.'}
 def separate(data,sr,cache):
  if len(data)/sr>30:raise ValueError('Separate up to 30 seconds.')
  torch=threads()
  from speechbrain.inference.separation import SepformerSeparation
  from speechbrain.utils.fetching import LocalStrategy
- engine=SepformerSeparation.from_hparams(source=str(model_path('separator')),savedir=str(workspace().parent/'ModelCache/separator'),run_opts={'device':'cpu'},local_strategy=LocalStrategy.COPY)
+ engine=SepformerSeparation.from_hparams(source=str(model_path('separator')),savedir=str(workspace().parent/'ModelCache/separator'),run_opts={'device':'cpu'},overrides={'pretrained_path':str(model_path('separator'))},local_strategy=LocalStrategy.COPY)
  with torch.inference_mode():result=engine.separate_batch(torch.from_numpy(resample(mono(data),sr,8000)[None]))[0].cpu().numpy().astype(np.float32)
  if result.ndim!=2 or result.shape[1]!=2 or not np.isfinite(result).all():raise ValueError('Invalid separated output.')
  return 8000,result

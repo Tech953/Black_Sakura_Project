@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, copyFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -63,21 +63,19 @@ export function validateSourceInventory(entries) {
   return inventory;
 }
 
-async function sourceSpecs(root, verifyOnly) {
+export async function sourceSpecs(root, verifyOnly, sourceRoot) {
+  if (sourceRoot) return checkoutSpecs(sourceRoot);
   const treeFile = path.join(root, "source-tree.json");
   let files;
   if (verifyOnly) {
     files = validateSourceInventory(JSON.parse(await readFile(treeFile, "utf8")));
   } else {
-    const response = await fetch(`https://api.github.com/repos/${SOURCE.repository}/git/trees/${SOURCE.revision}?recursive=1`);
-    if (!response.ok) throw new Error(`Source inventory unavailable (${response.status}).`);
-    const tree = await response.json();
-    if (tree.truncated || tree.sha !== SOURCE.revision) throw new Error("Unexpected source revision or truncated inventory.");
-    files = validateSourceInventory(tree.tree
-      .filter((entry) => entry.type === "blob" && entry.path.startsWith(SOURCE.prefix))
-      .map((entry) => ({
-        path: entry.path.slice(SOURCE.prefix.length), bytes: entry.size, gitBlob: entry.sha,
-      })));
+    // This reviewed inventory is bound to SOURCE.revision by its existing digest.
+    // Public GitHub API calls share runner-IP quotas; no live listing or token
+    // should be needed to discover an immutable, already-reviewed source list.
+    files = validateSourceInventory(JSON.parse(await readFile(
+      new URL("./full-rezz-source-inventory.json", import.meta.url), "utf8",
+    )));
     await writeFile(treeFile, JSON.stringify(files, null, 2) + "\n");
   }
   return files.map((entry) => ({
@@ -87,17 +85,50 @@ async function sourceSpecs(root, verifyOnly) {
   }));
 }
 
-export async function prepare(root, verifyOnly = false) {
+async function checkoutSpecs(sourceRoot) {
+  const origin = path.resolve(sourceRoot); const specs = [];
+  async function visit(directory, prefix = "") {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.name === "__pycache__" || entry.name.endsWith(".pyc")) continue;
+      if (entry.isSymbolicLink()) throw new Error("Checkout source contains a symlink.");
+      const relative = prefix + entry.name;
+      if (entry.isDirectory()) await visit(path.join(directory, entry.name), relative + "/");
+      else if (entry.isFile()) {
+        const localPath = safeDestination(origin, relative); const content = await readFile(localPath);
+        specs.push({ path: relative, bytes: content.length, gitBlob: createHash("sha1").update(`blob ${content.length}\0`).update(content).digest("hex"), localPath,
+          license: "Upstream LICENSE / component-specific THIRD_PARTY_NOTICES.md" });
+      }
+    }
+  }
+  await visit(origin); specs.sort((a,b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  if (!specs.some((s) => s.path === "voice_studio/worker.py")) throw new Error("Checkout source is missing its worker.");
+  return specs;
+}
+
+export async function prepare(root, verifyOnly = false, sourceRoot) {
   root = path.resolve(root);
   await mkdir(root, { recursive: true });
   const readinessFile = path.join(root, "asset-stage.json");
   // Never retain a successful-looking inventory after an interrupted/failed pass.
   await rm(readinessFile, { force: true });
-  const specs = await sourceSpecs(root, verifyOnly);
+  const specs = await sourceSpecs(root, verifyOnly, sourceRoot);
   const source = [];
-  for (const spec of specs) source.push(await stageAsset(root, spec, verifyOnly));
+  for (const spec of specs) {
+    if (spec.localPath) {
+      const destination = safeDestination(root, spec.path);
+      if (!verifyOnly) { await mkdir(path.dirname(destination), { recursive: true }); await copyFile(spec.localPath, destination); }
+      source.push(await inspectAsset(destination, spec));
+    } else source.push(await stageAsset(root, spec, verifyOnly));
+  }
   const models = [];
   for (const spec of MODEL_ASSETS) models.push(await stageAsset(path.join(root, "models"), spec, verifyOnly));
+  for (const group of ['speaker', 'separator']) {
+    const content = '# Local optional SpeechBrain custom module; no custom classes.\n';
+    const spec = { path: `${group}/custom.py`, license: 'MIT', bytes: Buffer.byteLength(content), sha256: createHash('sha256').update(content).digest('hex') };
+    const file = safeDestination(path.join(root, 'models'), spec.path);
+    if (!verifyOnly) await writeFile(file, content);
+    models.push(await inspectAsset(file, spec));
+  }
   const notices = [];
   for (const spec of NOTICES) notices.push(await stageAsset(path.join(root, "licenses"), spec, verifyOnly));
   const modelManifest = JSON.stringify({ assets: models }, null, 2) + "\n";
@@ -112,7 +143,7 @@ export async function prepare(root, verifyOnly = false) {
   }
   const result = {
     schemaVersion: 1, distribution: "personal-noncommercial",
-    source: SOURCE, assetsVerified: true, runtimeReady: false,
+    source: sourceRoot ? { mode: "checkout", inventorySha256: createHash("sha256").update(JSON.stringify(source)).digest("hex") } : SOURCE, assetsVerified: true, runtimeReady: false,
     missing: [
       "Platform Python and complete inference/render dependency runtime",
       "Verified fonts, espeak-ng and companion llama-cpp vendor bundles/manifests/notices",
@@ -128,13 +159,15 @@ export async function prepare(root, verifyOnly = false) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  const option = args.indexOf("--source-root");
+  const sourceRoot = option < 0 ? undefined : args.splice(option, 2)[1];
   const verifyOnly = args[0] === "--verify";
   const root = args[verifyOnly ? 1 : 0];
   if (!root || args.length !== (verifyOnly ? 2 : 1)) {
     console.error("Usage: prepare-full-rezz-assets.mjs [--verify] GENERATED_STAGE_DIRECTORY");
     process.exitCode = 1;
   } else {
-    try { await prepare(root, verifyOnly); }
+    try { await prepare(root, verifyOnly, sourceRoot); }
     catch (error) { console.error(error.message); process.exitCode = 1; }
   }
 }

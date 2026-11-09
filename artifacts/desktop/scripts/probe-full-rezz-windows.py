@@ -14,7 +14,10 @@ os.environ.update({
 from voice_studio.runtime import enforce_offline, health
 
 enforce_offline()
-status = health(full=True)
+from voice_studio.worker import run as run_worker
+status = run_worker({"workspace": str(root / "health-probe-unused-workspace"), "operation": "health"})
+if (root / "health-probe-unused-workspace").exists():
+    raise RuntimeError("Health dispatch unexpectedly initialized a project")
 if not status["passed"]:
     raise RuntimeError(f"Bundled resource health failed: {status}")
 # Resolve the ASR dependency chain before spending time on CPU synthesis.
@@ -38,6 +41,14 @@ engine.infer(ref_file=str(reference), ref_text=text, gen_text="The local speech 
 if speech.stat().st_size < 48000:
     raise RuntimeError("Speech output is missing or too short")
 del engine
+from voice_studio import audio, models
+sr, samples = audio.read_audio(speech)
+clusters = models.diarize(samples, sr, count=1)
+if not clusters['segments']:
+    raise RuntimeError('Clustering diagnostic returned no segments')
+separated_sr, separated = models.separate(samples[:min(len(samples), 2 * sr)], sr, probe)
+if separated_sr != 8000 or separated.shape[1] != 2:
+    raise RuntimeError('Separation diagnostic failed its output contract')
 asr = WhisperModel(str(root / "models/asr"), device="cpu", compute_type="int8")
 segments, _ = asr.transcribe(str(speech), language="en", beam_size=1, vad_filter=False)
 transcript = " ".join(segment.text for segment in segments).strip()
@@ -58,7 +69,7 @@ if not frame.save(str(probe / "font-renderer.png")):
     raise RuntimeError("Renderer dependency diagnostic failed")
 (probe / "result.json").write_text(json.dumps({
     "nativeWindows": os.name == "nt", "resourceHealth": status,
-    "speechGenerated": True, "localASRTranscript": transcript, "qtFontProbePassed": True,
+    "speechGenerated": True, "workerHealthDispatchPassed": True, "speakerClusteringExecuted": True, "twoSourceSeparationExecuted": True, "separationHighFidelityAccepted": False, "localASRTranscript": transcript, "qtFontProbePassed": True,
     "fullCharacterRendererAccepted": False, "rebeccaVoiceAccepted": False,
     "networkGuardEnabled": True, "freshInstallAccepted": False,
 }, indent=2), encoding="utf-8")

@@ -61,3 +61,7 @@ the engram is represented by that demo asset.
 F5-TTS model assets are subject to the model's CC-BY-NC-4.0 license; they must
 not be redistributed or used commercially without separate authorization.
 See `THIRD_PARTY_NOTICES.md` for component-specific terms.
+
+## Repair-candidate guides and local microphone input
+
+The active review-candidate workflow is documented in [Quick start](docs/Quick_Start.md), [User guide](docs/User_Guide.md), [integration and packaging contracts](docs/Replit_Integration_Guide.md), and [release audit](docs/Release_Audit.md). These distinguish current host integration from the preserved imported delivery component. Microphone transcription uses the isolated local worker and returns an editable draft. Saved-reply speech accepts explicit language/engine settings. Runtime staging supports either the verified native builder's direct-root output or the original extracted installer layout.

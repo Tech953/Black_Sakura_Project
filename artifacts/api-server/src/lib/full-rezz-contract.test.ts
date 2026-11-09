@@ -49,7 +49,9 @@ function importResult(): FullRezzImportResult {
       profile_ids: [importedProfileId],
     },
     bridge_contexts: { [originalProfileId]: context },
-    imported_profiles: { [originalProfileId]: { id: importedProfileId, name: "Rebecca" } },
+    imported_profiles: {
+      [originalProfileId]: { id: importedProfileId, name: "Rebecca" },
+    },
   };
 }
 
@@ -77,16 +79,23 @@ describe("FULL_REZZ host binding contract", () => {
         character: { prompts: { system: "Retain as source data only." } },
       },
     });
-    expect(readFullRezzBinding(mergeFullRezzBinding(
-      { speechStyle: "host style", host_extension: { keep: true } },
-      binding,
-    ))).toEqual(binding);
+    expect(
+      readFullRezzBinding(
+        mergeFullRezzBinding(
+          { speechStyle: "host style", host_extension: { keep: true } },
+          binding,
+        ),
+      ),
+    ).toEqual(binding);
     expect(
       mergeFullRezzBinding(
         { speechStyle: "host style", host_extension: { keep: true } },
         binding,
       ),
-    ).toMatchObject({ speechStyle: "host style", host_extension: { keep: true } });
+    ).toMatchObject({
+      speechStyle: "host style",
+      host_extension: { keep: true },
+    });
   });
 
   it("blocks worker writes to the immutable archive before invoking them", () => {
@@ -110,12 +119,17 @@ describe("FULL_REZZ host binding contract", () => {
 
   it("rejects mismatched profile mappings and malformed checksums", () => {
     const mismatched = importResult();
-    mismatched.imported_profiles[originalProfileId]!.id = "voice_0000000000000000";
-    expect(() => bindingFromImport(mismatched, originalProfileId)).toThrow(/mapping/);
+    mismatched.imported_profiles[originalProfileId]!.id =
+      "voice_0000000000000000";
+    expect(() => bindingFromImport(mismatched, originalProfileId)).toThrow(
+      /mapping/,
+    );
 
     const invalidHash = importResult();
     invalidHash.receipt.archive_sha256 = "not-a-hash";
-    expect(() => bindingFromImport(invalidHash, originalProfileId)).toThrow(/SHA-256/);
+    expect(() => bindingFromImport(invalidHash, originalProfileId)).toThrow(
+      /SHA-256/,
+    );
   });
 
   it("chunks complete replies without silent truncation", () => {
@@ -124,5 +138,24 @@ describe("FULL_REZZ host binding contract", () => {
     expect(chunks.join(" ")).toBe(text);
     expect(chunks.every((chunk) => chunk.length <= 400)).toBe(true);
     expect(() => splitHostSpeech("x".repeat(4001))).toThrow(/4,000/);
+  });
+});
+
+describe("host voice language settings", () => {
+  it("preserves Mandarin and requires explicit generic selection", async () => {
+    const { hostSpeechSettings, voiceLanguage } =
+      await import("./full-rezz-contract");
+    expect(
+      hostSpeechSettings({ synthesis_language: "zh", speech_engine: "f5" }),
+    ).toEqual({ synthesis_language: "zh-Hans", speech_engine: "f5" });
+    expect(() => hostSpeechSettings({ synthesis_language: "fr" })).toThrow(
+      /explicitly/,
+    );
+    expect(
+      hostSpeechSettings({ synthesis_language: "fr", speech_engine: "espeak" }),
+    ).toEqual({ synthesis_language: "fr", speech_engine: "espeak" });
+    expect(() => hostSpeechSettings({ speech_engine: "cloud" })).toThrow();
+    expect(() => voiceLanguage("xx")).toThrow();
+    expect(voiceLanguage(undefined, true)).toBe("auto");
   });
 });

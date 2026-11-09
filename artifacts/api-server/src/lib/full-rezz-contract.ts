@@ -16,6 +16,44 @@ export interface FullRezzBinding {
   auto_speak: boolean;
 }
 
+const voiceLanguages = new Set([
+  "en",
+  "es",
+  "fr",
+  "de",
+  "pt",
+  "it",
+  "ru",
+  "ja",
+  "ko",
+  "zh-Hans",
+  "ar",
+  "hi",
+]);
+export function voiceLanguage(value: unknown, automatic = false): string {
+  if (automatic && (value == null || value === "auto")) return "auto";
+  if (typeof value !== "string")
+    throw new Error("Select a supported voice language.");
+  const tag = value.toLowerCase();
+  const language = ["zh", "zh-cn", "zh-hans"].includes(tag) ? "zh-Hans" : tag;
+  if (!voiceLanguages.has(language))
+    throw new Error("Unsupported voice language.");
+  return language;
+}
+export function hostSpeechSettings(
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const language = voiceLanguage(body.synthesis_language ?? "en");
+  const engine = body.speech_engine ?? "f5";
+  if (engine !== "f5" && engine !== "espeak")
+    throw new Error("Unsupported speech engine.");
+  if (engine === "f5" && !["en", "zh-Hans"].includes(language))
+    throw new Error(
+      "Reference-conditioned speech supports English and Mandarin. Choose generic speech explicitly for other languages.",
+    );
+  return { speech_engine: engine, synthesis_language: language };
+}
+
 export interface FullRezzImportResult {
   receipt: {
     import_id: string;
@@ -56,13 +94,15 @@ function requireString(value: unknown, label: string): string {
 
 function requireProfileId(value: unknown, label: string): string {
   const id = requireString(value, label);
-  if (!profileIdPattern.test(id)) throw new Error(`FULL_REZZ import has an invalid ${label}.`);
+  if (!profileIdPattern.test(id))
+    throw new Error(`FULL_REZZ import has an invalid ${label}.`);
   return id;
 }
 
 function requireSha256(value: unknown, label: string): string {
   const digest = requireString(value, label);
-  if (!sha256Pattern.test(digest)) throw new Error(`FULL_REZZ import has an invalid ${label}.`);
+  if (!sha256Pattern.test(digest))
+    throw new Error(`FULL_REZZ import has an invalid ${label}.`);
   return digest;
 }
 
@@ -82,45 +122,66 @@ export function bindingFromImport(
   const receipt = result.receipt;
   const originalId = requireProfileId(originalProfileId, "original profile ID");
   const importId = requireString(receipt.import_id, "import ID");
-  if (!importIdPattern.test(importId)) throw new Error("FULL_REZZ import has an invalid import ID.");
+  if (!importIdPattern.test(importId))
+    throw new Error("FULL_REZZ import has an invalid import ID.");
   const mapping = receipt.identifier_mapping;
-  if (!isRecord(mapping)) throw new Error("FULL_REZZ import returned no identifier mapping.");
-  const importedProfileId = requireProfileId(mapping[originalId], "remapped profile ID");
+  if (!isRecord(mapping))
+    throw new Error("FULL_REZZ import returned no identifier mapping.");
+  const importedProfileId = requireProfileId(
+    mapping[originalId],
+    "remapped profile ID",
+  );
   const context = result.bridge_contexts?.[originalId];
   const profile = result.imported_profiles?.[originalId];
   if (!isRecord(context) || !isRecord(profile)) {
-    throw new Error("FULL_REZZ import did not return the selected profile context.");
+    throw new Error(
+      "FULL_REZZ import did not return the selected profile context.",
+    );
   }
-  if (context.kind !== "full_rezz_engram_context" || context.bridge_schema_version !== "1.0.0") {
+  if (
+    context.kind !== "full_rezz_engram_context" ||
+    context.bridge_schema_version !== "1.0.0"
+  ) {
     throw new Error("FULL_REZZ import returned an unsupported bridge context.");
   }
   const origin = context.origin;
   const snapshot = context.profile_snapshot;
   if (!isRecord(origin) || !isRecord(snapshot)) {
-    throw new Error("FULL_REZZ import is missing its profile snapshot or origin record.");
+    throw new Error(
+      "FULL_REZZ import is missing its profile snapshot or origin record.",
+    );
   }
   const packId = requireString(origin.pack_id, "pack ID");
-  if (!packIdPattern.test(packId)) throw new Error("FULL_REZZ import has an invalid pack ID.");
+  if (!packIdPattern.test(packId))
+    throw new Error("FULL_REZZ import has an invalid pack ID.");
   const packSchemaVersion = origin.schema_version;
   if (packSchemaVersion !== "1.0.0" && packSchemaVersion !== "1.1.0") {
-    throw new Error("FULL_REZZ import uses an unsupported reference-pack schema.");
+    throw new Error(
+      "FULL_REZZ import uses an unsupported reference-pack schema.",
+    );
   }
   if (
     requireProfileId(context.profile_id, "context profile ID") !== originalId ||
     requireProfileId(snapshot.id, "snapshot profile ID") !== originalId ||
     requireProfileId(profile.id, "imported profile ID") !== importedProfileId
   ) {
-    throw new Error("FULL_REZZ import profile mapping does not match the selected character.");
+    throw new Error(
+      "FULL_REZZ import profile mapping does not match the selected character.",
+    );
   }
   if (
     !Array.isArray(receipt.profile_ids) ||
     !receipt.profile_ids.includes(importedProfileId)
   ) {
-    throw new Error("FULL_REZZ import receipt does not contain the remapped profile.");
+    throw new Error(
+      "FULL_REZZ import receipt does not contain the remapped profile.",
+    );
   }
   const engramKey = requireString(context.engram_key, "namespaced engram key");
   if (engramKey !== `full_rezz:${packId}:${originalId}`) {
-    throw new Error("FULL_REZZ import returned an invalid namespaced engram key.");
+    throw new Error(
+      "FULL_REZZ import returned an invalid namespaced engram key.",
+    );
   }
 
   const identifierMapping: Record<string, string> = {};
@@ -130,7 +191,9 @@ export function bindingFromImport(
       typeof targetId !== "string" ||
       !/^(?:voice|src)_[a-f0-9]{16}$/.test(targetId)
     ) {
-      throw new Error("FULL_REZZ import contains an invalid identifier remapping.");
+      throw new Error(
+        "FULL_REZZ import contains an invalid identifier remapping.",
+      );
     }
     identifierMapping[sourceId] = targetId;
   }
@@ -144,8 +207,14 @@ export function bindingFromImport(
     voice_profile_id: importedProfileId,
     original_profile_id: originalId,
     import_id: importId,
-    source_archive_sha256: requireSha256(receipt.archive_sha256, "archive SHA-256"),
-    source_manifest_sha256: requireSha256(origin.manifest_sha256, "manifest SHA-256"),
+    source_archive_sha256: requireSha256(
+      receipt.archive_sha256,
+      "archive SHA-256",
+    ),
+    source_manifest_sha256: requireSha256(
+      origin.manifest_sha256,
+      "manifest SHA-256",
+    ),
     identifier_mapping: identifierMapping,
     profile_snapshot: snapshot,
     context_snapshot: context,
@@ -204,7 +273,10 @@ export function splitHostSpeech(text: string, maximum = 400): string[] {
       if (boundary > 0) cut = boundary + 1;
     }
     const chunk = remaining.slice(0, cut).trim();
-    if (!chunk) throw new Error("FULL_REZZ speech chunking could not preserve the reply.");
+    if (!chunk)
+      throw new Error(
+        "FULL_REZZ speech chunking could not preserve the reply.",
+      );
     chunks.push(chunk);
     remaining = remaining.slice(cut).trim();
   }

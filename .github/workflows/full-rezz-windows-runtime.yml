@@ -2,10 +2,11 @@ name: FULL_REZZ Windows runtime candidate
 on:
   workflow_dispatch:
   push:
-    branches: ["offline/full-rezz-windows-runtime*"]
+    branches: ["offline/full-rezz-windows-runtime*", "review/voice-offline-repairs-*"]
     paths:
       - .github/workflows/full-rezz-windows-runtime.yml
-      - artifacts/desktop/scripts/full-rezz
+      - artifacts/desktop/scripts/**
+      - artifacts/desktop/full-rezz/**
 permissions:
   contents: read
 jobs:
@@ -30,10 +31,16 @@ jobs:
         run: |
           python artifacts/desktop/scripts/test-full-rezz-windows-builder.py
           node --test artifacts/desktop/scripts/prepare-full-rezz-assets.test.mjs
+      - name: Check repaired source contracts
+        env:
+          PYTHONPATH: artifacts/desktop/full-rezz
+        run: |
+          python -m pip install numpy==1.26.4 scipy==1.13.1 opencc-python-reimplemented==0.1.7 av==14.2.0 pypdf==5.5.0
+          python -B -m unittest discover -s artifacts/desktop/full-rezz/tests -v
       - name: Prepare verified source and core speech assets
-        run: node artifacts/desktop/scripts/prepare-full-rezz-assets.mjs generated-artifacts/full-rezz-assets
+        run: node artifacts/desktop/scripts/prepare-full-rezz-assets.mjs generated-artifacts/full-rezz-assets --source-root artifacts/desktop/full-rezz
       - name: Build and probe native Windows runtime
-        run: python artifacts/desktop/scripts/build-full-rezz-windows.py --source generated-artifacts/full-rezz-assets --out generated-artifacts/windows-full-rezz
+        run: python artifacts/desktop/scripts/build-full-rezz-windows.py --source generated-artifacts/full-rezz-assets --out generated-artifacts/windows-full-rezz --source-root artifacts/desktop/full-rezz
       - name: Retain native diagnostic evidence
         if: always()
         uses: actions/upload-artifact@v4
