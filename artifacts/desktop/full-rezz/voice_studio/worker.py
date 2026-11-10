@@ -7,6 +7,15 @@ def run(task):
  from full_rezz_companion.worker_lifetime import attach
  attach()
  enforce_offline();workspace=Path(task['workspace']);a=task.get('args',{});op=task['operation']
+ if op=='health':
+  from .runtime import health
+  return health(True)
+ if op=='transcribe_clip':
+  from . import audio,models
+  sr,samples=audio.read_audio(Path(a['path']))
+  if len(samples)/sr>60:raise ValueError('Microphone clips must be at most 60 seconds.')
+  result=models.transcribe(samples,sr,language=a.get('language'))
+  return {**result,'text':' '.join(row['text'] for row in result['segments']).strip(),'duration_seconds':len(samples)/sr}
  if op.startswith('companion_history_'):
   from full_rezz_companion.history import HistoryStore
   history=HistoryStore(workspace,initialize=op!='companion_history_preview')
@@ -25,9 +34,6 @@ def run(task):
    return history.rollback_import(a['pid'],a['import_id'])
   if op=='companion_history_export':
    return {'path':str(history.export(a['pid'],a['path']))}
-  if op=='health':
-   from .runtime import health
-   return health(True)
  from .engine import Studio
  s=Studio(workspace)
  if op=='import':return s.import_audio(Path(a['path']))

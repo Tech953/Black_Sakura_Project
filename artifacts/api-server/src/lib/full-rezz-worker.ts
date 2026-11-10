@@ -1,7 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -9,7 +16,8 @@ import { execFile } from "node:child_process";
 
 const execFileAsync = promisify(execFile);
 const MAX_WORKER_MS = 30 * 60 * 1000;
-const JOB_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const JOB_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type WorkerOperation =
   | "companion_reference_import"
@@ -24,7 +32,8 @@ type WorkerOperation =
   | "companion_history_export"
   | "companion_review"
   | "companion_rollback_import"
-  | "health";
+  | "health"
+  | "transcribe_clip";
 
 export type FullRezzJobStatus =
   | "queued"
@@ -107,7 +116,8 @@ export function getFullRezzRuntimeStatus() {
     ? {
         available: true as const,
         runtimeVersion: "3.0.0" as const,
-        integrityVerified: verifiedRuntimeKey === `${config.moduleRoot}:${config.pythonPath}`,
+        integrityVerified:
+          verifiedRuntimeKey === `${config.moduleRoot}:${config.pythonPath}`,
       }
     : {
         available: false as const,
@@ -128,7 +138,10 @@ export function fullRezzWorkspaceForOwner(ownerId: string): string {
   return path.join(config.workspaceRoot, "owners", ownerKey);
 }
 
-async function verifyRuntimeIntegrity(ownerId: string): Promise<void> {
+async function verifyRuntimeIntegrity(
+  ownerId: string,
+  signal?: AbortSignal,
+): Promise<void> {
   const config = runtimeConfig();
   if (!config) {
     throw new Error(
@@ -137,14 +150,26 @@ async function verifyRuntimeIntegrity(ownerId: string): Promise<void> {
   }
   const key = `${config.moduleRoot}:${config.pythonPath}`;
   if (verifiedRuntimeKey === key) return;
-  const health = await runWorker(ownerId, "health", {});
+  const health = await runWorker(
+    ownerId,
+    "health",
+    {},
+    undefined,
+    undefined,
+    signal,
+  );
   if (health.passed !== true) {
-    throw new Error("FULL_REZZ runtime/model integrity check failed; no audio was generated.");
+    throw new Error(
+      "FULL_REZZ runtime/model integrity check failed; no audio was generated.",
+    );
   }
   verifiedRuntimeKey = key;
 }
 
-function envForWorker(config: RuntimeConfig, workspace: string): NodeJS.ProcessEnv {
+function envForWorker(
+  config: RuntimeConfig,
+  workspace: string,
+): NodeJS.ProcessEnv {
   const runtimeDir = path.dirname(config.pythonPath);
   const pathParts = [runtimeDir, process.env.PATH].filter(Boolean);
   const env: NodeJS.ProcessEnv = {
@@ -175,8 +200,13 @@ async function runWorker(
   operation: WorkerOperation,
   args: Record<string, unknown>,
   onChild?: (child: ChildProcess) => void,
-  onProgress?: (value: { completedFrames: number; totalFrames: number }) => void,
+  onProgress?: (value: {
+    completedFrames: number;
+    totalFrames: number;
+  }) => void,
+  abortSignal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
+  abortSignal?.throwIfAborted();
   const config = runtimeConfig();
   if (!config) {
     throw new Error(
@@ -184,7 +214,8 @@ async function runWorker(
     );
   }
   const workspace = fullRezzWorkspaceForOwner(ownerId);
-  mkdirSync(workspace, { recursive: true });
+  if (operation !== "health" && operation !== "transcribe_clip")
+    mkdirSync(workspace, { recursive: true });
   const taskDir = await mkdtemp(path.join(os.tmpdir(), "engram-full-rezz-"));
   const taskPath = path.join(taskDir, "task.json");
   const resultPath = path.join(taskDir, "result.json");
@@ -200,94 +231,115 @@ async function runWorker(
   );
 
   try {
-    const result = await new Promise<Record<string, unknown>>((resolve, reject) => {
-      const bootstrap =
-        "import runpy,sys;sys.path.insert(0,sys.argv[1]);task=sys.argv[2];sys.argv=['voice_studio.worker',task];runpy.run_module('voice_studio.worker',run_name='__main__')";
-      const child = spawn(config.pythonPath, ["-B", "-c", bootstrap, config.moduleRoot, taskPath], {
-        cwd: config.moduleRoot,
-        env: envForWorker(config, workspace),
-        stdio: ["ignore", "pipe", "pipe"],
-        windowsHide: true,
-        detached: process.platform !== "win32",
-      });
-      onChild?.(child);
-      let output = "";
-      let stdoutLineBuffer = "";
-      const append = (chunk: Buffer, isStdout = false) => {
-        output = `${output}${chunk.toString("utf8")}`.slice(-12_000);
-        if (!isStdout || !onProgress) return;
-        stdoutLineBuffer += chunk.toString("utf8");
-        const lines = stdoutLineBuffer.split(/\r?\n/);
-        stdoutLineBuffer = lines.pop() ?? "";
-        for (const line of lines) {
-          try {
-            const progress = JSON.parse(line) as {
-              exported_frame?: unknown;
-              total_frames?: unknown;
-            };
-            if (
-              Number.isSafeInteger(progress.exported_frame) &&
-              Number.isSafeInteger(progress.total_frames) &&
-              Number(progress.total_frames) > 0
-            ) {
-              onProgress({
-                completedFrames: Number(progress.exported_frame),
-                totalFrames: Number(progress.total_frames),
-              });
+    const result = await new Promise<Record<string, unknown>>(
+      (resolve, reject) => {
+        const bootstrap =
+          "import runpy,sys;sys.path.insert(0,sys.argv[1]);task=sys.argv[2];sys.argv=['voice_studio.worker',task];runpy.run_module('voice_studio.worker',run_name='__main__')";
+        const child = spawn(
+          config.pythonPath,
+          ["-B", "-c", bootstrap, config.moduleRoot, taskPath],
+          {
+            cwd: config.moduleRoot,
+            env: envForWorker(config, workspace),
+            stdio: ["ignore", "pipe", "pipe"],
+            windowsHide: true,
+            detached: process.platform !== "win32",
+          },
+        );
+        onChild?.(child);
+        const abort = () => {
+          void killWorkerTree(child);
+        };
+        abortSignal?.addEventListener("abort", abort, { once: true });
+        if (abortSignal?.aborted) abort();
+        let output = "";
+        let stdoutLineBuffer = "";
+        const append = (chunk: Buffer, isStdout = false) => {
+          output = `${output}${chunk.toString("utf8")}`.slice(-12_000);
+          if (!isStdout || !onProgress) return;
+          stdoutLineBuffer += chunk.toString("utf8");
+          const lines = stdoutLineBuffer.split(/\r?\n/);
+          stdoutLineBuffer = lines.pop() ?? "";
+          for (const line of lines) {
+            try {
+              const progress = JSON.parse(line) as {
+                exported_frame?: unknown;
+                total_frames?: unknown;
+              };
+              if (
+                Number.isSafeInteger(progress.exported_frame) &&
+                Number.isSafeInteger(progress.total_frames) &&
+                Number(progress.total_frames) > 0
+              ) {
+                onProgress({
+                  completedFrames: Number(progress.exported_frame),
+                  totalFrames: Number(progress.total_frames),
+                });
+              }
+            } catch {
+              // Worker diagnostics are not progress records.
             }
-          } catch {
-            // Worker diagnostics are not progress records.
           }
-        }
-      };
-      child.stdout?.on("data", (chunk: Buffer) => append(chunk, true));
-      child.stderr?.on("data", (chunk: Buffer) => append(chunk));
-      const timeout = setTimeout(() => {
-        void killWorkerTree(child);
-        reject(new Error("FULL_REZZ local worker exceeded its 30-minute job limit."));
-      }, MAX_WORKER_MS);
-      child.once("error", (error) => {
-        clearTimeout(timeout);
-        reject(new Error(`FULL_REZZ local worker could not start: ${error.message}`));
-      });
-      child.once("exit", (code, signal) => {
-        clearTimeout(timeout);
-        if (code !== 0) {
+        };
+        child.stdout?.on("data", (chunk: Buffer) => append(chunk, true));
+        child.stderr?.on("data", (chunk: Buffer) => append(chunk));
+        const timeout = setTimeout(() => {
+          void killWorkerTree(child);
           reject(
             new Error(
-              `FULL_REZZ local worker exited with code ${String(code)}${signal ? ` (${signal})` : ""}.${output ? ` ${output.slice(-1200)}` : ""}`,
+              "FULL_REZZ local worker exceeded its 30-minute job limit.",
             ),
           );
-          return;
-        }
-        void readFile(resultPath, "utf8")
-          .then((contents) => {
-            const envelope = JSON.parse(contents) as {
-              ok?: boolean;
-              result?: Record<string, unknown>;
-              error?: string;
-            };
-            if (envelope.ok !== true || !envelope.result) {
-              reject(
-                new Error(
-                  typeof envelope.error === "string"
-                    ? envelope.error.slice(0, 1200)
-                    : "FULL_REZZ worker returned no successful result.",
-                ),
-              );
-              return;
-            }
-            resolve(envelope.result);
-          })
-          .catch((error: unknown) => {
+        }, MAX_WORKER_MS);
+        child.once("error", (error) => {
+          abortSignal?.removeEventListener("abort", abort);
+          clearTimeout(timeout);
+          reject(
+            new Error(
+              `FULL_REZZ local worker could not start: ${error.message}`,
+            ),
+          );
+        });
+        child.once("exit", (code, signal) => {
+          abortSignal?.removeEventListener("abort", abort);
+          clearTimeout(timeout);
+          if (code !== 0) {
             reject(
               new Error(
-                `FULL_REZZ worker produced no readable result.${output ? ` ${output.slice(-1200)}` : ""}`,
+                `FULL_REZZ local worker exited with code ${String(code)}${signal ? ` (${signal})` : ""}.${output ? ` ${output.slice(-1200)}` : ""}`,
               ),
             );
-          });
-      });
-    });
+            return;
+          }
+          void readFile(resultPath, "utf8")
+            .then((contents) => {
+              const envelope = JSON.parse(contents) as {
+                ok?: boolean;
+                result?: Record<string, unknown>;
+                error?: string;
+              };
+              if (envelope.ok !== true || !envelope.result) {
+                reject(
+                  new Error(
+                    typeof envelope.error === "string"
+                      ? envelope.error.slice(0, 1200)
+                      : "FULL_REZZ worker returned no successful result.",
+                  ),
+                );
+                return;
+              }
+              resolve(envelope.result);
+            })
+            .catch((error: unknown) => {
+              reject(
+                new Error(
+                  `FULL_REZZ worker produced no readable result.${output ? ` ${output.slice(-1200)}` : ""}`,
+                ),
+              );
+            });
+        });
+      },
+    );
     return result;
   } finally {
     await rm(taskDir, { recursive: true, force: true });
@@ -298,10 +350,14 @@ async function killWorkerTree(child: ChildProcess): Promise<void> {
   if (!child.pid) return;
   if (process.platform === "win32") {
     try {
-      await execFileAsync("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], {
-        windowsHide: true,
-        timeout: 10_000,
-      });
+      await execFileAsync(
+        "taskkill.exe",
+        ["/PID", String(child.pid), "/T", "/F"],
+        {
+          windowsHide: true,
+          timeout: 10_000,
+        },
+      );
     } catch {
       child.kill();
     }
@@ -346,9 +402,12 @@ function audioPathFromResult(
     relative === ".." ||
     path.isAbsolute(relative)
   ) {
-    throw new Error("FULL_REZZ returned an audio path outside the private workspace.");
+    throw new Error(
+      "FULL_REZZ returned an audio path outside the private workspace.",
+    );
   }
-  if (!existsSync(absolute)) throw new Error("FULL_REZZ returned audio that is not present.");
+  if (!existsSync(absolute))
+    throw new Error("FULL_REZZ returned audio that is not present.");
   return relative;
 }
 
@@ -356,21 +415,27 @@ export async function importFullRezzReferencePack(
   ownerId: string,
   archivePath: string,
 ): Promise<Record<string, unknown>> {
-  return runWorker(ownerId, "companion_reference_import", { path: archivePath });
+  return runWorker(ownerId, "companion_reference_import", {
+    path: archivePath,
+  });
 }
 
 export async function previewFullRezzReferencePack(
   ownerId: string,
   archivePath: string,
 ): Promise<Record<string, unknown>> {
-  return runWorker(ownerId, "companion_reference_preview", { path: archivePath });
+  return runWorker(ownerId, "companion_reference_preview", {
+    path: archivePath,
+  });
 }
 
 export async function rollbackFullRezzImport(
   ownerId: string,
   importId: string,
 ): Promise<void> {
-  await runWorker(ownerId, "companion_rollback_import", { import_id: importId });
+  await runWorker(ownerId, "companion_rollback_import", {
+    import_id: importId,
+  });
 }
 
 export async function previewFullRezzHistory(
@@ -447,7 +512,9 @@ export async function exportFullRezzHistory(
     path: destination,
   });
   if (result.path !== destination || !existsSync(destination)) {
-    throw new Error("FULL_REZZ history export did not produce its requested file.");
+    throw new Error(
+      "FULL_REZZ history export did not produce its requested file.",
+    );
   }
   return destination;
 }
@@ -461,6 +528,51 @@ export async function rollbackFullRezzHistoryImport(
     pid: profileId,
     import_id: importId,
   });
+}
+
+/** Ephemeral local ASR, serialized with this owner's speech and export jobs. */
+export async function transcribeFullRezzClip(
+  ownerId: string,
+  audioPath: string,
+  language: string,
+  signal?: AbortSignal,
+): Promise<Record<string, unknown>> {
+  const ownerKey = createHash("sha256").update(ownerId).digest("hex");
+  const previous = ownerQueues.get(ownerKey) ?? Promise.resolve();
+  const run = previous
+    .catch(() => undefined)
+    .then(async () => {
+      signal?.throwIfAborted();
+      await verifyRuntimeIntegrity(ownerId, signal);
+      signal?.throwIfAborted();
+      return runWorker(
+        ownerId,
+        "transcribe_clip",
+        { path: audioPath, language },
+        undefined,
+        undefined,
+        signal,
+      );
+    });
+  const settled = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  ownerQueues.set(ownerKey, settled);
+  void settled.then(() => {
+    if (ownerQueues.get(ownerKey) === settled) ownerQueues.delete(ownerKey);
+  });
+  let abort: (() => void) | undefined;
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    abort = () => reject(new Error("Microphone transcription cancelled."));
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted) abort();
+  });
+  try {
+    return await Promise.race([run, cancelled]);
+  } finally {
+    if (abort) signal?.removeEventListener("abort", abort);
+  }
 }
 
 export async function submitFullRezzSpeechJob(input: {
@@ -511,18 +623,27 @@ export async function submitFullRezzSpeechJob(input: {
       await saveJob(workspace, stored);
       try {
         await verifyRuntimeIntegrity(input.ownerId);
-        const result = await runWorker(input.ownerId, stored.operation, stored.args, (child) => {
-          activeChildren.set(id, child);
-        });
+        const result = await runWorker(
+          input.ownerId,
+          stored.operation,
+          stored.args,
+          (child) => {
+            activeChildren.set(id, child);
+          },
+        );
         if (jobWasCancelled(id)) return;
         const audioRelativePath = audioPathFromResult(workspace, result);
-        if (!audioRelativePath) throw new Error("FULL_REZZ completed without a real WAV file.");
+        if (!audioRelativePath)
+          throw new Error("FULL_REZZ completed without a real WAV file.");
         const generationIds = Array.isArray(result.generation_ids)
-          ? result.generation_ids.filter((value): value is string => typeof value === "string")
+          ? result.generation_ids.filter(
+              (value): value is string => typeof value === "string",
+            )
           : [];
-        const performance = typeof result.performance === "object" && result.performance !== null
-          ? (result.performance as Record<string, unknown>)
-          : undefined;
+        const performance =
+          typeof result.performance === "object" && result.performance !== null
+            ? (result.performance as Record<string, unknown>)
+            : undefined;
         stored.status = "succeeded";
         stored.updatedAt = new Date().toISOString();
         stored.audioRelativePath = audioRelativePath;
@@ -539,7 +660,10 @@ export async function submitFullRezzSpeechJob(input: {
         if (!jobWasCancelled(id)) {
           stored.status = "failed";
           stored.updatedAt = new Date().toISOString();
-          stored.error = error instanceof Error ? error.message.slice(0, 1200) : "FULL_REZZ speech failed.";
+          stored.error =
+            error instanceof Error
+              ? error.message.slice(0, 1200)
+              : "FULL_REZZ speech failed.";
         }
       } finally {
         activeChildren.delete(id);
@@ -639,7 +763,9 @@ export async function submitFullRezzMovieExportJob(input: {
               ...progress,
               percent: Math.min(
                 100,
-                Math.floor((progress.completedFrames / progress.totalFrames) * 100),
+                Math.floor(
+                  (progress.completedFrames / progress.totalFrames) * 100,
+                ),
               ),
             };
             stored.updatedAt = new Date().toISOString();
@@ -648,9 +774,17 @@ export async function submitFullRezzMovieExportJob(input: {
         );
         if (jobWasCancelled(id)) return;
         const expectedVideo = path.resolve(exportPath);
-        const expectedAudit = path.resolve(exportPath.replace(/\.webm$/i, ".audit.json"));
-        const videoRelative = path.relative(path.resolve(workspace), expectedVideo);
-        const auditRelative = path.relative(path.resolve(workspace), expectedAudit);
+        const expectedAudit = path.resolve(
+          exportPath.replace(/\.webm$/i, ".audit.json"),
+        );
+        const videoRelative = path.relative(
+          path.resolve(workspace),
+          expectedVideo,
+        );
+        const auditRelative = path.relative(
+          path.resolve(workspace),
+          expectedAudit,
+        );
         if (
           !videoRelative ||
           videoRelative.startsWith(`..${path.sep}`) ||
@@ -661,7 +795,9 @@ export async function submitFullRezzMovieExportJob(input: {
           !existsSync(expectedVideo) ||
           !existsSync(expectedAudit)
         ) {
-          throw new Error("FULL_REZZ movie export did not produce contained video and audit files.");
+          throw new Error(
+            "FULL_REZZ movie export did not produce contained video and audit files.",
+          );
         }
         if (
           result.path !== expectedVideo ||
@@ -671,13 +807,11 @@ export async function submitFullRezzMovieExportJob(input: {
           typeof result.sha256 !== "string" ||
           !/^[a-f0-9]{64}$/.test(result.sha256)
         ) {
-          throw new Error("FULL_REZZ movie export returned an incomplete or unaudited result.");
+          throw new Error(
+            "FULL_REZZ movie export returned an incomplete or unaudited result.",
+          );
         }
-        const {
-          path: _path,
-          profile_id: _profileId,
-          ...metadata
-        } = result;
+        const { path: _path, profile_id: _profileId, ...metadata } = result;
         stored.status = "succeeded";
         stored.updatedAt = new Date().toISOString();
         stored.progress = {
@@ -749,7 +883,8 @@ export async function getFullRezzJob(
   ) {
     stored.status = "failed";
     stored.updatedAt = new Date().toISOString();
-    stored.error = "The local worker stopped before this job completed. Start a new FULL_REZZ job to retry.";
+    stored.error =
+      "The local worker stopped before this job completed. Start a new FULL_REZZ job to retry.";
     await saveJob(workspace, stored);
   }
   const liveJob = activeJobs.get(stored.id);
@@ -781,7 +916,11 @@ export async function getFullRezzAudioPath(
   }
   const absolute = path.resolve(workspace, stored.audioRelativePath);
   const relative = path.relative(path.resolve(workspace), absolute);
-  if (relative.startsWith(`..${path.sep}`) || relative === ".." || path.isAbsolute(relative)) {
+  if (
+    relative.startsWith(`..${path.sep}`) ||
+    relative === ".." ||
+    path.isAbsolute(relative)
+  ) {
     return null;
   }
   return existsSync(absolute) ? absolute : null;

@@ -17,7 +17,8 @@
     "test:browser:simulations": "node scripts/run-simulations-browser.mjs",
     "test:browser:simulations:real-clerk": "ENGRAM_BROWSER_REAL_CLERK=true node scripts/run-simulations-browser.mjs",
     "test:browser:terminal-digest": "node scripts/run-terminal-digest-browser.mjs",
-    "test:browser:group-chat": "node scripts/group-chat-browser-regression.mjs"
+    "test:browser:group-chat": "node scripts/group-chat-browser-regression.mjs",
+    "test:browser:local-voice": "node scripts/local-voice-browser-regression.mjs"
   },
   "devDependencies": {
     "@clerk/react": "^6.15.1",

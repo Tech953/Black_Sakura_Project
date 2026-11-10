@@ -8,7 +8,7 @@ from .runtime import APP_ROOT,workspace,enforce_offline
 from .engine import Studio,identifier,write_json
 from .project_lock import ProjectLock
 from .synthesis import RenderManager,RATINGS
-from . import audio,quality
+from . import audio,quality,models
 from .languages import LanguageSettings,Localizer,LOCALES,HELP,read_settings,save_settings
 from . import qt_locale
 
@@ -62,12 +62,14 @@ class Window(QMainWindow):
   return pid
  def audio_tab(self):
   v=self.page('1 Audio & regions');h=QHBoxLayout();self.recordings=self.combo(h);self.button(h,'Import audio / video',self.import_audio);v.addLayout(h);self.recordings.currentIndexChanged.connect(self.load_record)
-  h=QHBoxLayout();self.method=self.combo(h);self.method.addItem('One declared reference voice','reference');self.method.addItem('Per-channel activity','channels');self.method.addItem('Anonymous speaker clusters','pyannote');h.addWidget(QLabel('Speakers (0 = automatic)'));self.count=QSpinBox();self.count.setRange(0,20);h.addWidget(self.count);self.button(h,'Analyze',lambda:self.job('analyze',{'rid':self.rid(),'method':self.method.currentData(),'count':self.count.value() or None}));self.button(h,'Transcribe',lambda:self.job('transcribe',{'rid':self.rid(),'language':self.settings.transcription_code()}));v.addLayout(h)
+  h=QHBoxLayout();self.method=self.combo(h);self.method.addItem('One declared reference voice','reference');self.method.addItem('Per-channel activity','channels');self.method.addItem('Anonymous speaker clusters','pyannote');h.addWidget(QLabel('Speakers (0 = automatic)'));self.count=QSpinBox();self.count.setRange(0,20);h.addWidget(self.count);self.button(h,'Analyze',lambda:self.job('analyze',{'rid':self.rid(),'method':self.method.currentData(),'count':self.count.value() or None}));self.transcribe_button=self.button(h,'Transcribe',lambda:self.job('transcribe',{'rid':self.rid(),'language':self.settings.transcription_code()}));v.addLayout(h)
   v.addWidget(QLabel(HELP[0]))
   self.region_headers=['Start','End','Speaker','Channel','Purity','Delivery / scene','Exact spoken text'];self.regions=QTableWidget(0,7);self.regions.setHorizontalHeaderLabels(self.region_headers);self.regions.horizontalHeader().setStretchLastSection(True);v.addWidget(self.regions,1)
   h=QHBoxLayout();self.button(h,'Add region',self.add_region);self.button(h,'Remove selected',self.remove_region);self.button(h,'Save edits',self.save_regions);self.binding=self.combo(h);self.button(h,'Bind selected speaker',self.bind);v.addLayout(h)
-  h=QHBoxLayout();h.addWidget(QLabel('Excerpt:'));self.start=self.number();self.end=self.number(value=4);h.addWidget(self.start);h.addWidget(self.end);self.channel=QSpinBox();self.channel.setRange(-1,7);self.channel.setValue(-1);h.addWidget(QLabel('Channel (-1 = mix)'));h.addWidget(self.channel);self.processed=QCheckBox('Conditioned preview');h.addWidget(self.processed);self.button(h,'Listen',self.listen_record);self.button(h,'Quality & spectrum',lambda:self.job('quality',self.excerpt()));self.button(h,'Separate two sources',lambda:self.job('separate',{k:x for k,x in self.excerpt().items() if k!='channel'}));v.addLayout(h)
-  v.addWidget(QLabel(HELP[1]))
+  h=QHBoxLayout();h.addWidget(QLabel('Excerpt:'));self.start=self.number();self.end=self.number(value=4);h.addWidget(self.start);h.addWidget(self.end);self.channel=QSpinBox();self.channel.setRange(-1,7);self.channel.setValue(-1);h.addWidget(QLabel('Channel (-1 = mix)'));h.addWidget(self.channel);self.processed=QCheckBox('Conditioned preview');h.addWidget(self.processed);self.button(h,'Listen',self.listen_record);self.button(h,'Quality & spectrum',lambda:self.job('quality',self.excerpt()));self.separation_button=self.button(h,'Separate two sources',lambda:self.job('separate',{k:x for k,x in self.excerpt().items() if k!='channel'}));v.addLayout(h)
+  v.addWidget(QLabel(HELP[1]+' Two-source separation is 8 kHz; use standard export only after listening review. Upsampling cannot restore detail.'))
+  availability=models.capabilities();self.method.model().item(2).setEnabled(availability['pyannote']);self.transcribe_button.setEnabled(availability['transcription']);self.separation_button.setEnabled(availability['separation'])
+  if not all(availability[k] for k in ('pyannote','transcription','separation')):v.addWidget(QLabel('Unavailable model controls are disabled. Repair the complete offline runtime.'))
   self.cleanup=QPlainTextEdit();self.cleanup.setMaximumHeight(125);v.addWidget(self.cleanup);self.button(v,'Save processing settings',self.save_cleanup)
  def profile_tab(self):
   v=self.page('2 Profile & sources');h=QHBoxLayout();self.profiles=self.combo(h);self.button(h,'New profile',self.new_profile);v.addLayout(h);self.profiles.currentIndexChanged.connect(self.load_profile)

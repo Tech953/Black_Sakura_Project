@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { FullRezzPresenter } from "@/components/full-rezz-presenter";
 import { FullRezzHistoryDialog } from "@/components/full-rezz-history-dialog";
 import { FullRezzMovieExportDialog } from "@/components/full-rezz-movie-export-dialog";
+import { LocalVoiceControls, type SpeechSettings } from "@/components/local-voice-controls";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -216,6 +217,7 @@ export default function Chat() {
   const [fullRezzBusy, setFullRezzBusy] = useState(false);
   const [fullRezzRuntime, setFullRezzRuntime] = useState<{ available: boolean; reason?: string } | null>(null);
   const [fullRezzBoundEngramId, setFullRezzBoundEngramId] = useState<number | null>(null);
+  const [voiceSettings, setVoiceSettings] = useState<SpeechSettings>({ synthesis_language: "en", speech_engine: "f5" });
   const [speechJobs, setSpeechJobs] = useState<Record<number, SpeechJobView>>({});
   const [presenterAudioUrl, setPresenterAudioUrl] = useState<string | null>(null);
   const [movieExportSelection, setMovieExportSelection] = useState<{
@@ -871,7 +873,7 @@ export default function Chat() {
     try {
       const response = await authFetch(
         `${BASE}/api/full-rezz/conversations/${activeConv.id}/messages/${message.id}/speech`,
-        { method: "POST", headers: { "content-type": "application/json" }, body: "{}" },
+        { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(voiceSettings) },
       );
       let job = await response.json();
       if (!response.ok) throw new Error(job.error ?? "Unable to start local speech.");
@@ -1851,6 +1853,9 @@ export default function Chat() {
               ))}
             </div>
           )}
+          {activeId != null && <LocalVoiceControls key={activeId} conversationId={activeId} endpoint={`${BASE}/api/full-rezz`} authFetch={authFetch}
+            disabled={streaming || Boolean(activeConv?.archivedAt) || Boolean(activeEngram?.isArchival) || activeGroupEngrams.some((e) => e.isArchival)}
+            onTranscript={(text) => setInput((draft) => draft ? `${draft}\n${text}` : text)} settings={voiceSettings} onSettings={setVoiceSettings} />}
           <div className="flex gap-2 md:gap-3 items-end max-w-4xl mx-auto">
             <input
               ref={fileInputRef}
