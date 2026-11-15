@@ -30,6 +30,8 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Isolate clean build storage (no Git LFS or Gradle cache restore)
         shell: bash
         run: |
