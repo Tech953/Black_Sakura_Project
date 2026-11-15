@@ -1,0 +1,109 @@
+name: Android local-only chat candidate (speech not yet ported)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/android-offline-candidate.yml"
+      - "artifacts/engram-mobile/**"
+      - "lib/**"
+jobs:
+  apk:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_LOCAL_ONLY: "1"
+      EXPO_PUBLIC_BUNDLED_CHAT_MODEL: "1"
+      CMAKE_BUILD_PARALLEL_LEVEL: "2"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          lfs: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Isolate clean build storage (no Git LFS or Gradle cache restore)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "GRADLE_USER_HOME=$RUNNER_TEMP/gradle-offline-candidate" >> "$GITHUB_ENV"
+          echo "ENGRAM_BUNDLED_MODEL_DIR=$RUNNER_TEMP/mobile-model-assets" >> "$GITHUB_ENV"
+          df -h . "$RUNNER_TEMP"
+          du -sh .git
+          # Fail early rather than repeating a multi-gigabyte assembly without room.
+          available="$(df --output=avail -B1 "$RUNNER_TEMP" | tail -1)"
+          test "$available" -ge 20000000000 || { echo "Need 20 GB free for a clean candidate build"; exit 1; }
+      - name: Install and generate shared libraries
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @workspace/api-spec run codegen
+          pnpm run typecheck:libs
+      - name: Download pinned chat input and verify assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFile, mkdir } from "node:fs/promises";
+          import { spawnSync } from "node:child_process";
+          const spec = JSON.parse(await readFile("artifacts/engram-mobile/lib/offline/bundled-model-spec.json"));
+          const input = `${process.env.RUNNER_TEMP}/chat-input`;
+          await mkdir(input, { recursive: true });
+          const modelUrl = `https://huggingface.co/${spec.repository}/resolve/${spec.revision}/${spec.upstreamFilename}`;
+          for (const [url, local] of [[modelUrl, "model.gguf"], ["https://www.apache.org/licenses/LICENSE-2.0.txt", "LICENSE"]]) {
+            const result = spawnSync("curl", ["--fail", "--location", "--retry", "3", "--output", `${input}/${local}`, url], { stdio: "inherit" });
+            if (result.status !== 0) process.exit(result.status || 1);
+          }
+          NODE
+          node artifacts/engram-mobile/scripts/prepare-bundled-model.mjs \
+            --source "$RUNNER_TEMP/chat-input/model.gguf" \
+            --license "$RUNNER_TEMP/chat-input/LICENSE" --out "$ENGRAM_BUNDLED_MODEL_DIR"
+          # Only the duplicate downloaded input is disposable after verification.
+          rm "$RUNNER_TEMP/chat-input/model.gguf"
+      - name: Test local packaging boundaries
+        run: |
+          python artifacts/engram-mobile/scripts/test-verify-offline-chat-apk.py
+          node --test artifacts/engram-mobile/scripts/android-compression-scratch.test.mjs \
+            artifacts/engram-mobile/scripts/prepare-bundled-model.test.mjs \
+            artifacts/engram-mobile/scripts/verify-local-only-manifest.test.mjs
+      - name: Generate Android project
+        run: pnpm --filter @workspace/engram-mobile exec expo prebuild --platform android --no-install --clean
+      - name: Build installable diagnostic APK
+        working-directory: artifacts/engram-mobile/android
+        env:
+          NODE_ENV: production
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDeviceLocalRelease -PreactNativeArchitectures=arm64-v8a \
+            --no-daemon --max-workers=2 '-Dorg.gradle.jvmargs=-Xmx3g' --console=plain --stacktrace
+      - name: Verify packaged model and merged local-only policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find artifacts/engram-mobile/android/app/build/outputs/apk/deviceLocal/release -name '*.apk' -print -quit)"
+          python artifacts/engram-mobile/scripts/verify-offline-chat-apk.py "$apk" \
+            --aapt2 "$ANDROID_HOME/build-tools/36.0.0/aapt2"
+          manifest="$(find artifacts/engram-mobile/android/app/build/intermediates/merged_manifests -path '*deviceLocalRelease*' -name AndroidManifest.xml -print -quit)"
+          test -n "$manifest"
+          node artifacts/engram-mobile/scripts/verify-local-only-manifest.mjs "$manifest"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-local-chat-candidate-NOT-full-rezz-speech
+          path: artifacts/engram-mobile/android/app/build/outputs/apk/deviceLocal/release/*.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Storage evidence
+        if: always()
+        run: |
+          df -h . "$RUNNER_TEMP"
+          du -sh .git "$GRADLE_USER_HOME" artifacts/engram-mobile/android/app/build 2>/dev/null || true
+    # Uses the generated diagnostic signing key, not a production release key.
+    # No release publication. A native FULL_REZZ port and real-device acceptance
+    # remain required before this can be called a fully-offline voice installer.
