@@ -1,0 +1,37 @@
+// Opt-in chat-model packaging. This alone is NOT a fully-offline voice build.
+def bundleChatModel = System.getenv("EXPO_PUBLIC_BUNDLED_CHAT_MODEL") == "1"
+def localOnly = System.getenv("EXPO_PUBLIC_LOCAL_ONLY") == "1"
+if (localOnly && !bundleChatModel) {
+    throw new GradleException("Device-local builds require the bundled chat model.")
+}
+def bundledAssetsPath = System.getenv("ENGRAM_BUNDLED_MODEL_DIR") ?: findProperty("engramBundledModelDir")
+if (bundleChatModel != (bundledAssetsPath != null && !bundledAssetsPath.toString().trim().isEmpty())) {
+    throw new GradleException("Bundled-model builds require BOTH EXPO_PUBLIC_BUNDLED_CHAT_MODEL=1 and ENGRAM_BUNDLED_MODEL_DIR (or -PengramBundledModelDir).")
+}
+if (bundleChatModel) {
+    def bundledAssets = file(bundledAssetsPath)
+    android.sourceSets.main.assets.srcDir(bundledAssets)
+    // Avoid compressing a 1.1 GB model only to expand it into private storage.
+    android.androidResources.noCompress += ["gguf"]
+    def verifyModel = tasks.register("verifyBundledChatModel", Exec) {
+        inputs.dir(bundledAssets)
+        commandLine "node",
+            new File(rootProject.projectDir.parentFile, "scripts/prepare-bundled-model.mjs").absolutePath,
+            "--verify", bundledAssets.absolutePath
+    }
+    tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(verifyModel) }
+}
+if (localOnly) {
+    // A separate application sandbox prevents mixing local-only and cloud accounts.
+    android.flavorDimensions += "connectivity"
+    android.productFlavors {
+        deviceLocal {
+            dimension "connectivity"
+            applicationIdSuffix ".offline"
+            resValue "string", "app_name", "ENGRAM Local"
+        }
+    }
+    android.sourceSets.deviceLocal.manifest.srcFile(
+        new File(rootProject.projectDir.parentFile, "scripts/local-only.AndroidManifest.xml")
+    )
+}
