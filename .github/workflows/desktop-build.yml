@@ -1120,8 +1120,33 @@ jobs:
     # Required so the GitHub token can upload the APK to the owned draft release.
     permissions:
       contents: write
+    # Expo inlines EXPO_PUBLIC_* at bundle time, so these must be present for
+    # Metro in the Gradle build (and for the browser preflight's Clerk load).
+    # Publishable keys and domains are public; keep them as repo variables.
+    env:
+      EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      EXPO_PUBLIC_CLERK_PROXY_URL: ${{ vars.EXPO_PUBLIC_CLERK_PROXY_URL }}
+      EXPO_PUBLIC_DOMAIN: ${{ vars.EXPO_PUBLIC_DOMAIN }}
+      CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_E2E_PUBLISHABLE_KEY || vars.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@v4
+
+      # Fail in seconds, not after ~10 minutes of preflight, when the APK
+      # cannot be built correctly.
+      - name: Require mobile build configuration
+        shell: bash
+        env:
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY EXPO_PUBLIC_DOMAIN; do
+            if [ -z "${!name:-}" ]; then echo "::error::Missing repository variable $name"; missing=1; fi
+          done
+          if [ "$HAS_KEYSTORE" != "true" ]; then
+            echo "::error::Missing one of the ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD secrets"; missing=1
+          fi
+          exit "$missing"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
