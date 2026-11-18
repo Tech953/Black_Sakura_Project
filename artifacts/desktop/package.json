@@ -20,7 +20,7 @@
     "dist:all": "pnpm run build && electron-builder -mwl",
     "smoke": "node ./scripts/smoke-test.mjs",
     "test:settings-browser": "node ./scripts/settings-browser-regression.mjs",
-    "test": "vitest run",
+    "test": "vitest run && node --test scripts/prepare-full-rezz-assets.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

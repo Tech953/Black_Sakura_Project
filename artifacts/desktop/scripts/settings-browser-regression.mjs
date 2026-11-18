@@ -3,11 +3,33 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
-const chromiumPath = process.env.CHROMIUM_PATH ?? "/repl/tools/bin/chromium";
+// Prefer CHROMIUM_PATH, then the Replit binary, then whatever is on PATH
+// (GitHub's ubuntu runners ship google-chrome; the workflow may also apt
+// install chromium). Same lookup as update-banner-accessibility-browser.mjs.
+function findChromium() {
+  return (
+    process.env.CHROMIUM_PATH ??
+    ["/repl/tools/bin/chromium", "chromium", "chromium-browser", "google-chrome"]
+      .map((candidate) => {
+        if (candidate.startsWith("/") && spawnSync("test", ["-x", candidate]).status === 0) {
+          return candidate;
+        }
+        const result = spawnSync("which", [candidate], { encoding: "utf8" });
+        return result.status === 0 ? result.stdout.trim() : "";
+      })
+      .find(Boolean)
+  );
+}
+
+const chromiumPath = findChromium();
+if (!chromiumPath) {
+  console.error("[settings-browser] FAIL: Could not find Chromium. Set CHROMIUM_PATH or install Chromium.");
+  process.exit(1);
+}
 const settingsHtml = readFileSync(
   fileURLToPath(new URL("../src/settings.html", import.meta.url)),
   "utf8",
@@ -686,7 +708,17 @@ async function main() {
     ]);
     if (!chromiumExited) chromium.kill("SIGKILL");
     await served.close();
-    await rm(browserProfile, { recursive: true, force: true });
+    // Chromium helper processes can still be flushing the profile after the
+    // browser process exits, so retry, and never let temp-dir cleanup mask the
+    // real test result (an error thrown here would replace it).
+    await rm(browserProfile, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 200,
+    }).catch((error) => {
+      console.warn(`[settings-browser] warning: could not remove ${browserProfile}: ${error.message}`);
+    });
   }
 }
 

@@ -231,7 +231,7 @@ describe("release asset gate", () => {
 
   it("keeps signed macOS arm64 packaging in the tagged release matrix", () => {
     expect(desktopBuildJob).toMatch(
-      /- os: macos-14\s+platform: mac\s+arch: arm64/,
+      /- os: macos-15\s+platform: mac\s+arch: arm64/,
     );
     expect(electronBuilderConfig).toContain(
       "artifactName: ${productName}-${version}-${arch}.${ext}",
