@@ -27,10 +27,25 @@ function source(relativePath) {
   return readFileSync(path.join(mobileRoot, relativePath), "utf8");
 }
 
+// Drop comments so prose (e.g. "builds fetch it once") is not mistaken for
+// code. Line comments must follow whitespace/line start so "https://" survives.
+export function stripComments(contents) {
+  return contents.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/.*$/gm, "$1");
+}
+
+// Formatting-insensitive match: the snippet is split into identifier and
+// punctuation tokens that may be separated by any whitespace, so Prettier
+// re-wrapping an equivalent guard (e.g. across lines) does not fail the gate.
+export function snippetPattern(snippet) {
+  const tokens = snippet.match(/[\w$]+|[^\s\w$]/g) ?? [];
+  const escaped = tokens.map((token) => token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(escaped.join("\\s*"));
+}
+
 function requireSource(relativePath, snippets) {
-  const contents = source(relativePath);
+  const contents = stripComments(source(relativePath));
   for (const snippet of snippets) {
-    if (!contents.includes(snippet)) {
+    if (!snippetPattern(snippet).test(contents)) {
       throw new Error(`${relativePath} is missing the GGUF smoke contract: ${snippet}`);
     }
   }
@@ -67,11 +82,11 @@ try {
     "CUSTOM_METADATA_KEY",
   ]);
   requireSource("lib/offline/llm.ts", ["getActiveModelPath", "validateActiveModel"]);
-  const modelSource = source("lib/offline/model.ts");
+  const modelSource = stripComments(source("lib/offline/model.ts"));
   if (/\b(fetch|XMLHttpRequest|upload|FormData)\b/.test(modelSource)) {
     throw new Error("The model manager must not upload selected GGUF bytes.");
   }
-  const settingsSource = source("app/server-settings.tsx");
+  const settingsSource = stripComments(source("app/server-settings.tsx"));
   if (/fetch\([^)]*(?:asset|pendingGguf)\.uri/.test(settingsSource)) {
     throw new Error("The Settings screen must not send the selected provider URI.");
   }
