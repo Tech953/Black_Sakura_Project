@@ -4,6 +4,10 @@ def localOnly = System.getenv("EXPO_PUBLIC_LOCAL_ONLY") == "1"
 if (localOnly && !bundleChatModel) {
     throw new GradleException("Device-local builds require the bundled chat model.")
 }
+// okhttp logging-interceptor 5.x and jspecify 1.0 both ship this multi-release
+// OSGi manifest; Android never reads it, and the duplicate fails
+// mergeReleaseJavaResource. Excluding it changes no runtime class or asset.
+android.packaging.resources.excludes += ["META-INF/versions/9/OSGI-INF/MANIFEST.MF"]
 def bundledAssetsPath = System.getenv("ENGRAM_BUNDLED_MODEL_DIR") ?: findProperty("engramBundledModelDir")
 if (bundleChatModel != (bundledAssetsPath != null && !bundledAssetsPath.toString().trim().isEmpty())) {
     throw new GradleException("Bundled-model builds require BOTH EXPO_PUBLIC_BUNDLED_CHAT_MODEL=1 and ENGRAM_BUNDLED_MODEL_DIR (or -PengramBundledModelDir).")
