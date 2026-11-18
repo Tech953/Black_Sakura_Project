@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
+import spec from "./bundled-model-spec.json";
+import { hasPackagedChatModel, installPackagedChatModel } from "./bundled-model";
 import {
   activateKeepAwakeAsync,
   deactivateKeepAwake,
@@ -7,14 +9,15 @@ import {
 
 /**
  * On-device model manager: downloads, verifies, and stores the GGUF chat model
- * used by offline mode. The model is fetched once (~1.1 GB) and kept in the
- * app's document directory; after that, offline mode needs no network at all.
+ * used by offline mode. Ordinary builds fetch it once (~1.1 GB). Bundled-model
+ * Android builds instead extract it from the APK with no network fallback.
+ * Both paths keep it in the app's private document directory.
  */
-export const MODEL_NAME = "Qwen3 1.7B (4-bit)";
+export const MODEL_NAME = spec.name;
 export const MODEL_URL =
-  "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf";
+  `https://huggingface.co/${spec.repository}/resolve/${spec.revision}/${spec.upstreamFilename}`;
 /** Exact size of the artifact above; used to verify a completed download. */
-export const MODEL_BYTES = 1107409472;
+export const MODEL_BYTES = spec.bytes;
 
 const MODEL_DIR = `${FileSystem.documentDirectory}models`;
 export const MODEL_PATH = `${MODEL_DIR}/qwen3-1.7b-q4_k_m.gguf`;
@@ -238,6 +241,9 @@ export async function getCustomModelStorageCheck(
 }
 
 export async function getModelStatus(): Promise<ModelStatus> {
+  // Errors intentionally remain visible: a missing/corrupt APK asset must not
+  // quietly become a first-run network download.
+  if (hasPackagedChatModel()) await installPackagedChatModel(MODEL_PATH);
   try {
     const [bundled, custom, customMetadata] = await Promise.all([
       modelInfo(MODEL_PATH),
@@ -328,7 +334,9 @@ export function downloadModel(
   onProgress: (writtenBytes: number, totalBytes: number) => void,
 ): Promise<void> {
   if (downloadPromise) return downloadPromise;
-  downloadPromise = performDownload(onProgress).finally(() => {
+  downloadPromise = (hasPackagedChatModel()
+    ? installPackagedChatModel(MODEL_PATH).then(() => onProgress(MODEL_BYTES, MODEL_BYTES))
+    : performDownload(onProgress)).finally(() => {
     downloadPromise = null;
   });
   return downloadPromise;

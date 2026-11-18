@@ -1,0 +1,44 @@
+name: Android offline input diagnostics (no APK build)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/android-crash-fix-test.yml"
+      - ".github/workflows/android-offline-candidate.yml"
+      - "artifacts/engram-mobile/**"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          lfs: false
+      - name: Report expected offline model inputs
+        shell: bash
+        run: |
+          set -u
+          missing=0
+          summary="$GITHUB_STEP_SUMMARY"
+          echo "## Android offline model input check" >> "$summary"
+          for path in \
+            "artifacts/engram-mobile/lib/offline/bundled-model-spec.json" \
+            "artifacts/engram-mobile/scripts/verify-offline-chat-apk.py"; do
+            if test -f "$path"; then
+              echo "PRESENT: $path"
+              echo "- Present: \`$path\`" >> "$summary"
+            else
+              echo "MISSING: $path"
+              echo "- Missing: \`$path\`" >> "$summary"
+              missing=1
+            fi
+          done
+          if test "$missing" -eq 1; then
+            echo "Offline APK assembly was not attempted; required inputs are absent."
+          else
+            echo "Both expected files exist. This diagnostic still does not build an APK."
+          fi

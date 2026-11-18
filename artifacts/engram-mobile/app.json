@@ -37,7 +37,8 @@
       "expo-web-browser",
       "./plugins/withAndroidLaunchReliability",
        "./plugins/withAndroidReleaseSigning",
-       "./plugins/withAndroidPrivacyHardening"
+       "./plugins/withAndroidPrivacyHardening",
+       "./plugins/withBundledChatModel"
     ],
     "experiments": {
       "typedRoutes": true,
