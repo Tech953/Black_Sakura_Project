@@ -214,7 +214,7 @@ describe("desktop release workflow concurrency", () => {
     const prepareJob = getJobSection("prepare-draft");
 
     expect(validationJob).toContain(
-      "go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7",
+      "go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12",
     );
     expect(validationJob).toContain(
       'actionlint" .github/workflows/desktop-build.yml',
