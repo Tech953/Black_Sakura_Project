@@ -1106,11 +1106,12 @@ jobs:
   # so downloadable APKs support update-safe in-place installs.
   android:
     name: android
-    needs: [build, prepare-draft, validate_workflow_guards]
+    # The APK uses no desktop output, so it does not wait on the desktop
+    # matrix. Public release is still gated: `publish` needs build AND android.
+    needs: [prepare-draft, validate_workflow_guards]
     if: >-
       always() &&
       !cancelled() &&
-      needs.build.result == 'success' &&
       needs.validate_workflow_guards.result == 'success' &&
       (github.event_name == 'workflow_dispatch' ||
        (github.event_name == 'push' && github.ref_type == 'tag' &&
@@ -1139,8 +1140,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # The action's default package list includes the legacy SDK `tools`
+      # package, which Google no longer serves; request only platform-tools.
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

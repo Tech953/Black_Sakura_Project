@@ -1,11 +1,33 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
+
+// Replit ships Chromium at /repl/tools/bin/chromium; GitHub runners ship
+// google-chrome on PATH. Prefer an explicit CHROMIUM_PATH override.
+function chromiumExecutable() {
+  const candidates = [
+    process.env.CHROMIUM_PATH,
+    "/repl/tools/bin/chromium",
+    "chromium",
+    "chromium-browser",
+    "google-chrome",
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (candidate.startsWith("/")) {
+      if (existsSync(candidate)) return candidate;
+      continue;
+    }
+    const result = spawnSync("which", [candidate], { encoding: "utf8" });
+    if (result.status === 0 && result.stdout.trim()) return result.stdout.trim();
+  }
+  throw new Error("Could not find Chromium. Set CHROMIUM_PATH or install Chromium.");
+}
+
 
 const mobileRoot = path.resolve(new URL("..", import.meta.url).pathname);
 const scenario = process.argv.find((arg) => arg.startsWith("--scenario="))?.split("=")[1] ?? "history";
@@ -1355,7 +1377,7 @@ try {
     "about:blank",
   ];
   const shellQuote = (value) => `'${String(value).replaceAll("'", "'\\''")}'`;
-  const chromiumCommand = `exec ${["/repl/tools/bin/chromium", ...chromeArgs]
+  const chromiumCommand = `exec ${[chromiumExecutable(), ...chromeArgs]
     .map(shellQuote)
     .join(" ")}`;
   process.stdout.write(`[history-e2e] launching Chromium: ${chromiumCommand}\n`);
